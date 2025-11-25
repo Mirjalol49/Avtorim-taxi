@@ -14,6 +14,7 @@ import ConfirmModal from './components/ConfirmModal';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
+import * as firestoreService from './services/firestoreService';
 
 const App: React.FC = () => {
   // Auth State
@@ -29,25 +30,15 @@ const App: React.FC = () => {
   const [financeEndDate, setFinanceEndDate] = useState('');
   const [financeDriverFilter, setFinanceDriverFilter] = useState<string>('all');
 
-  // Initialize state from LocalStorage or fallback to MOCK data
-  const [drivers, setDrivers] = useState<Driver[]>(() => {
-    const saved = localStorage.getItem('avtorim_drivers');
-    return saved ? JSON.parse(saved) : MOCK_DRIVERS;
+  // Firebase state - starts empty, will sync from cloud
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [adminProfile, setAdminProfile] = useState({
+    name: 'Admin',
+    role: 'Dispetcher',
+    avatar: '' // Will be set by user
   });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('avtorim_transactions');
-    return saved ? JSON.parse(saved) : MOCK_TRANSACTIONS;
-  });
-
-  const [adminProfile, setAdminProfile] = useState(() => {
-    const saved = localStorage.getItem('avtorim_admin');
-    return saved ? JSON.parse(saved) : {
-      name: 'Sardor Admin',
-      role: 'Bosh Dispetcher',
-      avatar: 'https://picsum.photos/100/100?random=99'
-    };
-  });
+  const [isFirebaseLoaded, setIsFirebaseLoaded] = useState(false);
 
   // Language State
   const [language, setLanguage] = useState<Language>('uz');
@@ -78,19 +69,49 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
-  // --- PERSISTENCE ---
+  // --- FIREBASE SYNC ---
   useEffect(() => {
-    localStorage.setItem('avtorim_drivers', JSON.stringify(drivers));
-  }, [drivers]);
+    if (!isAuthenticated) return;
 
-  useEffect(() => {
-    localStorage.setItem('avtorim_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+    // Run migration from localStorage to Firebase
+    firestoreService.migrateFromLocalStorage().then(() => {
+      console.log('Data migration completed');
+      setIsFirebaseLoaded(true);
+    }).catch(err => {
+      console.error('Migration failed:', err);
+      setIsFirebaseLoaded(true); // Continue anyway
+    });
 
-  useEffect(() => {
-    localStorage.setItem('avtorim_admin', JSON.stringify(adminProfile));
-  }, [adminProfile]);
+    // Subscribe to Drivers
+    const unsubDrivers = firestoreService.subscribeToDrivers((newDrivers) => {
+      if (newDrivers.length > 0) {
+        setDrivers(newDrivers);
+      }
+    });
 
+    // Subscribe to Transactions
+    const unsubTx = firestoreService.subscribeToTransactions((newTransactions) => {
+      if (newTransactions.length > 0) {
+        setTransactions(newTransactions);
+      }
+    });
+
+    // Subscribe to Admin Profile
+    const unsubAdmin = firestoreService.subscribeToAdminProfile((newAdmin) => {
+      if (newAdmin) {
+        setAdminProfile(newAdmin);
+      }
+    });
+
+    // Cleanup subscriptions on logout
+    return () => {
+      unsubDrivers();
+      unsubTx();
+      unsubAdmin();
+    };
+  }, [isAuthenticated]);
+
+  // Auth persistence
   useEffect(() => {
     if (isAuthenticated) {
       localStorage.setItem('avtorim_auth', 'true');
@@ -164,9 +185,13 @@ const App: React.FC = () => {
   const handleLogin = () => setIsAuthenticated(true);
   const handleLock = () => setIsAuthenticated(false);
 
-  const handleAddTransaction = (data: Omit<Transaction, 'id'>) => {
-    const newTx: Transaction = { ...data, id: Math.random().toString(36).substr(2, 9) };
-    setTransactions(prev => [newTx, ...prev]);
+  const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
+    try {
+      await firestoreService.addTransaction(data);
+      // Firebase listener will automatically update the state
+    } catch (error) {
+      console.error('Failed to add transaction:', error);
+    }
   };
 
   const closeConfirmModal = () => {
@@ -179,33 +204,44 @@ const App: React.FC = () => {
       title: t.confirmDeleteTitle,
       message: t.deleteConfirmTx,
       isDanger: true,
-      action: () => {
-        setTransactions(prev => prev.filter(tx => tx.id !== id));
-        closeConfirmModal();
+      action: async () => {
+        try {
+          await firestoreService.deleteTransaction(id);
+          closeConfirmModal();
+        } catch (error) {
+          console.error('Failed to delete transaction:', error);
+          closeConfirmModal();
+        }
       }
     });
   };
 
-  const handleSaveDriver = (data: any) => {
-    if (data.id) {
-      setDrivers(prev => prev.map(d => d.id === data.id ? { ...d, ...data, location: d.location } : d));
-    } else {
-      const newDriver: Driver = {
-        id: `d-${Date.now()}`,
-        name: data.name,
-        licensePlate: data.licensePlate,
-        carModel: data.carModel,
-        phone: data.phone,
-        status: data.status || DriverStatus.IDLE,
-        avatar: data.avatar || `https://picsum.photos/100/100?random=${Date.now()}`,
-        telegram: data.telegram,
-        location: {
-          lat: CITY_CENTER.lat + (Math.random() - 0.5) * 0.05,
-          lng: CITY_CENTER.lng + (Math.random() - 0.5) * 0.05,
-          heading: 0
-        }
-      };
-      setDrivers(prev => [...prev, newDriver]);
+  const handleSaveDriver = async (data: any) => {
+    try {
+      if (data.id) {
+        // Update existing driver
+        const { id, ...updateData } = data;
+        await firestoreService.updateDriver(id, updateData);
+      } else {
+        // Add new driver
+        const newDriver = {
+          name: data.name,
+          licensePlate: data.licensePlate,
+          carModel: data.carModel,
+          phone: data.phone,
+          status: data.status || DriverStatus.IDLE,
+          avatar: data.avatar || '', // User should provide their own avatar
+          telegram: data.telegram,
+          location: {
+            lat: CITY_CENTER.lat + (Math.random() - 0.5) * 0.05,
+            lng: CITY_CENTER.lng + (Math.random() - 0.5) * 0.05,
+            heading: 0
+          }
+        };
+        await firestoreService.addDriver(newDriver);
+      }
+    } catch (error) {
+      console.error('Failed to save driver:', error);
     }
   };
 
@@ -220,9 +256,14 @@ const App: React.FC = () => {
       title: t.confirmDeleteTitle,
       message: t.deleteConfirmDriver,
       isDanger: true,
-      action: () => {
-        setDrivers(prev => prev.filter(d => d.id !== id));
-        closeConfirmModal();
+      action: async () => {
+        try {
+          await firestoreService.deleteDriver(id);
+          closeConfirmModal();
+        } catch (error) {
+          console.error('Failed to delete driver:', error);
+          closeConfirmModal();
+        }
       }
     });
   };
@@ -641,7 +682,7 @@ const App: React.FC = () => {
       {/* MODALS */}
       <FinancialModal isOpen={isTxModalOpen} onClose={() => setIsTxModalOpen(false)} onSubmit={handleAddTransaction} drivers={drivers} lang={language} />
       <DriverModal isOpen={isDriverModalOpen} onClose={() => setIsDriverModalOpen(false)} onSubmit={handleSaveDriver} editingDriver={editingDriver} lang={language} />
-      <AdminModal isOpen={isAdminModalOpen} onClose={() => setIsAdminModalOpen(false)} adminData={adminProfile} onUpdate={setAdminProfile} lang={language} />
+      <AdminModal isOpen={isAdminModalOpen} onClose={() => setIsAdminModalOpen(false)} adminData={adminProfile} onUpdate={async (newAdmin) => await firestoreService.updateAdminProfile(newAdmin)} lang={language} />
 
       {/* CONFIRMATION MODAL */}
       <ConfirmModal

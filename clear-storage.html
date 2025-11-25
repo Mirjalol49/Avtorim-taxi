@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear Storage - Avtorim Taxi</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-center;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 500px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+    }
+    h1 {
+      color: #3b82f6;
+      margin-top: 0;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button.danger {
+      background: #ef4444;
+    }
+    button.danger:hover {
+      background: #dc2626;
+    }
+    .success {
+      color: #10b981;
+      margin-top: 20px;
+      font-weight: 600;
+    }
+    .info {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 Clean Start</h1>
+    <p class="info">
+      This will clear all cached data and prepare your app for a fresh start with Firebase.
+    </p>
+    
+    <button onclick="clearAndReload()">Clear Storage & Reload</button>
+    
+    <div id="status"></div>
+    
+    <p class="info" style="margin-top: 40px; border-top: 1px solid #334155; padding-top: 20px;">
+      After clearing, you can start adding real drivers and transactions. 
+      All changes will sync in real-time! 🚀
+    </p>
+  </div>
+
+  <script>
+    function clearAndReload() {
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      const status = document.getElementById('status');
+      status.innerHTML = '<p class="success">✅ Storage cleared! Redirecting to app...</p>';
+      
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
