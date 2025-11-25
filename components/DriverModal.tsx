@@ -18,8 +18,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [phone, setPhone] = useState('');
   const [avatar, setAvatar] = useState('');
   const [telegram, setTelegram] = useState('');
-  const [status, setStatus] = useState<DriverStatus>(DriverStatus.IDLE);
-  
+  const [status, setStatus] = useState<DriverStatus>(DriverStatus.OFFLINE);
+
   const t = TRANSLATIONS[lang];
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setPhone('');
       setAvatar(`https://picsum.photos/100/100?random=${Date.now()}`);
       setTelegram('');
-      setStatus(DriverStatus.IDLE);
+      setStatus(DriverStatus.OFFLINE);
     }
   }, [isOpen, editingDriver]);
 
@@ -82,43 +82,43 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <XIcon className="w-6 h-6" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
-          
+
           <div className="flex items-start gap-6">
             <div className="flex-shrink-0">
-               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center">{t.image}</label>
-               <div className="relative group w-24 h-24 rounded-2xl overflow-hidden bg-slate-900 border-2 border-slate-700 cursor-pointer hover:border-blue-500 transition-colors shadow-lg">
-                  <img src={avatar || 'https://via.placeholder.com/100'} alt="Preview" className="w-full h-full object-cover" />
-                  
-                  {/* Image Upload Overlay */}
-                  <label htmlFor="driver-avatar-upload" className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]">
-                    <CameraIcon className="w-8 h-8 text-white mb-1" />
-                    <span className="text-[10px] text-white font-bold uppercase tracking-wider">Upload</span>
-                  </label>
-                  <input 
-                    id="driver-avatar-upload" 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handleImageUpload}
-                  />
-               </div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center">{t.image}</label>
+              <div className="relative group w-24 h-24 rounded-2xl overflow-hidden bg-slate-900 border-2 border-slate-700 cursor-pointer hover:border-blue-500 transition-colors shadow-lg">
+                <img src={avatar || 'https://via.placeholder.com/100'} alt="Preview" className="w-full h-full object-cover" />
+
+                {/* Image Upload Overlay */}
+                <label htmlFor="driver-avatar-upload" className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]">
+                  <CameraIcon className="w-8 h-8 text-white mb-1" />
+                  <span className="text-[10px] text-white font-bold uppercase tracking-wider">Upload</span>
+                </label>
+                <input
+                  id="driver-avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+              </div>
             </div>
             <div className="flex-1 space-y-4">
-               <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.status}</label>
-                  <select 
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as DriverStatus)}
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm"
-                  >
-                    {Object.values(DriverStatus).map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-               </div>
-               <div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.status}</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as DriverStatus)}
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm"
+                >
+                  {Object.values(DriverStatus).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.imageUrl}</label>
                 <input
                   type="text"
@@ -132,27 +132,27 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.name}</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
-                  placeholder="Ism Familiya"
-                />
-             </div>
-             <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.telegram}</label>
-                <input
-                  type="text"
-                  value={telegram}
-                  onChange={(e) => setTelegram(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
-                  placeholder="@username"
-                />
-             </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.name}</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
+                placeholder="Ism Familiya"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.telegram}</label>
+              <input
+                type="text"
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
+                placeholder="@username"
+              />
+            </div>
           </div>
 
           <div>

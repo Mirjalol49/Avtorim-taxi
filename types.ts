@@ -1,8 +1,6 @@
 export enum DriverStatus {
   ACTIVE = 'ACTIVE',
-  IDLE = 'IDLE',
-  OFFLINE = 'OFFLINE',
-  BUSY = 'BUSY'
+  OFFLINE = 'OFFLINE'
 }
 
 export interface Driver {

@@ -17,6 +17,10 @@ import { TRANSLATIONS } from './translations';
 import * as firestoreService from './services/firestoreService';
 
 const App: React.FC = () => {
+  const [userRole, setUserRole] = useState<'admin' | 'viewer'>(() => {
+    return (localStorage.getItem('avtorim_role') as 'admin' | 'viewer') || 'viewer';
+  });
+
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('avtorim_auth') === 'true';
@@ -84,16 +88,12 @@ const App: React.FC = () => {
 
     // Subscribe to Drivers
     const unsubDrivers = firestoreService.subscribeToDrivers((newDrivers) => {
-      if (newDrivers.length > 0) {
-        setDrivers(newDrivers);
-      }
+      setDrivers(newDrivers); // Always update, even if empty
     });
 
     // Subscribe to Transactions
     const unsubTx = firestoreService.subscribeToTransactions((newTransactions) => {
-      if (newTransactions.length > 0) {
-        setTransactions(newTransactions);
-      }
+      setTransactions(newTransactions); // Always update, even if empty
     });
 
     // Subscribe to Admin Profile
@@ -182,9 +182,17 @@ const App: React.FC = () => {
 
   // --- ACTIONS ---
 
-  const handleLogin = () => setIsAuthenticated(true);
-  const handleLock = () => setIsAuthenticated(false);
+  const handleLogin = (role: 'admin' | 'viewer' = 'admin') => {
+    setIsAuthenticated(true);
+    setUserRole(role);
+    localStorage.setItem('avtorim_role', role);
+  };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUserRole('viewer'); // Default back to viewer
+    localStorage.removeItem('avtorim_role');
+  };
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
       await firestoreService.addTransaction(data);
@@ -229,7 +237,7 @@ const App: React.FC = () => {
           licensePlate: data.licensePlate,
           carModel: data.carModel,
           phone: data.phone,
-          status: data.status || DriverStatus.IDLE,
+          status: data.status || DriverStatus.OFFLINE,
           avatar: data.avatar || '', // User should provide their own avatar
           telegram: data.telegram,
           location: {
@@ -291,9 +299,8 @@ const App: React.FC = () => {
     return stats.sort((a, b) => b.income - a.income).slice(0, 5); // Top 5
   }, [drivers, filteredTx]);
 
-  // Active Drivers List
   const activeDriversList = useMemo(() => {
-    return drivers.filter(d => d.status === DriverStatus.ACTIVE || d.status === DriverStatus.BUSY);
+    return drivers.filter(d => d.status === DriverStatus.ACTIVE);
   }, [drivers]);
 
   // Finance Tab Stats
@@ -373,7 +380,7 @@ const App: React.FC = () => {
             </div>
             <EditIcon className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <button onClick={handleLock} className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 p-3 rounded-xl border border-red-500/20 transition-all text-xs font-bold uppercase tracking-wider group">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 p-3 rounded-xl border border-red-500/20 transition-all text-xs font-bold uppercase tracking-wider group">
             <LogOutIcon className="w-4 h-4" />
             <span className="group-hover:translate-x-0.5 transition-transform">Lock System</span>
           </button>
@@ -405,6 +412,12 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex gap-2 md:gap-3">
+            {userRole === 'viewer' && (
+              <div className="px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs font-mono text-slate-400 uppercase tracking-wider">
+                Read Only
+              </div>
+            )}
+
             <div className="relative">
               <button onClick={() => setIsLangMenuOpen(!isLangMenuOpen)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-2.5 rounded-xl transition-all">
                 <GlobeIcon className="w-4 h-4" />
@@ -419,13 +432,13 @@ const App: React.FC = () => {
               )}
             </div>
 
-            {activeTab === Tab.DRIVERS && (
+            {activeTab === Tab.DRIVERS && userRole === 'admin' && (
               <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all whitespace-nowrap">
                 <UserPlusIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.add}</span>
               </button>
             )}
 
-            {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD) && (
+            {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD) && userRole === 'admin' && (
               <button onClick={() => setIsTxModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 whitespace-nowrap">
                 <PlusIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.newTransfer}</span>
               </button>
@@ -601,8 +614,19 @@ const App: React.FC = () => {
               {drivers.map(driver => (
                 <div key={driver.id} className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 flex flex-col gap-4 hover:bg-slate-800/60 transition-all group relative">
                   <div className="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
-                    <button onClick={(e) => { e.stopPropagation(); handleEditDriverClick(driver); }} className="text-slate-400 hover:text-blue-400 transition-colors p-2 bg-slate-800 rounded-lg border border-slate-700"><EditIcon className="w-4 h-4" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteDriver(driver.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-2 bg-slate-800 rounded-lg border border-slate-700"><TrashIcon className="w-4 h-4" /></button>
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      if (userRole === 'admin') {
+                        handleEditDriverClick(driver);
+                      }
+                    }} className={`p-2 rounded-lg transition-colors ${userRole === 'admin' ? 'text-slate-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-slate-600 cursor-default'}`}>
+                      <EditIcon className="w-4 h-4" />
+                    </button>
+                    {userRole === 'admin' && (
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteDriver(driver.id); }} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-slate-600 group-hover:border-blue-500 transition-colors shadow-lg overflow-hidden flex-shrink-0">
@@ -611,7 +635,7 @@ const App: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <h4 className="text-lg md:text-xl font-bold text-white truncate">{driver.name}</h4>
                       <div className="flex items-center gap-1 text-slate-400 text-xs md:text-sm mt-1">
-                        <TelegramIcon className="w-3 h-3 text-blue-400" />
+                        <TelegramIcon className="w-3 h-3" />
                         <span className="truncate">{driver.telegram || '-'}</span>
                       </div>
                     </div>
@@ -667,7 +691,18 @@ const App: React.FC = () => {
                   <tbody className="divide-y divide-slate-700/50">
                     {financeFilteredData.map(tx => {
                       const driver = drivers.find(d => d.id === tx.driverId);
-                      return (<tr key={tx.id} className="hover:bg-slate-700/30 transition-colors group"><td className="px-6 py-4 text-sm text-slate-400 font-mono">{new Date(tx.timestamp).toLocaleTimeString()} <span className="text-slate-600 text-xs">{new Date(tx.timestamp).toLocaleDateString()}</span></td><td className="px-6 py-4"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-700 overflow-hidden">{driver ? <img src={driver.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-600" />}</div><span className="text-sm font-medium text-slate-200">{driver?.name || 'Deleted'}</span></div></td><td className="px-6 py-4 text-sm text-slate-300">{tx.description}</td><td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-emerald-400' : 'text-rose-400'}`}>{tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} UZS</td><td className="px-6 py-4 text-right"><button onClick={() => handleDeleteTransaction(tx.id)} className="text-slate-600 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2"><TrashIcon className="w-4 h-4 pointer-events-none" /></button></td></tr>);
+                      return (<tr key={tx.id} className="hover:bg-slate-700/30 transition-colors group"><td className="px-6 py-4 text-sm text-slate-400 font-mono">{new Date(tx.timestamp).toLocaleTimeString()} <span className="text-slate-600 text-xs">{new Date(tx.timestamp).toLocaleDateString()}</span></td><td className="px-6 py-4"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-700 overflow-hidden">{driver ? <img src={driver.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-600" />}</div><span className="text-sm font-medium text-slate-200">{driver?.name || 'Deleted'}</span></div></td><td className="px-6 py-4 text-sm text-slate-300">{tx.description}</td>                      <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} UZS
+                      </td>
+                        <td className="px-6 py-4 text-right">
+                          {userRole === 'admin' && (
+                            <button onClick={() => handleDeleteTransaction(tx.id)} className="text-slate-600 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2">
+                              <TrashIcon className="w-4 h-4 pointer-events-none" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      );
                     })}
                     {financeFilteredData.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 text-sm">{t.noTransactions}</td></tr>}
                   </tbody>
