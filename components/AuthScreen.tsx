@@ -104,13 +104,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang 
               onClick={() => setRole('admin')}
               className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${role === 'admin' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
             >
-              Admin
+              {t.admin || 'Admin'}
             </button>
             <button
               onClick={() => setRole('viewer')}
               className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${role === 'viewer' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
             >
-              Viewer
+              {t.viewer || 'Viewer'}
             </button>
           </div>
 
@@ -133,17 +133,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang 
               type="submit"
               disabled={success}
               className={`w-full font-bold py-4 rounded-2xl shadow-lg transform transition-all duration-300 ${success
-                  ? 'bg-emerald-500 text-white scale-95'
-                  : role === 'admin'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white hover:shadow-blue-600/30'
-                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white hover:shadow-emerald-600/30'
+                ? 'bg-emerald-500 text-white scale-95'
+                : role === 'admin'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white hover:shadow-blue-600/30'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white hover:shadow-emerald-600/30'
                 } active:scale-[0.98]`}
             >
               {success ? (
                 <span className="flex items-center justify-center gap-2">
                   <SparklesIcon className="w-5 h-5" /> WELCOME BACK
                 </span>
-              ) : (role === 'admin' ? t.enter : 'ENTER AS VIEWER')}
+              ) : (role === 'admin' ? t.enter : t.enterAsViewer)}
             </button>
           </form>
 
@@ -154,8 +154,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang 
                 key={l}
                 onClick={() => setLang(l)}
                 className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg border transition-all ${lang === l
-                    ? 'text-blue-400 border-blue-500/30 bg-blue-500/10'
-                    : 'text-slate-600 border-transparent hover:text-slate-400'
+                  ? 'text-blue-400 border-blue-500/30 bg-blue-500/10'
+                  : 'text-slate-600 border-transparent hover:text-slate-400'
                   }`}
               >
                 {l}

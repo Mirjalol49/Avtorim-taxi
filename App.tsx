@@ -412,12 +412,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex gap-2 md:gap-3">
-            {userRole === 'viewer' && (
-              <div className="px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs font-mono text-slate-400 uppercase tracking-wider">
-                Read Only
-              </div>
-            )}
-
             <div className="relative">
               <button onClick={() => setIsLangMenuOpen(!isLangMenuOpen)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-3 py-2.5 rounded-xl transition-all">
                 <GlobeIcon className="w-4 h-4" />
@@ -531,7 +525,20 @@ const App: React.FC = () => {
                   {t.incomeVsExpense}
                 </h3>
                 <div className="flex-1">
-                  <ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} barSize={24}><CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} /><XAxis dataKey="name" stroke="#94a3b8" axisLine={false} tickLine={false} dy={15} fontSize={13} /><YAxis stroke="#94a3b8" axisLine={false} tickLine={false} dx={-15} fontSize={13} tickFormatter={(value) => `${value / 1000}k`} /><Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }} cursor={{ fill: '#334155', opacity: 0.2 }} itemStyle={{ fontSize: '13px', fontWeight: 600 }} /><Bar dataKey="Income" fill="#3b82f6" radius={[6, 6, 0, 0]} /><Bar dataKey="Expense" fill="#ef4444" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} barSize={24}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                      <XAxis dataKey="name" stroke="#94a3b8" axisLine={false} tickLine={false} dy={15} fontSize={13} />
+                      <YAxis stroke="#94a3b8" axisLine={false} tickLine={false} dx={-15} fontSize={13} tickFormatter={(value) => `${value / 1000}k`} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}
+                        cursor={{ fill: '#334155', opacity: 0.2 }}
+                        itemStyle={{ fontSize: '13px', fontWeight: 600 }}
+                      />
+                      <Bar dataKey="Income" name={t.income} fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Expense" name={t.expense} fill="#ef4444" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
@@ -717,7 +724,14 @@ const App: React.FC = () => {
       {/* MODALS */}
       <FinancialModal isOpen={isTxModalOpen} onClose={() => setIsTxModalOpen(false)} onSubmit={handleAddTransaction} drivers={drivers} lang={language} />
       <DriverModal isOpen={isDriverModalOpen} onClose={() => setIsDriverModalOpen(false)} onSubmit={handleSaveDriver} editingDriver={editingDriver} lang={language} />
-      <AdminModal isOpen={isAdminModalOpen} onClose={() => setIsAdminModalOpen(false)} adminData={adminProfile} onUpdate={async (newAdmin) => await firestoreService.updateAdminProfile(newAdmin)} lang={language} />
+      <AdminModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        adminData={adminProfile}
+        onUpdate={async (newAdmin) => await firestoreService.updateAdminProfile(newAdmin)}
+        lang={language}
+        userRole={userRole}
+      />
 
       {/* CONFIRMATION MODAL */}
       <ConfirmModal

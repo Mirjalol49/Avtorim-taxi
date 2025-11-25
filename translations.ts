@@ -86,7 +86,10 @@ export const TRANSLATIONS = {
     // Fine
     issueFine: "Jarima yozish",
     location: "Manzil",
-    reason: "Sabab"
+    reason: "Sabab",
+    enterAsViewer: "Kuzatuvchi sifatida kirish",
+    admin: "Admin",
+    viewer: "Kuzatuvchi"
   },
   ru: {
     dashboard: "Панель управления",
@@ -173,7 +176,10 @@ export const TRANSLATIONS = {
     // Fine
     issueFine: "Выписать штраф",
     location: "Местоположение",
-    reason: "Причина"
+    reason: "Причина",
+    enterAsViewer: "Войти как зритель",
+    admin: "Админ",
+    viewer: "Зритель"
   },
   en: {
     dashboard: "Dashboard",
@@ -260,6 +266,9 @@ export const TRANSLATIONS = {
     // Fine
     issueFine: "Issue Fine",
     location: "Location",
-    reason: "Reason"
+    reason: "Reason",
+    enterAsViewer: "Enter as Viewer",
+    admin: "Admin",
+    viewer: "Viewer"
   }
 };
