@@ -1,0 +1,7 @@
+{
+  "name": "Avtorim Taxi",
+  "description": "Professional taxi fleet management dashboard with real-time driver tracking, financial analytics, and AI-powered insights.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

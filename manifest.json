@@ -1,0 +1,21 @@
+{
+  "name": "Avtorim Taxi Dashboard",
+  "short_name": "Avtorim",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Professional taxi fleet management",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1995/1995515.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1995/1995515.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
