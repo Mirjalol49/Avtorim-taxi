@@ -9,9 +9,10 @@ interface DriverModalProps {
   onSubmit: (data: any) => void;
   editingDriver?: Driver | null;
   lang: Language;
+  theme: 'light' | 'dark';
 }
 
-const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, editingDriver, lang }) => {
+const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, editingDriver, lang, theme }) => {
   const [name, setName] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [carModel, setCarModel] = useState('');
@@ -71,14 +72,25 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     }
   };
 
+  const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
+      ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
+      : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
+    }`;
+
+  const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+    }`;
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
-        <div className="bg-slate-900/50 px-6 py-5 border-b border-slate-700 flex justify-between items-center">
-          <h3 className="text-white font-bold text-lg">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+        }`}>
+        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'
+          }`}>
+          <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {editingDriver ? t.editDriver : t.addDriver}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'
+            }`}>
             <XIcon className="w-6 h-6" />
           </button>
         </div>
@@ -87,8 +99,10 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           <div className="flex items-start gap-6">
             <div className="flex-shrink-0">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center">{t.image}</label>
-              <div className="relative group w-24 h-24 rounded-2xl overflow-hidden bg-slate-900 border-2 border-slate-700 cursor-pointer hover:border-blue-500 transition-colors shadow-lg">
+              <label className={`block text-xs font-bold uppercase tracking-wider mb-2 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`}>{t.image}</label>
+              <div className={`relative group w-24 h-24 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#2D6A76]' : 'bg-gray-50 border-gray-200 hover:border-[#2D6A76]'
+                }`}>
                 <img src={avatar || 'https://via.placeholder.com/100'} alt="Preview" className="w-full h-full object-cover" />
 
                 {/* Image Upload Overlay */}
@@ -107,11 +121,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             </div>
             <div className="flex-1 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.status}</label>
+                <label className={labelClass}>{t.status}</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as DriverStatus)}
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm"
+                  className={inputClass}
                 >
                   {Object.values(DriverStatus).map(s => (
                     <option key={s} value={s}>{s}</option>
@@ -119,12 +133,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.imageUrl}</label>
+                <label className={labelClass}>{t.imageUrl}</label>
                 <input
                   type="text"
                   value={avatar}
                   onChange={(e) => setAvatar(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-white text-xs text-ellipsis text-slate-500"
+                  className={inputClass}
                   placeholder="https://..."
                 />
               </div>
@@ -133,60 +147,60 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.name}</label>
+              <label className={labelClass}>{t.name}</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
+                className={inputClass}
                 placeholder="Ism Familiya"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.telegram}</label>
+              <label className={labelClass}>{t.telegram}</label>
               <input
                 type="text"
                 value={telegram}
                 onChange={(e) => setTelegram(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
+                className={inputClass}
                 placeholder="@username"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.phone}</label>
+            <label className={labelClass}>{t.phone}</label>
             <input
               type="tel"
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
+              className={inputClass}
               placeholder="+998 90 123 45 67"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.model}</label>
+              <label className={labelClass}>{t.model}</label>
               <input
                 type="text"
                 required
                 value={carModel}
                 onChange={(e) => setCarModel(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600"
+                className={inputClass}
                 placeholder="Chevrolet Cobalt"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.plate}</label>
+              <label className={labelClass}>{t.plate}</label>
               <input
                 type="text"
                 required
                 value={licensePlate}
                 onChange={(e) => setLicensePlate(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-600 uppercase"
+                className={inputClass}
                 placeholder="01 A 777 AA"
               />
             </div>
@@ -196,13 +210,14 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors"
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
               {t.cancel}
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-blue-600 text-white hover:bg-blue-500 rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all transform active:scale-95"
+              className="px-6 py-2.5 bg-[#2D6A76] text-white hover:bg-[#235560] rounded-xl text-sm font-bold shadow-lg shadow-[#2D6A76]/20 transition-all transform active:scale-95"
             >
               {editingDriver ? t.save : t.add}
             </button>

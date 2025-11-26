@@ -89,7 +89,10 @@ export const TRANSLATIONS = {
     reason: "Sabab",
     enterAsViewer: "Kuzatuvchi sifatida kirish",
     admin: "Admin",
-    viewer: "Kuzatuvchi"
+    viewer: "Kuzatuvchi",
+    balance: "Balans",
+    rating: "Reyting",
+    inactive: "Faol emas"
   },
   ru: {
     dashboard: "Панель управления",
@@ -179,7 +182,10 @@ export const TRANSLATIONS = {
     reason: "Причина",
     enterAsViewer: "Войти как зритель",
     admin: "Админ",
-    viewer: "Зритель"
+    viewer: "Зритель",
+    balance: "Баланс",
+    rating: "Рейтинг",
+    inactive: "Неактивен"
   },
   en: {
     dashboard: "Dashboard",
@@ -269,6 +275,9 @@ export const TRANSLATIONS = {
     reason: "Reason",
     enterAsViewer: "Enter as Viewer",
     admin: "Admin",
-    viewer: "Viewer"
+    viewer: "Viewer",
+    balance: "Balance",
+    rating: "Rating",
+    inactive: "Inactive"
   }
 };

@@ -196,3 +196,32 @@ export const migrateFromLocalStorage = async () => {
         // Don't throw - allow app to continue even if migration fails
     }
 };
+
+// ==================== GEOLOCATION ====================
+
+export interface LocationUpdate {
+    lat: number;
+    lng: number;
+    accuracy: number;
+    timestamp: number;
+    heading: number;
+    speed: number;
+}
+
+export const updateDriverLocation = async (driverId: string, location: LocationUpdate) => {
+    try {
+        const driverRef = doc(db, DRIVERS_COLLECTION, driverId);
+        await updateDoc(driverRef, {
+            location: {
+                lat: location.lat,
+                lng: location.lng,
+                heading: location.heading
+            },
+            lastLocationUpdate: location.timestamp,
+            locationAccuracy: location.accuracy
+        });
+    } catch (error) {
+        console.error('Error updating driver location:', error);
+        throw error;
+    }
+};

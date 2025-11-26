@@ -17,6 +17,8 @@ export interface Driver {
     heading: number; // 0-360 degrees
   };
   phone: string;
+  balance: number;
+  rating: number;
 }
 
 export enum TransactionType {
