@@ -58,23 +58,23 @@ const DateFilter: React.FC<DateFilterProps> = ({
     const filters: TimeFilter[] = ['today', 'week', 'month', 'year'];
 
     return (
-        <div className={`flex items-center p-1 rounded-xl w-fit border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+        <div className={`flex items-center p-1 rounded-xl w-full overflow-x-auto border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
             }`}>
             {filters.map((f) => (
                 <button
                     key={f}
                     onClick={() => onFilterChange(f)}
-                    className={`flex flex-col items-center justify-center px-5 py-2 rounded-lg transition-all duration-200 ${currentFilter === f
+                    className={`flex flex-col items-center justify-center px-2.5 sm:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0 ${currentFilter === f
                             ? 'bg-[#2D6A76] text-white shadow-md transform scale-[1.02]'
                             : theme === 'dark'
                                 ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                         }`}
                 >
-                    <span className={`text-sm font-bold leading-tight ${currentFilter === f ? 'text-white' : ''}`}>
+                    <span className={`text-xs sm:text-sm font-bold leading-tight whitespace-nowrap ${currentFilter === f ? 'text-white' : ''}`}>
                         {labels[f]}
                     </span>
-                    <span className={`text-[10px] font-medium mt-0.5 ${currentFilter === f ? 'text-teal-100/80' : 'opacity-60'
+                    <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 whitespace-nowrap ${currentFilter === f ? 'text-teal-100/80' : 'opacity-60'
                         }`}>
                         {getDateLabel(f, language)}
                     </span>

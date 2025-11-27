@@ -15,11 +15,27 @@ interface FinancialModalProps {
 
 const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubmit, drivers, lang, theme }) => {
   const [amount, setAmount] = useState('');
+  const [displayAmount, setDisplayAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
   const [description, setDescription] = useState('');
   const [driverId, setDriverId] = useState('');
 
   const t = TRANSLATIONS[lang];
+
+  // Format number with spaces for readability (300 000, 20 000, etc.)
+  const formatNumberDisplay = (value: string): string => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    // Add spaces every 3 digits from the right
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, ''); // Store raw digits
+    setAmount(rawValue);
+    setDisplayAmount(formatNumberDisplay(rawValue));
+  };
 
   // Reset form when modal opens or drivers change
   useEffect(() => {
@@ -39,6 +55,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
     // Basic validation for driverId
     if (!driverId || !drivers.find(d => d.id === driverId)) {
       console.error('No valid driver selected.');
+      return;
+    }
+
+    // Validate comment: required for expense, optional for income
+    if (type === TransactionType.EXPENSE && !description.trim()) {
+      console.error('Comment is required for expenses.');
       return;
     }
 
@@ -105,13 +127,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
           <div>
             <label className={labelClass}>{t.amount} (UZS)</label>
             <input
-              type="number"
+              type="text"
               required
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className={`${inputClass} font-mono text-lg`}
-              placeholder="0.00"
+              inputMode="numeric"
+              value={displayAmount}
+              onChange={handleAmountChange}
+              className={`${inputClass} font-mono text-lg tracking-wide`}
+              placeholder="0"
             />
           </div>
 
@@ -132,13 +154,16 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
           </div>
 
           <div>
-            <label className={labelClass}>{t.comment}</label>
+            <label className={labelClass}>
+              {t.comment}
+              {type === TransactionType.EXPENSE && <span className="text-red-500 ml-1">*</span>}
+            </label>
             <textarea
-              required
+              required={type === TransactionType.EXPENSE}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputClass} min-h-[100px] resize-none`}
-              placeholder={t.commentPlaceholder || "Masalan: Benzin uchun"}
+              placeholder={type === TransactionType.EXPENSE ? t.commentPlaceholder || "Masalan: Benzin uchun" : t.commentPlaceholder || "Masalan: Benzin uchun (ixtiyoriy)"}
             />
           </div>
 
