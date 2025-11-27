@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon
+  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon
 } from './components/Icons';
 import MapView from './components/MapView';
 import FinancialModal from './components/FinancialModal';
@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+  const [driverSearchQuery, setDriverSearchQuery] = useState('');
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -398,6 +399,44 @@ const App: React.FC = () => {
   const financeExpense = financeFilteredData.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
   const financeCashflow = financeIncome - financeExpense;
 
+  // Monthly Analytics Data
+  const monthlyAnalyticsData = useMemo(() => {
+    const monthlyData: Record<string, { name: string; Income: number; Expense: number }> = {};
+
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const monthName = d.toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short' });
+      monthlyData[key] = { name: monthName, Income: 0, Expense: 0 };
+    }
+
+    transactions.forEach(tx => {
+      const d = new Date(tx.timestamp);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (monthlyData[key]) {
+        if (tx.type === TransactionType.INCOME) {
+          monthlyData[key].Income += tx.amount;
+        } else {
+          monthlyData[key].Expense += tx.amount;
+        }
+      }
+    });
+
+    return Object.values(monthlyData);
+  }, [transactions, language]);
+
+  const filteredDrivers = useMemo(() => {
+    if (!driverSearchQuery.trim()) return drivers;
+    const query = driverSearchQuery.toLowerCase();
+    return drivers.filter(d =>
+      d.name.toLowerCase().includes(query) ||
+      d.licensePlate.toLowerCase().includes(query) ||
+      d.carModel.toLowerCase().includes(query)
+    );
+  }, [drivers, driverSearchQuery]);
+
   // --- RENDER HELPERS ---
   const renderSidebarItem = (tab: Tab, label: string, Icon: React.FC<any>) => (
     <button
@@ -475,7 +514,7 @@ const App: React.FC = () => {
           {renderSidebarItem(Tab.DASHBOARD, t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem(Tab.MAP, t.liveMap, MapIcon)}
           {renderSidebarItem(Tab.DRIVERS, t.driversList, UsersIcon)}
-          {renderSidebarItem(Tab.FINANCE, t.financialReports, BanknoteIcon)}
+          {renderSidebarItem(Tab.FINANCE, t.analytics, BanknoteIcon)}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -577,7 +616,7 @@ const App: React.FC = () => {
                 {activeTab === Tab.DASHBOARD && t.overview}
                 {activeTab === Tab.MAP && t.globalTracking}
                 {activeTab === Tab.DRIVERS && t.driversList}
-                {activeTab === Tab.FINANCE && t.financialReports}
+                {activeTab === Tab.FINANCE && t.analytics}
               </h2>
               <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
@@ -747,7 +786,18 @@ const App: React.FC = () => {
                         tickLine={false}
                         dx={-10}
                         fontSize={10}
-                        tickFormatter={(value) => `${value / 1000}k`}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000000) {
+                            return `${(value / 1000000000).toFixed(1)}${language === 'en' ? 'B' : 'mlrd'}`;
+                          }
+                          if (value >= 1000000) {
+                            return `${(value / 1000000).toFixed(1)}${language === 'en' ? 'M' : 'mln'}`;
+                          }
+                          if (value >= 1000) {
+                            return `${(value / 1000).toFixed(0)}k`;
+                          }
+                          return value;
+                        }}
                       />
                       <Tooltip
                         contentStyle={{
@@ -862,9 +912,28 @@ const App: React.FC = () => {
           {/* DRIVERS */}
           {activeTab === Tab.DRIVERS && (
             <>
-              {drivers.length > 0 ? (
+              {/* Search Bar */}
+              <div className={`mb-6 p-4 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                  </div>
+                  <input
+                    type="text"
+                    className={`block w-full pl-10 pr-3 py-3 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D6A76] focus:border-[#2D6A76] sm:text-sm transition-colors ${theme === 'dark'
+                      ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
+                      : 'bg-gray-50 border-gray-200 text-gray-900'
+                      }`}
+                    placeholder={t.searchDriverPlaceholder}
+                    value={driverSearchQuery}
+                    onChange={(e) => setDriverSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {filteredDrivers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {drivers.map(driver => (
+                  {filteredDrivers.map(driver => (
                     <div key={driver.id} className={`rounded-2xl p-6 flex flex-col gap-4 transition-all group relative border ${theme === 'dark'
                       ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
                       : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
@@ -882,23 +951,20 @@ const App: React.FC = () => {
                               e.stopPropagation();
                               handleUpdateDriverStatus(driver.id, driver.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE);
                             }}
-                            className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mt-3 ${
-                              driver.status === DriverStatus.ACTIVE
-                                ? 'bg-green-500'
-                                : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
-                            }`}
+                            className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mt-3 ${driver.status === DriverStatus.ACTIVE
+                              ? 'bg-green-500'
+                              : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                              }`}
                             role="switch"
                             aria-checked={driver.status === DriverStatus.ACTIVE}
                           >
                             <span
-                              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${
-                                driver.status === DriverStatus.ACTIVE ? 'translate-x-7' : 'translate-x-0'
-                              }`}
+                              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${driver.status === DriverStatus.ACTIVE ? 'translate-x-7' : 'translate-x-0'
+                                }`}
                             />
                           </button>
-                          <p className={`text-xs font-semibold tracking-wider mt-1.5 ${
-                            driver.status === DriverStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
-                          }`}>
+                          <p className={`text-xs font-semibold tracking-wider mt-1.5 ${driver.status === DriverStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
+                            }`}>
                             {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
                           </p>
                         </div>
@@ -918,11 +984,11 @@ const App: React.FC = () => {
                       {/* Action Buttons - Bottom Section */}
                       {userRole === 'admin' && (
                         <div className={`flex gap-2 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEditDriverClick(driver);
-                            }} 
+                            }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
                               ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20'
                               : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
@@ -931,11 +997,11 @@ const App: React.FC = () => {
                             <EditIcon className="w-4 h-4" />
                             <span>Edit</span>
                           </button>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleDeleteDriver(driver.id); 
-                            }} 
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDriver(driver.id);
+                            }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
                               ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
                               : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
@@ -952,10 +1018,12 @@ const App: React.FC = () => {
               ) : (
                 <div className={`flex flex-col items-center justify-center h-64 rounded-2xl border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
                   <div className={`p-4 rounded-full mb-4 ${theme === 'dark' ? 'bg-gray-800 text-gray-600' : 'bg-gray-50 text-gray-400'}`}>
-                    <UsersIcon className="w-8 h-8" />
+                    {drivers.length > 0 ? <SearchIcon className="w-8 h-8" /> : <UsersIcon className="w-8 h-8" />}
                   </div>
-                  <p className={`text-lg font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Hozircha haydovchilar yo'q</p>
-                  {userRole === 'admin' && (
+                  <p className={`text-lg font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {drivers.length > 0 ? t.noDriversFound : "Hozircha haydovchilar yo'q"}
+                  </p>
+                  {userRole === 'admin' && drivers.length === 0 && (
                     <button
                       onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }}
                       className="mt-4 px-4 py-2 bg-[#2D6A76] hover:bg-[#235560] text-white rounded-xl text-sm font-medium transition-colors"
@@ -972,6 +1040,66 @@ const App: React.FC = () => {
           {/* FINANCE & FILTER COMPONENT */}
           {(activeTab === Tab.FINANCE) && (
             <div className="space-y-6">
+              {/* Monthly Analytics Chart */}
+              <div className={`w-full h-[300px] sm:h-[400px] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+                }`}>
+                <h3 className={`text-sm sm:text-base md:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>
+                  <BanknoteIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                  {t.monthlyAnalytics}
+                </h3>
+                <div className="flex-1 -mx-2 sm:mx-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyAnalyticsData} barSize={30} margin={{ left: 0, right: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'}
+                        axisLine={false}
+                        tickLine={false}
+                        dy={10}
+                        fontSize={12}
+                        interval={0}
+                      />
+                      <YAxis
+                        stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'}
+                        axisLine={false}
+                        tickLine={false}
+                        dx={-10}
+                        fontSize={10}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000000) {
+                            return `${(value / 1000000000).toFixed(1)}${language === 'en' ? 'B' : 'mlrd'}`;
+                          }
+                          if (value >= 1000000) {
+                            return `${(value / 1000000).toFixed(1)}${language === 'en' ? 'M' : 'mln'}`;
+                          }
+                          if (value >= 1000) {
+                            return `${(value / 1000).toFixed(0)}k`;
+                          }
+                          return value;
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+                          border: `1px solid ${theme === 'dark' ? '#374151' : '#E5E7EB'}`,
+                          borderRadius: '12px',
+                          color: theme === 'dark' ? '#FFFFFF' : '#111827',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          fontSize: '12px'
+                        }}
+                        cursor={{ fill: theme === 'dark' ? '#374151' : '#F3F4F6', opacity: 0.5 }}
+                        itemStyle={{ fontSize: '12px', fontWeight: 600 }}
+                        formatter={(value: number) => value.toLocaleString()}
+                      />
+                      <Bar dataKey="Income" name={t.income} fill="#2D6A76" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Expense" name={t.expense} fill="#EF4444" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
               {/* Filters */}
               <div className={`p-4 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
@@ -1004,7 +1132,7 @@ const App: React.FC = () => {
                         onChange={setFinanceDriverFilter}
                         options={[
                           { id: 'all', name: t.allDrivers },
-                          ...drivers.map(d => ({ id: d.id, name: d.name }))
+                          ...drivers.filter(d => d.status === DriverStatus.ACTIVE).map(d => ({ id: d.id, name: d.name }))
                         ]}
                         theme={theme}
                         icon={UsersIcon}
@@ -1091,7 +1219,7 @@ const App: React.FC = () => {
                         const startIndex = (financePageNumber - 1) * TRANSACTIONS_PER_PAGE;
                         const endIndex = startIndex + TRANSACTIONS_PER_PAGE;
                         const paginatedData = financeFilteredData.slice(startIndex, endIndex);
-                        
+
                         if (paginatedData.length === 0 && financeFilteredData.length === 0) {
                           return (
                             <tr>
@@ -1146,15 +1274,14 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setFinancePageNumber(Math.max(1, financePageNumber - 1))}
                       disabled={financePageNumber === 1}
-                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                        financePageNumber === 1
-                          ? theme === 'dark'
-                            ? 'text-gray-600 cursor-not-allowed'
-                            : 'text-gray-300 cursor-not-allowed'
-                          : theme === 'dark'
-                            ? 'text-white hover:bg-gray-700 active:scale-95'
-                            : 'text-gray-900 hover:bg-gray-100 active:scale-95'
-                      }`}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${financePageNumber === 1
+                        ? theme === 'dark'
+                          ? 'text-gray-600 cursor-not-allowed'
+                          : 'text-gray-300 cursor-not-allowed'
+                        : theme === 'dark'
+                          ? 'text-white hover:bg-gray-700 active:scale-95'
+                          : 'text-gray-900 hover:bg-gray-100 active:scale-95'
+                        }`}
                     >
                       ← {t.previous}
                     </button>
@@ -1193,13 +1320,12 @@ const App: React.FC = () => {
                             <button
                               key={i}
                               onClick={() => setFinancePageNumber(i)}
-                              className={`px-3 py-2 rounded-lg font-medium transition-all ${
-                                financePageNumber === i
-                                  ? 'bg-[#2D6A76] text-white shadow-md'
-                                  : theme === 'dark'
-                                    ? 'text-gray-400 hover:bg-gray-700'
-                                    : 'text-gray-600 hover:bg-gray-100'
-                              }`}
+                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === i
+                                ? 'bg-[#2D6A76] text-white shadow-md'
+                                : theme === 'dark'
+                                  ? 'text-gray-400 hover:bg-gray-700'
+                                  : 'text-gray-600 hover:bg-gray-100'
+                                }`}
                             >
                               {i}
                             </button>
@@ -1230,15 +1356,14 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setFinancePageNumber(Math.min(Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE), financePageNumber + 1))}
                       disabled={financePageNumber === Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                        financePageNumber === Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE)
-                          ? theme === 'dark'
-                            ? 'text-gray-600 cursor-not-allowed'
-                            : 'text-gray-300 cursor-not-allowed'
-                          : theme === 'dark'
-                            ? 'text-white hover:bg-gray-700 active:scale-95'
-                            : 'text-gray-900 hover:bg-gray-100 active:scale-95'
-                      }`}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${financePageNumber === Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE)
+                        ? theme === 'dark'
+                          ? 'text-gray-600 cursor-not-allowed'
+                          : 'text-gray-300 cursor-not-allowed'
+                        : theme === 'dark'
+                          ? 'text-white hover:bg-gray-700 active:scale-95'
+                          : 'text-gray-900 hover:bg-gray-100 active:scale-95'
+                        }`}
                     >
                       {t.next} →
                     </button>

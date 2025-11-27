@@ -51,7 +51,9 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
     if (!mapRef.current || !window.ymaps) return;
 
     window.ymaps.ready(() => {
-      const currentDriverIds = new Set(drivers.map(d => d.id));
+      // Filter to only show ACTIVE drivers
+      const activeDrivers = drivers.filter(d => d.status === DriverStatus.ACTIVE);
+      const currentDriverIds = new Set(activeDrivers.map(d => d.id));
 
       // 1. Remove markers for drivers that are no longer in the list
       placemarksRef.current.forEach((placemark, id) => {
@@ -101,7 +103,7 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
             </div>`
       );
 
-      drivers.forEach(driver => {
+      activeDrivers.forEach(driver => {
         let placemark = placemarksRef.current.get(driver.id);
 
         let color = '#94a3b8'; // gray
@@ -172,29 +174,6 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden border border-slate-700 shadow-2xl bg-slate-900">
       <div ref={mapContainerRef} className="w-full h-full" />
-
-      {/* Overlay Status Legend */}
-      <div className="absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md p-3 rounded-lg border border-slate-700 shadow-lg text-xs z-10 pointer-events-none">
-        <div className="font-semibold text-slate-200 mb-2">{t.status}</div>
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            <span className="text-slate-400">{t.active}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-            <span className="text-slate-400">{t.busy}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-            <span className="text-slate-400">{t.idle}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500"></span>
-            <span className="text-slate-400">{t.offline}</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

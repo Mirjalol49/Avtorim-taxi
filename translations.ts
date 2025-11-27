@@ -95,7 +95,12 @@ export const TRANSLATIONS = {
     inactive: "Faol emas",
     // Pagination
     previous: "Oldingi",
-    next: "Keyingi"
+    next: "Keyingi",
+    // Analytics & Search
+    analytics: "Analitika",
+    monthlyAnalytics: "Oylik Analitika",
+    searchDriverPlaceholder: "Haydovchini qidirish (Ism, Raqam, Mashina)...",
+    noDriversFound: "Haydovchilar topilmadi"
   },
   ru: {
     dashboard: "Панель управления",
@@ -191,7 +196,12 @@ export const TRANSLATIONS = {
     inactive: "Неактивен",
     // Pagination
     previous: "Предыдущая",
-    next: "Следующая"
+    next: "Следующая",
+    // Analytics & Search
+    analytics: "Аналитика",
+    monthlyAnalytics: "Ежемесячная аналитика",
+    searchDriverPlaceholder: "Поиск водителя (Имя, Номер, Авто)...",
+    noDriversFound: "Водители не найдены"
   },
   en: {
     dashboard: "Dashboard",
@@ -287,6 +297,11 @@ export const TRANSLATIONS = {
     inactive: "Inactive",
     // Pagination
     previous: "Previous",
-    next: "Next"
+    next: "Next",
+    // Analytics & Search
+    analytics: "Analytics",
+    monthlyAnalytics: "Monthly Analytics",
+    searchDriverPlaceholder: "Search driver (Name, Plate, Car)...",
+    noDriversFound: "No drivers found"
   }
 };
