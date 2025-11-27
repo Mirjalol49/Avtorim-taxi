@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   GlobeIcon, SunIcon, MoonIcon, ChevronDownIcon, PlusIcon
 } from './Icons';
@@ -27,7 +27,22 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   userRole
 }) => {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const langMenuRef = useRef<HTMLDivElement>(null);
   const t = TRANSLATIONS[language];
+
+  // Close language menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setIsLangMenuOpen(false);
+      }
+    };
+
+    if (isLangMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isLangMenuOpen]);
 
   // Only show desktop header on larger screens
   if (isMobile) return null;
@@ -101,7 +116,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         </button>
 
         {/* LANGUAGE SELECTOR */}
-        <div className="relative">
+        <div className="relative" ref={langMenuRef}>
           <button
             onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${

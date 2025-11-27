@@ -87,7 +87,7 @@ const App: React.FC = () => {
   // Mobile detection hook
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768); // Match md: breakpoint
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -459,27 +459,42 @@ const App: React.FC = () => {
         </nav>
 
         {/* Sidebar Bottom Section */}
-        <div className="px-6 pb-4 space-y-3">
-          {/* Language Selector - Mobile Only */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
-                ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <GlobeIcon className="w-5 h-5" />
-                <span className="font-medium text-sm">Language</span>
-              </div>
-              <span className="text-xs font-bold uppercase">{language}</span>
-            </button>
-            <div className={`mt-2 rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-              <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
-              <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
-              <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
+        <div className="px-6 pb-4 space-y-3 md:hidden">
+          {/* Theme Toggle - Mobile Only */}
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              }`}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+              <span className="font-medium text-sm">
+                {theme === 'dark' ? 'Light' : 'Dark'}
+              </span>
             </div>
+          </button>
+
+          {/* Language Selector - Mobile Only */}
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              <GlobeIcon className="w-5 h-5" />
+              <span className="font-medium text-sm">Language</span>
+            </div>
+            <span className="text-xs font-bold uppercase">{language}</span>
+          </button>
+          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+            <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
+            <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
+            <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
           </div>
         </div>
         <div className={`p-6 border-t space-y-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
@@ -830,37 +845,6 @@ const App: React.FC = () => {
                       ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
                       : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
                       }`}>
-                      {/* Action Buttons - Edit & Delete */}
-                      {userRole === 'admin' && (
-                        <div className="absolute top-4 right-4 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDriverClick(driver);
-                            }} 
-                            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 active:scale-95 ${theme === 'dark'
-                              ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/10'
-                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
-                              }`}
-                            title="Edit driver"
-                          >
-                            <EditIcon className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleDeleteDriver(driver.id); 
-                            }} 
-                            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 active:scale-95 ${theme === 'dark'
-                              ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10'
-                              : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
-                              }`}
-                            title="Delete driver"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
                       <div className="flex items-center gap-4">
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#2D6A76]' : 'border-gray-200 group-hover:border-[#2D6A76]'
                           }`}>
@@ -881,23 +865,46 @@ const App: React.FC = () => {
 
                       <div className={`grid grid-cols-2 gap-4 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
                         <div>
-                          <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t.balance}</p>
-                          <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{(driver.balance || 0).toLocaleString()} <span className="text-xs font-normal text-gray-500">UZS</span></p>
+                          <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>License Plate</p>
+                          <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.licensePlate}</p>
                         </div>
                         <div>
-                          <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t.rating}</p>
-                          <div className="flex items-center gap-1">
-                            <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.rating || 0}</span>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <svg key={star} className={`w-3 h-3 ${star <= Math.round(driver.rating || 0) ? 'text-yellow-400' : 'text-gray-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
-                            </div>
-                          </div>
+                          <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Phone</p>
+                          <p className={`font-bold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.phone}</p>
                         </div>
                       </div>
+
+                      {/* Action Buttons - Bottom Section */}
+                      {userRole === 'admin' && (
+                        <div className={`flex gap-2 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDriverClick(driver);
+                            }} 
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
+                              ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20'
+                              : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                              }`}
+                          >
+                            <EditIcon className="w-4 h-4" />
+                            <span>Edit</span>
+                          </button>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleDeleteDriver(driver.id); 
+                            }} 
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
+                              ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                              : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                              }`}
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
