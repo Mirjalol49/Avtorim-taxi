@@ -37,7 +37,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setName('');
       setLicensePlate('');
       setCarModel('');
-      setPhone('');
+      setPhone('+998 ');
       setAvatar('');
       setTelegram('');
       setStatus(DriverStatus.OFFLINE);
@@ -70,6 +70,46 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Always start with +998 (Uzbekistan country code)
+    // Uzbek phone format: +998 XX XXX XX XX (9 digits after country code)
+    
+    if (digits.length === 0) {
+      return '+998 ';
+    }
+    
+    // Remove leading 998 if user typed it
+    let phoneDigits = digits;
+    if (phoneDigits.startsWith('998')) {
+      phoneDigits = phoneDigits.slice(3);
+    }
+    
+    // Ensure we only have max 9 digits
+    phoneDigits = phoneDigits.slice(0, 9);
+    
+    // Format based on length: +998 XX XXX XX XX
+    if (phoneDigits.length === 0) {
+      return '+998 ';
+    } else if (phoneDigits.length <= 2) {
+      return `+998 ${phoneDigits}`;
+    } else if (phoneDigits.length <= 5) {
+      return `+998 ${phoneDigits.slice(0, 2)} ${phoneDigits.slice(2)}`;
+    } else if (phoneDigits.length <= 7) {
+      return `+998 ${phoneDigits.slice(0, 2)} ${phoneDigits.slice(2, 5)} ${phoneDigits.slice(5)}`;
+    } else {
+      return `+998 ${phoneDigits.slice(0, 2)} ${phoneDigits.slice(2, 5)} ${phoneDigits.slice(5, 7)} ${phoneDigits.slice(7, 9)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatPhoneNumber(value);
+    setPhone(formatted);
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
@@ -159,7 +199,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               type="tel"
               required
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={handlePhoneChange}
               className={inputClass}
               placeholder="+998 90 123 45 67"
             />
