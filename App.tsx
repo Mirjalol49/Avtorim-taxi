@@ -39,6 +39,8 @@ const App: React.FC = () => {
   const [financeDriverFilter, setFinanceDriverFilter] = useState('all');
   const [financeStartDate, setFinanceStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [financeEndDate, setFinanceEndDate] = useState(new Date());
+  const [financePageNumber, setFinancePageNumber] = useState(1);
+  const TRANSACTIONS_PER_PAGE = 10;
 
   // Firebase state - starts empty, will sync from cloud
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -246,6 +248,11 @@ const App: React.FC = () => {
       return dateMatch && driverMatch;
     }).sort((a, b) => b.timestamp - a.timestamp);
   }, [transactions, financeStartDate, financeEndDate, financeDriverFilter]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setFinancePageNumber(1);
+  }, [financeStartDate, financeEndDate, financeDriverFilter])
 
   // --- ACTIONS ---
 
@@ -633,7 +640,7 @@ const App: React.FC = () => {
                           {formatNumberSmart(totalIncome, isMobile)}
                         </h3>
                       </NumberTooltip>
-                      <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5">UZS</p>
+                      <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
                     </div>
                   </div>
                 </div>
@@ -660,7 +667,7 @@ const App: React.FC = () => {
                           {formatNumberSmart(totalExpense, isMobile)}
                         </h3>
                       </NumberTooltip>
-                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         }`}>UZS</p>
                     </div>
                   </div>
@@ -690,7 +697,7 @@ const App: React.FC = () => {
                           {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile)}
                         </h3>
                       </NumberTooltip>
-                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         }`}>UZS</p>
                     </div>
                   </div>
@@ -820,7 +827,7 @@ const App: React.FC = () => {
                       </div>
                       <div className="text-center">
                         <p className="text-lg font-bold text-[#2D6A76]">{driver.income.toLocaleString()}</p>
-                        <p className={`text-[10px] uppercase font-semibold ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
+                        <p className={`text-[10px] uppercase font-semibold ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
                       </div>
                     </div>
                   )) : (
@@ -991,7 +998,7 @@ const App: React.FC = () => {
                         {formatNumberSmart(financeIncome, isMobile)}
                       </h3>
                     </NumberTooltip>
-                    <span className="text-blue-100 text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block">UZS</span>
+                    <span className="text-blue-100 text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ml-1">UZS</span>
                   </div>
                 </div>
 
@@ -1009,7 +1016,7 @@ const App: React.FC = () => {
                       {formatNumberSmart(financeExpense, isMobile)}
                     </h3>
                   </NumberTooltip>
-                  <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>UZS</span>
+                  <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>UZS</span>
                 </div>
 
                 {/* Net Profit */}
@@ -1026,7 +1033,7 @@ const App: React.FC = () => {
                       {financeCashflow > 0 ? '+' : ''}{formatNumberSmart(financeCashflow, isMobile)}
                     </h3>
                   </NumberTooltip>
-                  <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>UZS</span>
+                  <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>UZS</span>
                 </div>
               </div>
               {/* Transactions Table */}
@@ -1045,49 +1052,163 @@ const App: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                      {financeFilteredData.map(tx => {
-                        const driver = drivers.find(d => d.id === tx.driverId);
-                        return (
-                          <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'
-                            }`}>
-                            <td className="px-6 py-4">
-                              <div className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                              <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{new Date(tx.timestamp).toLocaleDateString()}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full overflow-hidden border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-                                  {driver ? <img src={driver.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-300" />}
-                                </div>
-                                <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver?.name || 'Deleted'}</span>
-                              </div>
-                            </td>
-                            <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{tx.description}</td>
-                            <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#2D6A76]' : 'text-red-500'
+                      {(() => {
+                        const startIndex = (financePageNumber - 1) * TRANSACTIONS_PER_PAGE;
+                        const endIndex = startIndex + TRANSACTIONS_PER_PAGE;
+                        const paginatedData = financeFilteredData.slice(startIndex, endIndex);
+                        
+                        if (paginatedData.length === 0 && financeFilteredData.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} className={`px-6 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {t.noTransactions}
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return paginatedData.map(tx => {
+                          const driver = drivers.find(d => d.id === tx.driverId);
+                          return (
+                            <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'
                               }`}>
-                              {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} UZS
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              {userRole === 'admin' && (
-                                <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                                  }`}>
-                                  <TrashIcon className="w-4 h-4" />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {financeFilteredData.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className={`px-6 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {t.noTransactions}
-                          </td>
-                        </tr>
-                      )}
+                              <td className="px-6 py-4">
+                                <div className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{new Date(tx.timestamp).toLocaleDateString()}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full overflow-hidden border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                                    {driver ? <img src={driver.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-300" />}
+                                  </div>
+                                  <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver?.name || 'Deleted'}</span>
+                                </div>
+                              </td>
+                              <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{tx.description}</td>
+                              <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#2D6A76]' : 'text-red-500'
+                                }`}>
+                                {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} <span className="ml-1">UZS</span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                {userRole === 'admin' && (
+                                  <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                    }`}>
+                                    <TrashIcon className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination */}
+                {financeFilteredData.length > TRANSACTIONS_PER_PAGE && (
+                  <div className={`flex items-center justify-center gap-2 p-4 border-t ${theme === 'dark' ? 'border-gray-700 bg-gray-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                    <button
+                      onClick={() => setFinancePageNumber(Math.max(1, financePageNumber - 1))}
+                      disabled={financePageNumber === 1}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        financePageNumber === 1
+                          ? theme === 'dark'
+                            ? 'text-gray-600 cursor-not-allowed'
+                            : 'text-gray-300 cursor-not-allowed'
+                          : theme === 'dark'
+                            ? 'text-white hover:bg-gray-700 active:scale-95'
+                            : 'text-gray-900 hover:bg-gray-100 active:scale-95'
+                      }`}
+                    >
+                      ← {t.previous}
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {(() => {
+                        const totalPages = Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE);
+                        const pages = [];
+                        const maxPagesToShow = 5;
+                        let startPage = Math.max(1, financePageNumber - Math.floor(maxPagesToShow / 2));
+                        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+                        if (endPage - startPage + 1 < maxPagesToShow) {
+                          startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                        }
+
+                        if (startPage > 1) {
+                          pages.push(
+                            <button
+                              key={1}
+                              onClick={() => setFinancePageNumber(1)}
+                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === 1 ? 'bg-[#2D6A76] text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                              1
+                            </button>
+                          );
+                          if (startPage > 2) {
+                            pages.push(
+                              <span key="dots1" className={`px-2 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>...</span>
+                            );
+                          }
+                        }
+
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => setFinancePageNumber(i)}
+                              className={`px-3 py-2 rounded-lg font-medium transition-all ${
+                                financePageNumber === i
+                                  ? 'bg-[#2D6A76] text-white shadow-md'
+                                  : theme === 'dark'
+                                    ? 'text-gray-400 hover:bg-gray-700'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+
+                        if (endPage < totalPages) {
+                          if (endPage < totalPages - 1) {
+                            pages.push(
+                              <span key="dots2" className={`px-2 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>...</span>
+                            );
+                          }
+                          pages.push(
+                            <button
+                              key={totalPages}
+                              onClick={() => setFinancePageNumber(totalPages)}
+                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === totalPages ? 'bg-[#2D6A76] text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                              {totalPages}
+                            </button>
+                          );
+                        }
+
+                        return pages;
+                      })()}
+                    </div>
+
+                    <button
+                      onClick={() => setFinancePageNumber(Math.min(Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE), financePageNumber + 1))}
+                      disabled={financePageNumber === Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        financePageNumber === Math.ceil(financeFilteredData.length / TRANSACTIONS_PER_PAGE)
+                          ? theme === 'dark'
+                            ? 'text-gray-600 cursor-not-allowed'
+                            : 'text-gray-300 cursor-not-allowed'
+                          : theme === 'dark'
+                            ? 'text-white hover:bg-gray-700 active:scale-95'
+                            : 'text-gray-900 hover:bg-gray-100 active:scale-95'
+                      }`}
+                    >
+                      {t.next} →
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )

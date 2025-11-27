@@ -92,7 +92,10 @@ export const TRANSLATIONS = {
     viewer: "Kuzatuvchi",
     balance: "Balans",
     rating: "Reyting",
-    inactive: "Faol emas"
+    inactive: "Faol emas",
+    // Pagination
+    previous: "Oldingi",
+    next: "Keyingi"
   },
   ru: {
     dashboard: "Панель управления",
@@ -185,7 +188,10 @@ export const TRANSLATIONS = {
     viewer: "Зритель",
     balance: "Баланс",
     rating: "Рейтинг",
-    inactive: "Неактивен"
+    inactive: "Неактивен",
+    // Pagination
+    previous: "Предыдущая",
+    next: "Следующая"
   },
   en: {
     dashboard: "Dashboard",
@@ -278,6 +284,9 @@ export const TRANSLATIONS = {
     viewer: "Viewer",
     balance: "Balance",
     rating: "Rating",
-    inactive: "Inactive"
+    inactive: "Inactive",
+    // Pagination
+    previous: "Previous",
+    next: "Next"
   }
 };

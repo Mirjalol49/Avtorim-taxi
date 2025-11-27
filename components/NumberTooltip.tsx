@@ -25,7 +25,7 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({ value, label, children, t
                         : 'bg-white text-gray-900 border border-gray-200 shadow-lg'
                     }`}>
                     <div className="text-[10px] uppercase tracking-wide opacity-70 mb-0.5">{label}</div>
-                    <div className="font-bold font-mono">{formatNumberFull(value)} UZS</div>
+                    <div className="font-bold font-mono">{formatNumberFull(value)} <span className="ml-1">UZS</span></div>
 
                     {/* Arrow */}
                     <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent ${theme === 'dark' ? 'border-t-gray-900' : 'border-t-white'
