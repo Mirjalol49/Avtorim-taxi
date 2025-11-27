@@ -1,18 +1,8 @@
 // Format number with smart abbreviation for mobile
 export function formatNumberSmart(value: number, isMobile: boolean = false): string {
-    if (!isMobile) return value.toLocaleString();
-
-    const absValue = Math.abs(value);
-    const sign = value < 0 ? '-' : '';
-
-    if (absValue >= 1000000000) {
-        return sign + (absValue / 1000000000).toFixed(1) + 'B';
-    } else if (absValue >= 1000000) {
-        return sign + (absValue / 1000000).toFixed(1) + 'M';
-    } else if (absValue >= 1000) {
-        return sign + (absValue / 1000).toFixed(1) + 'K';
-    }
-    return value.toLocaleString();
+    // User requested full numbers with space separators (e.g. 2 000 000)
+    // We use a regex to insert spaces as thousand separators
+    return value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
 // Format number with full formatting

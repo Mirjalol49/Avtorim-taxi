@@ -28,7 +28,7 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
 
     window.ymaps.ready(() => {
       if (!mapContainerRef.current) return;
-      
+
       // If map already exists, don't recreate
       if (mapRef.current) return;
 
@@ -51,20 +51,20 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
     if (!mapRef.current || !window.ymaps) return;
 
     window.ymaps.ready(() => {
-        const currentDriverIds = new Set(drivers.map(d => d.id));
+      const currentDriverIds = new Set(drivers.map(d => d.id));
 
-        // 1. Remove markers for drivers that are no longer in the list
-        placemarksRef.current.forEach((placemark, id) => {
-          if (!currentDriverIds.has(id)) {
-            mapRef.current.geoObjects.remove(placemark);
-            placemarksRef.current.delete(id);
-          }
-        });
+      // 1. Remove markers for drivers that are no longer in the list
+      placemarksRef.current.forEach((placemark, id) => {
+        if (!currentDriverIds.has(id)) {
+          mapRef.current.geoObjects.remove(placemark);
+          placemarksRef.current.delete(id);
+        }
+      });
 
-        // 2. Add or Update markers
-        // Define Custom Layout for the marker
-        const AvatarLayout = window.ymaps.templateLayoutFactory.createClass(
-            `<div class="driver-marker-root" style="position: relative;">
+      // 2. Add or Update markers
+      // Define Custom Layout for the marker
+      const AvatarLayout = window.ymaps.templateLayoutFactory.createClass(
+        `<div class="driver-marker-root" style="position: relative;">
                 <div style="
                     width: 50px; 
                     height: 50px; 
@@ -99,24 +99,24 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
                     $[properties.name]
                 </div>
             </div>`
-        );
+      );
 
-        drivers.forEach(driver => {
-          let placemark = placemarksRef.current.get(driver.id);
+      drivers.forEach(driver => {
+        let placemark = placemarksRef.current.get(driver.id);
 
-          let color = '#94a3b8'; // gray
-          if (driver.status === DriverStatus.ACTIVE) color = '#22c55e'; // green
-          if (driver.status === DriverStatus.BUSY) color = '#eab308'; // yellow
-          if (driver.status === DriverStatus.IDLE) color = '#3b82f6'; // blue
-          if (driver.status === DriverStatus.OFFLINE) color = '#ef4444'; // red
+        let color = '#94a3b8'; // gray
+        if (driver.status === DriverStatus.ACTIVE) color = '#22c55e'; // green
+        if (driver.status === DriverStatus.BUSY) color = '#eab308'; // yellow
+        if (driver.status === DriverStatus.IDLE) color = '#3b82f6'; // blue
+        if (driver.status === DriverStatus.OFFLINE) color = '#ef4444'; // red
 
-          // Status translation for Balloon
-          let statusText = t.offline;
-          if (driver.status === DriverStatus.ACTIVE) statusText = t.active;
-          if (driver.status === DriverStatus.BUSY) statusText = t.busy;
-          if (driver.status === DriverStatus.IDLE) statusText = t.idle;
+        // Status translation for Balloon
+        let statusText = t.offline;
+        if (driver.status === DriverStatus.ACTIVE) statusText = t.active;
+        if (driver.status === DriverStatus.BUSY) statusText = t.busy;
+        if (driver.status === DriverStatus.IDLE) statusText = t.idle;
 
-          const balloonContent = `
+        const balloonContent = `
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
                 <img src="${driver.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
                 <b style="font-size:14px;">${driver.name}</b>
@@ -129,42 +129,42 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
             </div>
           `;
 
-          if (!placemark) {
-            placemark = new window.ymaps.Placemark(
-              [driver.location.lat, driver.location.lng],
-              {
-                name: driver.name,
-                avatar: driver.avatar,
-                borderColor: color,
-                balloonContentBody: balloonContent,
-                hintContent: driver.name
+        if (!placemark) {
+          placemark = new window.ymaps.Placemark(
+            [driver.location.lat, driver.location.lng],
+            {
+              name: driver.name,
+              avatar: driver.avatar,
+              borderColor: color,
+              balloonContentBody: balloonContent,
+              hintContent: driver.name
+            },
+            {
+              iconLayout: AvatarLayout,
+              iconShape: {
+                type: 'Circle',
+                coordinates: [0, 0],
+                radius: 25
               },
-              {
-                iconLayout: AvatarLayout,
-                iconShape: {
-                    type: 'Circle',
-                    coordinates: [0, 0],
-                    radius: 25
-                },
-                iconContentLayout: AvatarLayout
-              }
-            );
-            
-            mapRef.current.geoObjects.add(placemark);
-            placemarksRef.current.set(driver.id, placemark);
-          } else {
-            // Update position
-            placemark.geometry.setCoordinates([driver.location.lat, driver.location.lng]);
-            
-            // Update properties
-            placemark.properties.set({
-                avatar: driver.avatar,
-                borderColor: color,
-                name: driver.name,
-                balloonContentBody: balloonContent,
-            });
-          }
-        });
+              iconContentLayout: AvatarLayout
+            }
+          );
+
+          mapRef.current.geoObjects.add(placemark);
+          placemarksRef.current.set(driver.id, placemark);
+        } else {
+          // Update position
+          placemark.geometry.setCoordinates([driver.location.lat, driver.location.lng]);
+
+          // Update properties
+          placemark.properties.set({
+            avatar: driver.avatar,
+            borderColor: color,
+            name: driver.name,
+            balloonContentBody: balloonContent,
+          });
+        }
+      });
     });
 
   }, [drivers, lang, t]);
@@ -172,7 +172,7 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden border border-slate-700 shadow-2xl bg-slate-900">
       <div ref={mapContainerRef} className="w-full h-full" />
-      
+
       {/* Overlay Status Legend */}
       <div className="absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md p-3 rounded-lg border border-slate-700 shadow-lg text-xs z-10 pointer-events-none">
         <div className="font-semibold text-slate-200 mb-2">{t.status}</div>
@@ -189,7 +189,7 @@ const MapView: React.FC<MapViewProps> = ({ drivers, lang }) => {
             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
             <span className="text-slate-400">{t.idle}</span>
           </div>
-           <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500"></span>
             <span className="text-slate-400">{t.offline}</span>
           </div>

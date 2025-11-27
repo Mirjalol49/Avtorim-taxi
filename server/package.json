@@ -1,0 +1,17 @@
+{
+    "name": "owntracks-server",
+    "version": "1.0.0",
+    "description": "Minimal OwnTracks webhook server",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "basic-auth": "^2.0.1",
+        "body-parser": "^2.2.1",
+        "cors": "^2.8.5",
+        "express": "^5.1.0",
+        "node-telegram-bot-api": "^0.66.0",
+        "sqlite3": "^5.1.7"
+    }
+}

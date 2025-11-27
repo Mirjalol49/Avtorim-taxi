@@ -12,11 +12,15 @@ import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
 import ConfirmModal from './components/ConfirmModal';
 import NumberTooltip from './components/NumberTooltip'; // Added
+import DateFilter from './components/DateFilter'; // Added
+import TelegramRegistration from './components/TelegramRegistration'; // Added
+import DatePicker from './components/DatePicker'; // Added
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
 import { formatNumberSmart } from './utils/formatNumber'; // Added
 import * as firestoreService from './services/firestoreService';
+import { fetchDriverLocations } from './services/ownTracksService'; // Added
 
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<'admin' | 'viewer'>(() => {
@@ -28,13 +32,12 @@ const App: React.FC = () => {
     return localStorage.getItem('avtorim_auth') === 'true';
   });
 
+  // State variables
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
-
-  // Finance Section States
-  const [financeStartDate, setFinanceStartDate] = useState('');
-  const [financeEndDate, setFinanceEndDate] = useState('');
-  const [financeDriverFilter, setFinanceDriverFilter] = useState<string>('all');
+  const [financeDriverFilter, setFinanceDriverFilter] = useState('all');
+  const [financeStartDate, setFinanceStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [financeEndDate, setFinanceEndDate] = useState(new Date());
 
   // Firebase state - starts empty, will sync from cloud
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -74,6 +77,7 @@ const App: React.FC = () => {
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isTelegramRegistrationOpen, setIsTelegramRegistrationOpen] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -167,6 +171,40 @@ const App: React.FC = () => {
         };
       }));
     }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // --- OWNTRACKS REAL-TIME UPDATES ---
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchLocations = async () => {
+      const locations = await fetchDriverLocations();
+      if (locations.length > 0) {
+        setDrivers(prevDrivers => {
+          return prevDrivers.map(driver => {
+            const loc = locations.find(l => l.driver_id === driver.id);
+            if (loc) {
+              return {
+                ...driver,
+                location: {
+                  lat: loc.latitude,
+                  lng: loc.longitude,
+                  heading: driver.location.heading // Keep existing heading or calculate new one
+                },
+                lastUpdate: loc.last_update_ts * 1000 // Convert to ms
+              };
+            }
+            return driver;
+          });
+        });
+      }
+    };
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchLocations, 5000);
+    fetchLocations(); // Initial fetch
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
@@ -416,9 +454,53 @@ const App: React.FC = () => {
             }`}>{t.menu}</div>
           {renderSidebarItem(Tab.DASHBOARD, t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem(Tab.MAP, t.liveMap, MapIcon)}
-          {renderSidebarItem(Tab.DRIVERS, t.drivers, UsersIcon)}
-          {renderSidebarItem(Tab.FINANCE, t.finance, BanknoteIcon)}
+          {renderSidebarItem(Tab.DRIVERS, t.driversList, UsersIcon)}
+          {renderSidebarItem(Tab.FINANCE, t.financialReports, BanknoteIcon)}
         </nav>
+
+        {/* Theme Toggle in Sidebar */}
+        <div className="px-6 pb-4 space-y-3">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              }`}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+              <span className="font-medium text-sm">
+                {theme === 'dark' ? 'Light' : 'Dark'}
+              </span>
+            </div>
+          </button>
+
+          {/* Language Selector - Mobile Only */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
+                ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <GlobeIcon className="w-5 h-5" />
+                <span className="font-medium text-sm">Language</span>
+              </div>
+              <span className="text-xs font-bold uppercase">{language}</span>
+            </button>
+            {isLangMenuOpen && (
+              <div className={`mt-2 rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                <button onClick={() => { setLanguage('uz'); setIsLangMenuOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
+                <button onClick={() => { setLanguage('ru'); setIsLangMenuOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
+                <button onClick={() => { setLanguage('en'); setIsLangMenuOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
+              </div>
+            )}
+          </div>
+        </div>
         <div className={`p-6 border-t space-y-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
           }`}>
           {userRole === 'admin' && (
@@ -476,19 +558,8 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 md:gap-3">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className={`flex items-center gap-2 border px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
-                ? 'bg-[#111827] hover:bg-gray-800 border-gray-700 text-gray-300'
-                : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600'
-                }`}
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
-            </button>
-
+          <div className="hidden md:flex gap-2 md:gap-3">
+            {/* Language Selector - Desktop Only */}
             <div className="relative">
               <button onClick={() => setIsLangMenuOpen(!isLangMenuOpen)} className={`flex items-center gap-2 border px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
                 ? 'bg-[#111827] hover:bg-gray-800 border-gray-700 text-gray-300'
@@ -511,26 +582,38 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        </header>
 
-            {activeTab === Tab.DRIVERS && userRole === 'admin' && (
-              <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center gap-2 border px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all whitespace-nowrap ${theme === 'dark'
+        {/* ACTION BUTTONS ROW */}
+        <div className={`flex items-center justify-between px-6 md:px-8 py-3 md:py-4 border-b sticky top-20 z-10 ${theme === 'dark' ? 'bg-[#111827] border-gray-800' : 'bg-[#F3F4F6] border-gray-200'
+          }`}>
+          {activeTab === Tab.DRIVERS && userRole === 'admin' && (
+            <>
+              <button onClick={() => setIsTelegramRegistrationOpen(true)} className={`flex items-center justify-center gap-2 border px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all w-full sm:w-auto ${theme === 'dark'
+                ? 'bg-blue-500 hover:bg-blue-600 border-transparent text-white'
+                : 'bg-blue-500 hover:bg-blue-600 border-transparent text-white shadow-sm'
+                }`}>
+                <span>🤖</span> <span>Telegram</span>
+              </button>
+              <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center justify-center gap-2 border px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all w-full sm:w-auto ${theme === 'dark'
                 ? 'bg-[#2D6A76] hover:bg-[#235560] border-transparent text-white'
                 : 'bg-[#2D6A76] hover:bg-[#235560] border-transparent text-white shadow-sm'
                 }`}>
-                <UserPlusIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.add}</span>
+                <PlusIcon className="w-4 h-4" /> <span>{t.add}</span>
               </button>
-            )}
+            </>
+          )}
 
-            {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD) && userRole === 'admin' && (
-              <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all shadow-lg active:scale-95 whitespace-nowrap ${theme === 'dark'
-                ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-900/20'
-                : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-500/30'
-                }`}>
-                <PlusIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.newTransfer}</span>
-              </button>
-            )}
-          </div>
-        </header>
+          {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD) && userRole === 'admin' && (
+            <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
+              ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-900/20'
+              : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-500/30'
+              }`}>
+              <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
+            </button>
+          )}
+        </div>
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 relative z-0 custom-scrollbar">
 
@@ -538,94 +621,97 @@ const App: React.FC = () => {
           {activeTab === Tab.DASHBOARD && (
             <div className="space-y-6">
               {/* Time Filters */}
-              <div className={`flex items-center gap-2 p-1 rounded-xl w-fit border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
-                }`}>
-                {(['today', 'week', 'month', 'year'] as TimeFilter[]).map((f) => (
-                  <button key={f} onClick={() => setTimeFilter(f)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${timeFilter === f
-                    ? 'bg-[#2D6A76] text-white shadow-md'
-                    : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                    }`}>{t[f]}</button>
-                ))}
-              </div>
+              <DateFilter
+                currentFilter={timeFilter}
+                onFilterChange={setTimeFilter}
+                language={language}
+                theme={theme}
+                labels={{
+                  today: t.today,
+                  week: t.week,
+                  month: t.month,
+                  year: t.year
+                }}
+              />
 
               {/* MAIN STATS ROW - FULL WIDTH */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Income - Primary Card (Teal) */}
-                <div className="bg-[#2D6A76] p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
+                <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
                   <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                     <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="p-1 sm:p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
-                        <TrendingUpIcon className="w-3 sm:w-4 md:w-5 h-3 sm:h-4 md:h-5" />
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
+                        <TrendingUpIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                       </div>
-                      <p className="text-[8px] sm:text-[9px] md:text-[10px] text-teal-100/80 font-bold uppercase tracking-wide">{t.totalIncome}</p>
+                      <p className="text-[10px] sm:text-[10px] md:text-[11px] text-teal-100/80 font-bold uppercase tracking-wide">{t.totalIncome}</p>
                     </div>
                     <div>
                       <NumberTooltip value={totalIncome} label={t.totalIncome} theme={theme}>
-                        <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight font-mono cursor-help">
+                        <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
                           {formatNumberSmart(totalIncome, isMobile)}
                         </h3>
                       </NumberTooltip>
-                      <p className="text-[9px] sm:text-[10px] md:text-xs text-teal-100/60 font-medium mt-1">UZS</p>
+                      <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5">UZS</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Expense - Secondary Card (White/Dark) */}
-                <div className={`p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
+                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
                   }`}>
                   <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                     <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className={`p-1 sm:p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'
                         }`}>
-                        <TrendingDownIcon className="w-3 sm:w-4 md:w-5 h-3 sm:h-4 md:h-5" />
+                        <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                       </div>
-                      <p className={`text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                      <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
                         }`}>{t.totalExpense}</p>
                     </div>
                     <div>
                       <NumberTooltip value={totalExpense} label={t.totalExpense} theme={theme}>
-                        <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight font-mono cursor-help ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                           }`}>
                           {formatNumberSmart(totalExpense, isMobile)}
                         </h3>
                       </NumberTooltip>
-                      <p className={`text-[9px] sm:text-[10px] md:text-xs font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         }`}>UZS</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Net Profit - Secondary Card (White/Dark) */}
-                <div className={`p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
+                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
                   }`}>
                   <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                     <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className={`p-1 sm:p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-blue-400 border-gray-700' : 'bg-blue-50 text-blue-500 border-blue-100'
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-blue-400 border-gray-700' : 'bg-blue-50 text-blue-500 border-blue-100'
                         }`}>
-                        <WalletIcon className="w-3 sm:w-4 md:w-5 h-3 sm:h-4 md:h-5" />
+                        <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                       </div>
-                      <p className={`text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                      <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
                         }`}>{t.netProfit}</p>
                     </div>
                     <div>
                       <NumberTooltip value={netProfit} label={t.netProfit} theme={theme}>
-                        <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight font-mono cursor-help ${netProfit >= 0
-                            ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
-                            : theme === 'dark' ? 'text-red-400' : 'text-red-600'
+                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${netProfit >= 0
+                          ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+                          : theme === 'dark' ? 'text-red-400' : 'text-red-600'
                           }`}>
                           {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile)}
                         </h3>
                       </NumberTooltip>
-                      <p className={`text-[9px] sm:text-[10px] md:text-xs font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         }`}>UZS</p>
                     </div>
                   </div>
@@ -642,7 +728,7 @@ const App: React.FC = () => {
                 </h3>
                 <div className="flex-1 -mx-2 sm:mx-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} barSize={20} margin={{ left: -20, right: 10 }}>
+                    <BarChart data={chartData} barSize={20} margin={{ left: 0, right: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
                       <XAxis
                         dataKey="name"
@@ -871,50 +957,48 @@ const App: React.FC = () => {
                 }`}>
                 <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
                   {/* Start Date */}
-                  <FilterControl icon={CalendarIcon} label={t.fromDate}>
-                    <div className={`relative border rounded-xl overflow-hidden transition-colors w-full md:w-40 flex items-center h-11 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                      }`}>
-                      <input
-                        type="date"
-                        value={financeStartDate}
-                        onChange={(e) => setFinanceStartDate(e.target.value)}
-                        className={`w-full h-full bg-transparent px-3 text-sm outline-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}
-                        style={{ colorScheme: theme }}
-                      />
-                    </div>
-                  </FilterControl>
+                  <div className="w-full md:w-64">
+                    <DatePicker
+                      label={t.fromDate}
+                      value={financeStartDate}
+                      onChange={setFinanceStartDate}
+                      theme={theme}
+                    />
+                  </div>
                   {/* End Date */}
-                  <FilterControl icon={CalendarIcon} label={t.toDate}>
-                    <div className={`relative border rounded-xl overflow-hidden transition-colors w-full md:w-40 flex items-center h-11 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                      }`}>
-                      <input
-                        type="date"
-                        value={financeEndDate}
-                        onChange={(e) => setFinanceEndDate(e.target.value)}
-                        className={`w-full h-full bg-transparent px-3 text-sm outline-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}
-                        style={{ colorScheme: theme }}
-                      />
-                    </div>
-                  </FilterControl>
+                  <div className="w-full md:w-64">
+                    <DatePicker
+                      label={t.toDate}
+                      value={financeEndDate}
+                      onChange={setFinanceEndDate}
+                      theme={theme}
+                    />
+                  </div>
                   {/* Driver Select */}
-                  <FilterControl icon={UsersIcon} label={t.driver}>
-                    <div className={`relative border rounded-xl overflow-hidden transition-colors w-full md:w-56 h-11 flex items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                      }`}>
+                  <div className="w-full md:w-64">
+                    <div className="flex items-center gap-2 mb-3">
+                      <UsersIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.driver}</span>
+                    </div>
+                    <div className="relative">
                       <select
                         value={financeDriverFilter}
                         onChange={(e) => setFinanceDriverFilter(e.target.value)}
-                        className={`w-full h-full bg-transparent pl-3 pr-8 text-sm outline-none appearance-none cursor-pointer ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none appearance-none cursor-pointer transition-all ${theme === 'dark'
+                            ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
+                            : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                           }`}
+                        style={{
+                          backgroundImage: 'none'
+                        }}
                       >
                         <option value="all">{t.allDrivers}</option>
                         {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
-                      <ChevronDownIcon className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      <ChevronDownIcon className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         }`} />
                     </div>
-                  </FilterControl>
+                  </div>
                 </div>
                 <div className="hidden lg:block">
                   <button className={`p-3 rounded-xl transition-colors ${theme === 'dark' ? 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
@@ -1086,6 +1170,17 @@ const App: React.FC = () => {
         isDanger={confirmModal.isDanger}
         theme={theme}
       />
+
+      {/* TELEGRAM REGISTRATION MODAL */}
+      {
+        isTelegramRegistrationOpen && (
+          <TelegramRegistration
+            drivers={drivers}
+            theme={theme}
+            onClose={() => setIsTelegramRegistrationOpen(false)}
+          />
+        )
+      }
     </div >
   );
 };

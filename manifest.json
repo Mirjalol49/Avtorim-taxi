@@ -1,21 +1,37 @@
 {
-  "name": "Avtorim Taxi Dashboard",
+  "name": "Avtorim Taxi - Fleet Management",
   "short_name": "Avtorim",
-  "start_url": ".",
+  "description": "Professional taxi fleet management dashboard for real-time tracking and operations",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "description": "Professional taxi fleet management",
+  "theme_color": "#2D6A76",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1995/1995515.png",
+      "src": "/Images/web-app-manifest-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1995/1995515.png",
+      "src": "/Images/web-app-manifest-512x512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Images/favicon-96x96.png",
+      "sizes": "96x96",
       "type": "image/png"
     }
-  ]
+  ],
+  "categories": [
+    "business",
+    "productivity",
+    "navigation"
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }
