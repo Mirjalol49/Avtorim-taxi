@@ -992,9 +992,14 @@ const App: React.FC = () => {
                     <TrendingUpIcon className="w-12 sm:w-16 h-12 sm:h-16" />
                   </div>
                   <div className="relative z-10">
-                    <p className="text-blue-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-wide mb-1">{t.totalIncome}</p>
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                      <div className="p-1 sm:p-1.5 rounded-md bg-white/20 text-white flex-shrink-0">
+                        <TrendingUpIcon className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+                      </div>
+                      <p className="text-blue-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-wide">{t.totalIncome}</p>
+                    </div>
                     <NumberTooltip value={financeIncome} label={t.totalIncome} theme={theme}>
-                      <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight font-mono cursor-help">
+                      <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tight leading-tight font-mono cursor-help break-words">
                         {formatNumberSmart(financeIncome, isMobile)}
                       </h3>
                     </NumberTooltip>
@@ -1012,7 +1017,7 @@ const App: React.FC = () => {
                     <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.totalExpense}</p>
                   </div>
                   <NumberTooltip value={financeExpense} label={t.totalExpense} theme={theme}>
-                    <h3 className={`text-xl sm:text-2xl md:text-3xl font-black leading-tight font-mono cursor-help ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <h3 className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-black leading-tight font-mono cursor-help break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {formatNumberSmart(financeExpense, isMobile)}
                     </h3>
                   </NumberTooltip>
@@ -1029,7 +1034,7 @@ const App: React.FC = () => {
                     <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.cashFlow}</p>
                   </div>
                   <NumberTooltip value={financeCashflow} label={t.cashFlow} theme={theme}>
-                    <h3 className={`text-xl sm:text-2xl md:text-3xl font-black leading-tight font-mono cursor-help ${financeCashflow >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <h3 className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-black leading-tight font-mono cursor-help break-words ${financeCashflow >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                       {financeCashflow > 0 ? '+' : ''}{formatNumberSmart(financeCashflow, isMobile)}
                     </h3>
                   </NumberTooltip>
