@@ -936,40 +936,43 @@ const App: React.FC = () => {
           {(activeTab === Tab.FINANCE) && (
             <div className="space-y-6">
               {/* Filters */}
-              <div className={`p-4 rounded-3xl border shadow-xl flex flex-col lg:flex-row gap-4 items-center justify-between ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+              <div className={`p-4 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
-                  {/* Start Date */}
-                  <div className="w-full md:w-64">
-                    <DatePicker
-                      label={t.fromDate}
-                      value={financeStartDate}
-                      onChange={setFinanceStartDate}
-                      theme={theme}
-                    />
-                  </div>
-                  {/* End Date */}
-                  <div className="w-full md:w-64">
-                    <DatePicker
-                      label={t.toDate}
-                      value={financeEndDate}
-                      onChange={setFinanceEndDate}
-                      theme={theme}
-                    />
-                  </div>
-                  {/* Driver Select */}
-                  <div className="w-full md:w-64">
-                    <CustomSelect
-                      label={t.driver}
-                      value={financeDriverFilter}
-                      onChange={setFinanceDriverFilter}
-                      options={[
-                        { id: 'all', name: t.allDrivers },
-                        ...drivers.map(d => ({ id: d.id, name: d.name }))
-                      ]}
-                      theme={theme}
-                      icon={UsersIcon}
-                    />
+                <div className="flex flex-col gap-4">
+                  {/* Desktop: 3-column grid, Mobile/Tablet: Stack vertically */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                    {/* Start Date */}
+                    <div className="w-full">
+                      <DatePicker
+                        label={t.fromDate}
+                        value={financeStartDate}
+                        onChange={setFinanceStartDate}
+                        theme={theme}
+                      />
+                    </div>
+                    {/* End Date */}
+                    <div className="w-full">
+                      <DatePicker
+                        label={t.toDate}
+                        value={financeEndDate}
+                        onChange={setFinanceEndDate}
+                        theme={theme}
+                      />
+                    </div>
+                    {/* Driver Select */}
+                    <div className="w-full">
+                      <CustomSelect
+                        label={t.driver}
+                        value={financeDriverFilter}
+                        onChange={setFinanceDriverFilter}
+                        options={[
+                          { id: 'all', name: t.allDrivers },
+                          ...drivers.map(d => ({ id: d.id, name: d.name }))
+                        ]}
+                        theme={theme}
+                        icon={UsersIcon}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

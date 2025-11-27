@@ -43,11 +43,11 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     }, []);
 
     return (
-        <div className="w-full md:w-64" ref={dropdownRef}>
+        <div className="w-full" ref={dropdownRef}>
             {/* Label */}
-            <div className="flex items-center gap-2 mb-3">
-                {Icon && <Icon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />}
-                <span className={`text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className="flex items-center gap-2 mb-2.5">
+                {Icon && <Icon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />}
+                <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     {label}
                 </span>
             </div>
@@ -56,26 +56,26 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
             <div className="relative">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all outline-none ${theme === 'dark'
-                        ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600 text-white'
-                        : 'bg-white border-gray-200 hover:border-gray-300 text-gray-900'
-                        } ${isOpen ? 'ring-2 ring-[#2D6A76] border-transparent' : ''}`}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-all duration-200 outline-none ${theme === 'dark'
+                        ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-white'
+                        : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900'
+                        } ${isOpen ? `ring-2 ring-[#2D6A76] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}` : ''}`}
                     type="button"
                 >
-                    <span className="truncate">{displayValue}</span>
+                    <span className="truncate text-sm">{displayValue}</span>
                     <ChevronDownIcon
-                        className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''
+                        className={`w-4 h-4 flex-shrink-0 ml-2 transition-transform duration-300 ${isOpen ? 'transform rotate-180' : ''
                             } ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
                     />
                 </button>
 
                 {/* Dropdown Menu */}
                 {isOpen && (
-                    <div className={`absolute z-50 w-full mt-2 rounded-xl shadow-2xl border overflow-hidden ${theme === 'dark'
+                    <div className={`absolute z-50 w-full mt-2 rounded-lg shadow-xl border overflow-hidden ${theme === 'dark'
                         ? 'bg-[#1F2937] border-gray-700'
                         : 'bg-white border-gray-200'
                         }`}>
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar divide-y" style={{
+                        <div className="max-h-56 overflow-y-auto custom-scrollbar" style={{
                             divideColor: theme === 'dark' ? '#374151' : '#E5E7EB'
                         }}>
                             {options.map((option, index) => (
@@ -85,22 +85,24 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                         onChange(option.id);
                                         setIsOpen(false);
                                     }}
-                                    className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-all duration-150 ${
+                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm text-left transition-all duration-150 ${
+                                        index > 0 ? `border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}` : ''
+                                    } ${
                                         value === option.id
                                             ? theme === 'dark'
                                                 ? 'bg-[#2D6A76] text-white font-semibold'
                                                 : 'bg-[#2D6A76] text-white font-semibold'
                                             : theme === 'dark'
-                                            ? 'text-gray-200 hover:bg-gray-800'
+                                            ? 'text-gray-200 hover:bg-gray-800/60'
                                             : 'text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
-                                    <span className="flex-1">
+                                    <span className="flex-1 truncate">
                                         {option.name}
                                     </span>
                                     {value === option.id && (
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'}`}>
-                                            <CheckIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-white' : 'text-white'}`} />
+                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ml-2 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'}`}>
+                                            <CheckIcon className={`w-3.5 h-3.5 text-white`} />
                                         </div>
                                     )}
                                 </button>
