@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Driver, FineStatus, Language } from '../types';
 import { TRANSLATIONS } from '../translations';
-import { XIcon, SirenIcon } from './Icons';
+import { XIcon, SirenIcon, UsersIcon } from './Icons';
+import CustomSelect from './CustomSelect';
 
 interface FineModalProps {
   isOpen: boolean;
@@ -49,29 +50,27 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, driver
             <XIcon className="w-6 h-6" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Driver */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.driver}</label>
-            <div className="relative">
-              <select
+            <div className="w-full">
+              <CustomSelect
+                label={t.driver}
                 value={driverId}
-                onChange={(e) => setDriverId(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none text-white appearance-none cursor-pointer"
-              >
-                {drivers.map(d => (
-                  <option key={d.id} value={d.id}>{d.name} — {d.carModel}</option>
-                ))}
-              </select>
+                onChange={setDriverId}
+                options={drivers.map(d => ({ id: d.id, name: `${d.name} — ${d.carModel}` }))}
+                theme="dark"
+                icon={UsersIcon}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             {/* Amount */}
-             <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.amount} (UZS)</label>
-                <input
+            {/* Amount */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.amount} (UZS)</label>
+              <input
                 type="number"
                 required
                 min="0"
@@ -79,20 +78,20 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, driver
                 onChange={(e) => setAmount(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-white placeholder-slate-600 font-mono text-lg"
                 placeholder="0.00"
-                />
-             </div>
-             {/* Location */}
-             <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.location}</label>
-                <input
+              />
+            </div>
+            {/* Location */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.location}</label>
+              <input
                 type="text"
                 required
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-white placeholder-slate-600"
                 placeholder="Toshkent, ..."
-                />
-             </div>
+              />
+            </div>
           </div>
 
           {/* Reason */}

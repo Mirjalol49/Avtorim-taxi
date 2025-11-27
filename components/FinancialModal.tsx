@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { XIcon } from './Icons';
+import { XIcon, UsersIcon } from './Icons';
+import CustomSelect from './CustomSelect';
 import { Driver, Transaction, TransactionType, Language } from '../types';
 import { TRANSLATIONS } from '../translations';
 
@@ -55,8 +56,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-      ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
-      : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
+    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
     }`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -83,8 +84,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               type="button"
               onClick={() => setType(TransactionType.INCOME)}
               className={`py-2.5 rounded-lg text-sm font-bold transition-all ${type === TransactionType.INCOME
-                  ? 'bg-[#2D6A76] text-white shadow-lg'
-                  : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                ? 'bg-[#2D6A76] text-white shadow-lg'
+                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
               {t.income}
@@ -93,8 +94,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               type="button"
               onClick={() => setType(TransactionType.EXPENSE)}
               className={`py-2.5 rounded-lg text-sm font-bold transition-all ${type === TransactionType.EXPENSE
-                  ? 'bg-red-500 text-white shadow-lg'
-                  : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                ? 'bg-red-500 text-white shadow-lg'
+                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
               {t.expense}
@@ -115,19 +116,18 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
           </div>
 
           <div>
-            <label className={labelClass}>{t.driver}</label>
-            <div className="relative">
-              <select
-                required
+            <div className="w-full">
+              <CustomSelect
+                label={t.driver}
                 value={driverId}
-                onChange={(e) => setDriverId(e.target.value)}
-                className={`${inputClass} appearance-none cursor-pointer`}
-              >
-                <option value="">{t.selectDriver || "Select Driver"}</option>
-                {drivers.map(d => (
-                  <option key={d.id} value={d.id}>{d.name} — {d.carModel}</option>
-                ))}
-              </select>
+                onChange={setDriverId}
+                options={[
+                  { id: '', name: t.selectDriver || "Select Driver" },
+                  ...drivers.map(d => ({ id: d.id, name: `${d.name} — ${d.carModel}` }))
+                ]}
+                theme={theme}
+                icon={UsersIcon}
+              />
             </div>
           </div>
 
@@ -154,8 +154,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
             <button
               type="submit"
               className={`px-6 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all transform active:scale-95 ${type === TransactionType.INCOME
-                  ? 'bg-[#2D6A76] hover:bg-[#235560] shadow-[#2D6A76]/20'
-                  : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+                ? 'bg-[#2D6A76] hover:bg-[#235560] shadow-[#2D6A76]/20'
+                : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
                 }`}
             >
               {t.save}

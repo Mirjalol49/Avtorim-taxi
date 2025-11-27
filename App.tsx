@@ -11,16 +11,17 @@ import DriverModal from './components/DriverModal';
 import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
 import ConfirmModal from './components/ConfirmModal';
-import NumberTooltip from './components/NumberTooltip'; // Added
-import DateFilter from './components/DateFilter'; // Added
-import TelegramRegistration from './components/TelegramRegistration'; // Added
-import DatePicker from './components/DatePicker'; // Added
+import NumberTooltip from './components/NumberTooltip';
+import DateFilter from './components/DateFilter';
+import DatePicker from './components/DatePicker';
+import CustomSelect from './components/CustomSelect';
+import DesktopHeader from './components/DesktopHeader';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
-import { formatNumberSmart } from './utils/formatNumber'; // Added
+import { formatNumberSmart } from './utils/formatNumber';
 import * as firestoreService from './services/firestoreService';
-import { fetchDriverLocations } from './services/ownTracksService'; // Added
+import { fetchDriverLocations } from './services/ownTracksService';
 
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<'admin' | 'viewer'>(() => {
@@ -76,8 +77,7 @@ const App: React.FC = () => {
 
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
-  const [isTelegramRegistrationOpen, setIsTelegramRegistrationOpen] = useState(false);
+
 
   // Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -458,29 +458,12 @@ const App: React.FC = () => {
           {renderSidebarItem(Tab.FINANCE, t.financialReports, BanknoteIcon)}
         </nav>
 
-        {/* Theme Toggle in Sidebar */}
+        {/* Sidebar Bottom Section */}
         <div className="px-6 pb-4 space-y-3">
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
-              ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            <div className="flex items-center gap-3">
-              {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-              <span className="font-medium text-sm">
-                {theme === 'dark' ? 'Light' : 'Dark'}
-              </span>
-            </div>
-          </button>
-
           {/* Language Selector - Mobile Only */}
           <div className="md:hidden">
             <button
-              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              onClick={() => setIsSidebarOpen(false)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
                 ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                 : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
@@ -492,13 +475,11 @@ const App: React.FC = () => {
               </div>
               <span className="text-xs font-bold uppercase">{language}</span>
             </button>
-            {isLangMenuOpen && (
-              <div className={`mt-2 rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                <button onClick={() => { setLanguage('uz'); setIsLangMenuOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
-                <button onClick={() => { setLanguage('ru'); setIsLangMenuOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
-                <button onClick={() => { setLanguage('en'); setIsLangMenuOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
-              </div>
-            )}
+            <div className={`mt-2 rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+              <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
+              <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
+              <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
+            </div>
           </div>
         </div>
         <div className={`p-6 border-t space-y-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
@@ -533,22 +514,33 @@ const App: React.FC = () => {
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Removed vibrant background blur */}
+        {/* Desktop Header - Hidden on Mobile */}
+        <DesktopHeader
+          theme={theme}
+          onThemeToggle={toggleTheme}
+          language={language}
+          onLanguageChange={setLanguage}
+          activeTab={activeTab}
+          isMobile={isMobile}
+          onNewTransactionClick={() => setIsTxModalOpen(true)}
+          userRole={userRole}
+        />
 
-        <header className={`h-20 flex items-center justify-between px-6 md:px-8 z-10 border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-800' : 'bg-white border-gray-200'
+        {/* Mobile Header - Hidden on Desktop */}
+        <header className={`h-20 flex items-center justify-between px-6 md:px-8 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'bg-[#1F2937] border-gray-800' : 'bg-white border-gray-200'
           }`}>
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className={`md:hidden ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            <button onClick={() => setIsSidebarOpen(true)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
               }`}><MenuIcon className="w-6 h-6" /></button>
             <div>
-              <h2 className={`text-xl md:text-2xl font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+              <h2 className={`text-xl font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
                 {activeTab === Tab.DASHBOARD && t.overview}
                 {activeTab === Tab.MAP && t.globalTracking}
                 {activeTab === Tab.DRIVERS && t.driversList}
                 {activeTab === Tab.FINANCE && t.financialReports}
               </h2>
-              <p className={`text-xs md:text-sm mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
                 {activeTab === Tab.DASHBOARD && t.descDashboard}
                 {activeTab === Tab.MAP && t.descMap}
@@ -557,46 +549,14 @@ const App: React.FC = () => {
               </p>
             </div>
           </div>
-
-          <div className="hidden md:flex gap-2 md:gap-3">
-            {/* Language Selector - Desktop Only */}
-            <div className="relative">
-              <button onClick={() => setIsLangMenuOpen(!isLangMenuOpen)} className={`flex items-center gap-2 border px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
-                ? 'bg-[#111827] hover:bg-gray-800 border-gray-700 text-gray-300'
-                : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600'
-                }`}>
-                <GlobeIcon className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase">{language}</span>
-              </button>
-              {isLangMenuOpen && (
-                <div className={`absolute top-full right-0 mt-2 w-32 rounded-xl shadow-xl overflow-hidden z-50 ${theme === 'dark'
-                  ? 'bg-[#1F2937] border border-gray-700'
-                  : 'bg-white border border-gray-200'
-                  }`}>
-                  <button onClick={() => { setLanguage('uz'); setIsLangMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
-                    }`}>O'zbek</button>
-                  <button onClick={() => { setLanguage('ru'); setIsLangMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
-                    }`}>Русский</button>
-                  <button onClick={() => { setLanguage('en'); setIsLangMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
-                    }`}>English</button>
-                </div>
-              )}
-            </div>
-          </div>
         </header>
 
-        {/* ACTION BUTTONS ROW */}
-        <div className={`flex items-center justify-between px-6 md:px-8 py-3 md:py-4 border-b sticky top-20 z-10 ${theme === 'dark' ? 'bg-[#111827] border-gray-800' : 'bg-[#F3F4F6] border-gray-200'
+        {/* ACTION BUTTONS ROW - Mobile Only */}
+        <div className={`flex items-center justify-between px-6 md:px-8 py-3 md:py-4 border-b sticky top-20 z-10 md:hidden ${theme === 'dark' ? 'bg-[#111827] border-gray-800' : 'bg-[#F3F4F6] border-gray-200'
           }`}>
           {activeTab === Tab.DRIVERS && userRole === 'admin' && (
             <>
-              <button onClick={() => setIsTelegramRegistrationOpen(true)} className={`flex items-center justify-center gap-2 border px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all w-full sm:w-auto ${theme === 'dark'
-                ? 'bg-blue-500 hover:bg-blue-600 border-transparent text-white'
-                : 'bg-blue-500 hover:bg-blue-600 border-transparent text-white shadow-sm'
-                }`}>
-                <span>🤖</span> <span>Telegram</span>
-              </button>
-              <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center justify-center gap-2 border px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all w-full sm:w-auto ${theme === 'dark'
+              <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center justify-center gap-2 border px-3 py-2 rounded-xl font-medium text-xs transition-all w-full sm:w-auto ${theme === 'dark'
                 ? 'bg-[#2D6A76] hover:bg-[#235560] border-transparent text-white'
                 : 'bg-[#2D6A76] hover:bg-[#235560] border-transparent text-white shadow-sm'
                 }`}>
@@ -606,7 +566,7 @@ const App: React.FC = () => {
           )}
 
           {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD) && userRole === 'admin' && (
-            <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
+            <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
               ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-900/20'
               : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-500/30'
               }`}>
@@ -867,28 +827,40 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {drivers.map(driver => (
                     <div key={driver.id} className={`rounded-2xl p-6 flex flex-col gap-4 transition-all group relative border ${theme === 'dark'
-                      ? 'bg-[#1F2937] border-gray-700 hover:bg-gray-800'
-                      : 'bg-white border-gray-200 hover:shadow-lg'
+                      ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
+                      : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
                       }`}>
-                      <div className="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
-                        <button onClick={(e) => {
-                          e.stopPropagation();
-                          if (userRole === 'admin') {
-                            handleEditDriverClick(driver);
-                          }
-                        }} className={`p-2 rounded-lg transition-colors ${userRole === 'admin'
-                          ? theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
-                          : 'text-gray-400 cursor-default'
-                          }`}>
-                          <EditIcon className="w-4 h-4" />
-                        </button>
-                        {userRole === 'admin' && (
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteDriver(driver.id); }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
-                            }`}>
+                      {/* Action Buttons - Edit & Delete */}
+                      {userRole === 'admin' && (
+                        <div className="absolute top-4 right-4 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDriverClick(driver);
+                            }} 
+                            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 active:scale-95 ${theme === 'dark'
+                              ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/10'
+                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                              }`}
+                            title="Edit driver"
+                          >
+                            <EditIcon className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleDeleteDriver(driver.id); 
+                            }} 
+                            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 active:scale-95 ${theme === 'dark'
+                              ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10'
+                              : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                              }`}
+                            title="Delete driver"
+                          >
                             <TrashIcon className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-4">
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#2D6A76]' : 'border-gray-200 group-hover:border-[#2D6A76]'
                           }`}>
@@ -976,28 +948,17 @@ const App: React.FC = () => {
                   </div>
                   {/* Driver Select */}
                   <div className="w-full md:w-64">
-                    <div className="flex items-center gap-2 mb-3">
-                      <UsersIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                      <span className={`text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.driver}</span>
-                    </div>
-                    <div className="relative">
-                      <select
-                        value={financeDriverFilter}
-                        onChange={(e) => setFinanceDriverFilter(e.target.value)}
-                        className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none appearance-none cursor-pointer transition-all ${theme === 'dark'
-                            ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
-                            : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
-                          }`}
-                        style={{
-                          backgroundImage: 'none'
-                        }}
-                      >
-                        <option value="all">{t.allDrivers}</option>
-                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
-                      <ChevronDownIcon className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        }`} />
-                    </div>
+                    <CustomSelect
+                      label={t.driver}
+                      value={financeDriverFilter}
+                      onChange={setFinanceDriverFilter}
+                      options={[
+                        { id: 'all', name: t.allDrivers },
+                        ...drivers.map(d => ({ id: d.id, name: d.name }))
+                      ]}
+                      theme={theme}
+                      icon={UsersIcon}
+                    />
                   </div>
                 </div>
                 <div className="hidden lg:block">
@@ -1171,16 +1132,6 @@ const App: React.FC = () => {
         theme={theme}
       />
 
-      {/* TELEGRAM REGISTRATION MODAL */}
-      {
-        isTelegramRegistrationOpen && (
-          <TelegramRegistration
-            drivers={drivers}
-            theme={theme}
-            onClose={() => setIsTelegramRegistrationOpen(false)}
-          />
-        )
-      }
     </div >
   );
 };

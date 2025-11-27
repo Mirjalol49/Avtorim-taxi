@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { XIcon, CameraIcon } from './Icons';
+import { XIcon, CameraIcon, SirenIcon } from './Icons';
+import CustomSelect from './CustomSelect';
 import { Driver, DriverStatus, Language } from '../types';
 import { TRANSLATIONS } from '../translations';
 
@@ -73,8 +74,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-      ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
-      : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
+    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
     }`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -120,26 +121,14 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               </div>
             </div>
             <div className="flex-1 space-y-4">
-              <div>
-                <label className={labelClass}>{t.status}</label>
-                <select
+              <div className="w-full">
+                <CustomSelect
+                  label={t.status}
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as DriverStatus)}
-                  className={inputClass}
-                >
-                  {Object.values(DriverStatus).map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>{t.imageUrl}</label>
-                <input
-                  type="text"
-                  value={avatar}
-                  onChange={(e) => setAvatar(e.target.value)}
-                  className={inputClass}
-                  placeholder="https://..."
+                  onChange={(val) => setStatus(val as DriverStatus)}
+                  options={Object.values(DriverStatus).map(s => ({ id: s, name: s }))}
+                  theme={theme}
+                  icon={SirenIcon}
                 />
               </div>
             </div>
