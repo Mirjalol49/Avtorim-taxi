@@ -75,25 +75,33 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                         ? 'bg-[#1F2937] border-gray-700'
                         : 'bg-white border-gray-200'
                         }`}>
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                            {/* All Drivers Option (if needed, usually passed as an option but handled here for specific styling if required) */}
-                            {options.map((option) => (
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar divide-y" style={{
+                            divideColor: theme === 'dark' ? '#374151' : '#E5E7EB'
+                        }}>
+                            {options.map((option, index) => (
                                 <button
                                     key={option.id}
                                     onClick={() => {
                                         onChange(option.id);
                                         setIsOpen(false);
                                     }}
-                                    className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-colors ${theme === 'dark'
-                                        ? 'hover:bg-gray-700 text-gray-200'
-                                        : 'hover:bg-gray-50 text-gray-700'
-                                        } ${value === option.id ? (theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50') : ''}`}
+                                    className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-all duration-150 ${
+                                        value === option.id
+                                            ? theme === 'dark'
+                                                ? 'bg-[#2D6A76] text-white font-semibold'
+                                                : 'bg-[#2D6A76] text-white font-semibold'
+                                            : theme === 'dark'
+                                            ? 'text-gray-200 hover:bg-gray-800'
+                                            : 'text-gray-700 hover:bg-gray-50'
+                                    }`}
                                 >
-                                    <span className={value === option.id ? 'font-semibold' : ''}>
+                                    <span className="flex-1">
                                         {option.name}
                                     </span>
                                     {value === option.id && (
-                                        <CheckIcon className="w-4 h-4 text-[#2D6A76]" />
+                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'}`}>
+                                            <CheckIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-white' : 'text-white'}`} />
+                                        </div>
                                     )}
                                 </button>
                             ))}

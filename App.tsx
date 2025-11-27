@@ -968,12 +968,6 @@ const App: React.FC = () => {
                     />
                   </div>
                 </div>
-                <div className="hidden lg:block">
-                  <button className={`p-3 rounded-xl transition-colors ${theme === 'dark' ? 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
-                    }`}>
-                    <DownloadIcon className="w-5 h-5" />
-                  </button>
-                </div>
               </div>
 
               {/* Stats Cards */}
@@ -1068,7 +1062,7 @@ const App: React.FC = () => {
                             </td>
                             <td className="px-6 py-4 text-right">
                               {userRole === 'admin' && (
-                                <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100 ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
                                   }`}>
                                   <TrashIcon className="w-4 h-4" />
                                 </button>
