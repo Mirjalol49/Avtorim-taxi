@@ -37,9 +37,15 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
     setDisplayAmount(formatNumberDisplay(rawValue));
   };
 
-  // Reset form when modal opens or drivers change
+  // Reset form when modal opens or closes
   useEffect(() => {
-    if (isOpen && drivers.length > 0) {
+    if (!isOpen) {
+      // Reset form when modal closes
+      setAmount('');
+      setDisplayAmount('');
+      setDescription('');
+      setType(TransactionType.INCOME);
+    } else if (isOpen && drivers.length > 0) {
       // Set default driver if none selected or current one is invalid
       if (!driverId || !drivers.find(d => d.id === driverId)) {
         setDriverId(drivers[0].id);
@@ -72,6 +78,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
       timestamp: Date.now(),
     });
     setAmount('');
+    setDisplayAmount('');
     setDescription('');
     setDriverId(''); // Reset driverId to empty string after submission
     onClose();

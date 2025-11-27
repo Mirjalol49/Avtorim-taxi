@@ -334,6 +334,19 @@ const App: React.FC = () => {
     setIsDriverModalOpen(true);
   };
 
+  const handleUpdateDriverStatus = async (driverId: string, newStatus: DriverStatus) => {
+    try {
+      // Update local state immediately for responsive UI
+      setDrivers(drivers.map(d => d.id === driverId ? { ...d, status: newStatus } : d));
+      // Persist to Firestore
+      await firestoreService.updateDriver(driverId, { status: newStatus });
+    } catch (error) {
+      console.error('Failed to update driver status:', error);
+      // Revert on error
+      setDrivers(drivers.map(d => d.id === driverId ? { ...d, status: d.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE } : d));
+    }
+  };
+
   const handleDeleteDriver = (id: string) => {
     setConfirmModal({
       isOpen: true,
@@ -864,13 +877,30 @@ const App: React.FC = () => {
                         <div className="min-w-0">
                           <h3 className={`font-bold text-lg truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h3>
                           <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-2 ${driver.status === DriverStatus.ACTIVE
-                            ? theme === 'dark' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 text-green-700 border border-green-200'
-                            : theme === 'dark' ? 'bg-gray-700 text-gray-400 border border-gray-600' : 'bg-gray-100 text-gray-500 border border-gray-200'
-                            }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${driver.status === DriverStatus.ACTIVE ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                            {driver.status === DriverStatus.ACTIVE ? t.active : t.inactive}
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateDriverStatus(driver.id, driver.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE);
+                            }}
+                            className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mt-3 ${
+                              driver.status === DriverStatus.ACTIVE
+                                ? 'bg-green-500'
+                                : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                            }`}
+                            role="switch"
+                            aria-checked={driver.status === DriverStatus.ACTIVE}
+                          >
+                            <span
+                              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${
+                                driver.status === DriverStatus.ACTIVE ? 'translate-x-7' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <p className={`text-xs font-semibold tracking-wider mt-1.5 ${
+                            driver.status === DriverStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
+                          }`}>
+                            {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
+                          </p>
                         </div>
                       </div>
 

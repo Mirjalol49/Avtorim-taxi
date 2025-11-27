@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { XIcon, CameraIcon, SirenIcon } from './Icons';
-import CustomSelect from './CustomSelect';
+import { XIcon, CameraIcon } from './Icons';
 import { Driver, DriverStatus, Language } from '../types';
 import { TRANSLATIONS } from '../translations';
 
@@ -34,12 +33,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setTelegram(editingDriver.telegram || '');
       setStatus(editingDriver.status);
     } else if (isOpen) {
-      // Reset for new driver
+      // Reset for new driver - keep avatar empty (optional)
       setName('');
       setLicensePlate('');
       setCarModel('');
       setPhone('');
-      setAvatar(`https://picsum.photos/100/100?random=${Date.now()}`);
+      setAvatar('');
       setTelegram('');
       setStatus(DriverStatus.OFFLINE);
     }
@@ -104,7 +103,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 }`}>{t.image}</label>
               <div className={`relative group w-24 h-24 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#2D6A76]' : 'bg-gray-50 border-gray-200 hover:border-[#2D6A76]'
                 }`}>
-                <img src={avatar || 'https://via.placeholder.com/100'} alt="Preview" className="w-full h-full object-cover" />
+                {avatar ? (
+                  <img src={avatar} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                    <CameraIcon className={`w-8 h-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                  </div>
+                )}
 
                 {/* Image Upload Overlay */}
                 <label htmlFor="driver-avatar-upload" className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]">
@@ -121,16 +126,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               </div>
             </div>
             <div className="flex-1 space-y-4">
-              <div className="w-full">
-                <CustomSelect
-                  label={t.status}
-                  value={status}
-                  onChange={(val) => setStatus(val as DriverStatus)}
-                  options={Object.values(DriverStatus).map(s => ({ id: s, name: s }))}
-                  theme={theme}
-                  icon={SirenIcon}
-                />
-              </div>
             </div>
           </div>
 
