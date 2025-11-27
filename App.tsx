@@ -538,6 +538,10 @@ const App: React.FC = () => {
           activeTab={activeTab}
           isMobile={isMobile}
           onNewTransactionClick={() => setIsTxModalOpen(true)}
+          onAddDriverClick={() => {
+            setEditingDriver(null);
+            setIsDriverModalOpen(true);
+          }}
           userRole={userRole}
         />
 

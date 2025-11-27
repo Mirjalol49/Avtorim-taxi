@@ -13,6 +13,7 @@ interface DesktopHeaderProps {
   activeTab: Tab;
   isMobile: boolean;
   onNewTransactionClick: () => void;
+  onAddDriverClick: () => void;
   userRole: 'admin' | 'viewer';
 }
 
@@ -24,6 +25,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   activeTab,
   isMobile,
   onNewTransactionClick,
+  onAddDriverClick,
   userRole
 }) => {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -83,6 +85,21 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
       {/* RIGHT SECTION - Controls and Actions */}
       <div className="flex items-center gap-3">
+        {/* ACTION BUTTON - Add Driver (Drivers) */}
+        {activeTab === Tab.DRIVERS && userRole === 'admin' && (
+          <button
+            onClick={onAddDriverClick}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+              theme === 'dark'
+                ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg shadow-blue-900/20'
+                : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg shadow-blue-500/30'
+            }`}
+          >
+            <PlusIcon className="w-4 h-4" />
+            <span>{t.add}</span>
+          </button>
+        )}
+
         {/* ACTION BUTTON - New Transaction (Finance/Dashboard) */}
         {(activeTab === Tab.DASHBOARD || activeTab === Tab.FINANCE) && userRole === 'admin' && (
           <button
