@@ -9,6 +9,8 @@ export interface Driver {
   licensePlate: string;
   carModel: string;
   status: DriverStatus;
+  dailyPlan: number;
+  dailySalary: number;
   avatar: string;
   telegram?: string;
   location: {

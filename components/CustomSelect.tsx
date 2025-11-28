@@ -26,10 +26,16 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     icon: Icon
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const selectedOption = options.find(opt => opt.id === value);
     const displayValue = selectedOption ? selectedOption.name : placeholder;
+
+    const filteredOptions = options.filter(opt =>
+        opt.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -41,6 +47,15 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (isOpen && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+        if (!isOpen) {
+            setSearchTerm(''); // Reset search when closed
+        }
+    }, [isOpen]);
 
     return (
         <div className="w-full" ref={dropdownRef}>
@@ -75,38 +90,59 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                         ? 'bg-[#1F2937] border-gray-700'
                         : 'bg-white border-gray-200'
                         }`}>
+
+                        {/* Search Input */}
+                        <div className={`p-2 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Search..."
+                                className={`w-full px-3 py-2 text-sm rounded-md outline-none transition-colors ${theme === 'dark'
+                                        ? 'bg-gray-800 text-white placeholder-gray-500 focus:bg-gray-700'
+                                        : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:bg-gray-100'
+                                    }`}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+
                         <div className="max-h-56 overflow-y-auto custom-scrollbar" style={{
                             divideColor: theme === 'dark' ? '#374151' : '#E5E7EB'
                         }}>
-                            {options.map((option, index) => (
-                                <button
-                                    key={option.id}
-                                    onClick={() => {
-                                        onChange(option.id);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm text-left transition-all duration-150 ${
-                                        index > 0 ? `border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}` : ''
-                                    } ${
-                                        value === option.id
-                                            ? theme === 'dark'
-                                                ? 'bg-[#2D6A76] text-white font-semibold'
-                                                : 'bg-[#2D6A76] text-white font-semibold'
-                                            : theme === 'dark'
-                                            ? 'text-gray-200 hover:bg-gray-800/60'
-                                            : 'text-gray-700 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <span className="flex-1 truncate">
-                                        {option.name}
-                                    </span>
-                                    {value === option.id && (
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ml-2 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'}`}>
-                                            <CheckIcon className={`w-3.5 h-3.5 text-white`} />
-                                        </div>
-                                    )}
-                                </button>
-                            ))}
+                            {filteredOptions.length > 0 ? (
+                                filteredOptions.map((option, index) => (
+                                    <button
+                                        key={option.id}
+                                        onClick={() => {
+                                            onChange(option.id);
+                                            setIsOpen(false);
+                                        }}
+                                        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm text-left transition-all duration-150 ${index > 0 ? `border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}` : ''
+                                            } ${value === option.id
+                                                ? theme === 'dark'
+                                                    ? 'bg-[#2D6A76] text-white font-semibold'
+                                                    : 'bg-[#2D6A76] text-white font-semibold'
+                                                : theme === 'dark'
+                                                    ? 'text-gray-200 hover:bg-gray-800/60'
+                                                    : 'text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        <span className="flex-1 truncate">
+                                            {option.name}
+                                        </span>
+                                        {value === option.id && (
+                                            <div className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ml-2 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'}`}>
+                                                <CheckIcon className={`w-3.5 h-3.5 text-white`} />
+                                            </div>
+                                        )}
+                                    </button>
+                                ))
+                            ) : (
+                                <div className={`px-3.5 py-4 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    No results found
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

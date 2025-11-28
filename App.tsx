@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon
+  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon
 } from './components/Icons';
 import MapView from './components/MapView';
 import FinancialModal from './components/FinancialModal';
@@ -40,6 +40,7 @@ const App: React.FC = () => {
   const [financeStartDate, setFinanceStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [financeEndDate, setFinanceEndDate] = useState(new Date());
   const [financePageNumber, setFinancePageNumber] = useState(1);
+  const [analyticsYear, setAnalyticsYear] = useState(new Date().getFullYear());
   const TRANSACTIONS_PER_PAGE = 10;
 
   // Firebase state - starts empty, will sync from cloud
@@ -62,6 +63,13 @@ const App: React.FC = () => {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [driverSearchQuery, setDriverSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
+  const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
+  const [dashboardViewMode, setDashboardViewMode] = useState<'chart' | 'grid'>('chart');
+  const [dashboardPage, setDashboardPage] = useState(1);
+  const [dashboardItemsPerPage] = useState(12);
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -321,7 +329,9 @@ const App: React.FC = () => {
             heading: 0
           },
           balance: 0,
-          rating: 5.0
+          rating: 5.0,
+          dailyPlan: data.dailyPlan || 750000,
+          dailySalary: data.dailySalary || 8000
         };
         await firestoreService.addDriver(newDriver);
       }
@@ -355,12 +365,20 @@ const App: React.FC = () => {
       message: t.deleteConfirmDriver,
       isDanger: true,
       action: async () => {
+        // Close modal immediately
+        closeConfirmModal();
+
+        // Optimistic update - remove from UI instantly
+        const previousDrivers = drivers;
+        setDrivers(drivers.filter(d => d.id !== id));
+
         try {
+          // Delete from Firestore in background
           await firestoreService.deleteDriver(id);
-          closeConfirmModal();
         } catch (error) {
           console.error('Failed to delete driver:', error);
-          closeConfirmModal();
+          // Revert on error
+          setDrivers(previousDrivers);
         }
       }
     });
@@ -403,29 +421,30 @@ const App: React.FC = () => {
   const monthlyAnalyticsData = useMemo(() => {
     const monthlyData: Record<string, { name: string; Income: number; Expense: number }> = {};
 
-    // Initialize last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
+    // Initialize all 12 months for the selected year
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(analyticsYear, i, 1);
+      const key = `${analyticsYear}-${i}`;
       const monthName = d.toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short' });
       monthlyData[key] = { name: monthName, Income: 0, Expense: 0 };
     }
 
     transactions.forEach(tx => {
       const d = new Date(tx.timestamp);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      if (monthlyData[key]) {
-        if (tx.type === TransactionType.INCOME) {
-          monthlyData[key].Income += tx.amount;
-        } else {
-          monthlyData[key].Expense += tx.amount;
+      if (d.getFullYear() === analyticsYear) {
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (monthlyData[key]) {
+          if (tx.type === TransactionType.INCOME) {
+            monthlyData[key].Income += tx.amount;
+          } else {
+            monthlyData[key].Expense += tx.amount;
+          }
         }
       }
     });
 
     return Object.values(monthlyData);
-  }, [transactions, language]);
+  }, [transactions, language, analyticsYear]);
 
   const filteredDrivers = useMemo(() => {
     if (!driverSearchQuery.trim()) return drivers;
@@ -436,6 +455,19 @@ const App: React.FC = () => {
       d.carModel.toLowerCase().includes(query)
     );
   }, [drivers, driverSearchQuery]);
+
+  // Pagination Logic
+  const paginatedDrivers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredDrivers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredDrivers, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredDrivers.length / itemsPerPage);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [driverSearchQuery]);
 
   // --- RENDER HELPERS ---
   const renderSidebarItem = (tab: Tab, label: string, Icon: React.FC<any>) => (
@@ -733,7 +765,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                     <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-blue-400 border-gray-700' : 'bg-blue-50 text-blue-500 border-blue-100'
+                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#2D6A76] border-gray-700' : 'bg-[#2D6A76]/10 text-[#2D6A76] border-[#2D6A76]/20'
                         }`}>
                         <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                       </div>
@@ -759,63 +791,204 @@ const App: React.FC = () => {
               {/* MIDDLE ROW: Chart - Full Width */}
               <div className={`w-full h-[300px] sm:h-[400px] md:h-[500px] p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                <h3 className={`text-sm sm:text-base md:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                  <LayoutDashboardIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                  {t.incomeVsExpense}
-                </h3>
-                <div className="flex-1 -mx-2 sm:mx-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} barSize={20} margin={{ left: 0, right: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'}
-                        axisLine={false}
-                        tickLine={false}
-                        dy={10}
-                        fontSize={11}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis
-                        stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'}
-                        axisLine={false}
-                        tickLine={false}
-                        dx={-10}
-                        fontSize={10}
-                        tickFormatter={(value) => {
-                          if (value >= 1000000000) {
-                            return `${(value / 1000000000).toFixed(1)}${language === 'en' ? 'B' : 'mlrd'}`;
-                          }
-                          if (value >= 1000000) {
-                            return `${(value / 1000000).toFixed(1)}${language === 'en' ? 'M' : 'mln'}`;
-                          }
-                          if (value >= 1000) {
-                            return `${(value / 1000).toFixed(0)}k`;
-                          }
-                          return value;
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: theme === 'dark' ? '#1F2937' : '#FFFFFF',
-                          border: `1px solid ${theme === 'dark' ? '#374151' : '#E5E7EB'}`,
-                          borderRadius: '12px',
-                          color: theme === 'dark' ? '#FFFFFF' : '#111827',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                          fontSize: '12px'
-                        }}
-                        cursor={{ fill: theme === 'dark' ? '#374151' : '#F3F4F6', opacity: 0.5 }}
-                        itemStyle={{ fontSize: '12px', fontWeight: 600 }}
-                        formatter={(value: number) => value.toLocaleString()}
-                      />
-                      <Bar dataKey="Income" name={t.income} fill="#2D6A76" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="Expense" name={t.expense} fill="#EF4444" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                    <LayoutDashboardIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                    {t.incomeVsExpense}
+                  </h3>
+
+                  {/* View Toggle */}
+                  <div className={`flex items-center p-1.5 rounded-xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                    <button
+                      onClick={() => setDashboardViewMode('chart')}
+                      className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'chart'
+                        ? 'bg-[#2D6A76] text-white shadow-md'
+                        : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                    >
+                      <LayoutDashboardIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDashboardViewMode('grid')}
+                      className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'grid'
+                        ? 'bg-[#2D6A76] text-white shadow-md'
+                        : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                    >
+                      <GridIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  {dashboardViewMode === 'chart' ? (
+                    <div className="-mx-2 sm:mx-0 h-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} barSize={20} margin={{ left: 0, right: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
+                          <XAxis
+                            dataKey="name"
+                            stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'}
+                            axisLine={false}
+                            tickLine={false}
+                            dy={10}
+                            fontSize={11}
+                            interval={0}
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                          />
+                          <YAxis
+                            stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'}
+                            axisLine={false}
+                            tickLine={false}
+                            dx={-10}
+                            fontSize={10}
+                            tickFormatter={(value) => {
+                              if (value >= 1000000000) {
+                                return `${(value / 1000000000).toFixed(1)}${language === 'en' ? 'B' : 'mlrd'}`;
+                              }
+                              if (value >= 1000000) {
+                                return `${(value / 1000000).toFixed(1)}${language === 'en' ? 'M' : 'mln'}`;
+                              }
+                              if (value >= 1000) {
+                                return `${(value / 1000).toFixed(0)}k`;
+                              }
+                              return value;
+                            }}
+                          />
+                          <Tooltip
+                            cursor={{ fill: theme === 'dark' ? 'rgba(55, 65, 81, 0.3)' : 'rgba(229, 231, 235, 0.3)' }}
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                return (
+                                  <div className={`p-3 rounded-xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                                    <p className={`text-sm font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{label}</p>
+                                    {payload.map((entry: any, index: number) => (
+                                      <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                                          {entry.dataKey === 'Income' ? t.income : t.expense}:
+                                        </span>
+                                        <span className={`text-sm font-bold ${entry.dataKey === 'Income' ? 'text-[#2D6A76]' : 'text-red-500'}`}>
+                                          {entry.value.toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="Income" fill="#2D6A76" radius={[8, 8, 0, 0]} />
+                          <Bar dataKey="Expense" fill="#EF4444" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col">
+                      {(() => {
+                        const startIndex = (dashboardPage - 1) * dashboardItemsPerPage;
+                        const paginatedData = chartData.slice(startIndex, startIndex + dashboardItemsPerPage);
+                        const totalPages = Math.ceil(chartData.length / dashboardItemsPerPage);
+
+                        return (
+                          <>
+                            <div className="flex-1 overflow-y-auto overflow-x-hidden pr-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
+                                {paginatedData.map((data, idx) => {
+                                  const driver = drivers.find(d => d.name.split(' ')[0] === data.name);
+                                  const profit = data.Income - data.Expense;
+
+                                  return (
+                                    <div key={idx} className={`p-5 rounded-xl border-2 transition-all hover:shadow-lg ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50 hover:border-[#2D6A76]' : 'bg-white border-gray-200 hover:border-[#2D6A76]'}`}>
+                                      <div className="flex items-center gap-3 mb-4">
+                                        {driver && (
+                                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#2D6A76] flex-shrink-0">
+                                            <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
+                                          </div>
+                                        )}
+                                        <div className="min-w-0">
+                                          <h4 className={`font-bold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.name}</h4>
+                                          {driver && <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>}
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.income}</span>
+                                          <span className="text-sm font-bold text-[#2D6A76]">+{data.Income.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                          <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.expense}</span>
+                                          <span className="text-sm font-bold text-red-500">-{data.Expense.toLocaleString()}</span>
+                                        </div>
+                                        <div className={`pt-2 mt-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                                          <div className="flex items-center justify-between">
+                                            <span className={`text-xs font-bold uppercase ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.netProfit}</span>
+                                            <span className={`text-base font-black ${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                              {profit > 0 ? '+' : ''}{profit.toLocaleString()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Pagination - Fixed at bottom */}
+                            {totalPages > 1 && (
+                              <div className="flex justify-center items-center gap-2 pt-4 border-t border-gray-700">
+                                <button
+                                  onClick={() => setDashboardPage(p => Math.max(1, p - 1))}
+                                  disabled={dashboardPage === 1}
+                                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${dashboardPage === 1
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    } ${theme === 'dark' ? 'text-white' : 'text-gray-600'}`}
+                                >
+                                  <ChevronLeftIcon className="w-4 h-4" />
+                                  {t.previous}
+                                </button>
+
+                                <div className="flex items-center gap-2">
+                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+                                    <button
+                                      key={pageNum}
+                                      onClick={() => setDashboardPage(pageNum)}
+                                      className={`w-10 h-10 rounded-xl font-semibold transition-all ${dashboardPage === pageNum
+                                        ? 'bg-[#2D6A76] text-white shadow-md'
+                                        : theme === 'dark'
+                                          ? 'text-gray-300 hover:bg-gray-800'
+                                          : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <button
+                                  onClick={() => setDashboardPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={dashboardPage === totalPages}
+                                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${dashboardPage === totalPages
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    } ${theme === 'dark' ? 'text-white' : 'text-gray-600'}`}
+                                >
+                                  {t.next}
+                                  <ChevronRightIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -912,109 +1085,288 @@ const App: React.FC = () => {
           {/* DRIVERS */}
           {activeTab === Tab.DRIVERS && (
             <>
-              {/* Search Bar */}
-              <div className={`mb-6 p-4 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+              {/* Search Bar & View Toggle */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className={`flex-1 p-4 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                    </div>
+                    <input
+                      type="text"
+                      className={`block w-full pl-10 pr-3 py-3 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D6A76] focus:border-[#2D6A76] sm:text-sm transition-colors ${theme === 'dark'
+                        ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
+                        : 'bg-gray-50 border-gray-200 text-gray-900'
+                        }`}
+                      placeholder={t.searchDriverPlaceholder}
+                      value={driverSearchQuery}
+                      onChange={(e) => setDriverSearchQuery(e.target.value)}
+                    />
                   </div>
-                  <input
-                    type="text"
-                    className={`block w-full pl-10 pr-3 py-3 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D6A76] focus:border-[#2D6A76] sm:text-sm transition-colors ${theme === 'dark'
-                      ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-gray-50 border-gray-200 text-gray-900'
+                </div>
+
+                {/* View Toggle */}
+                <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-3 rounded-xl transition-all ${viewMode === 'grid'
+                      ? 'bg-[#2D6A76] text-white shadow-md'
+                      : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                       }`}
-                    placeholder={t.searchDriverPlaceholder}
-                    value={driverSearchQuery}
-                    onChange={(e) => setDriverSearchQuery(e.target.value)}
-                  />
+                  >
+                    <GridIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-3 rounded-xl transition-all ${viewMode === 'list'
+                      ? 'bg-[#2D6A76] text-white shadow-md'
+                      : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                  >
+                    <ListIcon className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
               {filteredDrivers.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredDrivers.map(driver => (
-                    <div key={driver.id} className={`rounded-2xl p-6 flex flex-col gap-4 transition-all group relative border ${theme === 'dark'
-                      ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
-                      : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
-                      }`}>
-                      <div className="flex items-center gap-4">
-                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#2D6A76]' : 'border-gray-200 group-hover:border-[#2D6A76]'
+                <>
+                  {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {paginatedDrivers.map(driver => (
+                        <div key={driver.id} className={`rounded-2xl p-6 flex flex-col gap-4 transition-all group relative border ${theme === 'dark'
+                          ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
+                          : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
                           }`}>
-                          <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className={`font-bold text-lg truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h3>
-                          <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateDriverStatus(driver.id, driver.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE);
-                            }}
-                            className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mt-3 ${driver.status === DriverStatus.ACTIVE
-                              ? 'bg-green-500'
-                              : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
-                              }`}
-                            role="switch"
-                            aria-checked={driver.status === DriverStatus.ACTIVE}
-                          >
-                            <span
-                              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${driver.status === DriverStatus.ACTIVE ? 'translate-x-7' : 'translate-x-0'
-                                }`}
-                            />
-                          </button>
-                          <p className={`text-xs font-semibold tracking-wider mt-1.5 ${driver.status === DriverStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
-                            }`}>
-                            {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
-                          </p>
-                        </div>
-                      </div>
+                          <div className="flex items-center gap-4">
+                            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#2D6A76]' : 'border-gray-200 group-hover:border-[#2D6A76]'
+                              }`}>
+                              <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className={`font-bold text-lg truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h3>
+                              <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
+                              {userRole === 'admin' ? (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateDriverStatus(driver.id, driver.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE);
+                                    }}
+                                    className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mt-3 ${driver.status === DriverStatus.ACTIVE
+                                      ? 'bg-green-500'
+                                      : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                                      }`}
+                                    role="switch"
+                                    aria-checked={driver.status === DriverStatus.ACTIVE}
+                                  >
+                                    <span
+                                      className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${driver.status === DriverStatus.ACTIVE ? 'translate-x-7' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <p className={`text-xs font-semibold tracking-wider mt-1.5 ${driver.status === DriverStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
+                                    }`}>
+                                    {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
+                                  </p>
+                                </>
+                              ) : (
+                                <div className="mt-3">
+                                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${driver.status === DriverStatus.ACTIVE
+                                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                    : theme === 'dark'
+                                      ? 'bg-gray-700 text-gray-400 border border-gray-600'
+                                      : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                    }`}>
+                                    {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
-                      <div className={`grid grid-cols-2 gap-4 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                        <div>
-                          <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>License Plate</p>
-                          <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.licensePlate}</p>
-                        </div>
-                        <div>
-                          <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Phone</p>
-                          <p className={`font-bold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.phone}</p>
-                        </div>
-                      </div>
+                          <div className={`grid grid-cols-2 gap-4 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                            <div>
+                              <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>License Plate</p>
+                              <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.licensePlate}</p>
+                            </div>
+                            <div>
+                              <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Phone</p>
+                              <p className={`font-bold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.phone}</p>
+                            </div>
+                          </div>
 
-                      {/* Action Buttons - Bottom Section */}
-                      {userRole === 'admin' && (
-                        <div className={`flex gap-2 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDriverClick(driver);
-                            }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
-                              ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20'
-                              : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
-                              }`}
-                          >
-                            <EditIcon className="w-4 h-4" />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteDriver(driver.id);
-                            }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
-                              ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
-                              : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                              }`}
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                            <span>Delete</span>
-                          </button>
+                          {/* Action Buttons - Bottom Section */}
+                          {userRole === 'admin' && (
+                            <div className={`flex gap-2 pt-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditDriverClick(driver);
+                                }}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
+                                  ? 'bg-[#2D6A76]/10 text-[#2D6A76] hover:bg-[#2D6A76]/20 border border-[#2D6A76]/20'
+                                  : 'bg-[#2D6A76]/10 text-[#2D6A76] hover:bg-[#2D6A76]/20 border border-[#2D6A76]/20'
+                                  }`}
+                              >
+                                <EditIcon className="w-4 h-4" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDriver(driver.id);
+                                }}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
+                                  ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                                  : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                                  }`}
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <div className={`rounded-2xl border overflow-hidden shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className={`${theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'} text-xs uppercase tracking-wider`}>
+                              <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t.driver}</th>
+                              <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t.car}</th>
+                              <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t.status}</th>
+                              {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 text-center">{t.actions}</th>}
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                            {paginatedDrivers.map(driver => (
+                              <tr key={driver.id} className={`group transition-colors ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600">
+                                      <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div>
+                                      <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
+                                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{driver.phone}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4">
+                                  <p className={`font-medium text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{driver.carModel}</p>
+                                  <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{driver.licensePlate}</p>
+                                </td>
+                                <td className="p-4">
+                                  {userRole === 'admin' ? (
+                                    <div className="flex flex-col items-start gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleUpdateDriverStatus(driver.id, driver.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE);
+                                        }}
+                                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${driver.status === DriverStatus.ACTIVE
+                                          ? 'bg-green-500'
+                                          : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                                          }`}
+                                        role="switch"
+                                        aria-checked={driver.status === DriverStatus.ACTIVE}
+                                      >
+                                        <span
+                                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${driver.status === DriverStatus.ACTIVE ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                      </button>
+                                      <span className={`text-xs font-semibold tracking-wider ${driver.status === DriverStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+                                        {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${driver.status === DriverStatus.ACTIVE
+                                        ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                        : theme === 'dark'
+                                          ? 'bg-gray-700 text-gray-400 border border-gray-600'
+                                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                      }`}>
+                                      {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
+                                    </span>
+                                  )}
+                                </td>
+                                {userRole === 'admin' && (
+                                  <td className="p-4">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleEditDriverClick(driver); }}
+                                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-[#2D6A76] hover:bg-[#2D6A76]/10' : 'text-[#2D6A76] hover:bg-[#2D6A76]/10'}`}
+                                      >
+                                        <EditIcon className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteDriver(driver.id); }}
+                                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'}`}
+                                      >
+                                        <TrashIcon className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-8">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${currentPage === 1
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                          } ${theme === 'dark' ? 'text-white' : 'text-gray-600'}`}
+                      >
+                        <ChevronLeftIcon className="w-4 h-4" />
+                        {t.previous}
+                      </button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-2">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-10 h-10 rounded-xl font-semibold transition-all ${currentPage === pageNum
+                              ? 'bg-[#2D6A76] text-white shadow-md'
+                              : theme === 'dark'
+                                ? 'text-gray-300 hover:bg-gray-800'
+                                : 'text-gray-600 hover:bg-gray-100'
+                              }`}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${currentPage === totalPages
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                          } ${theme === 'dark' ? 'text-white' : 'text-gray-600'}`}
+                      >
+                        {t.next}
+                        <ChevronRightIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className={`flex flex-col items-center justify-center h-64 rounded-2xl border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
                   <div className={`p-4 rounded-full mb-4 ${theme === 'dark' ? 'bg-gray-800 text-gray-600' : 'bg-gray-50 text-gray-400'}`}>
@@ -1043,11 +1395,34 @@ const App: React.FC = () => {
               {/* Monthly Analytics Chart */}
               <div className={`w-full h-[300px] sm:h-[400px] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                <h3 className={`text-sm sm:text-base md:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                  <BanknoteIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                  {t.monthlyAnalytics}
-                </h3>
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                    <BanknoteIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                    {t.monthlyAnalytics}
+                  </h3>
+
+                  {/* Year Selector */}
+                  <div className="w-32">
+                    <CustomSelect
+                      label=""
+                      value={analyticsYear.toString()}
+                      onChange={(val) => setAnalyticsYear(parseInt(val))}
+                      options={(() => {
+                        const currentYear = new Date().getFullYear();
+                        const startYear = 2024; // App launch year
+                        const years = [];
+                        // Generate years from startYear to currentYear + 1
+                        for (let y = startYear; y <= currentYear + 1; y++) {
+                          years.push({ id: y.toString(), name: y.toString() });
+                        }
+                        return years.reverse(); // Show newest first
+                      })()}
+                      theme={theme}
+                      icon={CalendarIcon}
+                    />
+                  </div>
+                </div>
                 <div className="flex-1 -mx-2 sm:mx-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyAnalyticsData} barSize={30} margin={{ left: 0, right: 10 }}>
@@ -1132,7 +1507,7 @@ const App: React.FC = () => {
                         onChange={setFinanceDriverFilter}
                         options={[
                           { id: 'all', name: t.allDrivers },
-                          ...drivers.filter(d => d.status === DriverStatus.ACTIVE).map(d => ({ id: d.id, name: d.name }))
+                          ...drivers.map(d => ({ id: d.id, name: d.name }))
                         ]}
                         theme={theme}
                         icon={UsersIcon}
@@ -1144,6 +1519,39 @@ const App: React.FC = () => {
 
               {/* Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {/* Bulk Delete Button */}
+                {selectedTransactions.length > 0 && (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <button
+                      onClick={() => {
+                        setConfirmModal({
+                          isOpen: true,
+                          title: t.confirmDeleteTitle,
+                          message: `Are you sure you want to delete ${selectedTransactions.length} transaction(s)?`,
+                          isDanger: true,
+                          action: async () => {
+                            closeConfirmModal();
+                            const previousTransactions = transactions;
+                            setTransactions(transactions.filter(t => !selectedTransactions.includes(t.id)));
+                            setSelectedTransactions([]);
+
+                            try {
+                              await Promise.all(selectedTransactions.map(id => firestoreService.deleteTransaction(id)));
+                            } catch (error) {
+                              console.error('Failed to delete transactions:', error);
+                              setTransactions(previousTransactions);
+                            }
+                          }
+                        });
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all shadow-md"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                      Delete {selectedTransactions.length} selected
+                    </button>
+                  </div>
+                )}
+
                 {/* Total Income - Primary Card */}
                 <div className="bg-[#2D6A76] p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg text-white relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -1204,9 +1612,25 @@ const App: React.FC = () => {
                 }`}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left min-w-[800px]">
-                    <thead className={`border-b ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'
-                      }`}>
-                      <tr>
+                    <thead className={`border-b ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                      <tr className={`${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                        <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedTransactions.length === financeFilteredData.length && financeFilteredData.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTransactions(financeFilteredData.map(t => t.id));
+                              } else {
+                                setSelectedTransactions([]);
+                              }
+                            }}
+                            className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
+                              ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
+                              : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
+                              }`}
+                          />
+                        </th>
                         <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.time}</th>
                         <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.driver}</th>
                         <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.comment}</th>
@@ -1223,7 +1647,7 @@ const App: React.FC = () => {
                         if (paginatedData.length === 0 && financeFilteredData.length === 0) {
                           return (
                             <tr>
-                              <td colSpan={5} className={`px-6 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                              <td colSpan={6} className={`px-6 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 {t.noTransactions}
                               </td>
                             </tr>
@@ -1235,6 +1659,24 @@ const App: React.FC = () => {
                           return (
                             <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'
                               }`}>
+                              <td className="px-6 py-4">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTransactions.includes(tx.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTransactions([...selectedTransactions, tx.id]);
+                                    } else {
+                                      setSelectedTransactions(selectedTransactions.filter(id => id !== tx.id));
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
+                                    ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                    : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
+                                    }`}
+                                />
+                              </td>
                               <td className="px-6 py-4">
                                 <div className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                 <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{new Date(tx.timestamp).toLocaleDateString()}</div>

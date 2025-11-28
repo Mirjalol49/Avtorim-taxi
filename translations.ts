@@ -100,7 +100,11 @@ export const TRANSLATIONS = {
     analytics: "Analitika",
     monthlyAnalytics: "Oylik Analitika",
     searchDriverPlaceholder: "Haydovchini qidirish (Ism, Raqam, Mashina)...",
-    noDriversFound: "Haydovchilar topilmadi"
+    noDriversFound: "Haydovchilar topilmadi",
+    // Driver Finance
+    dailyPlan: "Kunlik Plan",
+    dailySalary: "Kunlik Oylik",
+    netDue: "Sof To'lov"
   },
   ru: {
     dashboard: "Панель управления",
@@ -201,7 +205,11 @@ export const TRANSLATIONS = {
     analytics: "Аналитика",
     monthlyAnalytics: "Ежемесячная аналитика",
     searchDriverPlaceholder: "Поиск водителя (Имя, Номер, Авто)...",
-    noDriversFound: "Водители не найдены"
+    noDriversFound: "Водители не найдены",
+    // Driver Finance
+    dailyPlan: "Ежедневный план",
+    dailySalary: "Ежедневная зарплата",
+    netDue: "К оплате"
   },
   en: {
     dashboard: "Dashboard",
@@ -302,6 +310,10 @@ export const TRANSLATIONS = {
     analytics: "Analytics",
     monthlyAnalytics: "Monthly Analytics",
     searchDriverPlaceholder: "Search driver (Name, Plate, Car)...",
-    noDriversFound: "No drivers found"
+    noDriversFound: "No drivers found",
+    // Driver Finance
+    dailyPlan: "Daily Plan",
+    dailySalary: "Daily Salary",
+    netDue: "Net Due"
   }
 };

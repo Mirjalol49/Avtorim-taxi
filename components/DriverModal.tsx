@@ -75,23 +75,23 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const formatPhoneNumber = (value: string) => {
     // Remove all non-digit characters
     const digits = value.replace(/\D/g, '');
-    
+
     // Always start with +998 (Uzbekistan country code)
     // Uzbek phone format: +998 XX XXX XX XX (9 digits after country code)
-    
+
     if (digits.length === 0) {
       return '+998 ';
     }
-    
+
     // Remove leading 998 if user typed it
     let phoneDigits = digits;
     if (phoneDigits.startsWith('998')) {
       phoneDigits = phoneDigits.slice(3);
     }
-    
+
     // Ensure we only have max 9 digits
     phoneDigits = phoneDigits.slice(0, 9);
-    
+
     // Format based on length: +998 XX XXX XX XX
     if (phoneDigits.length === 0) {
       return '+998 ';
