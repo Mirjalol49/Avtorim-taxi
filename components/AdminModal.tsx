@@ -50,8 +50,8 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, adminData, onU
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-      ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
-      : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
+    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#2D6A76] placeholder-gray-500'
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#2D6A76] placeholder-gray-400'
     } ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -96,17 +96,6 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, adminData, onU
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>{t.imageUrl}</label>
-            <input
-              type="text"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              disabled={isReadOnly}
-              className={inputClass}
-              placeholder="https://..."
-            />
-          </div>
 
           <div>
             <label className={labelClass}>{t.name}</label>

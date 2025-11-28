@@ -1209,7 +1209,7 @@ const App: React.FC = () => {
                                   }`}
                               >
                                 <EditIcon className="w-4 h-4" />
-                                <span>Edit</span>
+                                <span>{t.edit}</span>
                               </button>
                               <button
                                 onClick={(e) => {
@@ -1222,7 +1222,7 @@ const App: React.FC = () => {
                                   }`}
                               >
                                 <TrashIcon className="w-4 h-4" />
-                                <span>Delete</span>
+                                <span>{t.delete}</span>
                               </button>
                             </div>
                           )}
@@ -1285,10 +1285,10 @@ const App: React.FC = () => {
                                     </div>
                                   ) : (
                                     <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${driver.status === DriverStatus.ACTIVE
-                                        ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
-                                        : theme === 'dark'
-                                          ? 'bg-gray-700 text-gray-400 border border-gray-600'
-                                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                      ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                      : theme === 'dark'
+                                        ? 'bg-gray-700 text-gray-400 border border-gray-600'
+                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
                                       }`}>
                                       {driver.status === DriverStatus.ACTIVE ? t.active : t.offline}
                                     </span>
