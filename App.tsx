@@ -15,6 +15,7 @@ import NumberTooltip from './components/NumberTooltip';
 import DateFilter from './components/DateFilter';
 import DatePicker from './components/DatePicker';
 import CustomSelect from './components/CustomSelect';
+import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
@@ -446,6 +447,30 @@ const App: React.FC = () => {
     return Object.values(monthlyData);
   }, [transactions, language, analyticsYear]);
 
+  // Yearly Analytics Totals
+  const yearlyAnalyticsTotals = useMemo(() => {
+    let yearlyIncome = 0;
+    let yearlyExpense = 0;
+
+    transactions.forEach(tx => {
+      const d = new Date(tx.timestamp);
+      if (d.getFullYear() === analyticsYear) {
+        if (tx.type === TransactionType.INCOME) {
+          yearlyIncome += tx.amount;
+        } else {
+          yearlyExpense += tx.amount;
+        }
+      }
+    });
+
+    return {
+      income: yearlyIncome,
+      expense: yearlyExpense,
+      netProfit: yearlyIncome - yearlyExpense
+    };
+  }, [transactions, analyticsYear]);
+
+
   const filteredDrivers = useMemo(() => {
     if (!driverSearchQuery.trim()) return drivers;
     const query = driverSearchQuery.toLowerCase();
@@ -546,6 +571,7 @@ const App: React.FC = () => {
           {renderSidebarItem(Tab.DASHBOARD, t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem(Tab.MAP, t.liveMap, MapIcon)}
           {renderSidebarItem(Tab.DRIVERS, t.driversList, UsersIcon)}
+          {renderSidebarItem(Tab.TRANSACTIONS, t.transactions, ListIcon)}
           {renderSidebarItem(Tab.FINANCE, t.analytics, BanknoteIcon)}
         </nav>
 
@@ -649,6 +675,7 @@ const App: React.FC = () => {
                 {activeTab === Tab.MAP && t.globalTracking}
                 {activeTab === Tab.DRIVERS && t.driversList}
                 {activeTab === Tab.FINANCE && t.analytics}
+                {activeTab === Tab.TRANSACTIONS && t.transactions}
               </h2>
               <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
@@ -656,6 +683,7 @@ const App: React.FC = () => {
                 {activeTab === Tab.MAP && t.descMap}
                 {activeTab === Tab.DRIVERS && t.descDrivers}
                 {activeTab === Tab.FINANCE && t.descFinance}
+                {activeTab === Tab.TRANSACTIONS && t.descTransactions}
               </p>
             </div>
           </div>
@@ -675,7 +703,7 @@ const App: React.FC = () => {
             </>
           )}
 
-          {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD) && userRole === 'admin' && (
+          {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD || activeTab === Tab.TRANSACTIONS) && userRole === 'admin' && (
             <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
               ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-900/20'
               : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-500/30'
@@ -721,7 +749,7 @@ const App: React.FC = () => {
                     <div>
                       <NumberTooltip value={totalIncome} label={t.totalIncome} theme={theme}>
                         <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
-                          {formatNumberSmart(totalIncome, isMobile)}
+                          {formatNumberSmart(totalIncome, isMobile, language)}
                         </h3>
                       </NumberTooltip>
                       <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
@@ -732,7 +760,7 @@ const App: React.FC = () => {
                 {/* Expense - Secondary Card (White/Dark) */}
                 <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
                   }`}>
-                  <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
                     <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
@@ -748,7 +776,7 @@ const App: React.FC = () => {
                       <NumberTooltip value={totalExpense} label={t.totalExpense} theme={theme}>
                         <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                           }`}>
-                          {formatNumberSmart(totalExpense, isMobile)}
+                          {formatNumberSmart(totalExpense, isMobile, language)}
                         </h3>
                       </NumberTooltip>
                       <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
@@ -760,8 +788,8 @@ const App: React.FC = () => {
                 {/* Net Profit - Secondary Card (White/Dark) */}
                 <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
                   }`}>
-                  <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+                  <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
+                    <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:w-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                     <div className="flex items-center gap-2">
@@ -778,7 +806,7 @@ const App: React.FC = () => {
                           ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
                           : theme === 'dark' ? 'text-red-400' : 'text-red-600'
                           }`}>
-                          {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile)}
+                          {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, language)}
                         </h3>
                       </NumberTooltip>
                       <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
@@ -1390,8 +1418,93 @@ const App: React.FC = () => {
 
           {/* FINANCE & FILTER COMPONENT */}
           {/* FINANCE & FILTER COMPONENT */}
+          {/* FINANCE (ANALYTICS) COMPONENT */}
           {(activeTab === Tab.FINANCE) && (
             <div className="space-y-6">
+              {/* Yearly Stats Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {/* Yearly Income */}
+                <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
+                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
+                  </div>
+                  <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
+                        <TrendingUpIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                      </div>
+                      <p className="text-[10px] sm:text-[10px] md:text-[11px] text-teal-100/80 font-bold uppercase tracking-wide">{analyticsYear} {t.totalIncome}</p>
+                    </div>
+                    <div>
+                      <NumberTooltip value={yearlyAnalyticsTotals.income} label={`${analyticsYear} ${t.totalIncome}`} theme={theme}>
+                        <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
+                          {formatNumberSmart(yearlyAnalyticsTotals.income, isMobile, language)}
+                        </h3>
+                      </NumberTooltip>
+                      <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Yearly Expense */}
+                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
+                  }`}>
+                  <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
+                    <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+                  </div>
+                  <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'
+                        }`}>
+                        <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                      </div>
+                      <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                        }`}>{analyticsYear} {t.totalExpense}</p>
+                    </div>
+                    <div>
+                      <NumberTooltip value={yearlyAnalyticsTotals.expense} label={`${analyticsYear} ${t.totalExpense}`} theme={theme}>
+                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                          {formatNumberSmart(yearlyAnalyticsTotals.expense, isMobile, language)}
+                        </h3>
+                      </NumberTooltip>
+                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        }`}>UZS</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Yearly Net Profit */}
+                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
+                  }`}>
+                  <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
+                    <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+                  </div>
+                  <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#2D6A76] border-gray-700' : 'bg-[#2D6A76]/10 text-[#2D6A76] border-[#2D6A76]/20'
+                        }`}>
+                        <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                      </div>
+                      <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                        }`}>{analyticsYear} {t.netProfit}</p>
+                    </div>
+                    <div>
+                      <NumberTooltip value={yearlyAnalyticsTotals.netProfit} label={`${analyticsYear} ${t.netProfit}`} theme={theme}>
+                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${yearlyAnalyticsTotals.netProfit >= 0
+                          ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+                          : theme === 'dark' ? 'text-red-400' : 'text-red-600'
+                          }`}>
+                          {yearlyAnalyticsTotals.netProfit > 0 ? '+' : ''}{formatNumberSmart(yearlyAnalyticsTotals.netProfit, isMobile, language)}
+                        </h3>
+                      </NumberTooltip>
+                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        }`}>UZS</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Monthly Analytics Chart */}
               <div className={`w-full h-[300px] sm:h-[400px] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
@@ -1403,25 +1516,13 @@ const App: React.FC = () => {
                   </h3>
 
                   {/* Year Selector */}
-                  <div className="w-32">
-                    <CustomSelect
-                      label=""
-                      value={analyticsYear.toString()}
-                      onChange={(val) => setAnalyticsYear(parseInt(val))}
-                      options={(() => {
-                        const currentYear = new Date().getFullYear();
-                        const startYear = 2024; // App launch year
-                        const years = [];
-                        // Generate years from startYear to currentYear + 1
-                        for (let y = startYear; y <= currentYear + 1; y++) {
-                          years.push({ id: y.toString(), name: y.toString() });
-                        }
-                        return years.reverse(); // Show newest first
-                      })()}
-                      theme={theme}
-                      icon={CalendarIcon}
-                    />
-                  </div>
+                  <YearSelector
+                    selectedYear={analyticsYear}
+                    onYearChange={setAnalyticsYear}
+                    theme={theme}
+                    startYear={new Date().getFullYear()}
+                    endYear={new Date().getFullYear() + 10}
+                  />
                 </div>
                 <div className="flex-1 -mx-2 sm:mx-0">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1474,139 +1575,84 @@ const App: React.FC = () => {
                   </ResponsiveContainer>
                 </div>
               </div>
+            </div>
+          )}
 
+          {/* TRANSACTIONS COMPONENT */}
+          {(activeTab === Tab.TRANSACTIONS) && (
+            <div className="space-y-6">
               {/* Filters */}
-              <div className={`p-4 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+              <div className={`p-4 rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                <div className="flex flex-col gap-4">
-                  {/* Desktop: 3-column grid, Mobile/Tablet: Stack vertically */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-                    {/* Start Date */}
-                    <div className="w-full">
-                      <DatePicker
-                        label={t.fromDate}
-                        value={financeStartDate}
-                        onChange={setFinanceStartDate}
-                        theme={theme}
-                      />
-                    </div>
-                    {/* End Date */}
-                    <div className="w-full">
-                      <DatePicker
-                        label={t.toDate}
-                        value={financeEndDate}
-                        onChange={setFinanceEndDate}
-                        theme={theme}
-                      />
-                    </div>
-                    {/* Driver Select */}
-                    <div className="w-full">
-                      <CustomSelect
-                        label={t.driver}
-                        value={financeDriverFilter}
-                        onChange={setFinanceDriverFilter}
-                        options={[
-                          { id: 'all', name: t.allDrivers },
-                          ...drivers.map(d => ({ id: d.id, name: d.name }))
-                        ]}
-                        theme={theme}
-                        icon={UsersIcon}
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                  {/* Start Date */}
+                  <div className="w-full">
+                    <DatePicker
+                      label={t.fromDate}
+                      value={financeStartDate}
+                      onChange={setFinanceStartDate}
+                      theme={theme}
+                    />
+                  </div>
+                  {/* End Date */}
+                  <div className="w-full">
+                    <DatePicker
+                      label={t.toDate}
+                      value={financeEndDate}
+                      onChange={setFinanceEndDate}
+                      theme={theme}
+                    />
+                  </div>
+                  {/* Driver Select */}
+                  <div className="w-full">
+                    <CustomSelect
+                      label={t.driver}
+                      value={financeDriverFilter}
+                      onChange={setFinanceDriverFilter}
+                      options={[
+                        { id: 'all', name: t.allDrivers },
+                        ...drivers.map(d => ({ id: d.id, name: d.name }))
+                      ]}
+                      theme={theme}
+                      icon={UsersIcon}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {/* Bulk Delete Button */}
-                {selectedTransactions.length > 0 && (
-                  <div className="sm:col-span-2 lg:col-span-3">
-                    <button
-                      onClick={() => {
-                        setConfirmModal({
-                          isOpen: true,
-                          title: t.confirmDeleteTitle,
-                          message: `Are you sure you want to delete ${selectedTransactions.length} transaction(s)?`,
-                          isDanger: true,
-                          action: async () => {
-                            closeConfirmModal();
-                            const previousTransactions = transactions;
-                            setTransactions(transactions.filter(t => !selectedTransactions.includes(t.id)));
-                            setSelectedTransactions([]);
+              {/* Bulk Delete Button - Only show if transactions are selected */}
+              {userRole === 'admin' && selectedTransactions.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => {
+                      setConfirmModal({
+                        isOpen: true,
+                        title: t.confirmDeleteTitle,
+                        message: `Are you sure you want to delete ${selectedTransactions.length} transaction(s)?`,
+                        isDanger: true,
+                        action: async () => {
+                          closeConfirmModal();
+                          const previousTransactions = transactions;
+                          setTransactions(transactions.filter(t => !selectedTransactions.includes(t.id)));
+                          setSelectedTransactions([]);
 
-                            try {
-                              await Promise.all(selectedTransactions.map(id => firestoreService.deleteTransaction(id)));
-                            } catch (error) {
-                              console.error('Failed to delete transactions:', error);
-                              setTransactions(previousTransactions);
-                            }
+                          try {
+                            await Promise.all(selectedTransactions.map(id => firestoreService.deleteTransaction(id)));
+                          } catch (error) {
+                            console.error('Failed to delete transactions:', error);
+                            setTransactions(previousTransactions);
                           }
-                        });
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all shadow-md"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                      Delete {selectedTransactions.length} selected
-                    </button>
-                  </div>
-                )}
-
-                {/* Total Income - Primary Card */}
-                <div className="bg-[#2D6A76] p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg text-white relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <TrendingUpIcon className="w-12 sm:w-16 h-12 sm:h-16" />
-                  </div>
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <div className="p-1 sm:p-1.5 rounded-md bg-white/20 text-white flex-shrink-0">
-                        <TrendingUpIcon className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                      </div>
-                      <p className="text-blue-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-wide">{t.totalIncome}</p>
-                    </div>
-                    <NumberTooltip value={financeIncome} label={t.totalIncome} theme={theme}>
-                      <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tight leading-tight font-mono cursor-help break-words">
-                        {formatNumberSmart(financeIncome, isMobile)}
-                      </h3>
-                    </NumberTooltip>
-                    <span className="text-blue-100 text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ml-1">UZS</span>
-                  </div>
+                        }
+                      });
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all shadow-md"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                    Delete {selectedTransactions.length} selected
+                  </button>
                 </div>
+              )}
 
-                {/* Total Expense */}
-                <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border shadow-lg relative ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
-                  }`}>
-                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                    <div className="p-1 sm:p-1.5 rounded-md bg-red-100 text-red-600 flex-shrink-0">
-                      <TrendingDownIcon className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                    </div>
-                    <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.totalExpense}</p>
-                  </div>
-                  <NumberTooltip value={financeExpense} label={t.totalExpense} theme={theme}>
-                    <h3 className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-black leading-tight font-mono cursor-help break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {formatNumberSmart(financeExpense, isMobile)}
-                    </h3>
-                  </NumberTooltip>
-                  <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>UZS</span>
-                </div>
-
-                {/* Net Profit */}
-                <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border shadow-lg relative sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
-                  }`}>
-                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                    <div className="p-1 sm:p-1.5 rounded-md bg-emerald-100 text-emerald-600 flex-shrink-0">
-                      <WalletIcon className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                    </div>
-                    <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.cashFlow}</p>
-                  </div>
-                  <NumberTooltip value={financeCashflow} label={t.cashFlow} theme={theme}>
-                    <h3 className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-black leading-tight font-mono cursor-help break-words ${financeCashflow >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {financeCashflow > 0 ? '+' : ''}{formatNumberSmart(financeCashflow, isMobile)}
-                    </h3>
-                  </NumberTooltip>
-                  <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 inline-block ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>UZS</span>
-                </div>
-              </div>
               {/* Transactions Table */}
               <div className={`rounded-3xl border overflow-hidden shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
@@ -1614,23 +1660,25 @@ const App: React.FC = () => {
                   <table className="w-full text-left min-w-[800px]">
                     <thead className={`border-b ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
                       <tr className={`${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                        <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          <input
-                            type="checkbox"
-                            checked={selectedTransactions.length === financeFilteredData.length && financeFilteredData.length > 0}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedTransactions(financeFilteredData.map(t => t.id));
-                              } else {
-                                setSelectedTransactions([]);
-                              }
-                            }}
-                            className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                              ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
-                              : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
-                              }`}
-                          />
-                        </th>
+                        {userRole === 'admin' && (
+                          <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <input
+                              type="checkbox"
+                              checked={selectedTransactions.length === financeFilteredData.length && financeFilteredData.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTransactions(financeFilteredData.map(t => t.id));
+                                } else {
+                                  setSelectedTransactions([]);
+                                }
+                              }}
+                              className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
+                                ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
+                                }`}
+                            />
+                          </th>
+                        )}
                         <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.time}</th>
                         <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.driver}</th>
                         <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.comment}</th>
@@ -1659,24 +1707,26 @@ const App: React.FC = () => {
                           return (
                             <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'
                               }`}>
-                              <td className="px-6 py-4">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedTransactions.includes(tx.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedTransactions([...selectedTransactions, tx.id]);
-                                    } else {
-                                      setSelectedTransactions(selectedTransactions.filter(id => id !== tx.id));
-                                    }
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                    ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
-                                    : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
-                                    }`}
-                                />
-                              </td>
+                              {userRole === 'admin' && (
+                                <td className="px-6 py-4">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedTransactions.includes(tx.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedTransactions([...selectedTransactions, tx.id]);
+                                      } else {
+                                        setSelectedTransactions(selectedTransactions.filter(id => id !== tx.id));
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
+                                      ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                      : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
+                                      }`}
+                                  />
+                                </td>
+                              )}
                               <td className="px-6 py-4">
                                 <div className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                 <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{new Date(tx.timestamp).toLocaleDateString()}</div>
@@ -1813,9 +1863,7 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
-          )
-          }
-
+          )}
         </main >
       </div >
 

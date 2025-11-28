@@ -50,6 +50,7 @@ export enum Tab {
   DASHBOARD = 'DASHBOARD',
   MAP = 'MAP',
   DRIVERS = 'DRIVERS',
+  TRANSACTIONS = 'TRANSACTIONS',
   FINANCE = 'FINANCE'
 }
 

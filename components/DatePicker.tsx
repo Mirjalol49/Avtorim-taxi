@@ -117,19 +117,19 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
                     {/* Calendar */}
-                    <div className={`absolute top-full left-0 right-0 mt-2 p-4 rounded-2xl border shadow-2xl z-50 ${theme === 'dark'
+                    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark'
                         ? 'bg-[#1F2937] border-gray-700'
                         : 'bg-white border-gray-200'
                         }`}>
                         {/* Month/Year Header */}
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className={`text-xs font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                 {monthNamesFull[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                             </h3>
-                            <div className="flex gap-2">
+                            <div className="flex gap-1">
                                 <button
                                     onClick={handlePrevMonth}
-                                    className={`p-1.5 rounded-lg transition-colors ${theme === 'dark'
+                                    className={`p-1 rounded-lg transition-colors ${theme === 'dark'
                                         ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
                                         : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
                                         }`}
@@ -138,7 +138,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                                 </button>
                                 <button
                                     onClick={handleNextMonth}
-                                    className={`p-1.5 rounded-lg transition-colors ${theme === 'dark'
+                                    className={`p-1 rounded-lg transition-colors ${theme === 'dark'
                                         ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
                                         : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
                                         }`}
@@ -149,11 +149,11 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                         </div>
 
                         {/* Day Names */}
-                        <div className="grid grid-cols-7 gap-1 mb-2">
+                        <div className="grid grid-cols-7 gap-1 mb-1">
                             {dayNames.map(day => (
                                 <div
                                     key={day}
-                                    className={`text-center text-xs font-bold py-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    className={`text-center text-[10px] font-bold py-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                         }`}
                                 >
                                     {day}
@@ -172,8 +172,8 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                                         key={index}
                                         onClick={() => handleDayClick(day)}
                                         disabled={!isCurrentMonth}
-                                        className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-all ${isSelected(day)
-                                            ? 'bg-[#2D6A76] text-white font-bold shadow-md'
+                                        className={`h-7 w-7 flex items-center justify-center text-[10px] rounded-md transition-all mx-auto ${isSelected(day)
+                                            ? 'bg-[#2D6A76] text-white font-bold shadow-sm'
                                             : isToday(day)
                                                 ? theme === 'dark'
                                                     ? 'bg-blue-500/20 text-blue-400 font-bold'

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XIcon, UsersIcon } from './Icons';
 import CustomSelect from './CustomSelect';
+import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Language } from '../types';
 import { TRANSLATIONS } from '../translations';
 
@@ -19,6 +20,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
   const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
   const [description, setDescription] = useState('');
   const [driverId, setDriverId] = useState('');
+  const [date, setDate] = useState<Date>(new Date());
 
   const t = TRANSLATIONS[lang];
 
@@ -45,6 +47,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
       setDisplayAmount('');
       setDescription('');
       setType(TransactionType.INCOME);
+      setDate(new Date());
     } else if (isOpen && drivers.length > 0) {
       // Set default driver if none selected or current one is invalid
       if (!driverId || !drivers.find(d => d.id === driverId)) {
@@ -70,17 +73,23 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
       return;
     }
 
+    // Combine selected date with current time
+    const timestamp = new Date(date);
+    const now = new Date();
+    timestamp.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+
     onSubmit({
       amount: Number(amount),
       type,
       description,
       driverId,
-      timestamp: Date.now(),
+      timestamp: timestamp.getTime(),
     });
     setAmount('');
     setDisplayAmount('');
     setDescription('');
     setDriverId(''); // Reset driverId to empty string after submission
+    setDate(new Date());
     onClose();
   };
 
@@ -142,6 +151,17 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               className={`${inputClass} font-mono text-lg tracking-wide`}
               placeholder="0"
             />
+          </div>
+
+          <div>
+            <div className="w-full">
+              <DatePicker
+                label={t.time || "Date"}
+                value={date}
+                onChange={setDate}
+                theme={theme}
+              />
+            </div>
           </div>
 
           <div>
