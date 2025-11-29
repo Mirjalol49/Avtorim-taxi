@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
   const [financeDriverFilter, setFinanceDriverFilter] = useState('all');
+  const [financeTypeFilter, setFinanceTypeFilter] = useState<'all' | TransactionType>('all');
   const [financeStartDate, setFinanceStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [financeEndDate, setFinanceEndDate] = useState(new Date());
   const [financePageNumber, setFinancePageNumber] = useState(1);
@@ -255,14 +256,18 @@ const App: React.FC = () => {
       if (financeDriverFilter !== 'all') {
         driverMatch = tx.driverId === financeDriverFilter;
       }
-      return dateMatch && driverMatch;
+      let typeMatch = true;
+      if (financeTypeFilter !== 'all') {
+        typeMatch = tx.type === financeTypeFilter;
+      }
+      return dateMatch && driverMatch && typeMatch;
     }).sort((a, b) => b.timestamp - a.timestamp);
-  }, [transactions, financeStartDate, financeEndDate, financeDriverFilter]);
+  }, [transactions, financeStartDate, financeEndDate, financeDriverFilter, financeTypeFilter]);
 
   // Reset pagination when filters change
   useEffect(() => {
     setFinancePageNumber(1);
-  }, [financeStartDate, financeEndDate, financeDriverFilter])
+  }, [financeStartDate, financeEndDate, financeDriverFilter, financeTypeFilter])
 
   // --- ACTIONS ---
 
@@ -1115,14 +1120,14 @@ const App: React.FC = () => {
             <>
               {/* Search Bar & View Toggle */}
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className={`flex-1 p-4 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`flex-1 p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                     </div>
                     <input
                       type="text"
-                      className={`block w-full pl-10 pr-3 py-3 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D6A76] focus:border-[#2D6A76] sm:text-sm transition-colors ${theme === 'dark'
+                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D6A76] focus:border-[#2D6A76] sm:text-sm transition-colors ${theme === 'dark'
                         ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
                         : 'bg-gray-50 border-gray-200 text-gray-900'
                         }`}
@@ -1133,11 +1138,30 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Add Driver Button */}
+                {userRole === 'admin' && (
+                  <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                    <button
+                      onClick={() => {
+                        setEditingDriver(null);
+                        setIsDriverModalOpen(true);
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg ${theme === 'dark'
+                        ? 'bg-gradient-to-r from-[#2D6A76] to-[#235560] hover:from-[#235560] hover:to-[#1a4048] text-white shadow-blue-900/20'
+                        : 'bg-gradient-to-r from-[#2D6A76] to-[#235560] hover:from-[#235560] hover:to-[#1a4048] text-white shadow-blue-500/30'
+                        }`}
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                      <span>{t.add}</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* View Toggle */}
                 <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-3 rounded-xl transition-all ${viewMode === 'grid'
+                    className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid'
                       ? 'bg-[#2D6A76] text-white shadow-md'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                       }`}
@@ -1146,7 +1170,7 @@ const App: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`p-3 rounded-xl transition-all ${viewMode === 'list'
+                    className={`p-2.5 rounded-xl transition-all ${viewMode === 'list'
                       ? 'bg-[#2D6A76] text-white shadow-md'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                       }`}
@@ -1584,7 +1608,7 @@ const App: React.FC = () => {
               {/* Filters */}
               <div className={`p-4 rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
                   {/* Start Date */}
                   <div className="w-full">
                     <DatePicker
@@ -1615,6 +1639,22 @@ const App: React.FC = () => {
                       ]}
                       theme={theme}
                       icon={UsersIcon}
+                    />
+                  </div>
+                  {/* Type Select */}
+                  <div className="w-full">
+                    <CustomSelect
+                      label={t.filters}
+                      value={financeTypeFilter}
+                      onChange={(val) => setFinanceTypeFilter(val as 'all' | TransactionType)}
+                      options={[
+                        { id: 'all', name: t.transactions },
+                        { id: TransactionType.INCOME, name: t.income },
+                        { id: TransactionType.EXPENSE, name: t.expense }
+                      ]}
+                      theme={theme}
+                      icon={FilterIcon}
+                      showSearch={false}
                     />
                   </div>
                 </div>
@@ -1733,10 +1773,28 @@ const App: React.FC = () => {
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-full overflow-hidden border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-                                    {driver ? <img src={driver.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-300" />}
+                                  <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                                    {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className="w-full h-full bg-gray-300" />}
                                   </div>
-                                  <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver?.name || 'Deleted'}</span>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-sm font-bold ${driver?.isDeleted ? (theme === 'dark' ? 'text-red-400' : 'text-red-600') : (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>
+                                        {driver?.name || 'Deleted'}
+                                      </span>
+                                      {driver?.isDeleted && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
+                                          Deleted
+                                        </span>
+                                      )}
+                                    </div>
+                                    {driver?.isDeleted && (
+                                      <div className={`text-xs flex gap-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                        <span>{driver.licensePlate}</span>
+                                        <span>•</span>
+                                        <span>{driver.phone}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
                               <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{tx.description}</td>

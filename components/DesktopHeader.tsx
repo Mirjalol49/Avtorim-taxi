@@ -66,18 +66,16 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
   return (
     <header
-      className={`h-24 flex items-center justify-between px-8 z-10 border-b flex-shrink-0 transition-colors duration-200 ${
-        theme === 'dark'
+      className={`h-24 flex items-center justify-between px-8 z-10 border-b flex-shrink-0 transition-colors duration-200 ${theme === 'dark'
           ? 'bg-[#1F2937] border-gray-800'
           : 'bg-white border-gray-200'
-      }`}
+        }`}
     >
       {/* LEFT SECTION - Title */}
       <div className="flex-1">
         <h2
-          className={`text-2xl font-bold transition-colors duration-200 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}
+          className={`text-2xl font-bold transition-colors duration-200 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}
         >
           {getTabTitle()}
         </h2>
@@ -85,30 +83,16 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
       {/* RIGHT SECTION - Controls and Actions */}
       <div className="flex items-center gap-3">
-        {/* ACTION BUTTON - Add Driver (Drivers) */}
-        {activeTab === Tab.DRIVERS && userRole === 'admin' && (
-          <button
-            onClick={onAddDriverClick}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
-              theme === 'dark'
-                ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg shadow-blue-900/20'
-                : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg shadow-blue-500/30'
-            }`}
-          >
-            <PlusIcon className="w-4 h-4" />
-            <span>{t.add}</span>
-          </button>
-        )}
+
 
         {/* ACTION BUTTON - New Transaction (Finance/Dashboard) */}
         {(activeTab === Tab.DASHBOARD || activeTab === Tab.FINANCE) && userRole === 'admin' && (
           <button
             onClick={onNewTransactionClick}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
-              theme === 'dark'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${theme === 'dark'
                 ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg shadow-blue-900/20'
                 : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg shadow-blue-500/30'
-            }`}
+              }`}
           >
             <PlusIcon className="w-4 h-4" />
             <span>{t.newTransfer}</span>
@@ -118,11 +102,10 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         {/* THEME TOGGLE */}
         <button
           onClick={onThemeToggle}
-          className={`flex items-center justify-center p-2 rounded-lg border transition-all duration-200 ${
-            theme === 'dark'
+          className={`flex items-center justify-center p-2 rounded-lg border transition-all duration-200 ${theme === 'dark'
               ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400 hover:text-white'
               : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600 hover:text-gray-900'
-          }`}
+            }`}
           title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
           {theme === 'dark' ? (
@@ -136,29 +119,26 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         <div className="relative" ref={langMenuRef}>
           <button
             onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
-              theme === 'dark'
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${theme === 'dark'
                 ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300 hover:text-white'
                 : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             <GlobeIcon className="w-4 h-4" />
             <span className="text-sm font-bold uppercase">{language}</span>
             <ChevronDownIcon
-              className={`w-3 h-3 transition-transform duration-200 ${
-                isLangMenuOpen ? 'rotate-180' : ''
-              }`}
+              className={`w-3 h-3 transition-transform duration-200 ${isLangMenuOpen ? 'rotate-180' : ''
+                }`}
             />
           </button>
 
           {/* Language Dropdown Menu */}
           {isLangMenuOpen && (
             <div
-              className={`absolute top-full right-0 mt-2 w-40 rounded-lg shadow-xl overflow-hidden z-50 border transition-all duration-200 ${
-                theme === 'dark'
+              className={`absolute top-full right-0 mt-2 w-40 rounded-lg shadow-xl overflow-hidden z-50 border transition-all duration-200 ${theme === 'dark'
                   ? 'bg-[#1F2937] border-gray-700'
                   : 'bg-white border-gray-200'
-              }`}
+                }`}
             >
               {(['uz', 'ru', 'en'] as const).map((lang) => (
                 <button
@@ -167,15 +147,14 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                     onLanguageChange(lang);
                     setIsLangMenuOpen(false);
                   }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${
-                    language === lang
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${language === lang
                       ? theme === 'dark'
                         ? 'bg-gray-700 text-[#2D6A76]'
                         : 'bg-gray-100 text-[#2D6A76]'
                       : theme === 'dark'
-                      ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                        ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
                 >
                   <GlobeIcon className="w-3 h-3" />
                   <span>

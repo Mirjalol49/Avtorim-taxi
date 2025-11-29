@@ -21,6 +21,7 @@ export interface Driver {
   phone: string;
   balance: number;
   rating: number;
+  isDeleted?: boolean;
 }
 
 export enum TransactionType {

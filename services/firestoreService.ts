@@ -56,7 +56,8 @@ export const updateDriver = async (id: string, driver: Partial<Driver>) => {
 
 export const deleteDriver = async (id: string) => {
     try {
-        await deleteDoc(doc(db, DRIVERS_COLLECTION, id));
+        const driverRef = doc(db, DRIVERS_COLLECTION, id);
+        await updateDoc(driverRef, { isDeleted: true });
     } catch (error) {
         console.error('Error deleting driver:', error);
         throw error;

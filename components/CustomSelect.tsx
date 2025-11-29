@@ -14,6 +14,7 @@ interface CustomSelectProps {
     placeholder?: string;
     theme: 'light' | 'dark';
     icon?: React.ElementType;
+    showSearch?: boolean;
 }
 
 const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -23,7 +24,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     options,
     placeholder = 'Select option',
     theme,
-    icon: Icon
+    icon: Icon,
+    showSearch = true
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -92,20 +94,22 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                         }`}>
 
                         {/* Search Input */}
-                        <div className={`p-2 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                            <input
-                                ref={searchInputRef}
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search..."
-                                className={`w-full px-3 py-2 text-sm rounded-md outline-none transition-colors ${theme === 'dark'
+                        {showSearch && (
+                            <div className={`p-2 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Search..."
+                                    className={`w-full px-3 py-2 text-sm rounded-md outline-none transition-colors ${theme === 'dark'
                                         ? 'bg-gray-800 text-white placeholder-gray-500 focus:bg-gray-700'
                                         : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:bg-gray-100'
-                                    }`}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        </div>
+                                        }`}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        )}
 
                         <div className="max-h-56 overflow-y-auto custom-scrollbar" style={{
                             divideColor: theme === 'dark' ? '#374151' : '#E5E7EB'

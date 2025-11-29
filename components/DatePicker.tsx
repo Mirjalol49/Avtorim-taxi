@@ -98,6 +98,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
 
             {/* Date Display */}
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${theme === 'dark'
                     ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
@@ -128,6 +129,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                             </h3>
                             <div className="flex gap-1">
                                 <button
+                                    type="button"
                                     onClick={handlePrevMonth}
                                     className={`p-1 rounded-lg transition-colors ${theme === 'dark'
                                         ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
@@ -137,6 +139,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                                     <ChevronLeftIcon className="w-4 h-4" />
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleNextMonth}
                                     className={`p-1 rounded-lg transition-colors ${theme === 'dark'
                                         ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
@@ -169,6 +172,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
 
                                 return (
                                     <button
+                                        type="button"
                                         key={index}
                                         onClick={() => handleDayClick(day)}
                                         disabled={!isCurrentMonth}
