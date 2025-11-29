@@ -18,6 +18,7 @@ import CustomSelect from './components/CustomSelect';
 import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
 import SalaryManagement from './components/SalaryManagement';
+import Skeleton from './components/Skeleton';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -52,12 +53,10 @@ const App: React.FC = () => {
   // Firebase state - starts empty, will sync from cloud
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [adminProfile, setAdminProfile] = useState({
-    name: 'Admin',
-    role: 'Dispetcher',
-    avatar: '' // Will be set by user
-  });
+  const [adminProfile, setAdminProfile] = useState<any>(null);
   const [isFirebaseLoaded, setIsFirebaseLoaded] = useState(false);
+  const [isAdminLoading, setIsAdminLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Language State
   const [language, setLanguage] = useState<Language>('uz');
@@ -139,6 +138,7 @@ const App: React.FC = () => {
     // Subscribe to Drivers
     const unsubDrivers = firestoreService.subscribeToDrivers((newDrivers) => {
       setDrivers(newDrivers); // Always update, even if empty
+      setIsDataLoading(false); // Data loaded
     });
 
     // Subscribe to Transactions
@@ -151,6 +151,7 @@ const App: React.FC = () => {
       if (newAdmin) {
         setAdminProfile(newAdmin);
       }
+      setIsAdminLoading(false); // Loading complete whether we got data or not
     });
 
     // Cleanup subscriptions on logout
@@ -711,21 +712,38 @@ const App: React.FC = () => {
         <div className={`p-6 border-t space-y-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
           }`}>
           {userRole === 'admin' && (
-            <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 border flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark'
-              ? 'bg-[#111827] border-gray-700 hover:bg-gray-800'
-              : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-              }`}>
-              <img src={adminProfile.avatar} className={`w-9 h-9 rounded-full border object-cover ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
-                }`} alt="Admin" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>{adminProfile.name}</p>
-                <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                  }`}>{adminProfile.role}</p>
-              </div>
-              <EditIcon className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                }`} />
-            </div>
+            <>
+              {isAdminLoading || !adminProfile ? (
+                // Skeleton loading state
+                <div className={`rounded-xl p-3 border flex items-center gap-3 ${theme === 'dark'
+                  ? 'bg-[#111827] border-gray-700'
+                  : 'bg-gray-50 border-gray-200'
+                  }`}>
+                  <Skeleton variant="circular" width={36} height={36} theme={theme} />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton variant="text" width="60%" height={14} theme={theme} />
+                    <Skeleton variant="text" width="40%" height={10} theme={theme} />
+                  </div>
+                </div>
+              ) : (
+                // Actual admin profile
+                <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 border flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark'
+                  ? 'bg-[#111827] border-gray-700 hover:bg-gray-800'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}>
+                  <img src={adminProfile.avatar} className={`w-9 h-9 rounded-full border object-cover ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
+                    }`} alt="Admin" />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{adminProfile.name}</p>
+                    <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>{adminProfile.role}</p>
+                  </div>
+                  <EditIcon className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    }`} />
+                </div>
+              )}
+            </>
           )}
           <button onClick={handleLogout} className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider group ${theme === 'dark'
             ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 border-red-500/20'
@@ -829,86 +847,119 @@ const App: React.FC = () => {
 
               {/* MAIN STATS ROW - FULL WIDTH */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {/* Income - Primary Card (Teal) */}
-                <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
-                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
-                  </div>
-                  <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
-                        <TrendingUpIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                {isDataLoading ? (
+                  <>
+                    {/* Skeleton Loading for Income Card */}
+                    <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg">
+                      <div className="flex flex-col gap-3">
+                        <Skeleton variant="rectangular" width="40%" height={12} theme="dark" />
+                        <Skeleton variant="rectangular" width="70%" height={32} theme="dark" />
+                        <Skeleton variant="rectangular" width="30%" height={10} theme="dark" />
                       </div>
-                      <p className="text-[10px] sm:text-[10px] md:text-[11px] text-teal-100/80 font-bold uppercase tracking-wide">{t.totalIncome}</p>
                     </div>
-                    <div>
-                      <NumberTooltip value={totalIncome} label={t.totalIncome} theme={theme}>
-                        <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
-                          {formatNumberSmart(totalIncome, isMobile, language)}
-                        </h3>
-                      </NumberTooltip>
-                      <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Expense - Secondary Card (White/Dark) */}
-                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
-                  }`}>
-                  <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                    <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-                  </div>
-                  <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'
-                        }`}>
-                        <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                    {/* Skeleton Loading for Expense Card */}
+                    <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
+                      <div className="flex flex-col gap-3">
+                        <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
+                        <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
+                        <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                       </div>
-                      <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
-                        }`}>{t.totalExpense}</p>
                     </div>
-                    <div>
-                      <NumberTooltip value={totalExpense} label={t.totalExpense} theme={theme}>
-                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}>
-                          {formatNumberSmart(totalExpense, isMobile, language)}
-                        </h3>
-                      </NumberTooltip>
-                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        }`}>UZS</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Net Profit - Secondary Card (White/Dark) */}
-                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
-                  }`}>
-                  <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                    <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:w-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-                  </div>
-                  <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#2D6A76] border-gray-700' : 'bg-[#2D6A76]/10 text-[#2D6A76] border-[#2D6A76]/20'
-                        }`}>
-                        <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                    {/* Skeleton Loading for Net Profit Card */}
+                    <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
+                      <div className="flex flex-col gap-3">
+                        <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
+                        <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
+                        <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                       </div>
-                      <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
-                        }`}>{t.netProfit}</p>
                     </div>
-                    <div>
-                      <NumberTooltip value={netProfit} label={t.netProfit} theme={theme}>
-                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${netProfit >= 0
-                          ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
-                          : theme === 'dark' ? 'text-red-400' : 'text-red-600'
-                          }`}>
-                          {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, language)}
-                        </h3>
-                      </NumberTooltip>
-                      <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        }`}>UZS</p>
+                  </>
+                ) : (
+                  <>
+                    {/* Income - Primary Card (Teal) */}
+                    <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
+                      <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
+                      </div>
+                      <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
+                            <TrendingUpIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                          </div>
+                          <p className="text-[10px] sm:text-[10px] md:text-[11px] text-teal-100/80 font-bold uppercase tracking-wide">{t.totalIncome}</p>
+                        </div>
+                        <div>
+                          <NumberTooltip value={totalIncome} label={t.totalIncome} theme={theme}>
+                            <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
+                              {formatNumberSmart(totalIncome, isMobile, language)}
+                            </h3>
+                          </NumberTooltip>
+                          <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+
+                    {/* Expense - Secondary Card (White/Dark) */}
+                    <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
+                      }`}>
+                      <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
+                        <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+                      </div>
+                      <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'
+                            }`}>
+                            <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                          </div>
+                          <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                            }`}>{t.totalExpense}</p>
+                        </div>
+                        <div>
+                          <NumberTooltip value={totalExpense} label={t.totalExpense} theme={theme}>
+                            <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>
+                              {formatNumberSmart(totalExpense, isMobile, language)}
+                            </h3>
+                          </NumberTooltip>
+                          <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            }`}>UZS</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Net Profit - Secondary Card (White/Dark) */}
+                    <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
+                      }`}>
+                      <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
+                        <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:w-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+                      </div>
+                      <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#2D6A76] border-gray-700' : 'bg-[#2D6A76]/10 text-[#2D6A76] border-[#2D6A76]/20'
+                            }`}>
+                            <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                          </div>
+                          <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                            }`}>{t.netProfit}</p>
+                        </div>
+                        <div>
+                          <NumberTooltip value={netProfit} label={t.netProfit} theme={theme}>
+                            <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${netProfit >= 0
+                              ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+                              : theme === 'dark' ? 'text-red-400' : 'text-red-600'
+                              }`}>
+                              {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, language)}
+                            </h3>
+                          </NumberTooltip>
+                          <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            }`}>UZS</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* MIDDLE ROW: Chart - Full Width */}
@@ -2049,7 +2100,7 @@ const App: React.FC = () => {
       <AdminModal
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}
-        adminData={adminProfile}
+        adminData={adminProfile || { name: 'Admin', role: 'Manager', avatar: '' }}
         onUpdate={(profile) => {
           firestoreService.updateAdminProfile(profile);
           setIsAdminModalOpen(false);
