@@ -98,6 +98,17 @@ export const TRANSLATIONS = {
     // Pagination
     previous: "Oldingi",
     next: "Keyingi",
+    // Salary
+    salary: "Ish haqi",
+    salaryManagement: "Ish Haqi Boshqaruvi",
+    paySalary: "Ish haqini to'lash",
+    totalSalaries: "Jami Ish Haqlari",
+    ownerProfit: "Egasining Sof Foydasi",
+    dailySalary: "Kunlik maosh",
+    monthlySalary: "Oylik maosh",
+    paid: "To'langan",
+    unpaid: "To'lanmagan",
+    paymentHistory: "To'lov Tarixi",
     // Analytics & Search
     analytics: "Analitika",
     monthlyAnalytics: "Oylik Analitika",
@@ -107,8 +118,23 @@ export const TRANSLATIONS = {
     noDriversFound: "Haydovchilar topilmadi",
     // Driver Finance
     dailyPlan: "Kunlik Plan",
-    dailySalary: "Kunlik Oylik",
-    netDue: "Sof To'lov"
+    netDue: "Sof To'lov",
+    // Salary Management
+    currentSalaries: "Joriy Ish Haqlari",
+    historyLog: "Tarix",
+    exportCsv: "CSV Yuklash",
+    beforeSalaries: "Ish haqidan oldin",
+    netProfitMinusSalaries: "Sof foyda - ish haqlar",
+    monthlyEstimate: "Oylik hisob",
+    filterByDriver: "Haydovchi bo'yicha filtr",
+    effectiveDate: "Kuchga kirish sanasi",
+    createdBy: "Yaratuvchi",
+    notes: "Izohlar",
+    loading: "Yuklanmoqda...",
+    noRecordsFound: "Yozuvlar topilmadi",
+    unknownDriver: "Noma'lum Haydovchi",
+    current: "Joriy",
+    manageSalariesDescription: "Haydovchi ish haqlarini boshqarish va tarixni ko'rish"
   },
   ru: {
     dashboard: "Панель управления",
@@ -207,6 +233,17 @@ export const TRANSLATIONS = {
     // Pagination
     previous: "Предыдущая",
     next: "Следующая",
+    // Salary
+    salary: "Зарплата",
+    salaryManagement: "Управление зарплатой",
+    paySalary: "Выплатить зарплату",
+    totalSalaries: "Всего зарплат",
+    ownerProfit: "Чистая прибыль владельца",
+    dailySalary: "Ежедневная зарплата",
+    monthlySalary: "Ежемесячная зарплата",
+    paid: "Оплачено",
+    unpaid: "Не оплачено",
+    paymentHistory: "История платежей",
     // Analytics & Search
     analytics: "Аналитика",
     monthlyAnalytics: "Ежемесячная аналитика",
@@ -216,8 +253,23 @@ export const TRANSLATIONS = {
     noDriversFound: "Водители не найдены",
     // Driver Finance
     dailyPlan: "Ежедневный план",
-    dailySalary: "Ежедневная зарплата",
-    netDue: "К оплате"
+    netDue: "К оплате",
+    // Salary Management
+    currentSalaries: "Текущие зарплаты",
+    historyLog: "История",
+    exportCsv: "Экспорт CSV",
+    beforeSalaries: "До зарплат",
+    netProfitMinusSalaries: "Чистая прибыль - зарплаты",
+    monthlyEstimate: "Ежемесячная оценка",
+    filterByDriver: "Фильтр по водителям",
+    effectiveDate: "Дата вступления в силу",
+    createdBy: "Создано",
+    notes: "Примечания",
+    loading: "Загрузка...",
+    noRecordsFound: "Записи не найдены",
+    unknownDriver: "Неизвестный водитель",
+    current: "Текущий",
+    manageSalariesDescription: "Управление зарплатами водителей и просмотр истории"
   },
   en: {
     dashboard: "Dashboard",
@@ -316,6 +368,17 @@ export const TRANSLATIONS = {
     // Pagination
     previous: "Previous",
     next: "Next",
+    // Salary
+    salary: "Salary",
+    salaryManagement: "Salary Management",
+    paySalary: "Pay Salary",
+    totalSalaries: "Total Salaries",
+    ownerProfit: "Owner's Net Profit",
+    dailySalary: "Daily Salary",
+    monthlySalary: "Monthly Salary",
+    paid: "Paid",
+    unpaid: "Unpaid",
+    paymentHistory: "Payment History",
     // Analytics & Search
     analytics: "Analytics",
     monthlyAnalytics: "Monthly Analytics",
@@ -325,7 +388,22 @@ export const TRANSLATIONS = {
     noDriversFound: "No drivers found",
     // Driver Finance
     dailyPlan: "Daily Plan",
-    dailySalary: "Daily Salary",
-    netDue: "Net Due"
+    netDue: "Net Due",
+    // Salary Management
+    currentSalaries: "Current Salaries",
+    historyLog: "History Log",
+    exportCsv: "Export CSV",
+    beforeSalaries: "Before salaries",
+    netProfitMinusSalaries: "Net profit - salaries",
+    monthlyEstimate: "Monthly estimate",
+    filterByDriver: "Filter by Driver",
+    effectiveDate: "Effective Date",
+    createdBy: "Created By",
+    notes: "Notes",
+    loading: "Loading...",
+    noRecordsFound: "No records found",
+    unknownDriver: "Unknown Driver",
+    current: "Current",
+    manageSalariesDescription: "Manage driver salaries and view history"
   }
 };

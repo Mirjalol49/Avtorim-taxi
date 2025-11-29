@@ -10,7 +10,7 @@ export interface Driver {
   carModel: string;
   status: DriverStatus;
   dailyPlan: number;
-  dailySalary: number;
+  monthlySalary: number;
   avatar: string;
   telegram?: string;
   location: {
@@ -52,11 +52,31 @@ export enum Tab {
   MAP = 'MAP',
   DRIVERS = 'DRIVERS',
   TRANSACTIONS = 'TRANSACTIONS',
-  FINANCE = 'FINANCE'
+  FINANCE = 'FINANCE',
+  SALARY = 'SALARY'
 }
 
 export enum FineStatus {
   PAID = 'PAID',
   UNPAID = 'UNPAID',
   DISPUTED = 'DISPUTED'
+}
+
+export interface SalaryPayment {
+  id: string;
+  driverId: string;
+  amount: number;
+  period: string; // e.g., "2024-11" for November 2024
+  paidAt: number;
+  note?: string;
+}
+
+export interface DriverSalary {
+  id: string;
+  driverId: string;
+  amount: number;
+  effectiveDate: number; // Timestamp
+  createdBy: string;
+  createdAt: number; // Timestamp
+  notes?: string;
 }

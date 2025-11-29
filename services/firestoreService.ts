@@ -7,6 +7,7 @@ import {
     deleteDoc,
     onSnapshot,
     query,
+    where,
     Timestamp,
     setDoc
 } from 'firebase/firestore';
@@ -26,7 +27,11 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void) => {
     return onSnapshot(driversRef, (snapshot) => {
         const drivers: Driver[] = [];
         snapshot.forEach((doc) => {
-            drivers.push({ id: doc.id, ...doc.data() } as Driver);
+            const driverData = { id: doc.id, ...doc.data() } as Driver;
+            // Filter out deleted drivers on client side (handles missing isDeleted field)
+            if (!driverData.isDeleted) {
+                drivers.push(driverData);
+            }
         });
         callback(drivers);
     }, (error) => {

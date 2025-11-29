@@ -17,12 +17,16 @@ import DatePicker from './components/DatePicker';
 import CustomSelect from './components/CustomSelect';
 import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
+import SalaryManagement from './components/SalaryManagement';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
 import { formatNumberSmart } from './utils/formatNumber';
 import * as firestoreService from './services/firestoreService';
 import { fetchDriverLocations } from './services/ownTracksService';
+import { addSalary } from './services/salaryService';
+import { db } from './firebase';
+import { writeBatch, doc, collection } from 'firebase/firestore';
 
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<'admin' | 'viewer'>(() => {
@@ -304,6 +308,8 @@ const App: React.FC = () => {
       action: async () => {
         try {
           await firestoreService.deleteTransaction(id);
+          // Remove from selected transactions if it was selected
+          setSelectedTransactions(prev => prev.filter(txId => txId !== id));
           closeConfirmModal();
         } catch (error) {
           console.error('Failed to delete transaction:', error);
@@ -313,22 +319,78 @@ const App: React.FC = () => {
     });
   };
 
+  const handlePaySalary = (driver: Driver) => {
+    const monthlySalary = driver.monthlySalary || 0;
+    setConfirmModal({
+      isOpen: true,
+      title: t.paySalary,
+      message: `${t.paySalary} ${driver.name}: ${monthlySalary.toLocaleString()} UZS?`,
+      isDanger: false,
+      action: async () => {
+        try {
+          // Create an expense transaction for the salary payment
+          const salaryTransaction = {
+            driverId: driver.id,
+            amount: monthlySalary,
+            type: TransactionType.EXPENSE,
+            description: `${t.monthlySalary} - ${driver.name}`,
+            timestamp: Date.now()
+          };
+          await firestoreService.addTransaction(salaryTransaction);
+          closeConfirmModal();
+        } catch (error) {
+          console.error('Failed to pay salary:', error);
+          closeConfirmModal();
+        }
+      }
+    });
+  };
+
+
   const handleSaveDriver = async (data: any) => {
     try {
       if (data.id) {
         // Update existing driver
         const { id, ...updateData } = data;
-        await firestoreService.updateDriver(id, updateData);
+
+        // Check if salary changed
+        const existingDriver = drivers.find(d => d.id === id);
+
+        // Use batch write if updating both driver and salary (faster than sequential writes)
+        if (existingDriver && existingDriver.monthlySalary !== data.monthlySalary) {
+          // Import writeBatch at the top if not already imported
+          const batch = writeBatch(db);
+
+          // Update driver
+          const driverRef = doc(db, 'drivers', id);
+          batch.update(driverRef, updateData);
+
+          // Add salary record
+          const salaryRef = doc(collection(db, 'driver_salaries'));
+          batch.set(salaryRef, {
+            driverId: id,
+            amount: data.monthlySalary || 0,
+            effectiveDate: Date.now(),
+            createdBy: userRole === 'admin' ? 'Admin' : 'User',
+            createdAt: Date.now(),
+            notes: 'Salary updated via Edit Driver'
+          });
+
+          // Execute both operations atomically in a single round trip
+          await batch.commit();
+        } else {
+          // No salary change, just update driver
+          await firestoreService.updateDriver(id, updateData);
+        }
       } else {
-        // Add new driver
+        // Add new driver - use batch for driver + salary in one atomic operation
         const newDriver = {
           name: data.name,
           licensePlate: data.licensePlate,
           carModel: data.carModel,
           phone: data.phone,
           status: data.status || DriverStatus.OFFLINE,
-          avatar: data.avatar || '', // User should provide their own avatar
-          telegram: data.telegram,
+          avatar: data.avatar || '',
           location: {
             lat: CITY_CENTER.lat + (Math.random() - 0.5) * 0.05,
             lng: CITY_CENTER.lng + (Math.random() - 0.5) * 0.05,
@@ -337,12 +399,38 @@ const App: React.FC = () => {
           balance: 0,
           rating: 5.0,
           dailyPlan: data.dailyPlan || 750000,
-          dailySalary: data.dailySalary || 8000
+          monthlySalary: data.monthlySalary || 0
         };
-        await firestoreService.addDriver(newDriver);
+
+        // Use batch to add driver and salary in single network call
+        if (data.monthlySalary > 0) {
+          const batch = writeBatch(db);
+
+          // Add driver
+          const driverRef = doc(collection(db, 'drivers'));
+          batch.set(driverRef, newDriver);
+
+          // Add salary record
+          const salaryRef = doc(collection(db, 'driver_salaries'));
+          batch.set(salaryRef, {
+            driverId: driverRef.id,
+            amount: data.monthlySalary,
+            effectiveDate: Date.now(),
+            createdBy: userRole === 'admin' ? 'Admin' : 'User',
+            createdAt: Date.now(),
+            notes: 'Initial salary'
+          });
+
+          // Commit both in one atomic operation (50% faster than sequential)
+          await batch.commit();
+        } else {
+          // No salary, just add driver
+          await firestoreService.addDriver(newDriver);
+        }
       }
     } catch (error) {
       console.error('Failed to save driver:', error);
+      throw error; // Rethrow to let the modal handle the error
     }
   };
 
@@ -578,6 +666,7 @@ const App: React.FC = () => {
           {renderSidebarItem(Tab.DRIVERS, t.driversList, UsersIcon)}
           {renderSidebarItem(Tab.TRANSACTIONS, t.transactions, ListIcon)}
           {renderSidebarItem(Tab.FINANCE, t.analytics, BanknoteIcon)}
+          {renderSidebarItem(Tab.SALARY, t.salaryManagement, WalletIcon)}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -681,6 +770,7 @@ const App: React.FC = () => {
                 {activeTab === Tab.DRIVERS && t.driversList}
                 {activeTab === Tab.FINANCE && t.analytics}
                 {activeTab === Tab.TRANSACTIONS && t.transactions}
+                {activeTab === Tab.SALARY && t.salaryManagement}
               </h2>
               <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
@@ -1921,6 +2011,18 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
+          )}
+
+          {/* SALARY MANAGEMENT COMPONENT */}
+          {(activeTab === Tab.SALARY) && (
+            <SalaryManagement
+              drivers={drivers}
+              transactions={transactions}
+              theme={theme}
+              userRole={userRole}
+              language={language}
+              onPaySalary={handlePaySalary}
+            />
           )}
         </main >
       </div >
