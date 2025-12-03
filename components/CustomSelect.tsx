@@ -15,6 +15,7 @@ interface CustomSelectProps {
     theme: 'light' | 'dark';
     icon?: React.ElementType;
     showSearch?: boolean;
+    labelClassName?: string;
 }
 
 const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -25,7 +26,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     placeholder = 'Select option',
     theme,
     icon: Icon,
-    showSearch = true
+    showSearch = true,
+    labelClassName
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -62,12 +64,14 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     return (
         <div className="w-full" ref={dropdownRef}>
             {/* Label */}
-            <div className="flex items-center gap-2 mb-2.5">
-                {Icon && <Icon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />}
-                <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {label}
-                </span>
-            </div>
+            {label && (
+                <div className="flex items-center gap-2 mb-2.5">
+                    {Icon && <Icon className={`w-3.5 h-3.5 ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />}
+                    <span className={`text-[11px] font-bold uppercase tracking-widest ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
+                        {label}
+                    </span>
+                </div>
+            )}
 
             {/* Trigger Button */}
             <div className="relative">
@@ -76,7 +80,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                     className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-all duration-200 outline-none ${theme === 'dark'
                         ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-white'
                         : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900'
-                        } ${isOpen ? `ring-2 ring-[#2D6A76] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}` : ''}`}
+                        } ${isOpen ? `ring-2 ring-[#0d9488] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}` : ''}`}
                     type="button"
                 >
                     <span className="truncate text-sm">{displayValue}</span>
@@ -111,9 +115,16 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                             </div>
                         )}
 
-                        <div className="max-h-56 overflow-y-auto custom-scrollbar" style={{
-                            divideColor: theme === 'dark' ? '#374151' : '#E5E7EB'
-                        }}>
+                        <div className={`max-h-48 overflow-y-auto divide-y ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-100'} 
+                            [&::-webkit-scrollbar]:w-2 
+                            [&::-webkit-scrollbar-track]:bg-transparent 
+                            [&::-webkit-scrollbar-thumb]:bg-gray-400
+                            [&::-webkit-scrollbar-thumb]:rounded-full
+                            [&::-webkit-scrollbar-thumb]:border-2
+                            [&::-webkit-scrollbar-thumb]:border-transparent
+                            dark:[&::-webkit-scrollbar-thumb]:bg-gray-600
+                            hover:[&::-webkit-scrollbar-thumb]:bg-gray-500
+                        `}>
                             {filteredOptions.length > 0 ? (
                                 filteredOptions.map((option, index) => (
                                     <button
@@ -125,8 +136,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                         className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm text-left transition-all duration-150 ${index > 0 ? `border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}` : ''
                                             } ${value === option.id
                                                 ? theme === 'dark'
-                                                    ? 'bg-[#2D6A76] text-white font-semibold'
-                                                    : 'bg-[#2D6A76] text-white font-semibold'
+                                                    ? 'bg-[#0d9488] text-white font-semibold'
+                                                    : 'bg-[#0d9488] text-white font-semibold'
                                                 : theme === 'dark'
                                                     ? 'text-gray-200 hover:bg-gray-800/60'
                                                     : 'text-gray-700 hover:bg-gray-50'

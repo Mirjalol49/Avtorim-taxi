@@ -16,7 +16,11 @@ export const MOCK_DRIVERS: Driver[] = [
     avatar: 'https://picsum.photos/100/100?random=1',
     telegram: '@sardor_taxi',
     location: { lat: 41.311081, lng: 69.240562, heading: 45 }, // Near Amir Timur Square
-    phone: '+998 90 123 45 67'
+    phone: '+998 90 123 45 67',
+    dailyPlan: 100000,
+    monthlySalary: 3000000,
+    balance: 0,
+    rating: 4.7
   },
   {
     id: 'd2',
@@ -27,7 +31,11 @@ export const MOCK_DRIVERS: Driver[] = [
     avatar: 'https://picsum.photos/100/100?random=2',
     telegram: '@jamshid_driver',
     location: { lat: 41.2858, lng: 69.2058, heading: 180 }, // Chorsu Bazaar area
-    phone: '+998 93 987 65 43'
+    phone: '+998 93 987 65 43',
+    dailyPlan: 90000,
+    monthlySalary: 2800000,
+    balance: 0,
+    rating: 4.5
   },
   {
     id: 'd3',
@@ -38,7 +46,11 @@ export const MOCK_DRIVERS: Driver[] = [
     avatar: 'https://picsum.photos/100/100?random=3',
     telegram: '@malika_k',
     location: { lat: 41.2942, lng: 69.2683, heading: 270 }, // Tashkent City Park
-    phone: '+998 97 555 11 22'
+    phone: '+998 97 555 11 22',
+    dailyPlan: 110000,
+    monthlySalary: 3500000,
+    balance: 0,
+    rating: 4.8
   },
   {
     id: 'd4',
@@ -49,7 +61,11 @@ export const MOCK_DRIVERS: Driver[] = [
     avatar: 'https://picsum.photos/100/100?random=4',
     telegram: '@aziz_789',
     location: { lat: 41.3250, lng: 69.2900, heading: 90 }, // Minor Mosque area
-    phone: '+998 99 333 44 55'
+    phone: '+998 99 333 44 55',
+    dailyPlan: 80000,
+    monthlySalary: 2500000,
+    balance: 0,
+    rating: 4.2
   }
 ];
 

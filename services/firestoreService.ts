@@ -1,3 +1,4 @@
+
 import {
     collection,
     doc,
@@ -9,7 +10,8 @@ import {
     query,
     where,
     Timestamp,
-    setDoc
+    setDoc,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Driver, Transaction } from '../types';
@@ -27,11 +29,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void) => {
     return onSnapshot(driversRef, (snapshot) => {
         const drivers: Driver[] = [];
         snapshot.forEach((doc) => {
-            const driverData = { id: doc.id, ...doc.data() } as Driver;
-            // Filter out deleted drivers on client side (handles missing isDeleted field)
-            if (!driverData.isDeleted) {
-                drivers.push(driverData);
-            }
+            drivers.push({ id: doc.id, ...doc.data() } as Driver);
         });
         callback(drivers);
     }, (error) => {
@@ -59,10 +57,27 @@ export const updateDriver = async (id: string, driver: Partial<Driver>) => {
     }
 };
 
-export const deleteDriver = async (id: string) => {
+export const deleteDriver = async (id: string, auditInfo?: { adminName: string; reason?: string }) => {
     try {
+        const batch = writeBatch(db);
+
+        // Soft delete driver
         const driverRef = doc(db, DRIVERS_COLLECTION, id);
-        await updateDoc(driverRef, { isDeleted: true });
+        batch.update(driverRef, { isDeleted: true });
+
+        // Add audit log
+        if (auditInfo) {
+            const auditRef = doc(collection(db, 'audit_logs'));
+            batch.set(auditRef, {
+                action: 'DELETE_DRIVER',
+                targetId: id,
+                performedBy: auditInfo.adminName,
+                reason: auditInfo.reason || 'No reason provided',
+                timestamp: Date.now()
+            });
+        }
+
+        await batch.commit();
     } catch (error) {
         console.error('Error deleting driver:', error);
         throw error;

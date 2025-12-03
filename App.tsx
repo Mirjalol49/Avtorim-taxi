@@ -18,30 +18,32 @@ import CustomSelect from './components/CustomSelect';
 import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
 import SalaryManagement from './components/SalaryManagement';
+import SnowEffect from './components/SnowEffect';
+import { ToastProvider, ToastContainer, useToast } from './components/ToastNotification';
 import Skeleton from './components/Skeleton';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
-import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
+import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab, DriverSalary, PaymentStatus } from './types';
 import { TRANSLATIONS } from './translations';
 import { formatNumberSmart } from './utils/formatNumber';
 import * as firestoreService from './services/firestoreService';
 import { fetchDriverLocations } from './services/ownTracksService';
-import { addSalary } from './services/salaryService';
+import { addSalary, subscribeToSalaries } from './services/salaryService';
 import { db } from './firebase';
 import { writeBatch, doc, collection } from 'firebase/firestore';
+import logo from './Images/logo.png';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { addToast } = useToast();
   const [userRole, setUserRole] = useState<'admin' | 'viewer'>(() => {
     return (localStorage.getItem('avtorim_role') as 'admin' | 'viewer') || 'viewer';
   });
 
-  // Auth State
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('avtorim_auth') === 'true';
-  });
+  // Auth State - Always start logged out (no persistent session)
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // State variables
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
   const [financeDriverFilter, setFinanceDriverFilter] = useState('all');
   const [financeTypeFilter, setFinanceTypeFilter] = useState<'all' | TransactionType>('all');
   const [financeStartDate, setFinanceStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -57,6 +59,7 @@ const App: React.FC = () => {
   const [isFirebaseLoaded, setIsFirebaseLoaded] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [salaryHistory, setSalaryHistory] = useState<DriverSalary[]>([]);
 
   // Language State
   const [language, setLanguage] = useState<Language>('uz');
@@ -95,12 +98,10 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
 
-  // Theme State
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('avtorim_theme') as 'dark' | 'light') || 'dark';
-  });
+  // Theme State - Enforced Dark Mode
+  const [theme] = useState<'dark' | 'light'>('dark');
 
-  // Mobile detection hook
+  //
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768); // Match md: breakpoint
@@ -119,8 +120,45 @@ const App: React.FC = () => {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    // Theme toggle disabled - Dark mode enforced
   };
+
+  // AUTO-LOCK: 20-minute inactivity timer
+  useEffect(() => {
+    if (!isAuthenticated) return; // Only run when logged in
+
+    const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
+    let inactivityTimer: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        // Auto logout after 20 minutes of inactivity
+        setIsAuthenticated(false);
+        localStorage.removeItem('avtorim_auth');
+        addToast('warning', 'Session expired due to inactivity', 5000);
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Events that reset the inactivity timer
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+    events.forEach(event => {
+      document.addEventListener(event, resetTimer);
+    });
+
+    // Start the timer initially
+    resetTimer();
+
+    // Cleanup
+    return () => {
+      clearTimeout(inactivityTimer);
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [isAuthenticated, addToast]);
+
 
   // --- FIREBASE SYNC ---
   useEffect(() => {
@@ -155,10 +193,15 @@ const App: React.FC = () => {
     });
 
     // Cleanup subscriptions on logout
+    const unsubscribeSalaries = subscribeToSalaries((data) => {
+      setSalaryHistory(data);
+    });
+
     return () => {
       unsubDrivers();
       unsubTx();
       unsubAdmin();
+      unsubscribeSalaries();
     };
   }, [isAuthenticated]);
 
@@ -320,12 +363,14 @@ const App: React.FC = () => {
     });
   };
 
-  const handlePaySalary = (driver: Driver) => {
+  const handlePaySalary = (driver: Driver, effectiveDate?: Date) => {
     const monthlySalary = driver.monthlySalary || 0;
+    const dateStr = effectiveDate ? effectiveDate.toLocaleDateString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { month: 'long', year: 'numeric' }) : '';
+
     setConfirmModal({
       isOpen: true,
       title: t.paySalary,
-      message: `${t.paySalary} ${driver.name}: ${monthlySalary.toLocaleString()} UZS?`,
+      message: `${t.paySalary} ${driver.name}: ${formatNumberSmart(monthlySalary, false, language)} UZS${dateStr ? ` (${dateStr})` : ''}?`,
       isDanger: false,
       action: async () => {
         try {
@@ -334,10 +379,28 @@ const App: React.FC = () => {
             driverId: driver.id,
             amount: monthlySalary,
             type: TransactionType.EXPENSE,
-            description: `${t.monthlySalary} - ${driver.name}`,
-            timestamp: Date.now()
+            description: `${t.monthlySalary} - ${driver.name}${dateStr ? ` (${dateStr})` : ''}`,
+            timestamp: effectiveDate ? effectiveDate.getTime() : Date.now(),
+            status: PaymentStatus.COMPLETED // Default status for new payments
           };
+
+          // Note: If your Transaction type doesn't have effectiveDate, timestamp is usually enough for sorting.
+          // But for salary history, we might want to ensure it's recorded correctly.
+          // The addTransaction service likely handles it.
+
           await firestoreService.addTransaction(salaryTransaction);
+
+          // Add to Salary History
+          await addSalary({
+            driverId: driver.id,
+            amount: monthlySalary,
+            effectiveDate: effectiveDate ? effectiveDate.getTime() : Date.now(),
+            createdBy: adminProfile?.name || 'Admin',
+            createdAt: Date.now(),
+            notes: `Salary payment${dateStr ? ` (${dateStr})` : ''}`,
+            status: PaymentStatus.COMPLETED // Default status for new payments
+          });
+
           closeConfirmModal();
         } catch (error) {
           console.error('Failed to pay salary:', error);
@@ -469,7 +532,10 @@ const App: React.FC = () => {
 
         try {
           // Delete from Firestore in background
-          await firestoreService.deleteDriver(id);
+          await firestoreService.deleteDriver(id, {
+            adminName: adminProfile?.name || 'Unknown Admin',
+            reason: 'Manual deletion by admin'
+          });
         } catch (error) {
           console.error('Failed to delete driver:', error);
           // Revert on error
@@ -485,8 +551,12 @@ const App: React.FC = () => {
   const totalExpense = filteredTx.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
   const netProfit = totalIncome - totalExpense;
 
+  const nonDeletedDrivers = useMemo(() => {
+    return drivers.filter(d => !d.isDeleted);
+  }, [drivers]);
+
   const chartData = useMemo(() => {
-    return drivers.map(d => {
+    return nonDeletedDrivers.map(d => {
       const dIncome = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
       const dExpense = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
       return { name: d.name.split(' ')[0], Income: dIncome, Expense: dExpense };
@@ -495,7 +565,7 @@ const App: React.FC = () => {
 
   // Leaderboard Data Calculation
   const topDrivers = useMemo(() => {
-    const stats = drivers.map(d => {
+    const stats = nonDeletedDrivers.map(d => {
       const income = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
       return { ...d, income };
     });
@@ -503,8 +573,8 @@ const App: React.FC = () => {
   }, [drivers, filteredTx]);
 
   const activeDriversList = useMemo(() => {
-    return drivers.filter(d => d.status === DriverStatus.ACTIVE);
-  }, [drivers]);
+    return nonDeletedDrivers.filter(d => d.status === DriverStatus.ACTIVE);
+  }, [nonDeletedDrivers]);
 
   // Finance Tab Stats
   const financeFilteredData = getFinanceFilteredTransactions;
@@ -524,11 +594,13 @@ const App: React.FC = () => {
       monthlyData[key] = { name: monthName, Income: 0, Expense: 0 };
     }
 
-    transactions.forEach(tx => {
+    const source = getFinanceFilteredTransactions.length > 0 ? getFinanceFilteredTransactions : transactions;
+    source.forEach(tx => {
       const d = new Date(tx.timestamp);
       if (d.getFullYear() === analyticsYear) {
         const key = `${d.getFullYear()}-${d.getMonth()}`;
         if (monthlyData[key]) {
+          if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED) return;
           if (tx.type === TransactionType.INCOME) {
             monthlyData[key].Income += tx.amount;
           } else {
@@ -539,14 +611,17 @@ const App: React.FC = () => {
     });
 
     return Object.values(monthlyData);
-  }, [transactions, language, analyticsYear]);
+  }, [transactions, getFinanceFilteredTransactions, language, analyticsYear]);
 
   // Yearly Analytics Totals
   const yearlyAnalyticsTotals = useMemo(() => {
     let yearlyIncome = 0;
     let yearlyExpense = 0;
 
-    transactions.forEach(tx => {
+    const source = getFinanceFilteredTransactions.length > 0 ? getFinanceFilteredTransactions : transactions;
+    source.forEach(tx => {
+      if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED) return;
+
       const d = new Date(tx.timestamp);
       if (d.getFullYear() === analyticsYear) {
         if (tx.type === TransactionType.INCOME) {
@@ -562,13 +637,16 @@ const App: React.FC = () => {
       expense: yearlyExpense,
       netProfit: yearlyIncome - yearlyExpense
     };
-  }, [transactions, analyticsYear]);
+  }, [transactions, getFinanceFilteredTransactions, analyticsYear]);
 
 
   const filteredDrivers = useMemo(() => {
-    if (!driverSearchQuery.trim()) return drivers;
+    // Filter out deleted drivers for the main list
+    const activeDrivers = nonDeletedDrivers;
+
+    if (!driverSearchQuery.trim()) return activeDrivers;
     const query = driverSearchQuery.toLowerCase();
-    return drivers.filter(d =>
+    return activeDrivers.filter(d =>
       d.name.toLowerCase().includes(query) ||
       d.licensePlate.toLowerCase().includes(query) ||
       d.carModel.toLowerCase().includes(query)
@@ -593,7 +671,7 @@ const App: React.FC = () => {
     <button
       onClick={() => { setActiveTab(tab); setIsSidebarOpen(false); }}
       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all mb-2 ${activeTab === tab
-        ? 'bg-[#2D6A76] text-white shadow-lg shadow-teal-900/20'
+        ? 'bg-[#0d9488] text-white shadow-lg shadow-teal-900/20'
         : theme === 'dark'
           ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
           : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
@@ -635,6 +713,7 @@ const App: React.FC = () => {
       ? 'bg-[#111827] text-gray-50'
       : 'bg-[#F3F4F6] text-gray-900'
       }`}>
+      <SnowEffect />
 
       {/* SIDEBAR */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -645,19 +724,8 @@ const App: React.FC = () => {
         <div className="absolute top-4 right-4 md:hidden">
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
         </div>
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-1">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-[#2D6A76] text-white' : 'bg-[#2D6A76] text-white'
-              }`}>
-              <CarIcon className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className={`text-xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>Avtorim<span className="text-[#2D6A76]"> Taxi</span></h1>
-              <p className={`text-[10px] uppercase tracking-widest font-semibold ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                }`}>Toshkent</p>
-            </div>
-          </div>
+        <div className="p-5 flex justify-center">
+          <img src={logo} alt="Avtorim Taxi" className="h-9 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 overflow-y-auto">
           <div className={`text-xs font-semibold uppercase tracking-wider mb-4 px-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
@@ -672,22 +740,7 @@ const App: React.FC = () => {
 
         {/* Sidebar Bottom Section */}
         <div className="px-6 pb-4 space-y-3 md:hidden">
-          {/* Theme Toggle - Mobile Only */}
-          <button
-            onClick={toggleTheme}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
-              ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            <div className="flex items-center gap-3">
-              {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-              <span className="font-medium text-sm">
-                {theme === 'dark' ? 'Light' : 'Dark'}
-              </span>
-            </div>
-          </button>
+          {/* Theme Toggle Removed - Dark Mode Enforced */}
 
           {/* Language Selector - Mobile Only */}
           <button
@@ -808,8 +861,8 @@ const App: React.FC = () => {
           {activeTab === Tab.DRIVERS && userRole === 'admin' && (
             <>
               <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center justify-center gap-2 border px-3 py-2 rounded-xl font-medium text-xs transition-all w-full sm:w-auto ${theme === 'dark'
-                ? 'bg-[#2D6A76] hover:bg-[#235560] border-transparent text-white'
-                : 'bg-[#2D6A76] hover:bg-[#235560] border-transparent text-white shadow-sm'
+                ? 'bg-[#0d9488] hover:bg-[#0f766e] border-transparent text-white'
+                : 'bg-[#0d9488] hover:bg-[#0f766e] border-transparent text-white shadow-sm'
                 }`}>
                 <PlusIcon className="w-4 h-4" /> <span>{t.add}</span>
               </button>
@@ -818,8 +871,8 @@ const App: React.FC = () => {
 
           {(activeTab === Tab.FINANCE || activeTab === Tab.DASHBOARD || activeTab === Tab.TRANSACTIONS) && userRole === 'admin' && (
             <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
-              ? 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-900/20'
-              : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-blue-500/30'
+              ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-blue-900/20'
+              : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-blue-500/30'
               }`}>
               <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
             </button>
@@ -850,7 +903,7 @@ const App: React.FC = () => {
                 {isDataLoading ? (
                   <>
                     {/* Skeleton Loading for Income Card */}
-                    <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg">
+                    <div className="bg-[#0d9488] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg">
                       <div className="flex flex-col gap-3">
                         <Skeleton variant="rectangular" width="40%" height={12} theme="dark" />
                         <Skeleton variant="rectangular" width="70%" height={32} theme="dark" />
@@ -879,7 +932,7 @@ const App: React.FC = () => {
                 ) : (
                   <>
                     {/* Income - Primary Card (Teal) */}
-                    <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
+                    <div className="bg-[#0d9488] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
                       <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                         <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
                       </div>
@@ -937,7 +990,7 @@ const App: React.FC = () => {
                       </div>
                       <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#2D6A76] border-gray-700' : 'bg-[#2D6A76]/10 text-[#2D6A76] border-[#2D6A76]/20'
+                          <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#0d9488] border-gray-700' : 'bg-[#0d9488]/10 text-[#0d9488] border-[#0d9488]/20'
                             }`}>
                             <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                           </div>
@@ -977,7 +1030,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setDashboardViewMode('chart')}
                       className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'chart'
-                        ? 'bg-[#2D6A76] text-white shadow-md'
+                        ? 'bg-[#0d9488] text-white shadow-md'
                         : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                         }`}
                     >
@@ -986,7 +1039,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setDashboardViewMode('grid')}
                       className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'grid'
-                        ? 'bg-[#2D6A76] text-white shadow-md'
+                        ? 'bg-[#0d9488] text-white shadow-md'
                         : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                         }`}
                     >
@@ -1044,7 +1097,7 @@ const App: React.FC = () => {
                                         <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                                           {entry.dataKey === 'Income' ? t.income : t.expense}:
                                         </span>
-                                        <span className={`text-sm font-bold ${entry.dataKey === 'Income' ? 'text-[#2D6A76]' : 'text-red-500'}`}>
+                                        <span className={`text-sm font-bold ${entry.dataKey === 'Income' ? 'text-[#0d9488]' : 'text-red-500'}`}>
                                           {entry.value.toLocaleString()}
                                         </span>
                                       </div>
@@ -1055,7 +1108,7 @@ const App: React.FC = () => {
                               return null;
                             }}
                           />
-                          <Bar dataKey="Income" fill="#2D6A76" radius={[8, 8, 0, 0]} />
+                          <Bar dataKey="Income" fill="#0d9488" radius={[8, 8, 0, 0]} />
                           <Bar dataKey="Expense" fill="#EF4444" radius={[8, 8, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -1076,10 +1129,10 @@ const App: React.FC = () => {
                                   const profit = data.Income - data.Expense;
 
                                   return (
-                                    <div key={idx} className={`p-5 rounded-xl border-2 transition-all hover:shadow-lg ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50 hover:border-[#2D6A76]' : 'bg-white border-gray-200 hover:border-[#2D6A76]'}`}>
+                                    <div key={idx} className={`p-5 rounded-xl border-2 transition-all hover:shadow-lg ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50 hover:border-[#0d9488]' : 'bg-white border-gray-200 hover:border-[#0d9488]'}`}>
                                       <div className="flex items-center gap-3 mb-4">
                                         {driver && (
-                                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#2D6A76] flex-shrink-0">
+                                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#0d9488] flex-shrink-0">
                                             <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
                                           </div>
                                         )}
@@ -1092,7 +1145,7 @@ const App: React.FC = () => {
                                       <div className="space-y-2">
                                         <div className="flex items-center justify-between">
                                           <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.income}</span>
-                                          <span className="text-sm font-bold text-[#2D6A76]">+{data.Income.toLocaleString()}</span>
+                                          <span className="text-sm font-bold text-[#0d9488]">+{data.Income.toLocaleString()}</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                           <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t.expense}</span>
@@ -1124,8 +1177,8 @@ const App: React.FC = () => {
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                                     } ${theme === 'dark' ? 'text-white' : 'text-gray-600'}`}
                                 >
-                                  <ChevronLeftIcon className="w-4 h-4" />
                                   {t.previous}
+                                  <ChevronLeftIcon className="w-4 h-4" />
                                 </button>
 
                                 <div className="flex items-center gap-2">
@@ -1134,7 +1187,7 @@ const App: React.FC = () => {
                                       key={pageNum}
                                       onClick={() => setDashboardPage(pageNum)}
                                       className={`w-10 h-10 rounded-xl font-semibold transition-all ${dashboardPage === pageNum
-                                        ? 'bg-[#2D6A76] text-white shadow-md'
+                                        ? 'bg-[#0d9488] text-white shadow-md'
                                         : theme === 'dark'
                                           ? 'text-gray-300 hover:bg-gray-800'
                                           : 'text-gray-600 hover:bg-gray-100'
@@ -1236,7 +1289,7 @@ const App: React.FC = () => {
                         <p className={`text-xs truncate mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-lg font-bold text-[#2D6A76]">{driver.income.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-[#0d9488]">{driver.income.toLocaleString()}</p>
                         <p className={`text-[10px] uppercase font-semibold ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
                       </div>
                     </div>
@@ -1252,7 +1305,7 @@ const App: React.FC = () => {
           {activeTab === Tab.MAP && (
             <div className={`h-[calc(100vh-10rem)] w-full rounded-2xl overflow-hidden shadow-2xl border relative ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
               }`}>
-              <MapView drivers={drivers} lang={language} />
+              <MapView drivers={nonDeletedDrivers} lang={language} />
             </div>
           )}
 
@@ -1268,7 +1321,7 @@ const App: React.FC = () => {
                     </div>
                     <input
                       type="text"
-                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D6A76] focus:border-[#2D6A76] sm:text-sm transition-colors ${theme === 'dark'
+                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-[#0d9488] sm:text-sm transition-colors ${theme === 'dark'
                         ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
                         : 'bg-gray-50 border-gray-200 text-gray-900'
                         }`}
@@ -1288,8 +1341,8 @@ const App: React.FC = () => {
                         setIsDriverModalOpen(true);
                       }}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg ${theme === 'dark'
-                        ? 'bg-gradient-to-r from-[#2D6A76] to-[#235560] hover:from-[#235560] hover:to-[#1a4048] text-white shadow-blue-900/20'
-                        : 'bg-gradient-to-r from-[#2D6A76] to-[#235560] hover:from-[#235560] hover:to-[#1a4048] text-white shadow-blue-500/30'
+                        ? 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-blue-900/20'
+                        : 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-blue-500/30'
                         }`}
                     >
                       <PlusIcon className="w-5 h-5" />
@@ -1303,7 +1356,7 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid'
-                      ? 'bg-[#2D6A76] text-white shadow-md'
+                      ? 'bg-[#0d9488] text-white shadow-md'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                       }`}
                   >
@@ -1312,7 +1365,7 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setViewMode('list')}
                     className={`p-2.5 rounded-xl transition-all ${viewMode === 'list'
-                      ? 'bg-[#2D6A76] text-white shadow-md'
+                      ? 'bg-[#0d9488] text-white shadow-md'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                       }`}
                   >
@@ -1331,7 +1384,7 @@ const App: React.FC = () => {
                           : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
                           }`}>
                           <div className="flex items-center gap-4">
-                            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#2D6A76]' : 'border-gray-200 group-hover:border-[#2D6A76]'
+                            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#0d9488]' : 'border-gray-200 group-hover:border-[#0d9488]'
                               }`}>
                               <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
                             </div>
@@ -1397,8 +1450,8 @@ const App: React.FC = () => {
                                   handleEditDriverClick(driver);
                                 }}
                                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
-                                  ? 'bg-[#2D6A76]/10 text-[#2D6A76] hover:bg-[#2D6A76]/20 border border-[#2D6A76]/20'
-                                  : 'bg-[#2D6A76]/10 text-[#2D6A76] hover:bg-[#2D6A76]/20 border border-[#2D6A76]/20'
+                                  ? 'bg-[#0d9488]/10 text-[#0d9488] hover:bg-[#0d9488]/20 border border-[#0d9488]/20'
+                                  : 'bg-[#0d9488]/10 text-[#0d9488] hover:bg-[#0d9488]/20 border border-[#0d9488]/20'
                                   }`}
                               >
                                 <EditIcon className="w-4 h-4" />
@@ -1492,7 +1545,7 @@ const App: React.FC = () => {
                                     <div className="flex items-center justify-center gap-2">
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleEditDriverClick(driver); }}
-                                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-[#2D6A76] hover:bg-[#2D6A76]/10' : 'text-[#2D6A76] hover:bg-[#2D6A76]/10'}`}
+                                        className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-[#0d9488] hover:bg-[#0d9488]/10' : 'text-[#0d9488] hover:bg-[#0d9488]/10'}`}
                                       >
                                         <EditIcon className="w-4 h-4" />
                                       </button>
@@ -1535,7 +1588,7 @@ const App: React.FC = () => {
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
                             className={`w-10 h-10 rounded-xl font-semibold transition-all ${currentPage === pageNum
-                              ? 'bg-[#2D6A76] text-white shadow-md'
+                              ? 'bg-[#0d9488] text-white shadow-md'
                               : theme === 'dark'
                                 ? 'text-gray-300 hover:bg-gray-800'
                                 : 'text-gray-600 hover:bg-gray-100'
@@ -1571,7 +1624,7 @@ const App: React.FC = () => {
                   {userRole === 'admin' && drivers.length === 0 && (
                     <button
                       onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }}
-                      className="mt-4 px-4 py-2 bg-[#2D6A76] hover:bg-[#235560] text-white rounded-xl text-sm font-medium transition-colors"
+                      className="mt-4 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl text-sm font-medium transition-colors"
                     >
                       {t.addDriver}
                     </button>
@@ -1586,10 +1639,17 @@ const App: React.FC = () => {
           {/* FINANCE (ANALYTICS) COMPONENT */}
           {(activeTab === Tab.FINANCE) && (
             <div className="space-y-6">
+              {/* Analytics Header Filters */}
+              <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
+                <DatePicker label={t.fromDate || 'Boshlanish sanasi'} value={financeStartDate} onChange={setFinanceStartDate} theme={theme} labelClassName="text-white" />
+                <DatePicker label={t.toDate || 'Tugash sanasi'} value={financeEndDate} onChange={setFinanceEndDate} theme={theme} labelClassName="text-white" />
+                <CustomSelect label={t.driver || 'Haydovchi'} value={financeDriverFilter} onChange={setFinanceDriverFilter} options={[{ id: 'all', name: t.allDrivers || 'Barcha Haydovchilar' }, ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))]} theme={theme} showSearch={true} icon={UsersIcon} labelClassName="text-white" />
+              </div>
+
               {/* Yearly Stats Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Yearly Income */}
-                <div className="bg-[#2D6A76] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
+                <div className="bg-[#0d9488] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
                   <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                     <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
                   </div>
@@ -1647,7 +1707,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                     <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#2D6A76] border-gray-700' : 'bg-[#2D6A76]/10 text-[#2D6A76] border-[#2D6A76]/20'
+                      <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#0d9488] border-gray-700' : 'bg-[#0d9488]/10 text-[#0d9488] border-[#0d9488]/20'
                         }`}>
                         <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                       </div>
@@ -1656,9 +1716,11 @@ const App: React.FC = () => {
                     </div>
                     <div>
                       <NumberTooltip value={yearlyAnalyticsTotals.netProfit} label={`${analyticsYear} ${t.netProfit}`} theme={theme}>
-                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${yearlyAnalyticsTotals.netProfit >= 0
+                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${yearlyAnalyticsTotals.netProfit > 0
                           ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
-                          : theme === 'dark' ? 'text-red-400' : 'text-red-600'
+                          : yearlyAnalyticsTotals.netProfit < 0
+                            ? theme === 'dark' ? 'text-red-400' : 'text-red-600'
+                            : theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                           }`}>
                           {yearlyAnalyticsTotals.netProfit > 0 ? '+' : ''}{formatNumberSmart(yearlyAnalyticsTotals.netProfit, isMobile, language)}
                         </h3>
@@ -1734,7 +1796,7 @@ const App: React.FC = () => {
                         itemStyle={{ fontSize: '12px', fontWeight: 600 }}
                         formatter={(value: number) => value.toLocaleString()}
                       />
-                      <Bar dataKey="Income" name={t.income} fill="#2D6A76" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Income" name={t.income} fill="#0d9488" radius={[6, 6, 0, 0]} />
                       <Bar dataKey="Expense" name={t.expense} fill="#EF4444" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1776,7 +1838,7 @@ const App: React.FC = () => {
                       onChange={setFinanceDriverFilter}
                       options={[
                         { id: 'all', name: t.allDrivers },
-                        ...drivers.map(d => ({ id: d.id, name: d.name }))
+                        ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))
                       ]}
                       theme={theme}
                       icon={UsersIcon}
@@ -1854,8 +1916,8 @@ const App: React.FC = () => {
                                 }
                               }}
                               className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
-                                : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
+                                ? 'bg-gray-700 border-gray-600 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                : 'bg-white border-gray-300 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0'
                                 }`}
                             />
                           </th>
@@ -1902,8 +1964,8 @@ const App: React.FC = () => {
                                     }}
                                     onClick={(e) => e.stopPropagation()}
                                     className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                      ? 'bg-gray-700 border-gray-600 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0 focus:ring-offset-gray-800'
-                                      : 'bg-white border-gray-300 checked:bg-[#2D6A76] checked:border-[#2D6A76] hover:border-[#2D6A76] focus:ring-2 focus:ring-[#2D6A76] focus:ring-offset-0'
+                                      ? 'bg-gray-700 border-gray-600 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                      : 'bg-white border-gray-300 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0'
                                       }`}
                                   />
                                 </td>
@@ -1939,7 +2001,7 @@ const App: React.FC = () => {
                                 </div>
                               </td>
                               <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{tx.description}</td>
-                              <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#2D6A76]' : 'text-red-500'
+                              <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#0d9488]' : 'text-red-500'
                                 }`}>
                                 {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} <span className="ml-1">UZS</span>
                               </td>
@@ -1994,7 +2056,7 @@ const App: React.FC = () => {
                             <button
                               key={1}
                               onClick={() => setFinancePageNumber(1)}
-                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === 1 ? 'bg-[#2D6A76] text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === 1 ? 'bg-[#0d9488] text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
                             >
                               1
                             </button>
@@ -2012,7 +2074,7 @@ const App: React.FC = () => {
                               key={i}
                               onClick={() => setFinancePageNumber(i)}
                               className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === i
-                                ? 'bg-[#2D6A76] text-white shadow-md'
+                                ? 'bg-[#0d9488] text-white shadow-md'
                                 : theme === 'dark'
                                   ? 'text-gray-400 hover:bg-gray-700'
                                   : 'text-gray-600 hover:bg-gray-100'
@@ -2033,7 +2095,7 @@ const App: React.FC = () => {
                             <button
                               key={totalPages}
                               onClick={() => setFinancePageNumber(totalPages)}
-                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === totalPages ? 'bg-[#2D6A76] text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                              className={`px-3 py-2 rounded-lg font-medium transition-all ${financePageNumber === totalPages ? 'bg-[#0d9488] text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
                             >
                               {totalPages}
                             </button>
@@ -2073,6 +2135,8 @@ const App: React.FC = () => {
               userRole={userRole}
               language={language}
               onPaySalary={handlePaySalary}
+              salaryHistory={salaryHistory}
+              adminName={adminProfile?.name || 'Admin'}
             />
           )}
         </main >
@@ -2083,7 +2147,7 @@ const App: React.FC = () => {
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
         onSubmit={handleAddTransaction}
-        drivers={drivers}
+        drivers={nonDeletedDrivers}
         lang={language}
         theme={theme}
       />
@@ -2102,7 +2166,13 @@ const App: React.FC = () => {
         onClose={() => setIsAdminModalOpen(false)}
         adminData={adminProfile || { name: 'Admin', role: 'Manager', avatar: '' }}
         onUpdate={(profile) => {
+          // Update admin profile
           firestoreService.updateAdminProfile(profile);
+          // If password is being updated, save it to localStorage and show toast
+          if (profile.password) {
+            localStorage.setItem('avtorim_admin_password', profile.password);
+            addToast('success', TRANSLATIONS[language].passwordUpdated, 4000);
+          }
           setIsAdminModalOpen(false);
         }}
         lang={language}
@@ -2122,7 +2192,17 @@ const App: React.FC = () => {
         theme={theme}
       />
 
+      {/* TOAST NOTIFICATIONS */}
+      <ToastContainer theme={theme} />
     </div >
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 };
 

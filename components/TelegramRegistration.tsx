@@ -125,7 +125,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                             <select
                                 value={selectedDriverId}
                                 onChange={(e) => setSelectedDriverId(e.target.value)}
-                                className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#2D6A76] ${theme === 'dark'
+                                className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
                                         ? 'bg-gray-800 border-gray-700 text-white'
                                         : 'bg-white border-gray-300 text-gray-900'
                                     }`}
@@ -148,7 +148,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                                 value={telegramId}
                                 onChange={(e) => setTelegramId(e.target.value)}
                                 placeholder="e.g., 123456789"
-                                className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#2D6A76] ${theme === 'dark'
+                                className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
                                         ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
                                         : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                                     }`}
@@ -169,7 +169,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                             disabled={loading || !selectedDriverId || !telegramId}
                             className={`w-full py-3 rounded-xl font-bold transition-all ${loading || !selectedDriverId || !telegramId
                                     ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-[#2D6A76] hover:bg-[#235560] text-white shadow-lg active:scale-95'
+                                    : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-lg active:scale-95'
                                 }`}
                         >
                             {loading ? '⏳ Registering...' : '✅ Register Driver'}

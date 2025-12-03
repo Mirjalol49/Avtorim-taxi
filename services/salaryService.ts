@@ -5,7 +5,8 @@ import {
     where,
     getDocs,
     orderBy,
-    Timestamp
+    Timestamp,
+    onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DriverSalary } from '../types';
@@ -58,4 +59,16 @@ export const getAllSalaries = async () => {
         console.error('Error fetching all salaries:', error);
         throw error;
     }
+};
+export const subscribeToSalaries = (callback: (salaries: DriverSalary[]) => void) => {
+    const q = query(collection(db, SALARIES_COLLECTION), orderBy('effectiveDate', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const salaries: DriverSalary[] = [];
+        snapshot.forEach((doc) => {
+            salaries.push({ id: doc.id, ...doc.data() } as DriverSalary);
+        });
+        callback(salaries);
+    }, (error) => {
+        console.error('Error subscribing to salaries:', error);
+    });
 };

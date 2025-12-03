@@ -53,11 +53,11 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                     border-2 backdrop-blur-sm min-w-[140px] justify-between
                     ${isOpen
                         ? theme === 'dark'
-                            ? 'bg-[#1F2937] border-[#2D6A76] shadow-lg shadow-[#2D6A76]/20'
-                            : 'bg-white border-[#2D6A76] shadow-lg shadow-[#2D6A76]/20'
+                            ? 'bg-[#1F2937] border-[#0d9488] shadow-lg shadow-[#0d9488]/20'
+                            : 'bg-white border-[#0d9488] shadow-lg shadow-[#0d9488]/20'
                         : theme === 'dark'
-                            ? 'bg-[#1F2937] border-gray-700 hover:border-[#2D6A76]/50'
-                            : 'bg-white border-gray-300 hover:border-[#2D6A76]/50'
+                            ? 'bg-[#1F2937] border-gray-700 hover:border-[#0d9488]/50'
+                            : 'bg-white border-gray-300 hover:border-[#0d9488]/50'
                     }
                 `}
             >
@@ -99,7 +99,7 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                                         font-semibold text-base text-center
                                         transition-all duration-150
                                         ${year === selectedYear
-                                            ? 'bg-[#2D6A76] text-white shadow-lg shadow-[#2D6A76]/30 scale-[1.02]'
+                                            ? 'bg-[#0d9488] text-white shadow-lg shadow-[#0d9488]/30 scale-[1.02]'
                                             : theme === 'dark'
                                                 ? 'text-gray-300 hover:bg-gray-800 hover:text-white active:scale-95'
                                                 : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 active:scale-95'

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LockIcon, SparklesIcon, CarIcon } from './Icons';
+import logo from '../Images/logo.png';
 import { TRANSLATIONS } from '../translations';
 import { Language } from '../types';
 
@@ -34,8 +35,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
         onAuthenticated('admin');
       }, 800);
     } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
+      // Check against stored password
+      const storedPassword = localStorage.getItem('avtorim_admin_password');
+      if (storedPassword && password === storedPassword) {
+        setSuccess(true);
+        setTimeout(() => {
+          onAuthenticated('admin');
+        }, 800);
+      } else {
+        setError(true);
+        setTimeout(() => setError(false), 2000);
+      }
     }
   };
 
@@ -73,8 +83,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
 
         {/* Main Glass Card */}
         <div className={`backdrop-blur-2xl border rounded-[32px] p-8 shadow-2xl relative overflow-hidden transition-all duration-500 ${isDark
-            ? 'bg-[#1F2937]/80 border-gray-700 shadow-black/20'
-            : 'bg-white/80 border-gray-200 shadow-xl'
+          ? 'bg-[#1F2937]/80 border-gray-700 shadow-black/20'
+          : 'bg-white/80 border-gray-200 shadow-xl'
           } ${success ? (isDark ? 'border-emerald-500/50 shadow-emerald-500/20' : 'border-emerald-400 shadow-emerald-400/20') : ''}`}>
 
           {/* Status Bar */}
@@ -92,27 +102,22 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
             </div>
           </div>
 
-          <div className="flex flex-col items-center mb-6">
-            <div className="relative mb-6">
-              {/* Rotating Rings */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="relative mb-4">
+              {/* Rotating Rings around Logo */}
               <div className={`absolute -inset-4 border rounded-full ${isDark ? 'border-blue-500/30' : 'border-blue-400/30'
                 } ${success ? 'scale-110 opacity-0' : 'animate-[spin_4s_linear_infinite]'}`}></div>
               <div className={`absolute -inset-2 border border-dashed rounded-full ${isDark ? 'border-indigo-400/30' : 'border-indigo-300/30'
                 } ${success ? 'scale-110 opacity-0' : 'animate-[spin_10s_linear_infinite_reverse]'}`}></div>
 
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 ${success
-                  ? 'bg-emerald-500 rotate-0'
-                  : isDark ? 'bg-gray-800 rotate-0 border border-gray-700' : 'bg-white rotate-0 border border-gray-200'
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 overflow-hidden ${success
+                ? 'bg-emerald-500 rotate-0'
+                : isDark ? 'bg-gray-800 rotate-0 border border-gray-700' : 'bg-white rotate-0 border border-gray-200'
                 }`}>
-                <LockIcon className={`w-8 h-8 transition-all duration-500 ${success ? 'text-white' : isDark ? 'text-blue-400' : 'text-blue-500'
-                  }`} />
+                <img src={logo} alt="Avtorim Taxi" className="w-12 h-auto object-contain" />
               </div>
             </div>
 
-            <h1 className={`text-3xl font-bold text-center flex items-center gap-2 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'
-              }`}>
-              Avtorim<span className="text-[#2D6A76]">Taxi</span>
-            </h1>
             <p className={`text-xs mt-2 text-center uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-gray-500'
               }`}>{t.loginTitle}</p>
           </div>
@@ -123,8 +128,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
             <button
               onClick={() => setRole('admin')}
               className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${role === 'admin'
-                  ? 'bg-[#2D6A76] text-white shadow-lg'
-                  : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                ? 'bg-[#0d9488] text-white shadow-lg'
+                : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
               {t.admin || 'Admin'}
@@ -132,8 +137,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
             <button
               onClick={() => setRole('viewer')}
               className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${role === 'viewer'
-                  ? 'bg-emerald-600 text-white shadow-lg'
-                  : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                ? 'bg-emerald-600 text-white shadow-lg'
+                : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
               {t.viewer || 'Viewer'}
@@ -147,16 +152,20 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full border rounded-2xl px-5 py-4 text-center text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#2D6A76]/50 transition-all ${isDark
-                      ? 'bg-gray-900/50 text-white placeholder-gray-600'
-                      : 'bg-gray-50 text-gray-900 placeholder-gray-400'
-                    } ${error
-                      ? 'border-red-500 shake-animation'
-                      : isDark ? 'border-gray-700 group-hover:border-[#2D6A76]/50' : 'border-gray-200 group-hover:border-[#2D6A76]/50'
-                    }`}
                   placeholder="••••••••"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                   autoFocus
                   disabled={success}
+                  className={`w-full border rounded-2xl px-5 py-4 text-center text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#0d9488]/50 transition-all ${isDark
+                    ? 'bg-gray-900/50 text-white placeholder-gray-600'
+                    : 'bg-gray-50 text-gray-900 placeholder-gray-400'
+                    } ${error
+                      ? 'border-red-500 shake-animation'
+                      : isDark ? 'border-gray-700 group-hover:border-[#0d9488]/50' : 'border-gray-200 group-hover:border-[#0d9488]/50'
+                    }`}
                 />
               </div>
             )}
@@ -167,7 +176,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
               className={`w-full font-bold py-4 rounded-2xl shadow-lg transform transition-all duration-300 ${success
                 ? 'bg-emerald-500 text-white scale-95'
                 : role === 'admin'
-                  ? 'bg-[#2D6A76] hover:bg-[#235560] text-white hover:shadow-[#2D6A76]/30'
+                  ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white hover:shadow-[#0d9488]/30'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-emerald-600/30'
                 } active:scale-[0.98]`}
             >
@@ -186,7 +195,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
                 key={l}
                 onClick={() => setLang(l)}
                 className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg border transition-all ${lang === l
-                  ? 'text-[#2D6A76] border-[#2D6A76]/30 bg-[#2D6A76]/10'
+                  ? 'text-[#0d9488] border-[#0d9488]/30 bg-[#0d9488]/10'
                   : isDark ? 'text-gray-600 border-transparent hover:text-gray-400' : 'text-gray-400 border-transparent hover:text-gray-600'
                   }`}
               >

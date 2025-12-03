@@ -6,9 +6,10 @@ interface DatePickerProps {
     value: Date;
     onChange: (date: Date) => void;
     theme: 'light' | 'dark';
+    labelClassName?: string;
 }
 
-const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }) => {
+const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
 
@@ -91,7 +92,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
     return (
         <div className="relative w-full">
             {/* Label */}
-            <div className={`flex items-center gap-2 mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className={`flex items-center gap-2 mb-3 ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
                 <CalendarIcon className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
             </div>
@@ -177,7 +178,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme }
                                         onClick={() => handleDayClick(day)}
                                         disabled={!isCurrentMonth}
                                         className={`h-7 w-7 flex items-center justify-center text-[10px] rounded-md transition-all mx-auto ${isSelected(day)
-                                            ? 'bg-[#2D6A76] text-white font-bold shadow-sm'
+                                            ? 'bg-[#0d9488] text-white font-bold shadow-sm'
                                             : isToday(day)
                                                 ? theme === 'dark'
                                                     ? 'bg-blue-500/20 text-blue-400 font-bold'

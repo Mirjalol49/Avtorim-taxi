@@ -1,51 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
-    <!-- PWA Configuration -->
-    <meta name="theme-color" content="#2D6A76" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Avtorim" />
-    <meta name="description" content="Professional taxi fleet management dashboard" />
-    
-    <title>Avtorim Taxi - Management Dashboard</title>
-    
-    <!-- Favicons and Icons -->
-    <link rel="icon" type="image/x-icon" href="/Images/favicon.ico" />
-    <link rel="icon" type="image/svg+xml" href="/Images/favicon.svg" />
-    <link rel="icon" type="image/png" sizes="96x96" href="/Images/favicon-96x96.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/Images/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Yandex Maps API -->
-    <script src="https://api-maps.yandex.ru/2.1/?lang=en_US" type="text/javascript"></script>
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #0f172a; /* Slate 950 */
-        color: #e2e8f0;
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- PWA Configuration -->
+  <meta name="theme-color" content="#2D6A76" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Avtorim" />
+  <meta name="description" content="Professional taxi fleet management dashboard" />
+
+  <title>Avtorim Taxi - Management Dashboard</title>
+
+  <!-- Favicons and Icons -->
+  <link rel="icon" type="image/x-icon" href="/Images/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/Images/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/Images/favicon-96x96.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/Images/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Yandex Maps API -->
+  <script src="https://api-maps.yandex.ru/2.1/?lang=en_US" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      /* Slate 950 */
+      color: #e2e8f0;
+    }
+
+    /* Custom Scrollbar for dark theme */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    /* Toast animations */
+    @keyframes slide-in-right {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
       }
-      /* Custom Scrollbar for dark theme */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
       }
-      ::-webkit-scrollbar-track {
-        background: #1e293b; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
-      }
-    </style>
+    }
+
+    .animate-slide-in-right {
+      animation: slide-in-right 0.3s ease-out;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -57,23 +80,25 @@
   }
 }
 </script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(registration => {
-          console.log('SW registered: ', registration);
-        })
-        .catch(registrationError => {
-          console.log('SW registration failed: ', registrationError);
-        });
-    });
-  }
-</script>
-<link rel="stylesheet" href="/index.css">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('SW registered: ', registration);
+          })
+          .catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+  </script>
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

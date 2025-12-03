@@ -65,7 +65,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                     key={f}
                     onClick={() => onFilterChange(f)}
                     className={`flex flex-col items-center justify-center px-2.5 sm:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0 ${currentFilter === f
-                            ? 'bg-[#2D6A76] text-white shadow-md transform scale-[1.02]'
+                            ? 'bg-[#0d9488] text-white shadow-md transform scale-[1.02]'
                             : theme === 'dark'
                                 ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'

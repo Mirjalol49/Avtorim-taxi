@@ -1,6 +1,8 @@
 export enum DriverStatus {
   ACTIVE = 'ACTIVE',
-  OFFLINE = 'OFFLINE'
+  OFFLINE = 'OFFLINE',
+  BUSY = 'BUSY',
+  IDLE = 'IDLE'
 }
 
 export interface Driver {
@@ -36,6 +38,11 @@ export interface Transaction {
   type: TransactionType;
   description: string;
   timestamp: number;
+  status?: PaymentStatus;
+  reversedAt?: number;
+  reversedBy?: string;
+  reversalReason?: string;
+  originalTransactionId?: string; // For reversal/compensating transactions
 }
 
 export interface Coordinates {
@@ -62,6 +69,13 @@ export enum FineStatus {
   DISPUTED = 'DISPUTED'
 }
 
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  REVERSED = 'REVERSED',
+  REFUNDED = 'REFUNDED'
+}
+
 export interface SalaryPayment {
   id: string;
   driverId: string;
@@ -79,4 +93,21 @@ export interface DriverSalary {
   createdBy: string;
   createdAt: number; // Timestamp
   notes?: string;
+  status?: PaymentStatus;
+  reversedAt?: number;
+  reversedBy?: string;
+  reversalReason?: string;
+}
+
+export interface PaymentReversal {
+  id: string;
+  salaryId: string;
+  transactionId: string;
+  originalAmount: number;
+  driverId: string;
+  reversedBy: string;
+  reversedAt: number;
+  reason: string;
+  approvedBy?: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
 }
