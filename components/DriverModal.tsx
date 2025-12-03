@@ -3,6 +3,7 @@ import { XIcon, CameraIcon } from './Icons';
 import { Driver, DriverStatus, Language } from '../types';
 import { TRANSLATIONS } from '../translations';
 import { formatNumberSmart } from '../utils/formatNumber';
+import { sanitizeInput } from '../utils/security';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -225,7 +226,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => setName(sanitizeInput(e.target.value))}
                 className={inputClass}
                 placeholder="Ism Familiya"
               />
@@ -262,7 +263,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="text"
                 required
                 value={carModel}
-                onChange={(e) => setCarModel(e.target.value)}
+                onChange={(e) => setCarModel(sanitizeInput(e.target.value))}
                 className={inputClass}
                 placeholder="Chevrolet Cobalt"
               />
@@ -273,7 +274,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="text"
                 required
                 value={licensePlate}
-                onChange={(e) => setLicensePlate(e.target.value)}
+                onChange={(e) => setLicensePlate(sanitizeInput(e.target.value))}
                 className={inputClass}
                 placeholder="01 A 777 AA"
               />

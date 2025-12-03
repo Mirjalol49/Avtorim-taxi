@@ -15,18 +15,19 @@
     "firebase": "^12.6.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-spring": "^10.0.3",
     "recharts": "^3.5.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^2.1.4",
+    "jsdom": "^24.1.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "vitest": "^2.1.4",
-    "@vitest/coverage-v8": "^2.1.4",
-    "@testing-library/react": "^16.0.0",
-    "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/user-event": "^14.5.2",
-    "jsdom": "^24.1.1"
+    "vitest": "^2.1.4"
   }
 }

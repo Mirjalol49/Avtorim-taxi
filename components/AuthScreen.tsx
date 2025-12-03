@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { LockIcon, SparklesIcon, CarIcon } from './Icons';
+import { LockIcon, SparklesIcon, CarIcon, PhoneIcon, UserIcon } from './Icons';
 import logo from '../Images/logo.png';
 import { TRANSLATIONS } from '../translations';
 import { Language } from '../types';
+import { subscribeToViewers } from '../services/firestoreService';
+import { Viewer } from '../types';
 
 interface AuthScreenProps {
-  onAuthenticated: (role: 'admin' | 'viewer') => void;
+  onAuthenticated: (role: 'admin' | 'viewer', viewerData?: any) => void;
   lang: Language;
   setLang: (l: Language) => void;
   theme: 'light' | 'dark';
@@ -14,18 +16,56 @@ interface AuthScreenProps {
 const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang, theme }) => {
   const [role, setRole] = useState<'admin' | 'viewer'>('admin');
   const [password, setPassword] = useState('');
+  const [selectedViewerId, setSelectedViewerId] = useState('');
   const [error, setError] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [lockoutTime, setLockoutTime] = useState(0);
   const t = TRANSLATIONS[lang];
+
+  useEffect(() => {
+    const unsubscribe = subscribeToViewers((data) => {
+      setViewers(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (lockoutTime > 0) {
+      const timer = setInterval(() => {
+        setLockoutTime((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (lockoutTime === 0 && loginAttempts >= 3) {
+      setLoginAttempts(0);
+    }
+  }, [lockoutTime, loginAttempts]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutTime > 0) return;
 
     if (role === 'viewer') {
-      setSuccess(true);
-      setTimeout(() => {
-        onAuthenticated('viewer');
-      }, 800);
+      setLoading(true);
+
+      // Check if viewer exists, is active, and password matches
+      const viewer = viewers.find(v =>
+        v.id === selectedViewerId &&
+        v.active &&
+        v.password === password
+      );
+
+      if (viewer) {
+        setSuccess(true);
+        setTimeout(() => {
+          onAuthenticated('viewer', viewer);
+        }, 800);
+      } else {
+        handleFailedLogin();
+      }
+      setLoading(false);
       return;
     }
 
@@ -43,9 +83,18 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
           onAuthenticated('admin');
         }, 800);
       } else {
-        setError(true);
-        setTimeout(() => setError(false), 2000);
+        handleFailedLogin();
       }
+    }
+  };
+
+  const handleFailedLogin = () => {
+    setError(true);
+    setTimeout(() => setError(false), 2000);
+    const newAttempts = loginAttempts + 1;
+    setLoginAttempts(newAttempts);
+    if (newAttempts >= 3) {
+      setLockoutTime(30);
     }
   };
 
@@ -94,7 +143,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
               <span className={`w-2 h-2 rounded-full ${success ? 'bg-emerald-400 animate-ping' : 'bg-red-500'}`}></span>
               <span className={`text-[10px] uppercase tracking-[0.2em] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                {success ? 'ACCESS GRANTED' : 'SYSTEM LOCKED'}
+                {success ? t.accessGranted : t.systemLocked}
               </span>
             </div>
             <div className={`text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -118,8 +167,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
               </div>
             </div>
 
-            <p className={`text-xs mt-2 text-center uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-gray-500'
-              }`}>{t.loginTitle}</p>
+            <h1 className={`text-lg md:text-xl font-bold text-center uppercase tracking-[0.2em] mt-6 transition-all duration-300 ${isDark
+              ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'
+              : 'text-gray-900'
+              }`}>
+              {t.loginTitle}
+            </h1>
           </div>
 
           {/* Role Selection */}
@@ -146,46 +199,125 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {role === 'admin' && (
-              <div className="relative group">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                  autoFocus
-                  disabled={success}
-                  className={`w-full border rounded-2xl px-5 py-4 text-center text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#0d9488]/50 transition-all ${isDark
-                    ? 'bg-gray-900/50 text-white placeholder-gray-600'
-                    : 'bg-gray-50 text-gray-900 placeholder-gray-400'
-                    } ${error
-                      ? 'border-red-500 shake-animation'
-                      : isDark ? 'border-gray-700 group-hover:border-[#0d9488]/50' : 'border-gray-200 group-hover:border-[#0d9488]/50'
-                    }`}
-                />
-              </div>
-            )}
+            {/* Input Fields */}
+            <div className="space-y-4">
+              {role === 'admin' ? (
+                <div className="relative group">
+                  <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isDark ? 'text-gray-500 group-focus-within:text-teal-500' : 'text-gray-400 group-focus-within:text-teal-600'
+                    }`}>
+                    <LockIcon className="w-5 h-5" />
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    autoFocus
+                    disabled={success}
+                    className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#0d9488]/50 transition-all ${isDark
+                      ? 'bg-gray-900/50 text-white placeholder-gray-600'
+                      : 'bg-gray-50 text-gray-900 placeholder-gray-400'
+                      } ${error
+                        ? 'border-red-500 shake-animation'
+                        : isDark ? 'border-gray-700 group-hover:border-[#0d9488]/50' : 'border-gray-200 group-hover:border-[#0d9488]/50'
+                      }`}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="relative group">
+                    <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isDark ? 'text-gray-500 group-focus-within:text-teal-500' : 'text-gray-400 group-focus-within:text-teal-600'
+                      }`}>
+                      <UserIcon className="w-5 h-5" />
+                    </div>
+                    <select
+                      value={selectedViewerId}
+                      onChange={(e) => setSelectedViewerId(e.target.value)}
+                      disabled={success}
+                      className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-[#0d9488]/50 transition-all appearance-none ${isDark
+                        ? 'bg-gray-900/50 text-white placeholder-gray-600'
+                        : 'bg-gray-50 text-gray-900 placeholder-gray-400'
+                        } ${error
+                          ? 'border-red-500 shake-animation'
+                          : isDark ? 'border-gray-700 group-hover:border-[#0d9488]/50' : 'border-gray-200 group-hover:border-[#0d9488]/50'
+                        }`}
+                    >
+                      <option value="" disabled>{t.selectViewer}</option>
+                      {viewers.filter(v => v.active).map(v => (
+                        <option key={v.id} value={v.id} className={isDark ? 'bg-gray-800' : 'bg-white'}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className={`absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none ${isDark ? 'text-gray-500' : 'text-gray-400'
+                      }`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
 
-            <button
-              type="submit"
-              disabled={success}
-              className={`w-full font-bold py-4 rounded-2xl shadow-lg transform transition-all duration-300 ${success
-                ? 'bg-emerald-500 text-white scale-95'
-                : role === 'admin'
-                  ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white hover:shadow-[#0d9488]/30'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-emerald-600/30'
-                } active:scale-[0.98]`}
-            >
-              {success ? (
-                <span className="flex items-center justify-center gap-2">
-                  <SparklesIcon className="w-5 h-5" /> WELCOME BACK
-                </span>
-              ) : (role === 'admin' ? t.enter : t.enterAsViewer)}
-            </button>
+                  <div className="relative group">
+                    <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isDark ? 'text-gray-500 group-focus-within:text-teal-500' : 'text-gray-400 group-focus-within:text-teal-600'
+                      }`}>
+                      <LockIcon className="w-5 h-5" />
+                    </div>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      disabled={success}
+                      className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-[#0d9488]/50 transition-all ${isDark
+                        ? 'bg-gray-900/50 text-white placeholder-gray-600'
+                        : 'bg-gray-50 text-gray-900 placeholder-gray-400'
+                        } ${error
+                          ? 'border-red-500 shake-animation'
+                          : isDark ? 'border-gray-700 group-hover:border-[#0d9488]/50' : 'border-gray-200 group-hover:border-[#0d9488]/50'
+                        }`}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Error Message */}
+              <div className={`h-6 text-center transition-all duration-300 ${error || lockoutTime > 0 ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'
+                }`}>
+                <p className="text-red-500 text-sm font-medium flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  {lockoutTime > 0
+                    ? t.tooManyAttempts.replace('{s}', lockoutTime.toString())
+                    : (role === 'admin' ? t.invalidPassword : t.invalidCredentials)}
+                </p>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={success || lockoutTime > 0 || (role === 'admin' ? !password : (!selectedViewerId || !password))}
+                className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transform transition-all duration-200 ${success
+                  ? 'bg-green-500 text-white scale-[1.02]'
+                  : (role === 'admin' ? password : (selectedViewerId && password))
+                    ? 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] text-white hover:shadow-[#0d9488]/25 hover:scale-[1.02] active:scale-[0.98]'
+                    : isDark
+                      ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+              >
+                {success ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <SparklesIcon className="w-5 h-5 animate-spin" />
+                    {t.welcome}
+                  </span>
+                ) : (
+                  t.login
+                )}
+              </button>
+            </div>
           </form>
 
           {/* Language Switcher in Login */}

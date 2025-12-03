@@ -60,7 +60,8 @@ export enum Tab {
   DRIVERS = 'DRIVERS',
   TRANSACTIONS = 'TRANSACTIONS',
   FINANCE = 'FINANCE',
-  SALARY = 'SALARY'
+  SALARY = 'SALARY',
+  ROLES = 'ROLES'
 }
 
 export enum FineStatus {
@@ -110,4 +111,17 @@ export interface PaymentReversal {
   reason: string;
   approvedBy?: string;
   approvalStatus: 'pending' | 'approved' | 'rejected';
+}
+
+export interface Viewer {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  password?: string;
+  avatar: string;
+  role: 'viewer';
+  active: boolean;
+  createdAt: number;
+  createdBy: string;
+  telegramId?: string;
 }

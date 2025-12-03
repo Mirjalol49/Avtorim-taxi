@@ -58,9 +58,13 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       case Tab.DRIVERS:
         return t.driversList;
       case Tab.FINANCE:
-        return t.financialReports;
+        return t.transactions;
+      case Tab.SALARY:
+        return t.salaryManagement;
+      case Tab.ROLES:
+        return t.roleManagement;
       default:
-        return 'Avtorim Taxi';
+        return t.transactions;
     }
   };
 
@@ -90,8 +94,8 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           <button
             onClick={onNewTransactionClick}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${theme === 'dark'
-              ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-lg shadow-blue-900/20'
-              : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-lg shadow-blue-500/30'
+              ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-sm'
+              : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-sm'
               }`}
           >
             <PlusIcon className="w-4 h-4" />

@@ -14,12 +14,13 @@ import {
     writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Driver, Transaction } from '../types';
+import { Driver, Transaction, Viewer } from '../types';
 
 // Collections
 const DRIVERS_COLLECTION = 'drivers';
 const TRANSACTIONS_COLLECTION = 'transactions';
 const ADMIN_COLLECTION = 'admin';
+const VIEWERS_COLLECTION = 'viewers';
 
 // ==================== DRIVERS ====================
 
@@ -144,6 +145,51 @@ export const updateAdminProfile = async (admin: any) => {
         await setDoc(adminRef, admin, { merge: true });
     } catch (error) {
         console.error('Error updating admin profile:', error);
+        throw error;
+    }
+};
+
+// ==================== VIEWERS ====================
+
+export const subscribeToViewers = (callback: (viewers: Viewer[]) => void) => {
+    const viewersRef = collection(db, VIEWERS_COLLECTION);
+
+    return onSnapshot(viewersRef, (snapshot) => {
+        const viewers: Viewer[] = [];
+        snapshot.forEach((doc) => {
+            viewers.push({ id: doc.id, ...doc.data() } as Viewer);
+        });
+        callback(viewers);
+    }, (error) => {
+        console.error('Error fetching viewers:', error);
+    });
+};
+
+export const addViewer = async (viewer: Omit<Viewer, 'id'>) => {
+    try {
+        const docRef = await addDoc(collection(db, VIEWERS_COLLECTION), viewer);
+        return docRef.id;
+    } catch (error) {
+        console.error('Error adding viewer:', error);
+        throw error;
+    }
+};
+
+export const updateViewer = async (id: string, viewer: Partial<Viewer>) => {
+    try {
+        const viewerRef = doc(db, VIEWERS_COLLECTION, id);
+        await updateDoc(viewerRef, viewer as any);
+    } catch (error) {
+        console.error('Error updating viewer:', error);
+        throw error;
+    }
+};
+
+export const deleteViewer = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, VIEWERS_COLLECTION, id));
+    } catch (error) {
+        console.error('Error deleting viewer:', error);
         throw error;
     }
 };

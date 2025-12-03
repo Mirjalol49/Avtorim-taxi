@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+
+// Disable context menu globally
+document.addEventListener('contextmenu', (e) => e.preventDefault());
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon
+  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon
 } from './components/Icons';
 import MapView from './components/MapView';
 import FinancialModal from './components/FinancialModal';
@@ -18,6 +21,7 @@ import CustomSelect from './components/CustomSelect';
 import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
 import SalaryManagement from './components/SalaryManagement';
+import RolesManagement from './components/RolesManagement';
 import SnowEffect from './components/SnowEffect';
 import { ToastProvider, ToastContainer, useToast } from './components/ToastNotification';
 import Skeleton from './components/Skeleton';
@@ -38,8 +42,13 @@ const AppContent: React.FC = () => {
     return (localStorage.getItem('avtorim_role') as 'admin' | 'viewer') || 'viewer';
   });
 
-  // Auth State - Always start logged out (no persistent session)
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Check for persistent viewer session
+    const role = localStorage.getItem('avtorim_role');
+    const viewerAuth = localStorage.getItem('avtorim_viewer_auth');
+    return role === 'viewer' && viewerAuth === 'true';
+  });
 
   // State variables
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
@@ -55,7 +64,11 @@ const AppContent: React.FC = () => {
   // Firebase state - starts empty, will sync from cloud
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [adminProfile, setAdminProfile] = useState<any>(() => {
+    // Restore viewer profile from local storage if available
+    const savedProfile = localStorage.getItem('avtorim_viewer_profile');
+    return savedProfile ? JSON.parse(savedProfile) : null;
+  });
   const [isFirebaseLoaded, setIsFirebaseLoaded] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -126,6 +139,7 @@ const AppContent: React.FC = () => {
   // AUTO-LOCK: 20-minute inactivity timer
   useEffect(() => {
     if (!isAuthenticated) return; // Only run when logged in
+    if (userRole === 'viewer') return; // Disable auto-lock for viewers
 
     const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
     let inactivityTimer: NodeJS.Timeout;
@@ -319,16 +333,27 @@ const AppContent: React.FC = () => {
 
   // --- ACTIONS ---
 
-  const handleLogin = (role: 'admin' | 'viewer' = 'admin') => {
+  const handleLogin = (role: 'admin' | 'viewer' = 'admin', viewerData?: any) => {
     setIsAuthenticated(true);
     setUserRole(role);
     localStorage.setItem('avtorim_role', role);
+
+    if (role === 'viewer') {
+      localStorage.setItem('avtorim_viewer_auth', 'true');
+      if (viewerData) {
+        setAdminProfile(viewerData);
+        localStorage.setItem('avtorim_viewer_profile', JSON.stringify(viewerData));
+      }
+    }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole('viewer'); // Default back to viewer
     localStorage.removeItem('avtorim_role');
+    localStorage.removeItem('avtorim_viewer_auth');
+    localStorage.removeItem('avtorim_viewer_profile');
+    setAdminProfile(null);
   };
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
@@ -630,7 +655,8 @@ const AppContent: React.FC = () => {
           yearlyExpense += tx.amount;
         }
       }
-    });
+    }
+    );
 
     return {
       income: yearlyIncome,
@@ -736,6 +762,9 @@ const AppContent: React.FC = () => {
           {renderSidebarItem(Tab.TRANSACTIONS, t.transactions, ListIcon)}
           {renderSidebarItem(Tab.FINANCE, t.analytics, BanknoteIcon)}
           {renderSidebarItem(Tab.SALARY, t.salaryManagement, WalletIcon)}
+          {userRole === 'admin' && (
+            renderSidebarItem(Tab.ROLES, t.roles, ShieldIcon)
+          )}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -772,10 +801,10 @@ const AppContent: React.FC = () => {
                   ? 'bg-[#111827] border-gray-700'
                   : 'bg-gray-50 border-gray-200'
                   }`}>
-                  <Skeleton variant="circular" width={36} height={36} theme={theme} />
+                  <Skeleton variant="circular" width={36} height={36} theme="dark" />
                   <div className="flex-1 space-y-2">
-                    <Skeleton variant="text" width="60%" height={14} theme={theme} />
-                    <Skeleton variant="text" width="40%" height={10} theme={theme} />
+                    <Skeleton variant="text" width="60%" height={14} theme="dark" />
+                    <Skeleton variant="text" width="40%" height={10} theme="dark" />
                   </div>
                 </div>
               ) : (
@@ -803,7 +832,7 @@ const AppContent: React.FC = () => {
             : 'bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 border-red-200'
             }`}>
             <LogOutIcon className="w-4 h-4" />
-            <span className="group-hover:translate-x-0.5 transition-transform">Lock System</span>
+            <span className="group-hover:translate-x-0.5 transition-transform">{t.lockSystem}</span>
           </button>
         </div>
       </div>
@@ -986,7 +1015,7 @@ const AppContent: React.FC = () => {
                     <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'
                       }`}>
                       <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                        <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:w-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+                        <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                       </div>
                       <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
@@ -1341,8 +1370,8 @@ const AppContent: React.FC = () => {
                         setIsDriverModalOpen(true);
                       }}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg ${theme === 'dark'
-                        ? 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-blue-900/20'
-                        : 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-blue-500/30'
+                        ? 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
                         }`}
                     >
                       <PlusIcon className="w-5 h-5" />
@@ -1915,6 +1944,7 @@ const AppContent: React.FC = () => {
                                   setSelectedTransactions([]);
                                 }
                               }}
+                              onClick={(e) => e.stopPropagation()}
                               className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
                                 ? 'bg-gray-700 border-gray-600 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0 focus:ring-offset-gray-800'
                                 : 'bg-white border-gray-300 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0'
@@ -2131,11 +2161,17 @@ const AppContent: React.FC = () => {
             <SalaryManagement
               drivers={drivers}
               transactions={transactions}
-              theme={theme}
-              userRole={userRole}
-              language={language}
-              onPaySalary={handlePaySalary}
               salaryHistory={salaryHistory}
+              theme={theme}
+              language={language}
+              userRole={userRole}
+            />
+          )}
+
+          {(activeTab === Tab.ROLES && userRole === 'admin') && (
+            <RolesManagement
+              theme={theme}
+              language={language}
               adminName={adminProfile?.name || 'Admin'}
             />
           )}
