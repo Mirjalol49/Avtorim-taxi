@@ -176,7 +176,7 @@ const RolesManagement: React.FC<RolesManagementProps> = ({ theme, language, admi
                         {t.noViewers}
                     </h3>
                     <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                        {searchQuery ? 'Try adjusting your search' : 'Add your first viewer to get started'}
+                        {searchQuery ? t.tryAdjustingSearch : t.addViewerToStart}
                     </p>
                 </div>
             ) : viewMode === 'grid' ? (

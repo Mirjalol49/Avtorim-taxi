@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LockIcon, SparklesIcon, CarIcon, PhoneIcon, UserIcon } from './Icons';
-import logo from '../Images/logo.png';
+import logo from '../Images/logo_winter.png';
 import { TRANSLATIONS } from '../translations';
 import { Language } from '../types';
 import { subscribeToViewers } from '../services/firestoreService';
@@ -163,7 +163,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, lang, setLang,
                 ? 'bg-emerald-500 rotate-0'
                 : isDark ? 'bg-gray-800 rotate-0 border border-gray-700' : 'bg-white rotate-0 border border-gray-200'
                 }`}>
-                <img src={logo} alt="Avtorim Taxi" className="w-12 h-auto object-contain" />
+                <img src={logo} alt="Taksapark" className="w-16 h-auto object-contain" />
               </div>
             </div>
 

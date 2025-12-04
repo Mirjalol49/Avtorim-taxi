@@ -60,24 +60,20 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     const missing: string[] = [];
     if (!avatar) missing.push(t.image);
     if (!name.trim()) missing.push(t.name);
-    if (!monthlySalary) missing.push(t.monthlySalary || 'Salary');
-    if (!phone.trim() || phone.trim().length <= 5) missing.push(t.phone);
-    if (!carModel.trim()) missing.push(t.model);
-    if (!licensePlate.trim()) missing.push(t.plate);
-
-    if (missing.length > 0) {
-      const prefix = lang === 'uz' ? 'Majburiy maydonlar to\'ldirilmagan: ' : (lang === 'ru' ? 'Обязательные поля не заполнены: ' : 'Required fields missing: ');
-      setError(`${prefix}${missing.join(', ')}`);
-      setIsSubmitting(false);
+    if (!name.trim() || !phone.trim() || !carModel.trim() || !licensePlate.trim()) {
+      setError(lang === 'uz' ? "Barcha maydonlarni to'ldiring" : (lang === 'ru' ? 'Заполните все поля' : 'Fill all fields'));
       return;
     }
 
-    // Remove formatting (commas) before saving
-    const salaryValue = monthlySalary ? parseFloat(monthlySalary.replace(/,/g, '')) : 0;
+    setIsSubmitting(true);
+    setError('');
 
     try {
-      await onSubmit({
-        id: editingDriver?.id, // Pass ID if editing
+      const salaryValue = monthlySalary ? parseFloat(monthlySalary.replace(/\s/g, '')) : 0;
+
+      // Optimistic update - call onSave and close modal immediately
+      onSubmit({
+        id: editingDriver?.id,
         name,
         licensePlate,
         carModel,
@@ -86,11 +82,14 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         status,
         monthlySalary: salaryValue
       });
+
+      // Close modal immediately for instant feedback
       onClose();
+
+      // Firebase save happens in background (already handled by onSave in App.tsx)
     } catch (err) {
       console.error("Error saving driver:", err);
       setError("Failed to save driver. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };

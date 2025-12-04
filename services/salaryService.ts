@@ -6,7 +6,10 @@ import {
     getDocs,
     orderBy,
     Timestamp,
-    onSnapshot
+    onSnapshot,
+    deleteDoc,
+    writeBatch,
+    doc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DriverSalary } from '../types';
@@ -71,4 +74,69 @@ export const subscribeToSalaries = (callback: (salaries: DriverSalary[]) => void
     }, (error) => {
         console.error('Error subscribing to salaries:', error);
     });
+};
+
+export const clearSalaryHistory = async () => {
+    try {
+        const q = query(collection(db, SALARIES_COLLECTION));
+        const snapshot = await getDocs(q);
+
+        // Delete in batches of 500 (Firestore limit)
+        const batchSize = 500;
+        const chunks = [];
+        const docs = snapshot.docs;
+
+        for (let i = 0; i < docs.length; i += batchSize) {
+            chunks.push(docs.slice(i, i + batchSize));
+        }
+
+        for (const chunk of chunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(docSnapshot => {
+                batch.delete(doc(db, SALARIES_COLLECTION, docSnapshot.id));
+            });
+            await batch.commit();
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error clearing salary history:', error);
+        throw error;
+    }
+};
+
+// Delete a single salary record
+export const deleteSalary = async (salaryId: string) => {
+    try {
+        await deleteDoc(doc(db, SALARIES_COLLECTION, salaryId));
+        return true;
+    } catch (error) {
+        console.error('Error deleting salary record:', error);
+        throw error;
+    }
+};
+
+// Delete multiple salary records
+export const deleteSalaries = async (salaryIds: string[]) => {
+    try {
+        const batchSize = 500;
+        const chunks = [];
+
+        for (let i = 0; i < salaryIds.length; i += batchSize) {
+            chunks.push(salaryIds.slice(i, i + batchSize));
+        }
+
+        for (const chunk of chunks) {
+            const batch = writeBatch(db);
+            chunk.forEach(salaryId => {
+                batch.delete(doc(db, SALARIES_COLLECTION, salaryId));
+            });
+            await batch.commit();
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting salary records:', error);
+        throw error;
+    }
 };

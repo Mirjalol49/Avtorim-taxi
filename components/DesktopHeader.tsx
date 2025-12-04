@@ -146,7 +146,11 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                 >
-                  <GlobeIcon className="w-3 h-3" />
+                  <span className="text-xl">
+                    {lang === 'uz' && '🇺🇿'}
+                    {lang === 'ru' && '🇷🇺'}
+                    {lang === 'en' && '🇬🇧'}
+                  </span>
                   <span>
                     {lang === 'uz' && "O'zbek"}
                     {lang === 'ru' && 'Русский'}

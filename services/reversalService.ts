@@ -168,7 +168,8 @@ export const refundSalaryPayment = async (
     transactionId: string | null,
     amount: number,
     driverId: string,
-    refundedBy: string
+    refundedBy: string,
+    description?: string // Optional description for translation
 ): Promise<void> => {
     try {
         const batch = writeBatch(db);
@@ -199,10 +200,10 @@ export const refundSalaryPayment = async (
             driverId,
             amount: amount, // Positive amount (income)
             type: TransactionType.INCOME,
-            description: `Salary Refund: Manual Action`,
+            description: description || `Salary Refund: Manual Action`, // Use provided description or fallback
             timestamp: Date.now(),
             status: PaymentStatus.COMPLETED,
-            originalTransactionId: transactionId || undefined
+            ...(transactionId && { originalTransactionId: transactionId })
         };
         batch.set(compensatingTxRef, compensatingTx);
 

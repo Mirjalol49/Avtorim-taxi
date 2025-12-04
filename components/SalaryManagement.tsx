@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Driver, DriverSalary, Transaction, TransactionType, DriverStatus, PaymentStatus } from '../types';
-import { getDriverSalaryHistory, getAllSalaries } from '../services/salaryService';
+import { getDriverSalaryHistory, getAllSalaries, clearSalaryHistory, deleteSalaries } from '../services/salaryService';
 import { refundSalaryPayment } from '../services/reversalService';
 import { canReversePayment } from '../utils/PaymentGuards';
 import CustomSelect from './CustomSelect';
 import StatusBadge from './StatusBadge';
-import { UsersIcon, CalendarIcon, SearchIcon, FilterIcon, DownloadIcon, WalletIcon, TrendingUpIcon, CheckCircleIcon, AlertCircleIcon, CalculatorIcon, ArrowLeftCircleIcon } from './Icons';
+import { UsersIcon, CalendarIcon, SearchIcon, FilterIcon, DownloadIcon, WalletIcon, TrendingUpIcon, CheckCircleIcon, AlertCircleIcon, CalculatorIcon, ArrowLeftCircleIcon, TrashIcon } from './Icons';
 import { formatNumberSmart } from '../utils/formatNumber';
 import { TRANSLATIONS } from '../translations';
 import ConfirmModal from './ConfirmModal';
@@ -27,6 +27,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
     const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
     const [showReversed, setShowReversed] = useState(true);
     const [salaryHistoryState, setSalaryHistory] = useState<DriverSalary[]>(salaryHistory);
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
     // Update local state when prop changes
     useEffect(() => {
@@ -161,7 +162,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                         correspondingTx?.id || null,
                         salary.amount,
                         salary.driverId,
-                        userRole === 'admin' ? adminName : 'User'
+                        userRole === 'admin' ? adminName : 'User',
+                        t.salaryRefundDescription // Pass translated description
                     );
 
                     // Optimistic update
@@ -230,7 +232,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
         }).map(s => s.driverId)
     ).size;
 
-    const pendingSalaries = Math.max(0, totalSalaries - periodPaidSalaries);
+    const pendingSalaries = totalSalaries > 0 ? Math.max(0, totalSalaries - periodPaidSalaries) : 0;
 
     // Derived Metrics
     // Gross Profit = Income - (Expenses - PaidSalaries) -> Income - NonSalaryExpenses
@@ -280,25 +282,65 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setViewMode('current')}
-                        className={`px-5 py-2.5 rounded-lg transition ${viewMode === 'current' ? 'bg-[#0D9488] text-white hover:bg-[#0D9488]/90' : 'bg-white/10 hover:bg-white/20'}`}
-                    >
-                        {t.currentSalaries}
-                    </button>
-                    <button
-                        onClick={() => setViewMode('history')}
-                        className={`px-5 py-2.5 rounded-lg transition ${viewMode === 'history' ? 'bg-[#0D9488] text-white hover:bg-[#0D9488]/90' : 'bg-white/10 hover:bg-white/20'}`}
-                    >
-                        {t.historyLog}
-                    </button>
-                    <button
-                        onClick={handleExportCSV}
-                        className="px-5 py-2.5 bg-white/10 rounded-lg hover:bg-white/20 flex items-center gap-2 transition"
-                    >
-                        <DownloadIcon className="w-4 h-4" /> CSV Yuklash
-                    </button>
+                <div className="flex flex-col md:flex-row items-center gap-3">
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setViewMode('current')}
+                            className={`flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap ${viewMode === 'current'
+                                ? 'bg-[#0d9488] text-white'
+                                : theme === 'dark'
+                                    ? 'bg-gray-800/50 text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
+                                }`}
+                        >
+                            {t.currentSalaries}
+                        </button>
+                        <button
+                            onClick={() => setViewMode('history')}
+                            className={`flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap ${viewMode === 'history'
+                                ? 'bg-[#0d9488] text-white'
+                                : theme === 'dark'
+                                    ? 'bg-gray-800/50 text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
+                                }`}
+                        >
+                            {t.historyLog}
+                        </button>
+                    </div>
+                    {/* Delete button - only show in history view when items are selected */}
+                    {viewMode === 'history' && selectedItems.length > 0 && (
+                        <button
+                            onClick={() => {
+                                setConfirmModal({
+                                    isOpen: true,
+                                    title: t.confirmActionTitle || 'Confirm Deletion',
+                                    message: `Haqiqatan ham ${selectedItems.length} ta ish haqi to'lovini o'chirmoqchimisiz?\n\nBu amal qaytarib bo'lmaydi.`,
+                                    isDanger: true,
+                                    onConfirm: async () => {
+                                        closeConfirmModal();
+                                        try {
+                                            await deleteSalaries(selectedItems);
+                                            // Update local state - remove deleted items
+                                            setSalaryHistory(salaryHistoryState.filter(s => !selectedItems.includes(s.id)));
+                                            // Clear selection
+                                            setSelectedItems([]);
+                                            addToast('success', `${selectedItems.length} ta yozuv o'chirildi`);
+                                        } catch (error) {
+                                            console.error('Failed to delete salary records:', error);
+                                            addToast('error', 'O\'chirishda xatolik yuz berdi');
+                                        }
+                                    }
+                                });
+                            }}
+                            className={`px-5 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-md ${theme === 'dark'
+                                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30'
+                                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                                }`}
+                        >
+                            <TrashIcon className="w-4 h-4" />
+                            <span className="font-medium">{t.delete || 'Delete'} ({selectedItems.length})</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -346,9 +388,9 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                                 {formatNumberSmart(pendingSalaries, false, language)} UZS
                             </p>
                             <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                {pendingSalaries === 0 ? (
+                                {pendingSalaries === 0 && totalSalaries > 0 ? (
                                     <span className="text-green-500 font-medium">
-                                        Congrats, you paid all your employees!
+                                        {t.allEmployeesPaid}
                                     </span>
                                 ) : (
                                     t.mustBePaid
@@ -386,13 +428,13 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                     <div className="flex-1">
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                                <SearchIcon className="h-5 w-5 text-white/70" />
                             </div>
                             <input
                                 type="text"
-                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-[#0d9488] sm:text-sm transition-colors ${theme === 'dark'
-                                    ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
-                                    : 'bg-gray-50 border-gray-200 text-gray-900'
+                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-[#0d9488] sm:text-sm transition-colors ${theme === 'dark'
+                                    ? 'bg-gray-800 border-gray-600'
+                                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-500'
                                     }`}
                                 placeholder={t.search || 'Search...'}
                                 value={searchQuery}
@@ -433,6 +475,23 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className={`text-xs uppercase tracking-wider ${theme === 'dark' ? 'bg-gray-800/50 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
+                                {/* Only show checkbox column in history view */}
+                                {viewMode === 'history' && (
+                                    <th className="px-6 py-4 font-bold w-12">
+                                        <input
+                                            type="checkbox"
+                                            checked={filteredData.length > 0 && selectedItems.length === filteredData.length}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedItems(filteredData.map(item => (item as DriverSalary).id));
+                                                } else {
+                                                    setSelectedItems([]);
+                                                }
+                                            }}
+                                            className="w-4 h-4 rounded border-gray-300 text-[#0d9488] focus:ring-[#0d9488]"
+                                        />
+                                    </th>
+                                )}
                                 <th className="px-6 py-4 font-bold">{t.driver}</th>
                                 <th className="px-6 py-4 font-bold">{t.amount} (UZS)</th>
                                 {viewMode === 'current' && <th className="px-6 py-4 font-bold">{t.status}</th>}
@@ -480,6 +539,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
 
                                         return (
                                             <tr key={driver.id} className={`transition-colors ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}>
+                                                {/* No checkbox in current salaries view */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-10 h-10 rounded-full overflow-hidden border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
@@ -572,6 +632,20 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
 
                                         return (
                                             <tr key={record.id} className={`h-[72px] transition-colors ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} ${isRefunded ? 'opacity-60' : ''}`}>
+                                                <td className="px-6 py-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedItems.includes(record.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedItems([...selectedItems, record.id]);
+                                                            } else {
+                                                                setSelectedItems(selectedItems.filter(id => id !== record.id));
+                                                            }
+                                                        }}
+                                                        className="w-4 h-4 rounded border-gray-300 text-[#0d9488] focus:ring-[#0d9488]"
+                                                    />
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         {driver?.avatar ? (
