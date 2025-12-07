@@ -1,7 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { SirenIcon } from './Icons';
-import { Language } from '../types';
-import { TRANSLATIONS } from '../translations';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -9,7 +8,7 @@ interface ConfirmModalProps {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
-  lang: Language;
+  // lang removed
   isDanger?: boolean;
   theme: 'light' | 'dark';
   showIcon?: boolean;
@@ -24,7 +23,6 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   message,
   onConfirm,
   onCancel,
-  lang,
   isDanger = false,
   theme,
   showIcon = true,
@@ -32,7 +30,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmLabel,
   cancelLabel
 }) => {
-  const t = TRANSLATIONS[lang];
+  const { t } = useTranslation();
 
   if (!isOpen) return null;
 
@@ -58,7 +56,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-w-[100px] ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
-              {cancelLabel || t.cancel}
+              {cancelLabel || t('cancel')}
             </button>
             <button
               onClick={onConfirm}
@@ -67,7 +65,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 : 'bg-[#0d9488] hover:bg-[#0f766e] shadow-[#0d9488]/20'
                 }`}
             >
-              {confirmLabel || t.confirm}
+              {confirmLabel || t('confirm')}
             </button>
           </div>
         </div>

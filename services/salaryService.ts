@@ -9,19 +9,28 @@ import {
     onSnapshot,
     deleteDoc,
     writeBatch,
-    doc
+    doc,
+    limit,
+    getDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { DriverSalary } from '../types';
+import { DriverSalary, TransactionType, PaymentStatus } from '../types';
 
 const SALARIES_COLLECTION = 'driver_salaries';
+const TRANSACTIONS_COLLECTION = 'transactions';
+const AUDIT_LOGS_COLLECTION = 'audit_logs';
 
-export const addSalary = async (salary: Omit<DriverSalary, 'id'>) => {
+// Helper to get collection path based on fleetId
+const getCollectionPath = (baseCollection: string, fleetId?: string) => {
+    if (fleetId) {
+        return `fleets/${fleetId}/${baseCollection}`;
+    }
+    return baseCollection;
+};
+
+export const addSalary = async (salary: Omit<DriverSalary, 'id'>, fleetId?: string) => {
     try {
-        // Validation: Check for overlapping effective dates or other constraints if needed
-        // For now, we trust the UI validation but we could add checks here.
-
-        const docRef = await addDoc(collection(db, SALARIES_COLLECTION), salary);
+        const docRef = await addDoc(collection(db, getCollectionPath(SALARIES_COLLECTION, fleetId)), salary);
         return docRef.id;
     } catch (error) {
         console.error('Error adding salary record:', error);
@@ -29,10 +38,10 @@ export const addSalary = async (salary: Omit<DriverSalary, 'id'>) => {
     }
 };
 
-export const getDriverSalaryHistory = async (driverId: string) => {
+export const getDriverSalaryHistory = async (driverId: string, fleetId?: string) => {
     try {
         const q = query(
-            collection(db, SALARIES_COLLECTION),
+            collection(db, getCollectionPath(SALARIES_COLLECTION, fleetId)),
             where('driverId', '==', driverId),
             orderBy('effectiveDate', 'desc')
         );
@@ -49,9 +58,9 @@ export const getDriverSalaryHistory = async (driverId: string) => {
     }
 };
 
-export const getAllSalaries = async () => {
+export const getAllSalaries = async (fleetId?: string) => {
     try {
-        const q = query(collection(db, SALARIES_COLLECTION), orderBy('effectiveDate', 'desc'));
+        const q = query(collection(db, getCollectionPath(SALARIES_COLLECTION, fleetId)), orderBy('effectiveDate', 'desc'));
         const snapshot = await getDocs(q);
         const salaries: DriverSalary[] = [];
         snapshot.forEach((doc) => {
@@ -63,8 +72,9 @@ export const getAllSalaries = async () => {
         throw error;
     }
 };
-export const subscribeToSalaries = (callback: (salaries: DriverSalary[]) => void) => {
-    const q = query(collection(db, SALARIES_COLLECTION), orderBy('effectiveDate', 'desc'));
+
+export const subscribeToSalaries = (callback: (salaries: DriverSalary[]) => void, fleetId?: string) => {
+    const q = query(collection(db, getCollectionPath(SALARIES_COLLECTION, fleetId)), orderBy('effectiveDate', 'desc'));
     return onSnapshot(q, (snapshot) => {
         const salaries: DriverSalary[] = [];
         snapshot.forEach((doc) => {
@@ -76,9 +86,9 @@ export const subscribeToSalaries = (callback: (salaries: DriverSalary[]) => void
     });
 };
 
-export const clearSalaryHistory = async () => {
+export const clearSalaryHistory = async (fleetId?: string) => {
     try {
-        const q = query(collection(db, SALARIES_COLLECTION));
+        const q = query(collection(db, getCollectionPath(SALARIES_COLLECTION, fleetId)));
         const snapshot = await getDocs(q);
 
         // Delete in batches of 500 (Firestore limit)
@@ -93,7 +103,7 @@ export const clearSalaryHistory = async () => {
         for (const chunk of chunks) {
             const batch = writeBatch(db);
             chunk.forEach(docSnapshot => {
-                batch.delete(doc(db, SALARIES_COLLECTION, docSnapshot.id));
+                batch.delete(doc(db, getCollectionPath(SALARIES_COLLECTION, fleetId), docSnapshot.id));
             });
             await batch.commit();
         }
@@ -106,37 +116,26 @@ export const clearSalaryHistory = async () => {
 };
 
 // Delete a single salary record
-export const deleteSalary = async (salaryId: string) => {
-    try {
-        await deleteDoc(doc(db, SALARIES_COLLECTION, salaryId));
-        return true;
-    } catch (error) {
-        console.error('Error deleting salary record:', error);
-        throw error;
-    }
+export const deleteSalary = async (salaryId: string, fleetId?: string) => {
+    console.error('Salary deletion is disabled. Please use refund instead.');
+    throw new Error('Salary deletion is disabled. Please use refund instead.');
 };
 
 // Delete multiple salary records
-export const deleteSalaries = async (salaryIds: string[]) => {
-    try {
-        const batchSize = 500;
-        const chunks = [];
+export const deleteSalaries = async (salaryIds: string[], fleetId?: string) => {
+    console.error('Salary deletion is disabled. Please use refund instead.');
+    throw new Error('Salary deletion is disabled. Please use refund instead.');
+};
 
-        for (let i = 0; i < salaryIds.length; i += batchSize) {
-            chunks.push(salaryIds.slice(i, i + batchSize));
-        }
-
-        for (const chunk of chunks) {
-            const batch = writeBatch(db);
-            chunk.forEach(salaryId => {
-                batch.delete(doc(db, SALARIES_COLLECTION, salaryId));
-            });
-            await batch.commit();
-        }
-
-        return true;
-    } catch (error) {
-        console.error('Error deleting salary records:', error);
-        throw error;
-    }
+// Delete salary and corresponding transaction atomically
+export const deleteSalaryWithSync = async (
+    salaryId: string,
+    driverId: string,
+    amount: number,
+    effectiveDate: number,
+    performedBy: string,
+    fleetId?: string
+) => {
+    console.error('Salary deletion is disabled. Please use refund instead.');
+    throw new Error('Salary deletion is disabled. Please use refund instead.');
 };

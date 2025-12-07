@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon } from './Icons';
-import { Driver, DriverStatus, Language } from '../types';
-import { TRANSLATIONS } from '../translations';
-import { formatNumberSmart } from '../utils/formatNumber';
+import { Driver, DriverStatus } from '../types';
 import { sanitizeInput } from '../utils/security';
 
 interface DriverModalProps {
@@ -10,11 +9,12 @@ interface DriverModalProps {
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
   editingDriver?: Driver | null;
-  lang: Language;
   theme: 'light' | 'dark';
 }
 
-const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, editingDriver, lang, theme }) => {
+const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, editingDriver, theme }) => {
+  const { t, i18n } = useTranslation();
+
   const [name, setName] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [carModel, setCarModel] = useState('');
@@ -24,8 +24,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [monthlySalary, setMonthlySalary] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const t = TRANSLATIONS[lang];
 
   useEffect(() => {
     if (isOpen && editingDriver) {
@@ -57,22 +55,17 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     setIsSubmitting(true);
 
     // Validation
-    const missing: string[] = [];
-    if (!avatar) missing.push(t.image);
-    if (!name.trim()) missing.push(t.name);
     if (!name.trim() || !phone.trim() || !carModel.trim() || !licensePlate.trim()) {
-      setError(lang === 'uz' ? "Barcha maydonlarni to'ldiring" : (lang === 'ru' ? 'Заполните все поля' : 'Fill all fields'));
+      setError(t('fillAllFields') || "Barcha maydonlarni to'ldiring");
+      setIsSubmitting(false); // Reset on validation failure
       return;
     }
 
-    setIsSubmitting(true);
-    setError('');
-
     try {
-      const salaryValue = monthlySalary ? parseFloat(monthlySalary.replace(/\s/g, '')) : 0;
+      const salaryValue = monthlySalary ? parseFloat(monthlySalary.replace(/\\s/g, '').replace(/,/g, '')) : 0;
 
-      // Optimistic update - call onSave and close modal immediately
-      onSubmit({
+      // Call onSubmit and close modal immediately for instant feedback (optimistic update)
+      await onSubmit({
         id: editingDriver?.id,
         name,
         licensePlate,
@@ -83,14 +76,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         monthlySalary: salaryValue
       });
 
-      // Close modal immediately for instant feedback
+      // Close modal after successful save
       onClose();
-
-      // Firebase save happens in background (already handled by onSave in App.tsx)
     } catch (err) {
       console.error("Error saving driver:", err);
-      setError("Failed to save driver. Please try again.");
-      setIsSubmitting(false);
+      setError(t('errorSaving') || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+    } finally {
+      setIsSubmitting(false); // Always reset submitting state
     }
   };
 
@@ -170,7 +162,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'
           }`}>
           <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {editingDriver ? t.editDriver : t.addDriver}
+            {editingDriver ? t('editDriver') : t('addDriver')}
           </h3>
           <button onClick={onClose} className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'
             }`}>
@@ -189,7 +181,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           <div className="flex items-start gap-6">
             <div className="flex-shrink-0">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}>{t.image} <span className="text-red-500">*</span></label>
+                }`}>{t('image')} <span className="text-red-500">*</span></label>
               <div className={`relative group w-24 h-24 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#0d9488]' : 'bg-gray-50 border-gray-200 hover:border-[#0d9488]'
                 }`}>
                 {avatar ? (
@@ -220,7 +212,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>{t.name} <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{t('name')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 required
@@ -231,7 +223,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               />
             </div>
             <div>
-              <label className={labelClass}>{t.monthlySalary || 'Salary (UZS)'} <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{t('monthlySalary') || 'Salary (UZS)'} <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 required
@@ -244,7 +236,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
 
           <div>
-            <label className={labelClass}>{t.phone} <span className="text-red-500">*</span></label>
+            <label className={labelClass}>{t('phone')} <span className="text-red-500">*</span></label>
             <input
               type="tel"
               required
@@ -257,7 +249,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>{t.model} <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{t('model')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 required
@@ -268,7 +260,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               />
             </div>
             <div>
-              <label className={labelClass}>{t.plate} <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{t('plate')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 required
@@ -287,14 +279,14 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
                 }`}
             >
-              {t.cancel}
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className={`px-6 py-2.5 bg-[#0d9488] text-white hover:bg-[#0f766e] rounded-xl text-sm font-bold shadow-lg shadow-[#0d9488]/20 transition-all transform active:scale-95 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              {isSubmitting ? 'Saving...' : (editingDriver ? t.save : t.add)}
+              {isSubmitting ? 'Saving...' : (editingDriver ? t('save') : t('add'))}
             </button>
           </div>
         </form>

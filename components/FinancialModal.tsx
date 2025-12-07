@@ -1,28 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { XIcon, UsersIcon } from './Icons';
 import CustomSelect from './CustomSelect';
 import DatePicker from './DatePicker';
-import { Driver, Transaction, TransactionType, Language } from '../types';
-import { TRANSLATIONS } from '../translations';
+import { Driver, Transaction, TransactionType } from '../src/core/types';
 
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: Omit<Transaction, 'id'>) => void;
   drivers: Driver[];
-  lang: Language;
+  // lang removed
   theme: 'light' | 'dark';
 }
 
-const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubmit, drivers, lang, theme }) => {
+const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubmit, drivers, theme }) => {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
   const [description, setDescription] = useState('');
   const [driverId, setDriverId] = useState('');
   const [date, setDate] = useState<Date>(new Date());
-
-  const t = TRANSLATIONS[lang];
 
   // Format number with spaces for readability (300 000, 20 000, etc.)
   const formatNumberDisplay = (value: string): string => {
@@ -107,7 +106,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
         }`}>
         <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'
           }`}>
-          <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.newTransaction}</h3>
+          <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('newTransaction')}</h3>
           <button onClick={onClose} className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'
             }`}>
             <XIcon className="w-6 h-6" />
@@ -116,32 +115,32 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Type Selection */}
-          <div className={`grid grid-cols-2 gap-2 p-1 rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+          <div className={`grid grid-cols-2 p-1 rounded-full border ${theme === 'dark' ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'
             }`}>
             <button
               type="button"
               onClick={() => setType(TransactionType.INCOME)}
-              className={`py-2.5 rounded-lg text-sm font-bold transition-all ${type === TransactionType.INCOME
+              className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.INCOME
                 ? 'bg-[#0d9488] text-white shadow-lg'
                 : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
-              {t.income}
+              {t('income')}
             </button>
             <button
               type="button"
               onClick={() => setType(TransactionType.EXPENSE)}
-              className={`py-2.5 rounded-lg text-sm font-bold transition-all ${type === TransactionType.EXPENSE
+              className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.EXPENSE
                 ? 'bg-red-500 text-white shadow-lg'
                 : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
-              {t.expense}
+              {t('expense')}
             </button>
           </div>
 
           <div>
-            <label className={labelClass}>{t.amount} (UZS)</label>
+            <label className={labelClass}>{t('amount')} (UZS)</label>
             <input
               type="text"
               required
@@ -156,7 +155,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
           <div>
             <div className="w-full">
               <DatePicker
-                label={t.time || "Date"}
+                label={t('time') || "Date"}
                 value={date}
                 onChange={setDate}
                 theme={theme}
@@ -167,11 +166,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
           <div>
             <div className="w-full">
               <CustomSelect
-                label={t.driver}
+                label={t('driver')}
                 value={driverId}
                 onChange={setDriverId}
                 options={[
-                  { id: '', name: t.selectDriver || "Select Driver" },
+                  { id: '', name: t('selectDriver') || "Select Driver" },
                   ...drivers.map(d => ({ id: d.id, name: `${d.name} — ${d.carModel}` }))
                 ]}
                 theme={theme}
@@ -182,7 +181,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
 
           <div>
             <label className={labelClass}>
-              {t.comment}
+              {t('comment')}
               {type === TransactionType.EXPENSE && <span className="text-red-500 ml-1">*</span>}
             </label>
             <textarea
@@ -190,7 +189,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputClass} min-h-[100px] resize-none`}
-              placeholder={type === TransactionType.EXPENSE ? t.commentPlaceholder || "Masalan: Benzin uchun" : t.commentPlaceholder || "Masalan: Benzin uchun (ixtiyoriy)"}
+              placeholder={type === TransactionType.EXPENSE ? t('commentPlaceholder') || "Masalan: Benzin uchun" : t('commentPlaceholder') || "Masalan: Benzin uchun (ixtiyoriy)"}
             />
           </div>
 
@@ -201,7 +200,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
                 }`}
             >
-              {t.cancel}
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -210,7 +209,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
                 : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
                 }`}
             >
-              {t.save}
+              {t('save')}
             </button>
           </div>
         </form>

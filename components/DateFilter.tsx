@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TimeFilter, Language } from '../types';
 
 interface DateFilterProps {
     currentFilter: TimeFilter;
     onFilterChange: (filter: TimeFilter) => void;
-    language: Language;
+    // language prop removed, using hook
     theme: 'light' | 'dark';
     labels: {
         today: string;
@@ -17,10 +18,11 @@ interface DateFilterProps {
 const DateFilter: React.FC<DateFilterProps> = ({
     currentFilter,
     onFilterChange,
-    language,
     theme,
     labels
 }) => {
+    const { i18n } = useTranslation();
+    const language = i18n.language as Language;
     const getDateLabel = (filter: TimeFilter, lang: Language): string => {
         const now = new Date();
         const locale = lang === 'uz' ? 'uz-UZ' : lang === 'ru' ? 'ru-RU' : 'en-US';
@@ -65,10 +67,10 @@ const DateFilter: React.FC<DateFilterProps> = ({
                     key={f}
                     onClick={() => onFilterChange(f)}
                     className={`flex flex-col items-center justify-center px-2.5 sm:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0 ${currentFilter === f
-                            ? 'bg-[#0d9488] text-white shadow-md transform scale-[1.02]'
-                            : theme === 'dark'
-                                ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-[#0d9488] text-white shadow-md transform scale-[1.02]'
+                        : theme === 'dark'
+                            ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                         }`}
                 >
                     <span className={`text-xs sm:text-sm font-bold leading-tight whitespace-nowrap ${currentFilter === f ? 'text-white' : ''}`}>

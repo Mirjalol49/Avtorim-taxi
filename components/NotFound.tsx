@@ -1,17 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
-import { TRANSLATIONS } from '../translations';
-import { Language } from '../types';
+
 import './NotFound.css';
 
-interface NotFoundProps {
-    language?: Language;
-}
+import { useTranslation } from 'react-i18next';
+import './NotFound.css';
 
-const NotFound: React.FC<NotFoundProps> = ({ language = 'uz' }) => {
+const NotFound: React.FC = () => {
     const navigate = useNavigate();
-    const t = TRANSLATIONS[language];
+    const { t } = useTranslation();
     const yetiRef = useRef<SVGSVGElement>(null);
 
     useEffect(() => {
@@ -309,10 +307,10 @@ const NotFound: React.FC<NotFoundProps> = ({ language = 'uz' }) => {
             </svg>
 
             <div className="content">
-                <h3>{t.pageNotFoundTitle}</h3>
-                <p>{t.pageNotFoundMessage}</p>
+                <h3>{t('pageNotFoundTitle')}</h3>
+                <p>{t('pageNotFoundMessage')}</p>
                 <button onClick={() => navigate('/')} className="go-home-btn">
-                    {t.goHome}
+                    {t('goHome')}
                 </button>
             </div>
         </div>

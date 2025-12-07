@@ -1,36 +1,52 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  GlobeIcon, SunIcon, MoonIcon, ChevronDownIcon, PlusIcon
+  GlobeIcon, ChevronDownIcon, PlusIcon
 } from './Icons';
-import { Language, Tab } from '../types';
-import { TRANSLATIONS } from '../translations';
+import { Tab } from '../types';
+import NotificationBell from './NotificationBell';
+import { Notification } from '../services/notificationService';
 
 interface DesktopHeaderProps {
   theme: 'dark' | 'light';
   onThemeToggle: () => void;
-  language: Language;
-  onLanguageChange: (lang: Language) => void;
+  // language and onLanguageChange removed
   activeTab: Tab;
   isMobile: boolean;
   onNewTransactionClick: () => void;
   onAddDriverClick: () => void;
   userRole: 'admin' | 'viewer';
+  // Notification props
+  notifications: Notification[];
+  unreadCount: number;
+  readIds: Set<string>;
+  userId: string;
+  onMarkAsRead: (id: string) => void;
+  onMarkAllAsRead: () => void;
+  onDeleteNotification: (id: string) => void;
+  onClearAllRead: () => void;
 }
 
 const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   theme,
   onThemeToggle,
-  language,
-  onLanguageChange,
   activeTab,
   isMobile,
   onNewTransactionClick,
   onAddDriverClick,
-  userRole
+  userRole,
+  notifications,
+  unreadCount,
+  readIds,
+  userId,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onDeleteNotification,
+  onClearAllRead
 }) => {
+  const { t, i18n } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
-  const t = TRANSLATIONS[language];
 
   // Close language menu when clicking outside
   useEffect(() => {
@@ -52,20 +68,27 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   const getTabTitle = () => {
     switch (activeTab) {
       case Tab.DASHBOARD:
-        return t.overview;
+        return t('overview');
       case Tab.MAP:
-        return t.globalTracking;
+        return t('globalTracking');
       case Tab.DRIVERS:
-        return t.driversList;
+        return t('driversList');
       case Tab.FINANCE:
-        return t.transactions;
+        return t('transactions');
       case Tab.SALARY:
-        return t.salaryManagement;
+        return t('salaryManagement');
       case Tab.ROLES:
-        return t.roleManagement;
+        return t('roleManagement');
       default:
-        return t.transactions;
+        return t('transactions');
     }
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang);
+    // Persist to localStorage if needed, but App.tsx might handle it or i18next plugin
+    localStorage.setItem('language', lang);
+    setIsLangMenuOpen(false);
   };
 
   return (
@@ -99,11 +122,22 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
               }`}
           >
             <PlusIcon className="w-4 h-4" />
-            <span>{t.newTransfer}</span>
+            <span>{t('newTransfer')}</span>
           </button>
         )}
 
-        {/* THEME TOGGLE REMOVED */}
+        {/* NOTIFICATION BELL */}
+        <NotificationBell
+          notifications={notifications}
+          unreadCount={unreadCount}
+          readIds={readIds}
+          userId={userId}
+          theme={theme}
+          onMarkAsRead={onMarkAsRead}
+          onMarkAllAsRead={onMarkAllAsRead}
+          onDeleteNotification={onDeleteNotification}
+          onClearAllRead={onClearAllRead}
+        />
 
         {/* LANGUAGE SELECTOR */}
         <div className="relative" ref={langMenuRef}>
@@ -115,7 +149,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
               }`}
           >
             <GlobeIcon className="w-4 h-4" />
-            <span className="text-sm font-bold uppercase">{language}</span>
+            <span className="text-sm font-bold uppercase">{i18n.language}</span>
             <ChevronDownIcon
               className={`w-3 h-3 transition-transform duration-200 ${isLangMenuOpen ? 'rotate-180' : ''
                 }`}
@@ -133,11 +167,8 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
               {(['uz', 'ru', 'en'] as const).map((lang) => (
                 <button
                   key={lang}
-                  onClick={() => {
-                    onLanguageChange(lang);
-                    setIsLangMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${language === lang
+                  onClick={() => handleLanguageChange(lang)}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${i18n.language === lang
                     ? theme === 'dark'
                       ? 'bg-gray-700 text-[#0d9488]'
                       : 'bg-gray-100 text-[#0d9488]'
@@ -156,7 +187,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                     {lang === 'ru' && 'Русский'}
                     {lang === 'en' && 'English'}
                   </span>
-                  {language === lang && (
+                  {i18n.language === lang && (
                     <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0d9488]" />
                   )}
                 </button>

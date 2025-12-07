@@ -158,11 +158,139 @@ app.get('/api/telegram/drivers', (req, res) => {
     });
 });
 
+// Import Admin Controller
+const adminController = require('./adminController');
+
+// --- SUPER ADMIN API ---
+
+// Account Management
+app.post('/api/admin/create-account', basicAuth, adminController.createAccount);
+app.post('/api/admin/create-account-enhanced', basicAuth, adminController.createAccountEnhanced);
+app.post('/api/admin/verify-email', adminController.verifyEmail);
+app.post('/api/admin/approve-account', basicAuth, adminController.approveAccount);
+app.post('/api/admin/reject-account', basicAuth, adminController.rejectAccount);
+app.get('/api/admin/pending-accounts', basicAuth, adminController.getPendingAccounts);
+app.post('/api/admin/toggle-status', basicAuth, adminController.toggleAccountStatus);
+app.get('/api/admin/accounts', basicAuth, adminController.listAccounts);
+
+// Password Management
+app.post('/api/admin/validate-password', basicAuth, adminController.validatePassword);
+app.post('/api/admin/change-password', basicAuth, adminController.changePassword);
+
+// MFA Management
+app.post('/api/admin/mfa/setup', basicAuth, adminController.setupMFA);
+app.post('/api/admin/mfa/verify', basicAuth, adminController.verifyMFA);
+app.post('/api/admin/mfa/verify-backup', basicAuth, adminController.verifyBackupCode);
+app.get('/api/admin/mfa/status/:userId', basicAuth, adminController.getMFAStatus);
+app.post('/api/admin/mfa/regenerate-codes', basicAuth, adminController.regenerateBackupCodes);
+
+// Session Management
+app.get('/api/admin/sessions/:userId', basicAuth, adminController.getSessions);
+app.post('/api/admin/logout-all', basicAuth, adminController.logoutAllSessions);
+
+// Audit Logs
+app.get('/api/admin/audit-logs', basicAuth, adminController.getAuditLogs);
+
+// ==================== PUBLIC AUTH ENDPOINT ====================
+// This endpoint is used for login - no basicAuth required
+const bcrypt = require('bcryptjs');
+const admin = require('firebase-admin');
+
+app.post('/api/auth/login', async (req, res) => {
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({ success: false, error: 'Password required' });
+    }
+
+    try {
+        const db = admin.firestore();
+        const snapshot = await db.collection('admin_users').get();
+
+        for (const doc of snapshot.docs) {
+            const userData = doc.data();
+
+            // Check if account is active first
+            if (!userData.active) continue;
+
+            // Check bcrypt hash
+            if (userData.passwordHash) {
+                const match = await bcrypt.compare(password, userData.passwordHash);
+                if (match) {
+                    // Log successful login
+                    await db.collection('audit_logs').add({
+                        action: 'LOGIN_SUCCESS',
+                        targetId: doc.id,
+                        targetName: userData.username,
+                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    return res.json({
+                        success: true,
+                        user: {
+                            id: doc.id,
+                            username: userData.username,
+                            role: userData.role || 'admin',
+                            active: userData.active,
+                            avatar: userData.avatar,
+                            mfaEnabled: userData.mfaEnabled || false
+                        }
+                    });
+                }
+            }
+
+            // Legacy: Check plain text password (migration support)
+            if (userData.password && userData.password === password) {
+                // Log and return
+                await db.collection('audit_logs').add({
+                    action: 'LOGIN_SUCCESS_LEGACY',
+                    targetId: doc.id,
+                    targetName: userData.username,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
+
+                return res.json({
+                    success: true,
+                    user: {
+                        id: doc.id,
+                        username: userData.username,
+                        role: userData.role || 'admin',
+                        active: userData.active,
+                        avatar: userData.avatar,
+                        mfaEnabled: userData.mfaEnabled || false
+                    },
+                    warning: 'Password migration recommended'
+                });
+            }
+        }
+
+        // No match found
+        await db.collection('audit_logs').add({
+            action: 'LOGIN_FAILED',
+            reason: 'Invalid credentials',
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        return res.status(401).json({ success: false, error: 'Invalid password' });
+    } catch (error) {
+        console.error('Auth error:', error);
+        return res.status(500).json({ success: false, error: 'Authentication system error' });
+    }
+});
+
+
 // Start Server
 app.listen(port, () => {
     console.log(`🚀 Server listening at http://localhost:${port}`);
     console.log(`📍 OwnTracks webhook: POST /api/owntracks/location`);
     console.log(`🤖 Telegram registration: POST /api/telegram/register`);
+    console.log(`🔐 Admin API: POST /api/admin/*`);
+    console.log(`🔑 Security APIs:`);
+    console.log(`   - Login: POST /api/auth/login`);
+    console.log(`   - Password validation: POST /api/admin/validate-password`);
+    console.log(`   - MFA setup: POST /api/admin/mfa/setup`);
+    console.log(`   - Audit logs: GET /api/admin/audit-logs`);
+
     if (TELEGRAM_BOT_TOKEN) {
         console.log(`✅ Telegram Bot is ACTIVE`);
     } else {

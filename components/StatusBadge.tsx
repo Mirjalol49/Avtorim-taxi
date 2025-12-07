@@ -1,18 +1,18 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { PaymentStatus } from '../types';
 import { CheckCircleIcon, ArrowLeftCircleIcon } from './Icons';
-import { TRANSLATIONS } from '../translations';
 
 interface StatusBadgeProps {
     status?: PaymentStatus;
     theme: 'light' | 'dark';
     size?: 'sm' | 'md' | 'lg';
-    language?: 'uz' | 'ru' | 'en';
+    // language removed
     showIcon?: boolean;
 }
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ status = PaymentStatus.COMPLETED, theme, size = 'sm', language = 'uz', showIcon = false }) => {
-    const t = TRANSLATIONS[language];
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status = PaymentStatus.COMPLETED, theme, size = 'sm', showIcon = false }) => {
+    const { t } = useTranslation();
 
     const getStatusConfig = () => {
         switch (status) {
@@ -22,7 +22,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status = PaymentStatus.COMPLE
                     textColor: 'text-green-600 dark:text-green-400',
                     dotColor: 'bg-green-500',
                     icon: CheckCircleIcon,
-                    label: t.statusCompleted || 'Completed'
+                    label: t('statusCompleted') || 'Completed'
                 };
             case PaymentStatus.REVERSED:
             case PaymentStatus.REFUNDED:
@@ -31,7 +31,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status = PaymentStatus.COMPLE
                     textColor: 'text-orange-600 dark:text-orange-400',
                     dotColor: 'bg-orange-500',
                     icon: ArrowLeftCircleIcon,
-                    label: status === PaymentStatus.REFUNDED ? (t.statusRefunded || 'Refunded') : (t.statusReversed || 'Reversed')
+                    label: status === PaymentStatus.REFUNDED ? (t('statusRefunded') || 'Refunded') : (t('statusReversed') || 'Reversed')
                 };
             case PaymentStatus.PENDING:
                 return {
@@ -39,7 +39,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status = PaymentStatus.COMPLE
                     textColor: 'text-yellow-600 dark:text-yellow-400',
                     dotColor: 'bg-yellow-500',
                     icon: null,
-                    label: t.statusPending || 'Pending'
+                    label: t('statusPending') || 'Pending'
                 };
             default:
                 return {

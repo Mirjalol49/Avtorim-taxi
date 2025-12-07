@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon, PhoneIcon, UserIcon, EditIcon, UserPlusIcon } from './Icons';
-import { Viewer, Language } from '../types';
-import { TRANSLATIONS } from '../translations';
+import { Viewer } from '../types';
 import { sanitizeInput } from '../utils/security';
 
 interface ViewerModalProps {
@@ -11,7 +11,6 @@ interface ViewerModalProps {
     onSave: (viewer: Omit<Viewer, 'id' | 'createdAt' | 'createdBy'>) => void;
     editingViewer?: Viewer | null;
     theme: 'light' | 'dark';
-    language: 'uz' | 'ru' | 'en';
 }
 
 const ViewerModal: React.FC<ViewerModalProps> = ({
@@ -19,10 +18,9 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
     onClose,
     onSave,
     editingViewer,
-    theme,
-    language
+    theme
 }) => {
-    const t = TRANSLATIONS[language];
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
@@ -53,9 +51,9 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
 
     const validateForm = () => {
         const newErrors: { [key: string]: string } = {};
-        if (!name.trim()) newErrors.name = t.nameRequired || 'Name is required';
-        if (!phoneNumber.trim()) newErrors.phoneNumber = t.phoneRequired || 'Phone is required';
-        if (!password.trim()) newErrors.password = t.passwordRequired || 'Password is required';
+        if (!name.trim()) newErrors.name = t('nameRequired') || 'Name is required';
+        if (!phoneNumber.trim()) newErrors.phoneNumber = t('phoneRequired') || 'Phone is required';
+        if (!password.trim()) newErrors.password = t('passwordRequired') || 'Password is required';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -102,7 +100,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             {editingViewer ? <EditIcon className="w-5 h-5" /> : <UserPlusIcon className="w-5 h-5" />}
                         </div>
                         <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {editingViewer ? t.editViewer : t.addViewer}
+                            {editingViewer ? t('editViewer') : t('addViewer')}
                         </h2>
                     </div>
                     <button
@@ -137,7 +135,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     <div>
                         <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                             }`}>
-                            {t.viewerName}
+                            {t('viewerName')}
                         </label>
                         <input
                             type="text"
@@ -158,7 +156,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     <div>
                         <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                             }`}>
-                            {t.phoneNumber}
+                            {t('phoneNumber')}
                         </label>
                         <input
                             type="text"
@@ -179,7 +177,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     <div>
                         <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                             }`}>
-                            {t.viewerPassword}
+                            {t('viewerPassword')}
                         </label>
                         <input
                             type="text"
@@ -196,8 +194,6 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                         )}
                     </div>
 
-
-
                     {/* Active Status */}
                     <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'
                         }`}>
@@ -211,10 +207,10 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                                 </div>
                                 <div>
                                     <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                        {t.status}
+                                        {t('status')}
                                     </h4>
                                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                        {isActive ? t.active : t.inactive}
+                                        {isActive ? t('active') : t('inactive')}
                                     </p>
                                 </div>
                             </div>
@@ -242,13 +238,13 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                                 : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
-                            {t.cancel}
+                            {t('cancel')}
                         </button>
                         <button
                             type="submit"
                             className="px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold shadow-sm transition-all transform active:scale-95"
                         >
-                            {editingViewer ? t.save : t.add}
+                            {editingViewer ? t('save') : t('add')}
                         </button>
                     </div>
                 </form>

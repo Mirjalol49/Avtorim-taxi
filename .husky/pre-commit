@@ -1,0 +1,2 @@
+# Skip tests on commit - run tests manually with: npm test
+echo "Pre-commit hook: skipping tests"

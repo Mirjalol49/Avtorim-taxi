@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDownIcon, CheckIcon } from './Icons';
 
 interface Option {
@@ -23,19 +24,23 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     value,
     onChange,
     options,
-    placeholder = 'Select option',
+    placeholder,
     theme,
     icon: Icon,
     showSearch = true,
     labelClassName
 }) => {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
+    const defaultPlaceholder = t('selectOption') || 'Select option';
+    const effectivePlaceholder = placeholder || defaultPlaceholder;
+
     const selectedOption = options.find(opt => opt.id === value);
-    const displayValue = selectedOption ? selectedOption.name : placeholder;
+    const displayValue = selectedOption ? selectedOption.name : effectivePlaceholder;
 
     const filteredOptions = options.filter(opt =>
         opt.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -105,7 +110,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Search..."
+                                    placeholder={t('searchPlaceholder') || 'Search...'}
                                     className={`w-full px-3 py-2 text-sm rounded-md outline-none transition-colors ${theme === 'dark'
                                         ? 'bg-gray-800 text-white placeholder-gray-500 focus:bg-gray-700'
                                         : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:bg-gray-100'
@@ -155,7 +160,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                 ))
                             ) : (
                                 <div className={`px-3.5 py-4 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    No results found
+                                    {t('noResultsFound') || 'No results found'}
                                 </div>
                             )}
                         </div>

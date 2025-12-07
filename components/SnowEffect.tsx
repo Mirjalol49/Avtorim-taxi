@@ -14,7 +14,7 @@ interface Snowflake {
 const SnowEffect: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const snowflakesRef = useRef<Snowflake[]>([]);
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | undefined>(undefined);
 
     useEffect(() => {
         const canvas = canvasRef.current;

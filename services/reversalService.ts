@@ -6,6 +6,14 @@ const REVERSALS_COLLECTION = 'payment_reversals';
 const TRANSACTIONS_COLLECTION = 'transactions';
 const SALARIES_COLLECTION = 'driver_salaries';
 
+// Helper to get collection path based on fleetId
+const getCollectionPath = (baseCollection: string, fleetId?: string) => {
+    if (fleetId) {
+        return `fleets/${fleetId}/${baseCollection}`;
+    }
+    return baseCollection;
+};
+
 /**
  * Reverses a salary payment by creating compensating transactions
  * and updating the status of original records
@@ -17,13 +25,14 @@ export const reverseSalaryPayment = async (
     driverId: string,
     reason: string,
     reversedBy: string,
-    requiresApproval: boolean = false
+    requiresApproval: boolean = false,
+    fleetId?: string
 ): Promise<string> => {
     try {
         const batch = writeBatch(db);
 
         // Create reversal record
-        const reversalRef = doc(collection(db, REVERSALS_COLLECTION));
+        const reversalRef = doc(collection(db, getCollectionPath(REVERSALS_COLLECTION, fleetId)));
         const reversalData: Omit<PaymentReversal, 'id'> = {
             salaryId,
             transactionId,
@@ -39,7 +48,7 @@ export const reverseSalaryPayment = async (
 
         if (!requiresApproval) {
             // Update original salary record
-            const salaryRef = doc(db, SALARIES_COLLECTION, salaryId);
+            const salaryRef = doc(db, getCollectionPath(SALARIES_COLLECTION, fleetId), salaryId);
             batch.update(salaryRef, {
                 status: PaymentStatus.REVERSED,
                 reversedAt: Date.now(),
@@ -48,7 +57,7 @@ export const reverseSalaryPayment = async (
             });
 
             // Update original transaction
-            const txRef = doc(db, TRANSACTIONS_COLLECTION, transactionId);
+            const txRef = doc(db, getCollectionPath(TRANSACTIONS_COLLECTION, fleetId), transactionId);
             batch.update(txRef, {
                 status: PaymentStatus.REVERSED,
                 reversedAt: Date.now(),
@@ -57,7 +66,7 @@ export const reverseSalaryPayment = async (
             });
 
             // Create compensating transaction (negative expense to restore balance)
-            const compensatingTxRef = doc(collection(db, TRANSACTIONS_COLLECTION));
+            const compensatingTxRef = doc(collection(db, getCollectionPath(TRANSACTIONS_COLLECTION, fleetId)));
             const compensatingTx: Omit<Transaction, 'id'> = {
                 driverId,
                 amount: originalAmount, // Positive amount (reverses the expense)
@@ -81,10 +90,10 @@ export const reverseSalaryPayment = async (
 /**
  * Approves a pending reversal
  */
-export const approveReversal = async (reversalId: string, approvedBy: string): Promise<void> => {
+export const approveReversal = async (reversalId: string, approvedBy: string, fleetId?: string): Promise<void> => {
     try {
         // Get the reversal details
-        const reversalDoc = await getDocs(query(collection(db, REVERSALS_COLLECTION)));
+        const reversalDoc = await getDocs(query(collection(db, getCollectionPath(REVERSALS_COLLECTION, fleetId))));
         const reversal = reversalDoc.docs.find(d => d.id === reversalId)?.data() as PaymentReversal;
 
         if (!reversal) {
@@ -99,14 +108,14 @@ export const approveReversal = async (reversalId: string, approvedBy: string): P
         const batch = writeBatch(db);
 
         // Update reversal status
-        const reversalRef = doc(db, REVERSALS_COLLECTION, reversalId);
+        const reversalRef = doc(db, getCollectionPath(REVERSALS_COLLECTION, fleetId), reversalId);
         batch.update(reversalRef, {
             approvalStatus: 'approved',
             approvedBy
         });
 
         // Update salary record
-        const salaryRef = doc(db, SALARIES_COLLECTION, reversal.salaryId);
+        const salaryRef = doc(db, getCollectionPath(SALARIES_COLLECTION, fleetId), reversal.salaryId);
         batch.update(salaryRef, {
             status: PaymentStatus.REVERSED,
             reversedAt: Date.now(),
@@ -115,7 +124,7 @@ export const approveReversal = async (reversalId: string, approvedBy: string): P
         });
 
         // Update transaction
-        const txRef = doc(db, TRANSACTIONS_COLLECTION, reversal.transactionId);
+        const txRef = doc(db, getCollectionPath(TRANSACTIONS_COLLECTION, fleetId), reversal.transactionId);
         batch.update(txRef, {
             status: PaymentStatus.REVERSED,
             reversedAt: Date.now(),
@@ -124,7 +133,7 @@ export const approveReversal = async (reversalId: string, approvedBy: string): P
         });
 
         // Create compensating transaction
-        const compensatingTxRef = doc(collection(db, TRANSACTIONS_COLLECTION));
+        const compensatingTxRef = doc(collection(db, getCollectionPath(TRANSACTIONS_COLLECTION, fleetId)));
         const compensatingTx: Omit<Transaction, 'id'> = {
             driverId: reversal.driverId,
             amount: reversal.originalAmount,
@@ -146,8 +155,8 @@ export const approveReversal = async (reversalId: string, approvedBy: string): P
 /**
  * Real-time subscription to reversals
  */
-export const subscribeToReversals = (callback: (reversals: PaymentReversal[]) => void) => {
-    const q = query(collection(db, REVERSALS_COLLECTION), orderBy('reversedAt', 'desc'));
+export const subscribeToReversals = (callback: (reversals: PaymentReversal[]) => void, fleetId?: string) => {
+    const q = query(collection(db, getCollectionPath(REVERSALS_COLLECTION, fleetId)), orderBy('reversedAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
         const reversals: PaymentReversal[] = [];
         snapshot.forEach((doc) => {
@@ -169,13 +178,14 @@ export const refundSalaryPayment = async (
     amount: number,
     driverId: string,
     refundedBy: string,
-    description?: string // Optional description for translation
+    description?: string, // Optional description for translation
+    fleetId?: string
 ): Promise<void> => {
     try {
         const batch = writeBatch(db);
 
         // 1. Update salary record status
-        const salaryRef = doc(db, SALARIES_COLLECTION, salaryId);
+        const salaryRef = doc(db, getCollectionPath(SALARIES_COLLECTION, fleetId), salaryId);
         batch.update(salaryRef, {
             status: PaymentStatus.REFUNDED,
             reversedAt: Date.now(), // Using reversedAt field for refund time as well
@@ -185,7 +195,7 @@ export const refundSalaryPayment = async (
 
         // 2. Update original transaction status if it exists
         if (transactionId) {
-            const txRef = doc(db, TRANSACTIONS_COLLECTION, transactionId);
+            const txRef = doc(db, getCollectionPath(TRANSACTIONS_COLLECTION, fleetId), transactionId);
             batch.update(txRef, {
                 status: PaymentStatus.REFUNDED,
                 reversedAt: Date.now(),
@@ -194,21 +204,21 @@ export const refundSalaryPayment = async (
             });
         }
 
-        // 3. Create compensating transaction (Income) to restore balance
-        const compensatingTxRef = doc(collection(db, TRANSACTIONS_COLLECTION));
-        const compensatingTx: Omit<Transaction, 'id'> = {
-            driverId,
-            amount: amount, // Positive amount (income)
-            type: TransactionType.INCOME,
-            description: description || `Salary Refund: Manual Action`, // Use provided description or fallback
-            timestamp: Date.now(),
-            status: PaymentStatus.COMPLETED,
-            ...(transactionId && { originalTransactionId: transactionId })
-        };
-        batch.set(compensatingTxRef, compensatingTx);
+        // NOTE: No compensating transaction needed!
+        // The original EXPENSE is marked as REFUNDED, and balance calculations
+        // exclude REFUNDED transactions, effectively restoring the balance.
 
         // 4. Log the action (Audit Log)
-        const auditRef = doc(collection(db, 'audit_logs'));
+        // Audit logs are global for now, or should they be fleet specific?
+        // The user said "Audit trails for all account activities".
+        // Let's make audit logs fleet specific too if possible, or keep them global but with fleetId.
+        // For now, let's keep audit logs global but maybe add fleetId to them?
+        // Or better, use getCollectionPath('audit_logs', fleetId) if we want full isolation.
+        // The current instruction is "Enforce strict data segregation".
+        // Let's assume audit logs should also be isolated or at least identifiable.
+        // I'll use getCollectionPath('audit_logs', fleetId) to be safe and consistent.
+
+        const auditRef = doc(collection(db, getCollectionPath('audit_logs', fleetId)));
         batch.set(auditRef, {
             action: 'REFUND_SALARY_PAYMENT',
             targetId: salaryId,
