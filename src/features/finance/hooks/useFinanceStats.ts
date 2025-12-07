@@ -98,7 +98,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         }
 
         // Logic from App.tsx: Falls back to 'transactions' if filtered list is empty.
-        const source = filteredTransactions.length > 0 ? filteredTransactions : transactions;
+        const source = filteredTransactions;
 
         source.forEach(tx => {
             const d = new Date(tx.timestamp);
@@ -123,7 +123,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         let yearlyIncome = 0;
         let yearlyExpense = 0;
 
-        const source = filteredTransactions.length > 0 ? filteredTransactions : transactions;
+        const source = filteredTransactions;
         source.forEach(tx => {
             if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.DELETED) return;
 

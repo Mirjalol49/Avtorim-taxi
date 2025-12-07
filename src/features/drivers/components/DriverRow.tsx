@@ -71,11 +71,13 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     <div className="z-10">
                         <LockIcon
                             isLocked={isLocked}
+                            isLoading={isLockLoading}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 toggleLock();
                             }}
                             size={16}
+                            className="p-1.5"
                             lockedBy={lockedBy}
                             currentUserId={currentUserId}
                         />

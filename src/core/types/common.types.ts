@@ -5,7 +5,7 @@ export interface Coordinates {
 
 export type Language = 'uz' | 'ru' | 'en';
 
-export type TimeFilter = 'today' | 'week' | 'month' | 'year';
+export type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'all';
 
 export enum Tab {
     DASHBOARD = 'DASHBOARD',

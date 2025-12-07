@@ -53,7 +53,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     today: t('today'),
                     week: t('week'),
                     month: t('month'),
-                    year: t('year')
+                    year: t('year'),
+                    all: t('allTime') || 'All'
                 }}
             />
 

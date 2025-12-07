@@ -50,7 +50,8 @@ const handleLogout = () => {
 
 - **Sound File:** `/Sounds/lock.mp3`
 - **Volume:** 50% (0.5) - adjustable
-- **Playback:** Instant (preloaded buffer)
+- **Technology:** Howler.js (Wrapper Service)
+- **Playback:** Instant (preloaded via Howler)
 - **Format:** MP3 (browser compatible)
 - **Trigger:** Every logout action
 
@@ -88,8 +89,8 @@ soundService.play('lock', 0.3); // 30%
 
 - **Load Time:** Preloaded on app start (~0ms playback delay)
 - **File Size:** Depends on lock.mp3 (typically < 50KB)
-- **Memory:** Minimal (single audio buffer)
-- **CPU:** Negligible (Web Audio API hardware-accelerated)
+- **Memory:** Optimized by Howler.js cache
+- **CPU:** Negligible
 
 ## 🔒 When Sound Plays
 
@@ -100,10 +101,10 @@ The lock sound triggers on:
 
 ## 📝 Notes
 
-- Sound only plays if audio is enabled (user can mute)
-- Respects browser audio policies (first click enables audio)
+- Sound only plays if audio is enabled
+- **Howler.js** handles browser autoplay blocks automatically
 - Works across all modern browsers
-- No external dependencies needed
+- **Dependency:** Requires `howler` npm package
 
 ## ✨ Result
 

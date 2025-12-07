@@ -101,19 +101,21 @@ Your project is a **web application** (React for web), not a React Native mobile
 
 - ❌ `react-native-sound` - For mobile apps only
 - ❌ `pod install` - For iOS mobile apps only
-- ✅ **Web Audio API** - Perfect for web apps (what we used)
+- ✅ **Web Audio API** - Perfect for web apps## Architecture
 
-### Browser Permissions
+### Core Library: Howler.js
+We replaced the native Web Audio API implementation with **Howler.js** to solve cross-browser compatibility issues, format handling, and "audio context suspended" errors.
 
-Modern browsers require **user interaction** before playing audio:
-- First sound plays after any user click/tap
-- Subsequent sounds play instantly
-- This is a browser security feature
+- **Library**: `howler` (v2.2.x)
+- **Wrapper**: `services/soundService.ts`
+- **Features**:
+  - Automatic AudioContext unlocking
+  - Preloading of assets
+  - HTML5 Audio fallback management (internal)
+  - robust volume and sprite control
 
-### No External Dependencies
-
-- ✅ No npm packages needed
-- ✅ No files to download
+### Sound Service (`services/soundService.ts`)
+The `SoundService` class is a singleton that initializes Howler and loads all game sounds. to download
 - ✅ Sounds generated programmatically
 - ✅ Works offline
 

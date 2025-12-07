@@ -4,60 +4,34 @@
 Sound was working **sometimes** but not other times - extremely unreliable.
 
 ## ✅ Solution
-Fixed **3 critical issues** causing intermittent sound playback:
+## ✅ Solution
+Fixed **3 critical issues** causing intermittent sound playback using **Howler.js**:
 
-### 1. **Audio Context Auto-Resume** 🔊
-Browsers suspend audio context - we now resume it **before EVERY play**.
+### 1. **Switched to Howler.js** 📦
+We replaced manual Web Audio API management with the battle-tested **Howler.js** library which handles:
+- Cross-browser audio context resuming
+- Audio buffer caching and management
+- Codecs and fallbacks automatically
 
-```typescript
-// BEFORE (Unreliable)
-play(name) {
-    source.start(0); // Fails if context suspended!
-}
-
-// AFTER (Reliable)
-play(name) {
-    if (audioContext.state === 'suspended') {
-        audioContext.resume().then(() => {
-            this.playSound(name); // ✅ Guaranteed to work
-        });
-    }
-}
-```
-
-### 2. **Multiple Interaction Listeners** 👆
-Added **4 different event types** to catch user interaction:
-
-```typescript
-// BEFORE (Missed some interactions)
-document.addEventListener('click', resumeAudio, { once: true });
-
-// AFTER (Catches everything)
-['click', 'touchstart', 'keydown', 'mousedown'].forEach(event => {
-    document.addEventListener(event, resumeAudio, { once: true, passive: true });
-});
-```
+### 2. **Audio Context Auto-Resume** 🔊
+Howler.js (`Howler.autoUnlock = true`) handles resuming, but we added **double insurance** with explicit listeners for `click`, `touchstart`, etc. in `services/soundService.ts`.
 
 ### 3. **Better Error Handling** 🛡️
-Added detailed logging and HTTP validation:
-
+Added precise loading callbacks and playback retry logic:
 ```typescript
-// Check if file loaded successfully
-if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+onplayerror: (id, err) => {
+    // Auto-retry on unlock
+    Howler.once('unlock', () => this.play(key));
 }
-
-// Log file size
-console.log(`✅ Sound loaded: ${name} (50.2KB)`);
 ```
 
 ## 🎯 What Changed
 
 **File:** `services/soundService.ts`
 
-1. **Line 26-48:** Audio context initialization with multiple event listeners
-2. **Line 66-95:** Split `play()` into two methods - public and private
-3. **Line 52-68:** Enhanced sound loading with HTTP validation
+1. **Library:** Adopted `howler` instead of raw `AudioContext`
+2. **Initialization:** Preload all sounds on app start
+3. **Resilience:** Fallback unlock listeners for stricter browsers (iOS/Safari)
 
 ## 🔊 How It Works Now
 

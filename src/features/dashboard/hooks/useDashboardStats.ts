@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, DriverStatus } from '../../../core/types';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]) => {
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
 
     // Dashboard view mode state (chart/grid)
     const [dashboardViewMode, setDashboardViewMode] = useState<'chart' | 'grid'>('chart');
@@ -25,6 +25,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             // Exclude refunded/reversed/deleted transactions
             if (tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.DELETED) return false;
 
+            if (timeFilter === 'all') return true;
             if (timeFilter === 'today') return tx.timestamp >= startOfDay;
             if (timeFilter === 'week') return tx.timestamp >= startOfWeek;
             if (timeFilter === 'month') return tx.timestamp >= startOfMonth;

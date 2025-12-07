@@ -12,6 +12,7 @@ interface DateFilterProps {
         week: string;
         month: string;
         year: string;
+        all?: string;
     };
 }
 
@@ -52,12 +53,14 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 return getMonthName(now);
             case 'year':
                 return now.getFullYear().toString();
+            case 'all':
+                return '∞';
             default:
                 return '';
         }
     };
 
-    const filters: TimeFilter[] = ['today', 'week', 'month', 'year'];
+    const filters: TimeFilter[] = ['today', 'week', 'month', 'year', 'all'];
 
     return (
         <div className={`flex items-center p-1 rounded-xl w-full overflow-x-auto border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'

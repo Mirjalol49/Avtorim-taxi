@@ -72,12 +72,14 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             <div className="absolute top-4 right-4 z-10">
                 <LockIcon
                     isLocked={isLocked}
+                    isLoading={isLockLoading}
                     onClick={(e) => {
                         e.stopPropagation();
                         toggleLock();
                     }}
                     lockedBy={lockedBy}
                     currentUserId={currentUserId}
+                    size={22}
                 />
             </div>
 

@@ -1,6 +1,7 @@
 import { db } from '../../../../firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { LockState } from '../../../core/types/lock.types';
+import { getCollectionPath } from '../../../../services/firestoreService';
 
 export class LockService {
 
@@ -14,7 +15,12 @@ export class LockService {
         userId: string,
         currentLockState?: LockState
     ): Promise<boolean> {
-        const docRef = doc(db, collectionPath, docId);
+        // Resolve path: If it's a simple name (e.g. 'drivers'), scope it to fleet using userId
+        const finalPath = collectionPath.includes('/')
+            ? collectionPath
+            : getCollectionPath(collectionPath, userId);
+
+        const docRef = doc(db, finalPath, docId);
         const now = Date.now();
 
         // Determine new state
@@ -32,7 +38,7 @@ export class LockService {
             });
             return newIsLocked;
         } catch (error) {
-            console.error(`Failed to toggle lock for ${collectionPath}/${docId}:`, error);
+            console.error(`Failed to toggle lock for ${finalPath}/${docId}:`, error);
             throw error;
         }
     }
