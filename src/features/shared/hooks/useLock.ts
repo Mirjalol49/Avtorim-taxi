@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { LockService } from '../services/LockService';
 import { LockState, Lockable } from '../../../core/types/lock.types';
 import { useToast } from '../../../../components/ToastNotification';
+import { playLockSound } from '../../../../services/soundService';
 
 interface UseLockProps {
     collectionPath: string;
@@ -28,6 +29,8 @@ export const useLock = ({ collectionPath, docId, entity, userId }: UseLockProps)
         setIsLoading(true);
         try {
             await LockService.toggleLock(collectionPath, docId, userId, entity.lock);
+            // Play lock sound on successful toggle
+            playLockSound();
             // Optimistic update handled by parent subscription usually, 
             // but we could set local state here if we wanted deeper optimism.
             // Since Firestore is fast and local persistence is enabled, standard flow is fine.
