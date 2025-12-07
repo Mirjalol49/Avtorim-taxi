@@ -55,7 +55,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
         if (window.confirm(`${t('delete')} transaction? (${formatNumberSmart(tx.amount, false, language)} UZS)`)) {
             try {
-                await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' });
+                await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, adminUser?.id);
                 addToast('success', 'Transaction deleted');
                 if (selectedTransactions.includes(id)) {
                     setSelectedTransactions(prev => prev.filter(tid => tid !== id));

@@ -27,8 +27,8 @@ export class LockService {
         const newIsLocked = !currentLockState?.isLocked;
         const newLockState: LockState = {
             isLocked: newIsLocked,
-            lockedBy: newIsLocked ? userId : undefined,
-            lockedAt: newIsLocked ? now : undefined,
+            lockedBy: newIsLocked ? userId : null,
+            lockedAt: newIsLocked ? now : null,
             // maintain deviceId if present in future
         };
 

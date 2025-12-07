@@ -1,8 +1,8 @@
 export interface LockState {
     isLocked: boolean;
-    lockedBy?: string; // Admin ID
-    lockedAt?: number; // Timestamp
-    reason?: string;   // Optional context
+    lockedBy?: string | null; // Admin ID
+    lockedAt?: number | null; // Timestamp
+    reason?: string | null;   // Optional context
     deviceId?: string; // For conflict resolution (future proofing)
 }
 
