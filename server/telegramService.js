@@ -1,68 +1,84 @@
 const { Telegraf, Markup } = require('telegraf');
 const admin = require('firebase-admin');
 
-// --- TRANSLATIONS ---
+// --- TRANSLATIONS & CONSTANTS ---
+const SUPPORT_PHONE = "+998 93 748 91 41";
+
 const TRANSLATIONS = {
     uz: {
-        welcome: "Assalomu alaykum! 🚕\n\nAvtorim Taxi Premium botiga xush kelibsiz.\nIltimos, tilingizni tanlang:",
+        welcome: "🚖 **TAKSAPARK** tizimiga xush kelibsiz!\n\nIltimos, tilingizni tanlang:",
         share_contact: "📱 Telefon raqamni yuborish",
         contact_request: "Davom etish uchun telefon raqamingizni yuboring:",
         not_your_contact: "🚫 Iltimos, faqat o'zingizning raqamingizni yuboring.",
-        driver_not_found: "🚫 Raqamingiz bazada topilmadi.\nIltimos, rahbar bilan bog'laning.",
-        success_login: "✅ Xush kelibsiz, {name}!\nSiz tizimga muvaffaqiyatli ulandingiz.",
-        menu_income: "💰 Kirim",
-        menu_expense: "💸 Chiqim",
-        menu_working: "🟢 Ishlayapman",
-        menu_resting: "🔴 Dam olyapman",
-        status_working: "✅ Siz hozir ISH rejimidasiz. Yaxshi ish kunini tilaymiz! 🚀",
-        status_resting: "✅ Siz hozir DAM OLISH rejimidasiz. Maroqli hordiq! ☕️",
-        ask_income: "💰 Qancha summa topdingiz?\n(Faqat raqam yozing, masalan: 50000)",
-        ask_expense: "💸 Qancha xarajat qildingiz?\n(Faqat raqam yozing, masalan: 15000)",
+        driver_not_found: `🚫 Raqamingiz bazada topilmadi.\n\n📞 Admin: ${SUPPORT_PHONE}`,
+        success_login: "✅ Xush kelibsiz, {name}!",
+
+        // Menu
+        btn_start_work: "🟢 Ishni Boshlash",
+        btn_stop_work: "🔴 Ishni Yakunlash",
+        btn_income: "💰 Kirim",
+        btn_expense: "💸 Chiqim",
+        btn_help: "🆘 Yordam",
+
+        // Responses
+        status_to_active: "✅ Status o'zgartirildi: Hozir ishdasiz.",
+        status_to_inactive: "✅ Status o'zgartirildi: Dam olishdasiz.",
+        ask_income: "💰 Qancha summa topdingiz?\n(Faqat raqam, masalan: 50000)",
+        ask_expense: "💸 Qancha xarajat qildingiz?\n(Faqat raqam, masalan: 15000)",
         invalid_number: "⚠️ Iltimos, to'g'ri summa yozing (faqat raqam).",
-        saved_income: "✅ +{amount} so'm kirim yozildi.",
-        saved_expense: "✅ -{amount} so'm chiqim yozildi.",
+        saved_income: "✅ +{amount} so'm qabul qilindi.",
+        saved_expense: "✅ -{amount} so'm qabul qilindi.",
+        help_text: `📞 Admin: ${SUPPORT_PHONE}`,
         error_generic: "❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.",
         need_start: "⚠️ Iltimos, botni qayta ishga tushiring: /start"
     },
     ru: {
-        welcome: "Здравствуйте! 🚕\n\nДобро пожаловать в Avtorim Taxi Premium.\nПожалуйста, выберите язык:",
+        welcome: "🚖 Добро пожаловать в **TAKSAPARK**!\n\nПожалуйста, выберите язык:",
         share_contact: "📱 Отправить номер",
         contact_request: "Для продолжения отправьте свой номер телефона:",
         not_your_contact: "🚫 Пожалуйста, отправьте только свой номер.",
-        driver_not_found: "🚫 Ваш номер не найден в базе.\nПожалуйста, свяжитесь с администратором.",
-        success_login: "✅ Добро пожаловать, {name}!\nВы успешно вошли в систему.",
-        menu_income: "💰 Доход",
-        menu_expense: "💸 Расход",
-        menu_working: "🟢 Работаю",
-        menu_resting: "🔴 Отдыхаю",
-        status_working: "✅ Вы сейчас в режиме РАБОТЫ. Удачного дня! 🚀",
-        status_resting: "✅ Вы сейчас в режиме ОТДЫХА. Хорошего отдыха! ☕️",
-        ask_income: "💰 Сколько вы заработали?\n(Пишите только цифры, например: 50000)",
-        ask_expense: "💸 Сколько вы потратили?\n(Пишите только цифры, например: 15000)",
+        driver_not_found: `🚫 Ваш номер не найден в базе.\n\n📞 Админ: ${SUPPORT_PHONE}`,
+        success_login: "✅ Добро пожаловать, {name}!",
+
+        btn_start_work: "🟢 Начать работу",
+        btn_stop_work: "🔴 Закончить работу",
+        btn_income: "💰 Доход",
+        btn_expense: "💸 Расход",
+        btn_help: "🆘 Помощь",
+
+        status_to_active: "✅ Статус изменен: Вы на работе.",
+        status_to_inactive: "✅ Статус изменен: Вы отдыхаете.",
+        ask_income: "💰 Сколько вы заработали?\n(Только цифры, например: 50000)",
+        ask_expense: "💸 Сколько вы потратили?\n(Только цифры, например: 15000)",
         invalid_number: "⚠️ Пожалуйста, введите корректную сумму (только цифры).",
-        saved_income: "✅ +{amount} сум записано.",
-        saved_expense: "✅ -{amount} сум списано.",
+        saved_income: "✅ +{amount} сум принято.",
+        saved_expense: "✅ -{amount} сум принято.",
+        help_text: `📞 Админ: ${SUPPORT_PHONE}`,
         error_generic: "❌ Произошла ошибка. Попробуйте снова.",
         need_start: "⚠️ Пожалуйста, перезапустите бота: /start"
     },
     en: {
-        welcome: "Hello! 🚕\n\nWelcome to Avtorim Taxi Premium.\nPlease select your language:",
+        welcome: "🚖 Welcome to **TAKSAPARK**!\n\nPlease select your language:",
         share_contact: "📱 Share Contact",
         contact_request: "To proceed, please share your phone number:",
         not_your_contact: "🚫 Please share only your own contact.",
-        driver_not_found: "🚫 Your number was not found in the database.\nPlease contact support.",
-        success_login: "✅ Welcome, {name}!\nYou have successfully logged in.",
-        menu_income: "💰 Income",
-        menu_expense: "💸 Expense",
-        menu_working: "🟢 I am Working",
-        menu_resting: "🔴 I am Resting",
-        status_working: "✅ You are now in WORKING mode. Have a great day! 🚀",
-        status_resting: "✅ You are now in RESTING mode. Enjoy your break! ☕️",
-        ask_income: "💰 How much did you earn?\n(Enter numbers only, e.g., 50000)",
-        ask_expense: "💸 How much did you spend?\n(Enter numbers only, e.g., 15000)",
+        driver_not_found: `🚫 Your number was not found.\n\n📞 Admin: ${SUPPORT_PHONE}`,
+        success_login: "✅ Welcome, {name}!",
+
+        btn_start_work: "🟢 Start Working",
+        btn_stop_work: "🔴 Stop Working",
+        btn_income: "💰 Income",
+        btn_expense: "💸 Expense",
+        btn_help: "🆘 Help",
+
+        status_to_active: "✅ Status changed: You are Working.",
+        status_to_inactive: "✅ Status changed: You are Resting.",
+        ask_income: "💰 How much did you earn?\n(Numbers only, e.g., 50000)",
+        ask_expense: "💸 How much did you spend?\n(Numbers only, e.g., 15000)",
         invalid_number: "⚠️ Please enter a valid amount (numbers only).",
         saved_income: "✅ +{amount} UZS recorded.",
         saved_expense: "✅ -{amount} UZS recorded.",
+        help_text: `📞 Admin: ${SUPPORT_PHONE}`,
         error_generic: "❌ An error occurred. Please try again.",
         need_start: "⚠️ Please restart the bot: /start"
     }
@@ -84,28 +100,21 @@ class TelegramService {
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
 
         this.bot.launch().then(() => {
-            console.log('✅ Telegram Bot launched successfully (Premium Version)');
+            console.log('✅ Telegram Bot launched successfully (TAKSAPARK Premium)');
         }).catch(err => {
             console.error('❌ Failed to launch Telegram Bot:', err);
         });
     }
 
     setupHandlers() {
-        // middleware to hydrate context with translation helper
+        // Hydrate context with helper
         this.bot.use(async (ctx, next) => {
-            const userId = ctx.from?.id;
-            // Attach 't' function
-            ctx.t = async (key, params = {}) => {
-                let lang = 'uz'; // Default
-                if (userId) {
-                    const s = await this.getSessionData(userId);
-                    if (s && s.lang) lang = s.lang;
+            ctx.safeReply = async (text, extra) => {
+                try {
+                    return await ctx.reply(text, extra);
+                } catch (e) {
+                    console.error("Reply error:", e);
                 }
-                let text = TRANSLATIONS[lang][key] || TRANSLATIONS['uz'][key] || key;
-                Object.keys(params).forEach(k => {
-                    text = text.replace(`{${k}}`, params[k]);
-                });
-                return text;
             };
             return next();
         });
@@ -114,8 +123,8 @@ class TelegramService {
         this.bot.start(async (ctx) => {
             if (!ctx.from) return;
             await this.clearSessionState(ctx.from.id);
-            // Default welcome in Uzbek/Russian mix or just Uzbek as entry point
-            ctx.reply(
+            // Default to uz for the initial message or English, let's use Uz as base
+            ctx.safeReply(
                 TRANSLATIONS.uz.welcome,
                 Markup.keyboard([
                     ['🇺🇿 O\'zbekcha', '🇷🇺 Русский', '🇬🇧 English']
@@ -123,7 +132,7 @@ class TelegramService {
             );
         });
 
-        // 2. Language Selection Handlers
+        // 2. Language Handlers
         this.bot.hears(['🇺🇿 O\'zbekcha', '🇷🇺 Русский', '🇬🇧 English'], async (ctx) => {
             const text = ctx.message.text;
             let lang = 'uz';
@@ -132,12 +141,9 @@ class TelegramService {
 
             await this.setSessionData(ctx.from.id, { lang: lang, step: 'awaiting_contact' });
 
-            // Ask for phone in selected language
-            const msg = TRANSLATIONS[lang].contact_request;
-            const btnText = TRANSLATIONS[lang].share_contact;
-
-            ctx.reply(msg, Markup.keyboard([
-                Markup.button.contactRequest(btnText)
+            const t = TRANSLATIONS[lang];
+            ctx.safeReply(t.contact_request, Markup.keyboard([
+                Markup.button.contactRequest(t.share_contact)
             ]).resize().oneTime());
         });
 
@@ -146,238 +152,193 @@ class TelegramService {
             const telegramId = ctx.from.id;
             const contact = ctx.message.contact;
 
-            // Re-fetch lang
+            // Get lang from session
             const session = await this.getSessionData(telegramId);
             const lang = session?.lang || 'uz';
+            const t = TRANSLATIONS[lang];
 
-            // Allow user to share ONLY their own contact
+            // Verify ownership
             if (contact.user_id && contact.user_id !== telegramId) {
-                return ctx.reply(TRANSLATIONS[lang].not_your_contact);
+                return ctx.safeReply(t.not_your_contact);
             }
 
-            // Verify Driver
+            // Robust Match
             const driverDoc = await this.verifyDriver(contact.phone_number);
 
             if (!driverDoc) {
-                return ctx.reply(TRANSLATIONS[lang].driver_not_found);
+                return ctx.safeReply(t.driver_not_found);
             }
 
-            // Update Driver with TelegramID & Language
+            // Update Driver
             await driverDoc.ref.update({
                 telegramId: telegramId.toString(),
                 language: lang,
                 lastActive: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            const driverData = driverDoc.data();
-            const name = driverData.firstName || driverData.name || 'Driver';
+            // Set session to idle
+            await this.setSessionData(telegramId, { lang, step: 'idle', driverId: driverDoc.id });
 
-            // Update session to 'authenticated'
-            await this.setSessionData(telegramId, { lang: lang, step: 'idle', driverId: driverDoc.id });
+            const data = driverDoc.data();
+            const name = data.firstName || data.name || 'Driver';
+            const status = data.status || 'inactive';
 
-            // Send Welcome & Dashboard
-            const dash = await this.getDashboardKeyboard(lang, driverData.status);
-            ctx.reply(
-                TRANSLATIONS[lang].success_login.replace('{name}', name),
-                dash
+            // Welcome + Menu
+            ctx.safeReply(
+                t.success_login.replace('{name}', name),
+                await this.getMainMenu(lang, status)
             );
         });
 
-        // 4. Dashboard Actions (Status Toggle)
-        // We match ALL languages because user might change language or we need to be safe
-        const workingKeywords = [TRANSLATIONS.uz.menu_working, TRANSLATIONS.ru.menu_working, TRANSLATIONS.en.menu_working];
-        const restingKeywords = [TRANSLATIONS.uz.menu_resting, TRANSLATIONS.ru.menu_resting, TRANSLATIONS.en.menu_resting];
+        // 4. MAIN MENU & STATUS TOGGLE
+        // We listen for ALL language variants of buttons
+        this.bot.on('text', async (ctx, next) => {
+            const text = ctx.message.text;
+            // Filter out commands
+            if (text.startsWith('/')) return next();
 
-        this.bot.hears([...workingKeywords, ...restingKeywords], async (ctx) => {
             const telegramId = ctx.from.id;
+            // We need to know who this is to handle menu clicks context-aware
             const driverDoc = await this.findDriverByTelegramId(telegramId);
 
-            if (!driverDoc) return ctx.reply(TRANSLATIONS.uz.need_start);
+            if (!driverDoc) {
+                // Check if we are in onboarding session?
+                const session = await this.getSessionData(telegramId);
+                if (session && session.step === 'awaiting_contact') {
+                    // Ignore text, waiting for contact
+                    return ctx.safeReply("👇");
+                }
+                // If no session and no driver doc, guid to start
+                const isLangBtn = ['🇺🇿 O\'zbekcha', '🇷🇺 Русский', '🇬🇧 English'].includes(text);
+                if (!isLangBtn) return ctx.safeReply(TRANSLATIONS.uz.need_start);
+                return next(); // Pass to lang handler if it was that
+            }
 
             const data = driverDoc.data();
-            const lang = data.language || 'uz'; // Use driver's saved language
+            const lang = data.language || 'uz';
+            const t = TRANSLATIONS[lang];
 
-            // Update session lang just in case
-            await this.setSessionData(telegramId, { lang });
+            // --- TOGGLE LOGIC ---
+            if (text === t.btn_start_work || text === t.btn_stop_work) {
+                const currentStatus = data.status || 'inactive';
+                let newStatus = 'active';
+                let replyMsg = '';
 
-            let newStatus = 'active';
-            let replyMsg = '';
-
-            const text = ctx.message.text;
-
-            // If user clicked "I am Working" (Green), it means they want to work (Active)
-            if (workingKeywords.includes(text)) {
-                newStatus = 'active';
-                replyMsg = TRANSLATIONS[lang].status_working;
-            } else {
-                // "I am Resting" (Red) -> Inactive
-                newStatus = 'inactive';
-                replyMsg = TRANSLATIONS[lang].status_resting;
-            }
-
-            // Update Firestore
-            await driverDoc.ref.update({ status: newStatus });
-
-            // Refresh Keyboard
-            ctx.reply(replyMsg, await this.getDashboardKeyboard(lang, newStatus));
-        });
-
-        // 5. Income / Expense Start
-        const incomeKeywords = [TRANSLATIONS.uz.menu_income, TRANSLATIONS.ru.menu_income, TRANSLATIONS.en.menu_income];
-        const expenseKeywords = [TRANSLATIONS.uz.menu_expense, TRANSLATIONS.ru.menu_expense, TRANSLATIONS.en.menu_expense];
-
-        this.bot.hears([...incomeKeywords, ...expenseKeywords], async (ctx) => {
-            const telegramId = ctx.from.id;
-            const text = ctx.message.text;
-
-            const driverDoc = await this.findDriverByTelegramId(telegramId);
-            if (!driverDoc) return ctx.reply(TRANSLATIONS.uz.need_start);
-
-            const lang = driverDoc.data().language || 'uz';
-            let action = 'income';
-            let msg = TRANSLATIONS[lang].ask_income;
-
-            if (expenseKeywords.includes(text)) {
-                action = 'expense';
-                msg = TRANSLATIONS[lang].ask_expense;
-            }
-
-            await this.setSessionData(telegramId, { lang, step: `awaiting_${action}`, action: action });
-            // Should we remove keyboard? Sometimes easier for user to cancel by clicking 'Status'
-            // But prompt says "Ask for amount... Validate input". 
-            // Let's remove keyboard to force focus, or keep it. Removing is cleaner for "Input mode".
-            ctx.reply(msg, Markup.removeKeyboard());
-        });
-
-        // 6. Handle Numeric Input for Transactions
-        this.bot.on('text', async (ctx) => {
-            const telegramId = ctx.from.id;
-            const text = ctx.message.text;
-
-            // Ignore commands
-            if (text.startsWith('/')) return;
-
-            // Check if it matches any menu button (in case they typed it manually or lag)
-            const allKeywords = [...workingKeywords, ...restingKeywords, ...incomeKeywords, ...expenseKeywords];
-            if (allKeywords.includes(text)) return;
-
-            const session = await this.getSessionData(telegramId);
-            if (!session || !session.step || !session.step.startsWith('awaiting_')) {
-                // Not awaiting input. 
-                // If authenticated, show dashboard.
-                const driverDoc = await this.findDriverByTelegramId(telegramId);
-                if (driverDoc) {
-                    const d = driverDoc.data();
-                    const lang = d.language || 'uz';
-                    // Just acknowledge or re-show menu
-                    return ctx.reply("👇", await this.getDashboardKeyboard(lang, d.status));
-                }
-                return;
-            }
-
-            const lang = session.lang || 'uz';
-
-            // Validate Number
-            const amountStr = text.replace(/\D/g, '');
-            const amount = parseInt(amountStr);
-
-            if (!amount || amount <= 0) {
-                return ctx.reply(TRANSLATIONS[lang].invalid_number);
-            }
-
-            // Save Transaction
-            try {
-                const driverDoc = await this.findDriverByTelegramId(telegramId);
-                if (!driverDoc) return ctx.reply(TRANSLATIONS[lang].need_start);
-
-                const driverData = driverDoc.data();
-                const type = session.action; // income or expense
-
-                // Determine collection
-                let transactionsRef;
-                if (driverDoc.ref.parent.parent) {
-                    // Fleet driver
-                    transactionsRef = driverDoc.ref.parent.parent.collection('transactions');
+                // If currently active, button shown was "Stop Work"
+                // If currently inactive, button shown was "Start Work"
+                if (text === t.btn_start_work) {
+                    newStatus = 'active';
+                    replyMsg = t.status_to_active;
                 } else {
-                    // Root driver
-                    transactionsRef = this.db.collection('transactions');
+                    newStatus = 'inactive';
+                    replyMsg = t.status_to_inactive;
                 }
 
-                await transactionsRef.add({
-                    driverId: driverDoc.id,
-                    driverName: driverData.firstName || driverData.name || 'Driver',
-                    amount: amount,
-                    type: type, // 'income' | 'expense'
-                    category: 'Telegram',
-                    date: new Date().toISOString(),
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                    source: 'bot'
-                });
-
-                // Clear session step but keep lang
-                await this.setSessionData(telegramId, { lang, step: 'idle' });
-
-                const fmtAmount = amount.toLocaleString(lang === 'uz' ? 'uz-UZ' : 'ru-RU');
-                const successMsgKey = type === 'income' ? 'saved_income' : 'saved_expense';
-
-                ctx.reply(
-                    TRANSLATIONS[lang][successMsgKey].replace('{amount}', fmtAmount),
-                    await this.getDashboardKeyboard(lang, driverData.status)
-                );
-
-            } catch (err) {
-                console.error('Transaction Error:', err);
-                ctx.reply(TRANSLATIONS[lang].error_generic);
+                // Update DB
+                await driverDoc.ref.update({ status: newStatus });
+                // Reply & Update Keyboard
+                return ctx.safeReply(replyMsg, await this.getMainMenu(lang, newStatus));
             }
+
+            // --- INCOME / EXPENSE REQUEST ---
+            if (text === t.btn_income) {
+                await this.setSessionData(telegramId, { lang, step: 'awaiting_income' });
+                return ctx.safeReply(t.ask_income, Markup.removeKeyboard());
+            }
+            if (text === t.btn_expense) {
+                await this.setSessionData(telegramId, { lang, step: 'awaiting_expense' });
+                return ctx.safeReply(t.ask_expense, Markup.removeKeyboard());
+            }
+
+            // --- SUPPORT ---
+            if (text === t.btn_help) {
+                return ctx.safeReply(t.help_text);
+            }
+
+            // --- TRANSACTION INPUT HANDLING ---
+            const session = await this.getSessionData(telegramId);
+            if (session && (session.step === 'awaiting_income' || session.step === 'awaiting_expense')) {
+                const type = session.step === 'awaiting_income' ? 'income' : 'expense';
+
+                // Validate
+                let amountStr = text.replace(/[^\d]/g, ''); // strip all non-digits
+                let amount = parseInt(amountStr);
+
+                if (!amount || amount <= 0) {
+                    return ctx.safeReply(t.invalid_number);
+                }
+
+                // Save
+                try {
+                    let transactionsRef;
+                    if (driverDoc.ref.parent.parent) {
+                        transactionsRef = driverDoc.ref.parent.parent.collection('transactions');
+                    } else {
+                        transactionsRef = this.db.collection('transactions');
+                    }
+
+                    await transactionsRef.add({
+                        driverId: driverDoc.id,
+                        driverName: data.firstName || data.name || 'Driver',
+                        amount: amount,
+                        type: type,
+                        category: 'Telegram',
+                        status: 'completed',
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        date: new Date().toISOString(),
+                        source: 'bot'
+                    });
+
+                    // Success
+                    const fmt = amount.toLocaleString(lang === 'uz' ? 'uz-UZ' : 'ru-RU');
+                    const msg = type === 'income' ? t.saved_income : t.saved_expense;
+
+                    await this.setSessionData(telegramId, { lang, step: 'idle' });
+
+                    // Respond and restore menu
+                    return ctx.safeReply(msg.replace('{amount}', fmt), await this.getMainMenu(lang, data.status));
+
+                } catch (e) {
+                    console.error("Trans save error:", e);
+                    return ctx.safeReply(t.error_generic, await this.getMainMenu(lang, data.status));
+                }
+            }
+
+            // If nothing matched, show menu again
+            return ctx.safeReply("👇", await this.getMainMenu(lang, data.status));
         });
     }
 
     // --- HELPERS ---
 
-    async getDashboardKeyboard(lang, status) {
-        const l = TRANSLATIONS[lang] || TRANSLATIONS['uz'];
+    async getMainMenu(lang, status) {
+        const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+        const currentStatus = status || 'inactive';
 
-        // Status: 'active' (Working) vs 'inactive' (Resting)
-        // If 'active', button should let them STOP (Resting icon)
-        // If 'inactive', button should let them START (Working icon)
-        // Wait, prompt specific requirement: 
-        // "If status === 'active', show the '🔴 Stop Working' button." (which is menu_resting logic?)
-        // Actually lets look at translation keys:
-        // menu_working: "🟢 Ishlayapman" (I am working)
-        // menu_resting: "🔴 Dam olyapman" (I am resting)
-
-        // Logic: 
-        // IF I am active, I am working. So the button should say "🔴 Dam olyapman" (Switch to resting).
-        // IF I am inactive, I am resting. So the button should say "🟢 Ishlayapman" (Switch to working).
-
-        let statusBtn = '';
-        if (status === 'active') {
-            statusBtn = l.menu_resting;
-        } else {
-            statusBtn = l.menu_working;
-        }
+        // Row 1: Toggle
+        // If inactive -> Show "Start Work" (Green)
+        // If active -> Show "Stop Work" (Red)
+        const toggleBtn = currentStatus === 'active' ? t.btn_stop_work : t.btn_start_work;
 
         return Markup.keyboard([
-            [l.menu_income, l.menu_expense],
-            [statusBtn]
+            [toggleBtn],
+            [t.btn_income, t.btn_expense],
+            [t.btn_help]
         ]).resize();
     }
 
-    // Robust Phone Matching
     async verifyDriver(phoneRaw) {
         const phoneNormalized = phoneRaw.replace(/\D/g, '');
         const suffix = phoneNormalized.slice(-9);
 
-        // Search in all 'drivers' collections
         const snapshot = await this.db.collectionGroup('drivers').get();
-
         let match = null;
+
         snapshot.forEach(doc => {
             if (match) return;
             const d = doc.data();
             if (d.phone) {
                 const dPhone = d.phone.toString().replace(/\D/g, '');
-                // Check if last 9 digits match
                 if (dPhone.slice(-9) === suffix) {
                     match = doc;
                 }
@@ -395,7 +356,6 @@ class TelegramService {
         return snapshot.docs[0];
     }
 
-    // Session Management
     async setSessionData(telegramId, data) {
         try {
             await this.db.collection('bot_sessions').doc(telegramId.toString()).set(data, { merge: true });
@@ -408,18 +368,13 @@ class TelegramService {
         try {
             const doc = await this.db.collection('bot_sessions').doc(telegramId.toString()).get();
             return doc.exists ? doc.data() : null;
-        } catch (e) {
-            console.error("Session Get Error:", e);
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
     async clearSessionState(telegramId) {
         try {
             await this.db.collection('bot_sessions').doc(telegramId.toString()).delete();
-        } catch (e) {
-            console.error("Session Clear Error:", e);
-        }
+        } catch (e) { }
     }
 }
 
