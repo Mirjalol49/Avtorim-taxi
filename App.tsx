@@ -229,6 +229,25 @@ const AppContent: React.FC = () => {
             status: PaymentStatus.COMPLETED // Default status for new payments
           }, adminUser?.id);
 
+          // Trigger Telegram Notification (Salary)
+          try {
+            const notifDate = effectiveDate
+              ? effectiveDate.toLocaleDateString('uz-UZ')
+              : new Date().toLocaleDateString('uz-UZ');
+
+            await fetch('http://localhost:3000/api/notifications/salary', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                driverId: driver.id,
+                amount: Math.abs(monthlySalary),
+                date: notifDate
+              })
+            });
+          } catch (e) {
+            console.error('Failed to trigger salary notification:', e);
+          }
+
           closeConfirmModal();
         } catch (error) {
           console.error('Failed to pay salary:', error);
@@ -719,7 +738,7 @@ const AppContent: React.FC = () => {
             } />
 
             {/* SALARY MANAGEMENT COMPONENT */}
-            <Route path="/salary" element={<SalaryManagement theme={theme} drivers={drivers} transactions={transactions} onPaySalary={handlePaySalary} salaryHistory={salaryHistory} userRole={userRole} adminName={adminUser?.username || 'Admin'} fleetId={adminUser?.fleetId} />} />
+            <Route path="/salary" element={<SalaryManagement theme={theme} drivers={drivers} transactions={transactions} onPaySalary={handlePaySalary} salaryHistory={salaryHistory} userRole={userRole} adminName={adminUser?.username || 'Admin'} fleetId={adminUser?.id} />} />
 
             <Route path="/roles" element={userRole === 'admin' ? (
               <RolesPage

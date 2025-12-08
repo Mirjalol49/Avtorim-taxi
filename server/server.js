@@ -18,9 +18,17 @@ app.use(bodyParser.json());
 // Initialize Firebase Admin
 let firestore;
 try {
-    const serviceAccount = process.env.SERVICE_ACCOUNT_KEY
-        ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY)
-        : require('./serviceAccountKey.json');
+    let serviceAccount;
+    try {
+        serviceAccount = process.env.SERVICE_ACCOUNT_KEY
+            ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY)
+            : require('./serviceAccountKey.json');
+    } catch (e) {
+        // If parsing fails, maybe it's a path string? But typically Env var is JSON content.
+        // Fallback to local file if env var is weird or missing.
+        console.warn("Could not parse SERVICE_ACCOUNT_KEY env var, falling back to local file.");
+        serviceAccount = require('./serviceAccountKey.json');
+    }
 
     if (!admin.apps.length) {
         admin.initializeApp({
@@ -181,6 +189,32 @@ app.get('/api/telegram/drivers', (req, res) => {
     });
 });
 
+// --- NOTIFICATIONS API ---
+app.post('/api/notifications/salary', async (req, res) => {
+    const { driverId, amount, date } = req.body;
+
+    if (!driverId || !amount || !date) {
+        return res.status(400).json({ error: 'Missing required fields: driverId, amount, date' });
+    }
+
+    if (!telegramService) {
+        return res.status(503).json({ error: 'Telegram service not available' });
+    }
+
+    try {
+        const result = await telegramService.sendSalaryNotification(driverId, amount, date);
+        if (result.success) {
+            res.json({ success: true, message: 'Notification sent' });
+        } else {
+            res.status(400).json({ success: false, error: result.error });
+        }
+    } catch (error) {
+        console.error('Notification API Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 // Import Admin Controller
 const adminController = require('./adminController');
 
@@ -305,6 +339,7 @@ app.listen(port, () => {
     console.log(`🚀 Server listening at http://localhost:${port}`);
     console.log(`📍 OwnTracks webhook: POST /api/owntracks/location`);
     console.log(`🤖 Telegram registration: POST /api/telegram/register`);
+    console.log(`✨ Notification API: POST /api/notifications/salary (NEW)`);
     console.log(`🔐 Admin API: POST /api/admin/*`);
     console.log(`🔑 Security APIs:`);
     console.log(`   - Login: POST /api/auth/login`);

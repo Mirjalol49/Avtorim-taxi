@@ -182,7 +182,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
 
                 } catch (error) {
                     console.error('Failed to refund salary:', error);
-                    addToast('error', "To'lovni qaytarishda xatolik yuz berdi");
+                    addToast('error', `To'lovni qaytarishda xatolik: ${error.message || "Xatolik yuz berdi"}`);
                 } finally {
                     setReversingMap(prev => ({ ...prev, [salary.id]: false }));
                 }
