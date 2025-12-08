@@ -1,4 +1,5 @@
 const { Telegraf, Markup } = require('telegraf');
+const admin = require('firebase-admin');
 
 class TelegramService {
     constructor(token, db) {
@@ -8,7 +9,7 @@ class TelegramService {
         }
 
         this.bot = new Telegraf(token);
-        this.db = db; // Firestore instance
+        this.db = db;
         this.setupHandlers();
 
         // Graceful stop
@@ -16,207 +17,190 @@ class TelegramService {
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
 
         this.bot.launch().then(() => {
-            console.log('✅ Telegram Bot launched successfully');
+            console.log('✅ Telegram Bot launched successfully (Delightful Version)');
         }).catch(err => {
             console.error('❌ Failed to launch Telegram Bot:', err);
         });
     }
 
     setupHandlers() {
-        // middleware to debug
+        // Debug middleware
         this.bot.use((ctx, next) => {
             // console.log(`[Bot] Update from ${ctx.from?.id}`);
             return next();
         });
 
-        // /start - Ask for Phone Number
+        // 1. /start - Friendly Welcome
         this.bot.start((ctx) => {
             ctx.reply(
-                "Assalomu alaykum! Iltimos, telefon raqamingizni yuboring:",
+                "Assalomu alaykum! 🚕\n\nAvtorim Taxi tizimiga xush kelibsiz.\nDavom etish uchun telefon raqamingizni yuboring:",
                 Markup.keyboard([
-                    Markup.button.contactRequest('📱 Raqamni yuborish')
+                    Markup.button.contactRequest('📱 Telefon raqamni yuborish')
                 ]).resize().oneTime()
             );
         });
 
-        // Handle Contact Share
+        // 2. Contact Verification - ROBUST MATCHING
         this.bot.on('contact', async (ctx) => {
             const contact = ctx.message.contact;
             const telegramId = ctx.from.id;
 
-            // Validate that the contact belongs to the user sending it
             if (contact.user_id && contact.user_id !== telegramId) {
-                return ctx.reply("Iltimos, o'zingizning raqamingizni yuboring.");
+                return ctx.reply("🚫 Iltimos, faqat o'zingizning raqamingizni yuboring.");
             }
 
-            // Normalize Telegram phone (remove all non-digits)
-            const telegramPhone = contact.phone_number.replace(/\D/g, '');
+            // Normalize Telegram phone: remove ALL non-digits
+            const telegramPhoneRaw = contact.phone_number;
+            const telegramPhoneNormalized = telegramPhoneRaw.replace(/\D/g, '');
+            // Create a suffix (last 9 digits) for safer matching (ignores +998 vs 998 vs 91)
+            const telegramSuffix = telegramPhoneNormalized.slice(-9);
+
+            console.log(`🔎 Verifying Contact: ${telegramPhoneRaw} (Norm: ${telegramPhoneNormalized}, Suffix: ${telegramSuffix})`);
 
             try {
-                // Search 'drivers' collection
                 const driversRef = this.db.collection('drivers');
                 const snapshot = await driversRef.get();
 
                 let driverDoc = null;
                 let driverData = null;
 
-                // Match last 9 digits to handle country code differences (e.g. 998 vs no 998)
-                const telegramSuffix = telegramPhone.slice(-9);
-                console.log(`🔎 Checking contact: ${telegramPhone} (Suffix: ${telegramSuffix})`);
-
+                // Client-side filtering for robust matching
                 snapshot.forEach(doc => {
+                    if (driverDoc) return; // Already found
+
                     const data = doc.data();
-                    if (data.phone) {
-                        const dbPhone = data.phone.toString().replace(/\D/g, ''); // Normalize DB phone
-                        const dbSuffix = dbPhone.slice(-9); // Get last 9 digits
+                    if (!data.phone) return;
 
-                        // console.log(`   Comparing DB: ${dbPhone} (Suffix: ${dbSuffix})`);
+                    const dbPhoneRaw = data.phone.toString();
+                    const dbPhoneNormalized = dbPhoneRaw.replace(/\D/g, '');
+                    const dbSuffix = dbPhoneNormalized.slice(-9);
 
-                        if (dbSuffix === telegramSuffix) {
-                            driverDoc = doc;
-                            driverData = data;
-                            console.log(`   ✅ MATCH FOUND: ${data.firstName || data.name}`);
-                        }
+                    // Match if suffixes match (last 9 digits same)
+                    if (dbSuffix === telegramSuffix) {
+                        driverDoc = doc;
+                        driverData = data;
+                        console.log(`   ✅ MATCH: DB Phone ${dbPhoneRaw} matches.`);
                     }
                 });
 
                 if (!driverDoc) {
-                    console.log(`❌ No match found for ${telegramPhone}`);
-                    return ctx.reply(`❌ Raqam bazada topilmadi: ${contact.phone_number}\nIltimos, avval haydovchi sifatida ro'yxatdan o'ting.`);
+                    console.log(`   ❌ NO MATCH FOUND for ${telegramPhoneRaw}`);
+                    return ctx.reply(
+                        `🚫 Raqamingiz bazada topilmadi (${contact.phone_number}).\n\n` +
+                        `Iltimos, rahbar bilan bog'laning va raqamingiz to'g'ri kiritilganligini tekshiring.`
+                    );
                 }
 
-                // Link Driver to Telegram
+                // Update Telegram ID
                 await driverDoc.ref.update({
-                    telegramId: telegramId.toString()
+                    telegramId: telegramId.toString(),
+                    lastActive: admin.firestore.FieldValue.serverTimestamp()
                 });
 
-                ctx.reply(`✅ Xush kelibsiz, ${driverData.firstName || driverData.name || 'Haydovchi'}!`,
+                const name = driverData.firstName || driverData.name || 'Haydovchi';
+                ctx.reply(
+                    `✅ Assalomu alaykum, ${name}! Tizimga muvaffaqiyatli ulandingiz.`,
                     this.getMainMenu()
                 );
 
             } catch (error) {
                 console.error("Error confirming driver:", error);
-                ctx.reply("Tizimda xatolik yuz berdi. Qaytadan urinib ko'ring.");
+                ctx.reply("❌ Tizim xatoligi. Qaytadan urinib ko'ring.");
             }
         });
 
-        // Handle Income Button
+        // 3. Main Menu Handlers
         this.bot.hears('💰 Kirim', async (ctx) => {
-            await this.setSessionState(ctx.from.id, 'income');
-            ctx.reply("Kirim summasini yozing (faqat raqam):", Markup.removeKeyboard());
+            await this.setSessionState(ctx.from.id, 'awaiting_income');
+            ctx.reply("💰 Qancha summa topdingiz? (Faqat raqam yozing)", Markup.removeKeyboard());
         });
 
-        // Handle Expense Button
         this.bot.hears('💸 Chiqim', (ctx) => {
-            ctx.reply("🚧 Chiqim funksiyasi tez orada qo'shiladi!", this.getMainMenu());
+            ctx.reply("🚧 Chiqim funksiyasi tez orada ishga tushadi!", this.getMainMenu());
         });
 
-        // Handle Status Buttons
-        this.bot.hears('🟢 Online', async (ctx) => {
-            await this.updateDriverStatus(ctx, 'active');
+        this.bot.hears('📊 Mening Balansim', async (ctx) => {
+            // Placeholder: fetch actual balance if possible, or just show feature placeholder
+            // In a real scenario, we'd query transactions or driver doc
+            ctx.reply("📊 Balans hisoboti tez orada qo'shiladi.", this.getMainMenu());
         });
 
-        this.bot.hears('🔴 Offline', async (ctx) => {
-            await this.updateDriverStatus(ctx, 'inactive');
-        });
-
-        // Handle Text (The Money)
+        // 4. Transaction Logic (Stateful)
         this.bot.on('text', async (ctx) => {
             const telegramId = ctx.from.id;
             const text = ctx.message.text;
+
+            // Ignore commands if they slip through
+            if (text.startsWith('/')) return;
+
             const sessionData = await this.getSessionState(telegramId);
+            const isIncome = sessionData?.action === 'awaiting_income';
 
-            // If we are not waiting for income, check if it is a restart command or ignore
-            if (!sessionData || sessionData.action !== 'income') {
-                if (['/start', '💰 Kirim', '💸 Chiqim', '🟢 Online', '🔴 Offline'].includes(text)) return;
+            // If not in a known state, check if verified and show menu
+            if (!isIncome) {
+                if (['💰 Kirim', '💸 Chiqim', '📊 Mening Balansim'].includes(text)) return;
 
-                // If verified, show menu
                 const driverId = await this.getDriverIdByTelegramId(telegramId);
                 if (driverId) {
-                    return ctx.reply("Menyuni tanlang:", this.getMainMenu());
+                    return ctx.reply("Quyidagi menyudan tanlang:", this.getMainMenu());
+                } else {
+                    return ctx.reply("Iltimos, avval /start ni bosing.");
                 }
-                return;
             }
 
-            // Parse amount: remove non-digits
-            const amount = parseInt(text.replace(/\D/g, ''));
+            // === Handle 'awaiting_income' ===
+            const amountStr = text.replace(/\D/g, '');
+            const amount = parseInt(amountStr);
 
             if (!amount || amount <= 0) {
-                return ctx.reply("Iltimos, to'g'ri summa yozing (masalan 50000).");
+                return ctx.reply("⚠️ Iltimos, to'g'ri summa yozing (faqat raqam).");
             }
 
             try {
-                // Get Driver Info
-                const driversRef = this.db.collection('drivers');
-                const snapshot = await driversRef.where('telegramId', '==', telegramId.toString()).limit(1).get();
-
-                if (snapshot.empty) {
-                    return ctx.reply("⚠️ Xatolik: Siz ro'yxatdan o'tmagansiz. /start ni bosing.");
+                const driverId = await this.getDriverIdByTelegramId(telegramId);
+                if (!driverId) {
+                    await this.clearSessionState(telegramId);
+                    return ctx.reply("❌ Sizning hisobingiz topilmadi. /start tugmasini bosing.");
                 }
 
-                const driverDoc = snapshot.docs[0];
+                // Use a database look up to get name for the receipt
+                const driverDoc = await this.db.collection('drivers').doc(driverId).get();
                 const driverData = driverDoc.data();
                 const driverName = driverData.firstName
                     ? `${driverData.firstName} ${driverData.lastName || ''}`.trim()
-                    : (driverData.name || 'Unknown Driver');
+                    : (driverData.name || 'Noma\'lum');
 
-                // Save to Firebase
                 await this.db.collection('transactions').add({
-                    driverId: driverDoc.id,
+                    driverId: driverId,
                     driverName: driverName,
                     amount: amount,
                     type: 'income',
+                    category: 'Trip',
                     date: new Date().toISOString(),
                     timestamp: admin.firestore.FieldValue.serverTimestamp(),
                     source: 'telegram_bot'
                 });
 
-                // Clear session
                 await this.clearSessionState(telegramId);
 
-                // Format amount nicely (e.g. 50 000)
-                const formattedAmount = amount.toLocaleString('uz-UZ');
-
-                ctx.reply(`✅ ${formattedAmount} so'm qabul qilindi!`,
-                    this.getMainMenu()
-                );
+                const fmtAmount = amount.toLocaleString('uz-UZ');
+                ctx.reply(`✅ Qabul qilindi! +${fmtAmount} so'm.`, this.getMainMenu());
 
             } catch (error) {
-                console.error("Error saving transaction:", error);
-                ctx.reply("❌ Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.");
+                console.error("Transaction save error:", error);
+                ctx.reply("❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.", this.getMainMenu());
             }
         });
     }
 
-    // Helpers
     getMainMenu() {
         return Markup.keyboard([
-            ['🟢 Online', '🔴 Offline'],
-            ['💰 Kirim', '💸 Chiqim']
+            ['💰 Kirim', '💸 Chiqim'],
+            ['📊 Mening Balansim']
         ]).resize();
     }
 
-    async updateDriverStatus(ctx, status) {
-        const telegramId = ctx.from.id;
-        const driverId = await this.getDriverIdByTelegramId(telegramId);
-
-        if (!driverId) {
-            return ctx.reply("⚠️ Avval ro'yxatdan o'ting: /start");
-        }
-
-        try {
-            await this.db.collection('drivers').doc(driverId).update({
-                status: status,
-                lastActive: admin.firestore.FieldValue.serverTimestamp()
-            });
-
-            const msg = status === 'active' ? "✅ Siz hozir ONLAYN rejimidasiz." : "🔴 Siz hozir OFLAYN rejimidasiz.";
-            ctx.reply(msg, this.getMainMenu());
-        } catch (error) {
-            console.error("Status update error:", error);
-            ctx.reply("❌ Statusni o'zgartirishda xatolik.");
-        }
-    }
+    // --- Helpers ---
 
     async getDriverIdByTelegramId(telegramId) {
         try {
@@ -224,7 +208,6 @@ class TelegramService {
                 .where('telegramId', '==', telegramId.toString())
                 .limit(1)
                 .get();
-
             if (snapshot.empty) return null;
             return snapshot.docs[0].id;
         } catch (error) {
@@ -233,38 +216,27 @@ class TelegramService {
         }
     }
 
-    // Session Management in 'bot_sessions'
     async setSessionState(telegramId, action) {
         try {
             await this.db.collection('bot_sessions').doc(telegramId.toString()).set({
                 action: action,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
-        } catch (e) {
-            console.error("Session set error:", e);
-        }
+        } catch (e) { console.error("Session set error:", e); }
     }
 
     async getSessionState(telegramId) {
         try {
             const doc = await this.db.collection('bot_sessions').doc(telegramId.toString()).get();
             return doc.exists ? doc.data() : null;
-        } catch (e) {
-            console.error("Session get error:", e);
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
     async clearSessionState(telegramId) {
         try {
             await this.db.collection('bot_sessions').doc(telegramId.toString()).delete();
-        } catch (e) {
-            console.error("Session clear error:", e);
-        }
+        } catch (e) { console.error("Session clear error:", e); }
     }
 }
-
-// Need to import admin for FieldValue
-const admin = require('firebase-admin');
 
 module.exports = TelegramService;
