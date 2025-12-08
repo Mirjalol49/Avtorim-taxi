@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const auth = require('basic-auth');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const admin = require('firebase-admin');
 const TelegramService = require('./telegramService');
 
 const app = express();
@@ -14,7 +15,25 @@ const cors = require('cors');
 app.use(cors());
 app.use(bodyParser.json());
 
-// Database Setup
+// Initialize Firebase Admin
+let firestore;
+try {
+    const serviceAccount = process.env.SERVICE_ACCOUNT_KEY
+        ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY)
+        : require('./serviceAccountKey.json');
+
+    if (!admin.apps.length) {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+    }
+    firestore = admin.firestore();
+    console.log('✅ Firebase Admin Initialized in server.js');
+} catch (error) {
+    console.warn('⚠️ Firebase Admin could not be initialized:', error.message);
+}
+
+// Database Setup (SQLite for OwnTracks legacy)
 const dbPath = path.resolve(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
@@ -25,7 +44,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-// Initialize Telegram Bot (token from environment variable)
+// Initialize Telegram Bot
 let telegramService = null;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -46,8 +65,12 @@ function createTable() {
             console.error('Error creating table:', err.message);
         } else {
             console.log('Table drivers_location ready.');
-            // Initialize Telegram service after database is ready
-            telegramService = new TelegramService(TELEGRAM_BOT_TOKEN, db);
+            // Initialize Telegram service with Firestore
+            if (TELEGRAM_BOT_TOKEN && firestore) {
+                telegramService = new TelegramService(TELEGRAM_BOT_TOKEN, firestore);
+            } else {
+                console.warn('⚠️  Telegram Bot not started: Missing Token or Firestore');
+            }
         }
     });
 }
@@ -194,8 +217,6 @@ app.get('/api/admin/audit-logs', basicAuth, adminController.getAuditLogs);
 // ==================== PUBLIC AUTH ENDPOINT ====================
 // This endpoint is used for login - no basicAuth required
 const bcrypt = require('bcryptjs');
-const admin = require('firebase-admin');
-
 app.post('/api/auth/login', async (req, res) => {
     const { password } = req.body;
 
