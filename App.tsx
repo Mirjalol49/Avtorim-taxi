@@ -241,7 +241,7 @@ const AppContent: React.FC = () => {
             : new Date().toLocaleDateString('uz-UZ');
 
           // Use relative path
-          const apiUrl = '/api/notifications/salary';
+          const apiUrl = 'https://us-central1-avtorim-taxi.cloudfunctions.net/sendSalaryNotification';
 
           fetch(apiUrl, {
             method: 'POST',
