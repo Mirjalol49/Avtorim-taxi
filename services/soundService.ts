@@ -1,15 +1,18 @@
 import { Howl, Howler } from 'howler';
+import correctSound from '../Sounds/correct.mp3';
+import incorrectSound from '../Sounds/incorrect.mp3';
+import lockSound from '../Sounds/lock.mp3';
 
 /**
  * Unified Sound Service for Web Application
  * Refactored to use Howler.js for reliable cross-browser playback
  */
 
-// Sound file paths - Centralized configuration
+// Sound file paths - Uses imported files for consistent bundling
 const SOUND_PATHS = {
-    correct: '/Sounds/correct.mp3',
-    incorrect: '/Sounds/incorrect.mp3',
-    lock: '/Sounds/lock.mp3',
+    correct: correctSound,
+    incorrect: incorrectSound,
+    lock: lockSound,
 };
 
 class SoundService {

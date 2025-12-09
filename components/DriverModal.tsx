@@ -223,10 +223,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               />
             </div>
             <div>
-              <label className={labelClass}>{t('monthlySalary') || 'Salary (UZS)'} <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{t('monthlySalary') || 'Salary (UZS)'}</label>
               <input
                 type="text"
-                required
                 value={monthlySalary}
                 onChange={handleSalaryChange}
                 className={inputClass}

@@ -573,7 +573,7 @@ const AppContent: React.FC = () => {
               )}
             </>
           )}
-          <button onClick={handleLogout} className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider group ${theme === 'dark'
+          <button onClick={() => { playLockSound(); handleLogout(); }} className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider group ${theme === 'dark'
             ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 border-red-500/20'
             : 'bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 border-red-200'
             }`}>
