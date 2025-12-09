@@ -35,7 +35,7 @@ const TRANSLATIONS = {
         error_generic: "❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.",
         need_start: "⚠️ Iltimos, botni qayta ishga tushiring: /start",
         lang_select: "🇺🇿 Tilni tanlang:",
-        salary_received: "✅ **Maosh To'landi!**\n\n💰 Summa: **{amount}**\n📅 Sana: {date}\n\nHar doim biz bilan bo'lganingiz uchun rahmat! 🚀"
+        salary_received: "━━━━━━━━━━━━━━━━━━━━\n💸 *MAOSH TO'LANDI!* 💸\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 Tabriklaymiz!\n\n💰 *Summa:* `{amount}`\n📅 *Sana:* {date}\n\n━━━━━━━━━━━━━━━━━━━━\n🚖 *TAKSAPARK* jamoasi bilan\nishlaganingiz uchun rahmat!\n\n⭐ Omad tilaymiz! ⭐\n━━━━━━━━━━━━━━━━━━━━"
     },
     ru: {
         welcome: "🚖 Добро пожаловать в **TAKSAPARK**!\n\nПожалуйста, выберите язык:",
@@ -62,7 +62,7 @@ const TRANSLATIONS = {
         error_generic: "❌ Произошла ошибка. Попробуйте снова.",
         need_start: "⚠️ Пожалуйста, перезапустите бота: /start",
         lang_select: "🇷🇺 Выберите язык:",
-        salary_received: "✅ **Зарплата Выплачена!**\n\n💰 Сумма: **{amount}**\n📅 Дата: {date}\n\nСпасибо, что вы с нами! 🚀"
+        salary_received: "━━━━━━━━━━━━━━━━━━━━\n💸 *ЗАРПЛАТА ВЫПЛАЧЕНА!* 💸\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 Поздравляем!\n\n💰 *Сумма:* `{amount}`\n📅 *Дата:* {date}\n\n━━━━━━━━━━━━━━━━━━━━\n🚖 Спасибо за работу с\n*TAKSAPARK*!\n\n⭐ Удачи на дорогах! ⭐\n━━━━━━━━━━━━━━━━━━━━"
     },
     en: {
         welcome: "🚖 Welcome to **TAKSAPARK**!\n\nPlease select your language:",
@@ -89,7 +89,7 @@ const TRANSLATIONS = {
         error_generic: "❌ An error occurred. Please try again.",
         need_start: "⚠️ Please restart the bot: /start",
         lang_select: "🇬🇧 Select language:",
-        salary_received: "✅ **Salary Paid!**\n\n💰 Amount: **{amount}**\n📅 Date: {date}\n\nThanks for being with us! 🚀"
+        salary_received: "━━━━━━━━━━━━━━━━━━━━\n💸 *SALARY PAID!* 💸\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 Congratulations!\n\n💰 *Amount:* `{amount}`\n📅 *Date:* {date}\n\n━━━━━━━━━━━━━━━━━━━━\n🚖 Thank you for being part of\nthe *TAKSAPARK* team!\n\n⭐ Good luck! ⭐\n━━━━━━━━━━━━━━━━━━━━"
     }
 };
 
@@ -379,11 +379,13 @@ exports.telegramBot = functions.https.onRequest(async (req, res) => {
 
 // --- SALARY NOTIFICATION FUNCTION (Called from your app) ---
 exports.sendSalaryNotification = functions.https.onRequest(async (req, res) => {
-    // Enable CORS
+    // Enable CORS for all responses
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Handle preflight
     if (req.method === 'OPTIONS') {
-        res.set('Access-Control-Allow-Methods', 'POST');
-        res.set('Access-Control-Allow-Headers', 'Content-Type');
         return res.status(204).send('');
     }
 
@@ -394,22 +396,32 @@ exports.sendSalaryNotification = functions.https.onRequest(async (req, res) => {
     }
 
     try {
-        // Find driver
+        console.log(`📩 Salary notification request: driverId=${driverId}, amount=${amount}, date=${date}`);
+
+        // Find driver using collectionGroup to search all fleets
         let driverDoc;
         const snapshot = await db.collectionGroup('drivers').get();
+        console.log(`🔍 Found ${snapshot.size} total drivers in database`);
+
         snapshot.forEach(d => {
-            if (d.id === driverId) driverDoc = d;
+            if (d.id === driverId) {
+                console.log(`✅ Found matching driver: ${d.id} at path ${d.ref.path}`);
+                driverDoc = d;
+            }
         });
 
         if (!driverDoc) {
-            return res.status(404).json({ error: 'Driver not found' });
+            console.warn(`❌ Driver not found: ${driverId}`);
+            return res.status(404).json({ error: 'Driver not found', driverId });
         }
 
         const data = driverDoc.data();
         const telegramId = data.telegramId;
+        console.log(`👤 Driver data: name=${data.name}, telegramId=${telegramId || 'NOT LINKED'}`);
 
         if (!telegramId) {
-            return res.status(400).json({ error: 'Telegram not linked' });
+            console.warn(`❌ Driver ${driverId} has no telegramId linked`);
+            return res.status(400).json({ error: 'Telegram not linked', driverName: data.name });
         }
 
         const lang = data.language || 'uz';
@@ -420,11 +432,13 @@ exports.sendSalaryNotification = functions.https.onRequest(async (req, res) => {
             .replace('{amount}', fmtAmount)
             .replace('{date}', date);
 
+        console.log(`📤 Sending message to telegramId=${telegramId}`);
         await bot.telegram.sendMessage(telegramId, message, { parse_mode: 'Markdown' });
+        console.log(`✅ Message sent successfully!`);
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Notification error:', error);
+        console.error('❌ Notification error:', error);
         res.status(500).json({ error: error.message });
     }
 });

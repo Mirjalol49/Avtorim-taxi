@@ -243,6 +243,8 @@ const AppContent: React.FC = () => {
           // Use relative path
           const apiUrl = 'https://us-central1-avtorim-taxi.cloudfunctions.net/sendSalaryNotification';
 
+          console.log('🔔 Triggering salary notification:', { driverId: driver.id, amount: monthlySalary, date: notifDate });
+
           fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -252,13 +254,17 @@ const AppContent: React.FC = () => {
               date: notifDate
             })
           }).then(async (response) => {
-            if (!response.ok) {
+            console.log('📤 Notification response:', response.status);
+            if (response.ok) {
+              addToast('success', '📲 Telegram xabar yuborildi!');
+            } else {
               const errData = await response.json();
               console.warn('Notification API Warning:', errData);
-              // Optional: Show quiet warning, or ignore if not critical
+              addToast('warning', `Telegram: ${errData.error || 'Xabar yuborilmadi'}`);
             }
           }).catch(e => {
-            console.error('Failed to trigger salary notification (Background):', e);
+            console.error('Failed to trigger salary notification:', e);
+            addToast('error', 'Telegram xabar yuborishda xatolik');
           });
 
         } catch (error) {
