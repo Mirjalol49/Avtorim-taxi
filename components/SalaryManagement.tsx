@@ -42,11 +42,10 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     // Options
-    const monthNames = [
-        t('months.january') || 'January', t('months.february') || 'February', t('months.march') || 'March',
-        t('months.april') || 'April', t('months.may') || 'May', t('months.june') || 'June',
-        t('months.july') || 'July', t('months.august') || 'August', t('months.september') || 'September',
-        t('months.october') || 'October', t('months.november') || 'November', t('months.december') || 'December'
+    const monthNamesList = t('months', { returnObjects: true });
+    const monthNames = Array.isArray(monthNamesList) ? monthNamesList as string[] : [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
     ];
 
     const monthOptions = useMemo(() => {

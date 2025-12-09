@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, AlertCircleIcon, XIcon, ClockAlertIcon } from './Icons';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -88,6 +89,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ theme }) => {
 };
 
 const ToastItem: React.FC<{ toast: Toast; theme: 'light' | 'dark'; onClose: () => void }> = ({ toast, theme, onClose }) => {
+    const { t } = useTranslation();
     const [isPaused, setIsPaused] = useState(false);
 
     const getStyles = (type: ToastType) => {
@@ -141,7 +143,7 @@ const ToastItem: React.FC<{ toast: Toast; theme: 'light' | 'dark'; onClose: () =
                 {getIcon(toast.type)}
                 <div className="flex-1 pt-0.5">
                     <p className="font-semibold text-sm leading-5">
-                        {toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}
+                        {t(toast.type) || toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}
                     </p>
                     <p className="text-sm opacity-90 mt-1 leading-relaxed">
                         {toast.message}

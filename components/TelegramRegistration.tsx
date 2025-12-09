@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Driver } from '../types';
+import { useUIContext } from '../src/features/shared/context/UIContext';
 
 interface TelegramRegistrationProps {
     drivers: Driver[];
@@ -14,6 +15,7 @@ interface TelegramDriver {
 }
 
 const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, theme, onClose }) => {
+    const { t } = useUIContext();
     const [selectedDriverId, setSelectedDriverId] = useState('');
     const [telegramId, setTelegramId] = useState('');
     const [registeredDrivers, setRegisteredDrivers] = useState<TelegramDriver[]>([]);
@@ -38,7 +40,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
 
     const handleRegister = async () => {
         if (!selectedDriverId || !telegramId) {
-            setMessage({ type: 'error', text: 'Please select a driver and enter Telegram ID' });
+            setMessage({ type: 'error', text: t.selectDriverError });
             return;
         }
 
@@ -56,16 +58,16 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
             });
 
             if (response.ok) {
-                setMessage({ type: 'success', text: 'Driver registered successfully!' });
+                setMessage({ type: 'success', text: t.registerSuccess });
                 setSelectedDriverId('');
                 setTelegramId('');
                 fetchRegisteredDrivers();
             } else {
                 const error = await response.json();
-                setMessage({ type: 'error', text: error.error || 'Registration failed' });
+                setMessage({ type: 'error', text: error.error || t.notificationFailed });
             }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Network error. Please try again.' });
+            setMessage({ type: 'error', text: t.networkError });
         } finally {
             setLoading(false);
         }
@@ -84,10 +86,10 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                     <div className="flex justify-between items-center">
                         <div>
                             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                🤖 Telegram Driver Registration
+                                🤖 {t.telegramRegistrationTitle}
                             </h2>
                             <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                Register drivers with their Telegram accounts for live location tracking
+                                {t.telegramRegistrationDesc}
                             </p>
                         </div>
                         <button
@@ -105,14 +107,14 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                     {/* Instructions */}
                     <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
                         <h3 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-blue-300' : 'text-blue-900'}`}>
-                            📱 How to get Telegram ID:
+                            📱 {t.howToGetId}
                         </h3>
                         <ol className={`text-sm space-y-1 ml-4 list-decimal ${theme === 'dark' ? 'text-blue-200' : 'text-blue-800'}`}>
-                            <li>Driver opens your Telegram bot</li>
-                            <li>Driver sends /start command</li>
-                            <li>Bot responds with their Telegram ID</li>
-                            <li>Driver shares ID with you</li>
-                            <li>Enter ID below to register</li>
+                            <li>{t.step1}</li>
+                            <li>{t.step2}</li>
+                            <li>{t.step3}</li>
+                            <li>{t.step4}</li>
+                            <li>{t.step5}</li>
                         </ol>
                     </div>
 
@@ -120,17 +122,17 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                     <div className="space-y-4">
                         <div>
                             <label className={`block text-sm font-bold mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                Select Driver
+                                {t.selectDriverLabel}
                             </label>
                             <select
                                 value={selectedDriverId}
                                 onChange={(e) => setSelectedDriverId(e.target.value)}
                                 className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
-                                        ? 'bg-gray-800 border-gray-700 text-white'
-                                        : 'bg-white border-gray-300 text-gray-900'
+                                    ? 'bg-gray-800 border-gray-700 text-white'
+                                    : 'bg-white border-gray-300 text-gray-900'
                                     }`}
                             >
-                                <option value="">-- Choose a driver --</option>
+                                <option value="">{t.chooseDriverOption}</option>
                                 {drivers.map(driver => (
                                     <option key={driver.id} value={driver.id}>
                                         {driver.name} ({driver.carModel} - {driver.licensePlate})
@@ -141,7 +143,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
 
                         <div>
                             <label className={`block text-sm font-bold mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                Telegram User ID
+                                {t.telegramUserIdLabel}
                             </label>
                             <input
                                 type="number"
@@ -149,16 +151,16 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                                 onChange={(e) => setTelegramId(e.target.value)}
                                 placeholder="e.g., 123456789"
                                 className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
-                                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
-                                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                                    ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                                     }`}
                             />
                         </div>
 
                         {message && (
                             <div className={`p-4 rounded-xl ${message.type === 'success'
-                                    ? theme === 'dark' ? 'bg-green-500/10 border border-green-500/20 text-green-300' : 'bg-green-50 border border-green-200 text-green-800'
-                                    : theme === 'dark' ? 'bg-red-500/10 border border-red-500/20 text-red-300' : 'bg-red-50 border border-red-200 text-red-800'
+                                ? theme === 'dark' ? 'bg-green-500/10 border border-green-500/20 text-green-300' : 'bg-green-50 border border-green-200 text-green-800'
+                                : theme === 'dark' ? 'bg-red-500/10 border border-red-500/20 text-red-300' : 'bg-red-50 border border-red-200 text-red-800'
                                 }`}>
                                 {message.text}
                             </div>
@@ -168,11 +170,11 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                             onClick={handleRegister}
                             disabled={loading || !selectedDriverId || !telegramId}
                             className={`w-full py-3 rounded-xl font-bold transition-all ${loading || !selectedDriverId || !telegramId
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-lg active:scale-95'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-lg active:scale-95'
                                 }`}
                         >
-                            {loading ? '⏳ Registering...' : '✅ Register Driver'}
+                            {loading ? `⏳ ${t.registeringBtn}` : `✅ ${t.registerDriverBtn}`}
                         </button>
                     </div>
 
@@ -180,7 +182,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                     {registeredDrivers.length > 0 && (
                         <div>
                             <h3 className={`font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                📋 Registered Drivers ({registeredDrivers.length})
+                                📋 {t.registeredDriversTitle} ({registeredDrivers.length})
                             </h3>
                             <div className="space-y-2">
                                 {registeredDrivers.map(rd => (
@@ -201,11 +203,11 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                                             {rd.is_live === 1 ? (
                                                 <span className="text-xs font-bold text-green-500 flex items-center gap-1">
                                                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                                    LIVE
+                                                    {t.liveStatus}
                                                 </span>
                                             ) : (
                                                 <span className={`text-xs font-bold ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                    OFFLINE
+                                                    {t.offlineStatus}
                                                 </span>
                                             )}
                                         </div>

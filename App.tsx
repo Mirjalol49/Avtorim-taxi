@@ -219,6 +219,7 @@ const AppContent: React.FC = () => {
           await firestoreService.addTransaction(salaryTransaction, adminUser?.id);
 
           // Add to Salary History
+          // Add to Salary History
           await addSalary({
             driverId: driver.id,
             amount: monthlySalary,
@@ -229,40 +230,41 @@ const AppContent: React.FC = () => {
             status: PaymentStatus.COMPLETED // Default status for new payments
           }, adminUser?.id);
 
-          // Trigger Telegram Notification (Salary)
-          try {
-            const notifDate = effectiveDate
-              ? effectiveDate.toLocaleDateString('uz-UZ')
-              : new Date().toLocaleDateString('uz-UZ');
+          // CLOSE MODAL IMMEDIATELY for snappy UI
+          closeConfirmModal();
+          addToast('success', t.salaryPaid || 'Salary paid successfully');
 
-            // Use relative path - handled by Vite Proxy in dev, or Nginx in prod
-            const apiUrl = '/api/notifications/salary';
+          // Trigger Telegram Notification (Background)
+          // We don't await this to block the UI
+          const notifDate = effectiveDate
+            ? effectiveDate.toLocaleDateString('uz-UZ')
+            : new Date().toLocaleDateString('uz-UZ');
 
-            const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                driverId: driver.id,
-                amount: Math.abs(monthlySalary),
-                date: notifDate
-              })
-            });
+          // Use relative path
+          const apiUrl = '/api/notifications/salary';
 
+          fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              driverId: driver.id,
+              amount: Math.abs(monthlySalary),
+              date: notifDate
+            })
+          }).then(async (response) => {
             if (!response.ok) {
               const errData = await response.json();
-              console.error('Notification API Failed:', errData);
-              addToast('warning', `Bot notification failed: ${errData.error || response.statusText}`);
+              console.warn('Notification API Warning:', errData);
+              // Optional: Show quiet warning, or ignore if not critical
             }
+          }).catch(e => {
+            console.error('Failed to trigger salary notification (Background):', e);
+          });
 
-          } catch (e) {
-            console.error('Failed to trigger salary notification:', e);
-            addToast('warning', "Bot notification failed: Network Error");
-          }
-
-
-          closeConfirmModal();
         } catch (error) {
           console.error('Failed to pay salary:', error);
+          // Only close on critical error if we haven't already
+          addToast('error', t.paySalaryError || 'Failed to process payment');
           closeConfirmModal();
         }
       }
@@ -302,7 +304,7 @@ const AppContent: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to save driver:', error);
-      addToast('error', 'Failed to save driver');
+      addToast('error', t.driverSaveFailed);
       throw error;
     }
   };
@@ -317,7 +319,7 @@ const AppContent: React.FC = () => {
       await firestoreService.updateDriver(driverId, { status: newStatus }, adminUser?.id);
     } catch (error) {
       console.error('Failed to update driver status:', error);
-      addToast('error', 'Failed to update status');
+      addToast('error', t.statusUpdateFailed);
     }
   };
 
@@ -334,12 +336,12 @@ const AppContent: React.FC = () => {
         try {
           // Delete from Firestore in background
           await firestoreService.deleteDriver(id, {
-            adminName: adminProfile?.name || 'Unknown Admin',
+            adminName: adminProfile?.name || t.unknownAdmin,
             reason: 'Manual deletion by admin'
           }, adminUser?.id);
         } catch (error) {
           console.error('Failed to delete driver:', error);
-          addToast('error', 'Failed to delete driver');
+          addToast('error', t.driverDeleteFailed);
         }
       }
     });
@@ -418,7 +420,7 @@ const AppContent: React.FC = () => {
           </div>
           <p className={`text-sm font-medium animate-pulse ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}>
-            {t.verificationRequired || 'Verifying Security...'}
+            {t.verificationRequired}
           </p>
         </div>
       </div>
@@ -476,7 +478,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/salary', t.salaryManagement, WalletIcon)}
           {userRole === 'admin' && renderSidebarItem('/roles', t.roleManagement, ShieldIcon)}
-          {userRole === 'admin' && (adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && renderSidebarItem('/mirjalol49', 'Super Admin', LockIcon)}
+          {userRole === 'admin' && (adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && renderSidebarItem('/mirjalol49', t.superAdmin, LockIcon)}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -493,7 +495,7 @@ const AppContent: React.FC = () => {
           >
             <div className="flex items-center gap-3">
               <GlobeIcon className="w-5 h-5" />
-              <span className="font-medium text-sm">Language</span>
+              <span className="font-medium text-sm">{t.uiLanguage}</span>
             </div>
             <span className="text-xs font-bold uppercase">{language}</span>
           </button>
@@ -545,7 +547,7 @@ const AppContent: React.FC = () => {
                         <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                           }`}>{adminUser.username}</p>
                         <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}>{adminUser.role.replace('_', ' ')}</p>
+                          }`}>{t[adminUser.role as keyof typeof t] || adminUser.role}</p>
                       </div>
                     </>
                   ) : (
@@ -561,7 +563,7 @@ const AppContent: React.FC = () => {
                         <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                           }`}>{adminProfile?.name}</p>
                         <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}>{adminProfile?.role}</p>
+                          }`}>{t[adminProfile?.role as keyof typeof t] || adminProfile?.role}</p>
                       </div>
                     </>
                   )}
@@ -755,7 +757,7 @@ const AppContent: React.FC = () => {
             <Route path="/roles" element={userRole === 'admin' ? (
               <RolesPage
                 theme={theme}
-                adminName={adminUser?.username || 'Admin'}
+                adminName={adminUser?.username || t.systemAdmin}
               />
             ) : <Navigate to="/dashboard" replace />} />
 
@@ -796,7 +798,7 @@ const AppContent: React.FC = () => {
               avatar: adminUser.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=' + adminUser.username,
               password: adminUser.password
             }
-            : (adminProfile || { name: 'Admin', role: 'Manager', avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin', password: '' })
+            : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin', password: '' })
         }
         onUpdate={handleUpdateProfile}
         userRole={userRole}

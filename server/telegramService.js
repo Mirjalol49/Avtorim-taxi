@@ -430,8 +430,23 @@ class TelegramService {
         }
     }
 
-    registerDriver(driver_id, telegram_user_id, callback) {
-        if (callback) callback(true);
+    async registerDriver(driver_id, telegram_user_id, callback) {
+        try {
+            console.log(`[BOT] Registering/Linking driver ${driver_id} with Telegram ID: ${telegram_user_id}`);
+
+            // Update the driver document in Firestore
+            await this.db.collection('drivers').doc(driver_id).update({
+                telegramId: telegram_user_id.toString(), // Store as string to be safe
+                // We can also store extra metadata if needed
+                telegramLinkedAt: Date.now()
+            });
+
+            console.log(`[BOT] Successfully linked driver ${driver_id} <-> ${telegram_user_id}`);
+            if (callback) callback(true);
+        } catch (error) {
+            console.error(`[BOT] Failed to register driver ${driver_id}:`, error);
+            if (callback) callback(false, error.message);
+        }
     }
 
     /**
@@ -474,9 +489,11 @@ class TelegramService {
             const telegramId = data.telegramId;
 
             if (!telegramId) {
-                console.warn(`[BOT] Driver ${driverId} has no Telegram ID linked.`);
-                return { success: false, error: 'Telegram not linked' };
+                console.warn(`[BOT FAIL] Driver ${driverId} (Name: ${data.name}) found but has NULL telegramId.`);
+                console.log('[BOT DEBUG] Driver Data Dump:', JSON.stringify(data, null, 2));
+                return { success: false, error: 'Telegram not linked (Driver found, but no ID)' };
             }
+            console.log(`[BOT SUCCESS] Found Telegram ID: ${telegramId} for driver ${data.name}`);
 
             // 2. Prepare Message
             const lang = data.language || 'uz';

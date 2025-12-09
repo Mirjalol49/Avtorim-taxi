@@ -286,7 +286,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               disabled={isSubmitting}
               className={`px-6 py-2.5 bg-[#0d9488] text-white hover:bg-[#0f766e] rounded-xl text-sm font-bold shadow-lg shadow-[#0d9488]/20 transition-all transform active:scale-95 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              {isSubmitting ? 'Saving...' : (editingDriver ? t('save') : t('add'))}
+              {isSubmitting ? t('saving') : (editingDriver ? t('save') : t('add'))}
             </button>
           </div>
         </form>

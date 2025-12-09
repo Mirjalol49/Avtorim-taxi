@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Language } from '../../../core/types';
 import { TRANSLATIONS } from '../../../../translations';
@@ -40,7 +40,28 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Derived state for legacy compatibility
     // Fallback to 'uz' if language is not one of the supported types
     const currentLang = (['uz', 'ru', 'en'].includes(language) ? language : 'uz') as Language;
-    const t = TRANSLATIONS[currentLang];
+
+    // Smart Fallback: Use Proxy to return Uzbek translation if missing in current lang
+    const t = useMemo(() => {
+        const target = TRANSLATIONS[currentLang];
+        const fallback = TRANSLATIONS.uz;
+
+        return new Proxy(target, {
+            get: (obj, prop) => {
+                // 1. Try selected language
+                if (prop in obj) {
+                    return obj[prop as keyof typeof obj];
+                }
+                // 2. Fallback to Uzbek
+                if (prop in fallback) {
+                    console.debug(`[i18n] Missing '${String(prop)}' in ${currentLang}, falling back to uz.`);
+                    return fallback[prop as keyof typeof fallback];
+                }
+                // 3. Return key as last resort (helper for debugging)
+                return String(prop);
+            }
+        });
+    }, [currentLang]);
 
     const setLanguage = (lang: Language) => {
         i18n.changeLanguage(lang);
