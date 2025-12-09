@@ -136,18 +136,19 @@ async function clearSession(telegramId) {
     }
 }
 
-async function verifyDriver(phoneRaw) {
+async function verifyDrivers(phoneRaw) {
     const phoneNormalized = phoneRaw.replace(/\D/g, '');
     const suffix = phoneNormalized.slice(-9);
     const snapshot = await db.collectionGroup('drivers').get();
-    let match = null;
+    const matches = [];
     snapshot.forEach(doc => {
-        if (match) return;
         const d = doc.data();
         if (d.isDeleted) return;
-        if (d.phone && d.phone.toString().replace(/\D/g, '').slice(-9) === suffix) match = doc;
+        if (d.phone && d.phone.toString().replace(/\D/g, '').slice(-9) === suffix) {
+            matches.push(doc);
+        }
     });
-    return match;
+    return matches;
 }
 
 async function findDriverByTelegramId(telegramId) {
@@ -264,21 +265,99 @@ bot.on('contact', async (ctx) => {
         return ctx.reply(t.not_your_contact);
     }
 
-    const driverDoc = await verifyDriver(contact.phone_number);
-    if (!driverDoc) {
+    const matchingDrivers = await verifyDrivers(contact.phone_number);
+
+    if (matchingDrivers.length === 0) {
         return ctx.reply(t.driver_not_found);
     }
 
-    await driverDoc.ref.update({
-        telegramId: tid.toString(),
-        language: lang,
-        lastActive: admin.firestore.FieldValue.serverTimestamp()
+    // Single match - register directly
+    if (matchingDrivers.length === 1) {
+        const driverDoc = matchingDrivers[0];
+        await driverDoc.ref.update({
+            telegramId: tid.toString(),
+            language: lang,
+            lastActive: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const dData = driverDoc.data();
+        await updateSession(tid, { lang, step: 'idle' });
+        const name = dData.name || 'Driver';
+        return ctx.reply(t.success_login.replace('{name}', name), getMainMenu(lang, dData.status));
+    }
+
+    // Multiple matches - show selection buttons
+    const selectMessage = lang === 'uz'
+        ? `📋 Ushbu raqam bilan ${matchingDrivers.length} ta haydovchi topildi.\n\nQaysi biri siz?`
+        : lang === 'ru'
+            ? `📋 Найдено ${matchingDrivers.length} водителей с этим номером.\n\nКто вы?`
+            : `📋 Found ${matchingDrivers.length} drivers with this number.\n\nWhich one are you?`;
+
+    // Store pending drivers in session
+    const driverOptions = matchingDrivers.map((doc, idx) => ({
+        id: doc.id,
+        path: doc.ref.path,
+        name: doc.data().name || 'Driver'
+    }));
+
+    await updateSession(tid, {
+        lang,
+        step: 'awaiting_driver_selection',
+        pendingDrivers: driverOptions
     });
 
-    const dData = driverDoc.data();
-    await updateSession(tid, { lang, step: 'idle' });
-    const name = dData.name || 'Driver';
-    ctx.reply(t.success_login.replace('{name}', name), getMainMenu(lang, dData.status));
+    // Create inline keyboard with driver names
+    const buttons = driverOptions.map(d => [
+        Markup.button.callback(`👤 ${d.name}`, `select_driver:${d.id}`)
+    ]);
+
+    return ctx.reply(selectMessage, Markup.inlineKeyboard(buttons));
+});
+
+// 3b. Handle driver selection callback
+bot.action(/^select_driver:(.+)$/, async (ctx) => {
+    const tid = ctx.from.id;
+    const selectedDriverId = ctx.match[1];
+    const session = await getSession(tid);
+    const lang = session?.lang || 'uz';
+    const t = TRANSLATIONS[lang];
+
+    if (session?.step !== 'awaiting_driver_selection' || !session?.pendingDrivers) {
+        return ctx.answerCbQuery(lang === 'uz' ? 'Xatolik. Qaytadan /start bosing.' : 'Error. Please /start again.');
+    }
+
+    // Find the selected driver from session
+    const selectedDriver = session.pendingDrivers.find(d => d.id === selectedDriverId);
+    if (!selectedDriver) {
+        return ctx.answerCbQuery(lang === 'uz' ? 'Haydovchi topilmadi' : 'Driver not found');
+    }
+
+    try {
+        // Update driver with telegram ID
+        const driverRef = db.doc(selectedDriver.path);
+        await driverRef.update({
+            telegramId: tid.toString(),
+            language: lang,
+            lastActive: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Get driver data for status
+        const driverSnap = await driverRef.get();
+        const dData = driverSnap.data();
+
+        // Clear session and set to idle
+        await updateSession(tid, { lang, step: 'idle', pendingDrivers: null });
+
+        // Answer callback and send welcome message
+        await ctx.answerCbQuery('✅');
+        await ctx.deleteMessage(); // Remove the selection buttons
+
+        const name = selectedDriver.name || 'Driver';
+        return ctx.reply(t.success_login.replace('{name}', name), getMainMenu(lang, dData?.status));
+    } catch (error) {
+        console.error('Driver selection error:', error);
+        return ctx.answerCbQuery(t.error_generic);
+    }
 });
 
 // 4. Text message handler
