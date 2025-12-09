@@ -192,12 +192,14 @@ app.get('/api/telegram/drivers', (req, res) => {
 // --- NOTIFICATIONS API ---
 app.post('/api/notifications/salary', async (req, res) => {
     const { driverId, amount, date } = req.body;
+    console.log(`[API] Received Salary Notification Request for Driver: ${driverId}, Amount: ${amount}`);
 
     if (!driverId || !amount || !date) {
         return res.status(400).json({ error: 'Missing required fields: driverId, amount, date' });
     }
 
     if (!telegramService) {
+        console.warn('[API] TelegramService is NULL');
         return res.status(503).json({ error: 'Telegram service not available' });
     }
 
@@ -335,8 +337,8 @@ app.post('/api/auth/login', async (req, res) => {
 
 
 // Start Server
-app.listen(port, () => {
-    console.log(`🚀 Server listening at http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 Server listening at http://0.0.0.0:${port}`);
     console.log(`📍 OwnTracks webhook: POST /api/owntracks/location`);
     console.log(`🤖 Telegram registration: POST /api/telegram/register`);
     console.log(`✨ Notification API: POST /api/notifications/salary (NEW)`);

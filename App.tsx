@@ -235,7 +235,10 @@ const AppContent: React.FC = () => {
               ? effectiveDate.toLocaleDateString('uz-UZ')
               : new Date().toLocaleDateString('uz-UZ');
 
-            await fetch('http://localhost:3000/api/notifications/salary', {
+            // Use relative path - handled by Vite Proxy in dev, or Nginx in prod
+            const apiUrl = '/api/notifications/salary';
+
+            const response = await fetch(apiUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -244,9 +247,18 @@ const AppContent: React.FC = () => {
                 date: notifDate
               })
             });
+
+            if (!response.ok) {
+              const errData = await response.json();
+              console.error('Notification API Failed:', errData);
+              addToast('warning', `Bot notification failed: ${errData.error || response.statusText}`);
+            }
+
           } catch (e) {
             console.error('Failed to trigger salary notification:', e);
+            addToast('warning', "Bot notification failed: Network Error");
           }
+
 
           closeConfirmModal();
         } catch (error) {

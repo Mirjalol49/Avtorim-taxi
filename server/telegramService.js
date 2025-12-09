@@ -99,7 +99,8 @@ class TelegramService {
         this.db = db;
 
         this.driverCache = new Map();
-        this.sessionCache = new Map();
+        this.driverCache = new Map();
+        // this.sessionCache = new Map(); // Removed in favor of Firestore
 
         console.log('[BOT] Initializing Service (v3.4 - SALARY NOTIFICATIONS)...');
         this.setupHandlers();
@@ -107,14 +108,62 @@ class TelegramService {
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
 
-        this.bot.launch().then(() => {
-            console.log('✅ Telegram Bot launched successfully');
+        console.log('[BOT] Attempting to launch Telegraf...');
+
+        // 1. Verify Connection First (Quick check)
+        this.bot.telegram.getMe().then((botInfo) => {
+            console.log(`✅ Telegram Bot Connected: @${botInfo.username}`);
             this.isReady = true;
+
+            // 2. Start Polling (Async, don't await)
+            this.bot.launch().then(() => {
+                console.log('✅ Polling started.');
+            }).catch(err => {
+                console.error('❌ Polling Error:', err.message);
+                this.isReady = false; // Disable if polling fails fatally
+            });
+
         }).catch(err => {
-            console.error('❌ Failed to launch Telegram Bot:', err.message);
+            console.error('❌ Failed to Connect to Telegram (Auth/Net):', err.message);
             this.isReady = false;
             this.launchError = err.message;
         });
+    }
+
+    // --- SESSION MANAGEMENT (Moved to Firestore) ---
+
+    async getSession(telegramId) {
+        // Try memory cache first for speed (optional, but let's stick to Firestore for persistence)
+        // Or better: Use Firestore.
+        try {
+            const docRef = this.db.collection('bot_sessions').doc(telegramId.toString());
+            const docSnap = await docRef.get();
+            if (docSnap.exists) {
+                return docSnap.data();
+            }
+            return null;
+        } catch (e) {
+            console.error('Session Get Error:', e);
+            return null;
+        }
+    }
+
+    async updateSession(telegramId, data) {
+        try {
+            const docRef = this.db.collection('bot_sessions').doc(telegramId.toString());
+            // Merge true to preserve other fields
+            await docRef.set(data, { merge: true });
+        } catch (e) {
+            console.error('Session Update Error:', e);
+        }
+    }
+
+    async clearSession(telegramId) {
+        try {
+            await this.db.collection('bot_sessions').doc(telegramId.toString()).delete();
+        } catch (e) {
+            console.error('Session Clear Error:', e);
+        }
     }
 
     setupHandlers() {
@@ -333,29 +382,7 @@ class TelegramService {
         return null;
     }
 
-    async getSession(tid) {
-        const c = this.sessionCache.get(tid.toString());
-        if (c && c.expires > Date.now()) return c;
-        const doc = await this.db.collection('bot_sessions').doc(tid.toString()).get();
-        if (doc.exists) {
-            const d = doc.data();
-            this.sessionCache.set(tid.toString(), { ...d, expires: Date.now() + 1000 * 60 * 60 });
-            return d;
-        }
-        return null;
-    }
-
-    async updateSession(tid, data) {
-        const cur = await this.getSession(tid) || {};
-        const next = { ...cur, ...data, expires: Date.now() + 1000 * 60 * 60 };
-        this.sessionCache.set(tid.toString(), next);
-        this.db.collection('bot_sessions').doc(tid.toString()).set(data, { merge: true }).catch(console.error);
-    }
-
-    async clearSession(tid) {
-        this.sessionCache.delete(tid.toString());
-        this.db.collection('bot_sessions').doc(tid.toString()).delete().catch(console.error);
-    }
+    // Old session methods removed (getSession, updateSession, clearSession) - used new ones above
 
     async getMainMenu(lang, status) {
         const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
