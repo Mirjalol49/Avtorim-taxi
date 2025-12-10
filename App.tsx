@@ -764,6 +764,7 @@ const AppContent: React.FC = () => {
               <RolesPage
                 theme={theme}
                 adminName={adminUser?.username || t.systemAdmin}
+                adminId={adminUser?.id || ''}
               />
             ) : <Navigate to="/dashboard" replace />} />
 

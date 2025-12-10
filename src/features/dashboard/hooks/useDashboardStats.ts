@@ -49,7 +49,13 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         return nonDeletedDrivers.map(d => {
             const dIncome = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
             const dExpense = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
-            return { name: d.name.split(' ')[0], Income: dIncome, Expense: dExpense };
+            return {
+                id: d.id,
+                name: d.name.split(' ')[0],
+                fullName: d.name,
+                Income: dIncome,
+                Expense: dExpense
+            };
         });
     }, [nonDeletedDrivers, filteredTx]);
 
@@ -59,7 +65,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             const income = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
             return { ...d, income };
         });
-        return stats.sort((a, b) => b.income - a.income).slice(0, 5); // Top 5
+        return stats.sort((a, b) => b.income - a.income).slice(0, 3); // Top 3 Only
     }, [nonDeletedDrivers, filteredTx]);
 
     const activeDriversList = useMemo(() => {

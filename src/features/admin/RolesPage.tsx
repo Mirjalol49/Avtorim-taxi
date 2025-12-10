@@ -15,9 +15,10 @@ interface RolesPageProps {
     theme: 'light' | 'dark';
     // language removed
     adminName: string;
+    adminId: string;
 }
 
-export const RolesPage: React.FC<RolesPageProps> = ({ theme, adminName }) => {
+export const RolesPage: React.FC<RolesPageProps> = ({ theme, adminName, adminId }) => {
     const { t } = useTranslation();
     const { addToast } = useToast();
 
@@ -42,11 +43,18 @@ export const RolesPage: React.FC<RolesPageProps> = ({ theme, adminName }) => {
         return () => unsubscribe();
     }, []);
 
-    // Filter viewers
-    const filteredViewers = viewers.filter(viewer =>
-        viewer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        viewer.phoneNumber.includes(searchQuery)
-    );
+    // Filter viewers by Search AND by Current Admin (Scoping)
+    const filteredViewers = viewers.filter(viewer => {
+        // Scoping: Only show viewers created by THIS admin (by ID) or Legacy (by Name)
+        // This ensures tenant isolation while keeping legacy data visible
+        const isMyViewer = viewer.createdBy === adminId || viewer.createdBy === adminName;
+
+        // Search
+        const matchesSearch = viewer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            viewer.phoneNumber.includes(searchQuery);
+
+        return isMyViewer && matchesSearch;
+    });
 
     // Handlers
     const handleAddViewer = async (viewerData: Omit<Viewer, 'id' | 'createdAt' | 'createdBy'>) => {
@@ -57,7 +65,7 @@ export const RolesPage: React.FC<RolesPageProps> = ({ theme, adminName }) => {
                 active: true,   // Default to active
                 avatar: viewerData.avatar || '', // Ensure avatar string
                 createdAt: Date.now(),
-                createdBy: adminName
+                createdBy: adminId // Always use ID for new viewers (Best Practice)
             });
             addToast('success', t('viewerAdded') || 'Viewer added', 3000);
         } catch (error) {
@@ -217,7 +225,7 @@ export const RolesPage: React.FC<RolesPageProps> = ({ theme, adminName }) => {
                             <div className={`pt-4 mt-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
                                 }`}>
                                 <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    {t('addedBy') || 'Added by'} {viewer.createdBy}
+                                    {t('addedBy') || 'Added by'} {viewer.createdBy === adminId ? adminName : viewer.createdBy}
                                 </span>
                                 <div className="flex gap-2">
                                     <button

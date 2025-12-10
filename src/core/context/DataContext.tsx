@@ -25,13 +25,15 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { adminUser, userRole, isAuthenticated } = useAuthContext();
+    const { adminUser, userRole, adminProfile } = useAuthContext();
 
     // Conditionally fetch data only if authenticated? 
     // Hooks internall check? No, hooks take fleetId. If undefined, they might not fetch or fetch global.
     // In App.tsx: useDrivers(adminUser?.id)
 
-    const fleetId = adminUser?.id;
+    // Cast to any to access specific viewer properties not on AdminProfile interface
+    // In viewer mode, adminProfile is actually a Viewer object
+    const fleetId = userRole === 'viewer' ? (adminProfile as any)?.createdBy : adminUser?.id;
 
     const { drivers, loading: driversLoading } = useDrivers(fleetId);
     const { transactions, loading: txLoading } = useTransactions(fleetId);

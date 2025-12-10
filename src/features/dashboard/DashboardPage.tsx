@@ -12,6 +12,11 @@ import {
 } from '../../../components/Icons';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { Transaction, Driver, Language } from '../../core/types';
+import Lottie from 'lottie-react';
+import rank1Animation from '../../../Images/1.json';
+import rank2Animation from '../../../Images/2.json';
+import rank3Animation from '../../../Images/3.json';
+import badgeAnimation from '../../../Images/badge.json';
 
 interface DashboardPageProps {
     transactions: Transaction[];
@@ -159,7 +164,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* CHART ROW */}
-            <div className={`w-full h-[300px] sm:h-[400px] md:h-[500px] p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         <LayoutDashboardIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -218,12 +223,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 const totalPages = Math.ceil(chartData.length / dashboardItemsPerPage);
                                 return (
                                     <>
-                                        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
-                                            {paginatedData.map((data, idx) => {
-                                                const driver = drivers.find(d => d.name.split(' ')[0] === data.name);
+                                        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 items-start">
+                                            {paginatedData.map((data: any, idx) => {
+                                                const driver = drivers.find(d => d.id === data.id);
                                                 const profit = data.Income - data.Expense;
                                                 return (
-                                                    <div key={idx} className={`p-5 rounded-xl border-2 transition-all hover:shadow-lg ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50 hover:border-[#0d9488]' : 'bg-white border-gray-200 hover:border-[#0d9488]'}`}>
+                                                    <div key={idx} className={`p-5 rounded-xl border-2 transition-all hover:shadow-lg h-fit ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50 hover:border-[#0d9488]' : 'bg-white border-gray-200 hover:border-[#0d9488]'}`}>
                                                         <div className="flex items-center gap-3 mb-4">
                                                             {driver && (
                                                                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#0d9488] flex-shrink-0">
@@ -231,7 +236,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                                 </div>
                                                             )}
                                                             <div className="min-w-0">
-                                                                <h4 className={`font-bold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.name}</h4>
+                                                                <h4 className={`font-bold text-sm whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.fullName}</h4>
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
@@ -263,34 +268,67 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* TOP PERFORMERS */}
-            <div className={`p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        <MedalIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+            <div className={`p-6 sm:p-8 rounded-3xl border shadow-xl relative overflow-hidden ${theme === 'dark' ? 'bg-[#151F32] border-[#2A3441]' : 'bg-white border-gray-200'}`}>
+                {/* Background Glow Effect - subtle/premium */}
+                {theme === 'dark' && <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />}
+
+                <div className="flex items-center justify-between mb-8 relative z-10">
+                    <h3 className={`text-lg sm:text-xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <div className="w-8 h-8">
+                            <Lottie animationData={badgeAnimation} loop={true} />
+                        </div>
                         {t('topPerformers')}
                     </h3>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md border ${theme === 'dark' ? 'text-gray-400 bg-gray-800 border-gray-700' : 'text-gray-500 bg-gray-50 border-gray-200'}`}>{t(timeFilter)}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border ${theme === 'dark' ? 'text-blue-200 bg-blue-500/10 border-blue-500/20' : 'text-blue-600 bg-blue-50 border-blue-100'}`}>
+                        {t(timeFilter)}
+                    </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                     {topDrivers.length > 0 ? topDrivers.map((driver, index) => (
-                        <div key={driver.id} className={`flex flex-col items-center gap-4 p-6 rounded-2xl border transition-all hover:scale-[1.02] hover:shadow-lg ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700 hover:bg-gray-800' : 'bg-gray-50 border-gray-100 hover:bg-white'}`}>
-                            <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center font-bold text-2xl font-mono ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                                {index < 3 ? <MedalIcon className={`w-10 h-10 ${getBadgeColor(index)}`} /> : `#${index + 1}`}
+                        <div key={driver.id} className={`flex flex-col items-center p-6 rounded-2xl border transition-all duration-300 hover:transform hover:-translate-y-1 ${theme === 'dark'
+                            ? 'bg-[#1E293B]/60 border-[#334155] hover:bg-[#1E293B] hover:shadow-lg hover:shadow-black/20 hover:border-[#0d9488]/30 glass-effect'
+                            : 'bg-gray-50 border-gray-100 hover:bg-white hover:shadow-xl hover:shadow-gray-200/50 hover:border-[#0d9488]/20'
+                            }`}>
+
+                            {/* Animated Rank Badge */}
+                            <div className="mb-4 relative">
+                                <div className="w-24 h-24 flex items-center justify-center">
+                                    {index === 0 && <Lottie animationData={rank1Animation} loop={true} className="scale-125" />}
+                                    {index === 1 && <Lottie animationData={rank2Animation} loop={true} className="scale-125" />}
+                                    {index === 2 && <Lottie animationData={rank3Animation} loop={true} className="scale-125" />}
+                                </div>
+                                {/* Glow under the badge */}
+                                <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-4 blur-xl rounded-full ${index === 0 ? 'bg-yellow-500/40' : index === 1 ? 'bg-slate-400/40' : 'bg-orange-500/40'
+                                    }`} />
                             </div>
-                            <div className={`w-16 h-16 rounded-full border-2 overflow-hidden shadow-md flex-shrink-0 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                                <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+
+                            {/* Driver Avatar */}
+                            <div className={`w-20 h-20 rounded-full p-1 mb-4 ${index === 0 ? 'bg-gradient-to-tr from-yellow-400 to-yellow-600' :
+                                index === 1 ? 'bg-gradient-to-tr from-slate-300 to-slate-500' :
+                                    'bg-gradient-to-tr from-orange-400 to-orange-600'
+                                }`}>
+                                <div className={`w-full h-full rounded-full border-4 overflow-hidden relative ${theme === 'dark' ? 'border-[#1E293B]' : 'border-white'}`}>
+                                    <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                </div>
                             </div>
-                            <div className="text-center w-full">
-                                <p className={`text-base font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
-                                <p className={`text-xs truncate mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
+
+                            <div className="text-center w-full mb-4">
+                                <p className={`text-lg font-bold whitespace-normal break-words leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
+                                <p className={`text-sm font-medium mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
                             </div>
-                            <div className="text-center">
-                                <p className="text-lg font-bold text-[#0d9488]">{driver.income.toLocaleString()}</p>
-                                <p className={`text-[10px] uppercase font-semibold ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
+
+                            <div className="mt-auto">
+                                <p className={`text-2xl font-black tracking-tight ${theme === 'dark' ? 'text-[#0d9488]' : 'text-[#0d9488]'}`}>
+                                    {driver.income.toLocaleString()}
+                                    <span className={`text-[10px] font-bold uppercase ml-1 align-top ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                                </p>
                             </div>
                         </div>
                     )) : (
-                        <div className={`text-center py-10 text-sm col-span-full ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Ma'lumotlar yo'q</div>
+                        <div className={`text-center py-20 text-sm col-span-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {t('noData') || "Ma'lumotlar yo'q"}
+                        </div>
                     )}
                 </div>
             </div>
@@ -327,7 +365,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
                                 </div>
                                 <div className="min-w-0">
-                                    <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
+                                    <div className={`text-sm font-bold whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
                                     <div className={`text-xs truncate mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel} • {driver.licensePlate}</div>
                                 </div>
                             </div>

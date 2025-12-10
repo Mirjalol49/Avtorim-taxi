@@ -11,7 +11,7 @@ import { Language } from '../types';
 import { subscribeToViewers } from '../services/firestoreService';
 import { Viewer } from '../types';
 import { db } from '../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
 
@@ -29,6 +29,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState(0);
   const [animationState, setAnimationState] = useState<'thinking' | 'incorrect' | 'correct'>('thinking');
+  const [ambiguousViewers, setAmbiguousViewers] = useState<Viewer[]>([]);
+  const [resolvingAdmins, setResolvingAdmins] = useState<Record<string, string>>({});
   const { t, i18n } = useTranslation();
   const lang = i18n.language as Language;
 
@@ -68,10 +70,39 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
     setLoading(true);
 
     // 1. Check Viewers first (for quick viewer access)
-    const viewer = viewers.find(v => v.active && v.password === password);
-    if (viewer) {
-      loginSuccess('viewer', viewer);
+    const matchingViewers = viewers.filter(v => v.active && v.password === password);
+
+    if (matchingViewers.length === 1) {
+      loginSuccess('viewer', matchingViewers[0]);
       setLoading(false);
+      return;
+    } else if (matchingViewers.length > 1) {
+      // Handle collision
+      setAmbiguousViewers(matchingViewers);
+
+      // Fetch admin names for context
+      const adminsNeeded = [...new Set(matchingViewers.map(v => v.createdBy))];
+      const adminMap: Record<string, string> = {};
+
+      Promise.all(adminsNeeded.map(async (adminId) => {
+        try {
+          // Try admin_users first
+          const adminRef = doc(db, 'admin_users', adminId);
+          const adminSnap = await getDoc(adminRef);
+          if (adminSnap.exists()) {
+            return { id: adminId, name: adminSnap.data().username };
+          }
+          // Try generic admin profile or fallback
+          return { id: adminId, name: 'Unknown Admin' };
+        } catch (e) {
+          return { id: adminId, name: 'Unknown Admin' };
+        }
+      })).then(results => {
+        results.forEach(r => { adminMap[r.id] = r.name; });
+        setResolvingAdmins(adminMap);
+        setLoading(false);
+      });
+
       return;
     }
 
@@ -250,6 +281,54 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
               </button>
             </div>
           </form>
+
+          {/* Ambiguous Viewer Selection Modal/Overlay */}
+          {ambiguousViewers.length > 0 && (
+            <div className="absolute inset-0 z-50 rounded-[32px] overflow-hidden flex flex-col bg-white/95 dark:bg-[#1F2937]/95 backdrop-blur-xl p-6 transition-all">
+              <h3 className={`text-lg font-bold mb-4 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {t('selectAccount') || 'Select Account'}
+              </h3>
+              <p className={`text-xs text-center mb-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {t('multipleAccountsFound') || 'Multiple accounts found with these credentials.'}
+              </p>
+
+              <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+                {ambiguousViewers.map(viewer => (
+                  <button
+                    key={viewer.id}
+                    onClick={() => loginSuccess('viewer', viewer)}
+                    className={`w-full p-4 rounded-xl border text-left transition-all ${isDark
+                        ? 'bg-gray-800 border-gray-700 hover:border-[#0d9488] hover:bg-gray-700'
+                        : 'bg-gray-50 border-gray-200 hover:border-[#0d9488] hover:bg-gray-100'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{viewer.name}</p>
+                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {resolvingAdmins[viewer.createdBy] ? `Fleet: ${resolvingAdmins[viewer.createdBy]}` : 'Loading...'}
+                        </p>
+                      </div>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-[#0d9488]/20 text-[#0d9488]' : 'bg-[#0d9488]/10 text-[#0d9488]'
+                        }`}>
+                        <UserIcon className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  setAmbiguousViewers([]);
+                  setPassword('');
+                }}
+                className="mt-4 text-xs font-medium text-gray-400 hover:text-gray-500 text-center w-full"
+              >
+                {t('cancel') || 'Cancel'}
+              </button>
+            </div>
+          )}
 
           {/* Language Switcher in Login */}
           <div className="flex justify-center gap-2 mt-8">
