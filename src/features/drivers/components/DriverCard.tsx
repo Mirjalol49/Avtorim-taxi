@@ -2,8 +2,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { EditIcon, TrashIcon } from '../../../../components/Icons';
-import { LockIcon } from '../../../../components/LockIcon';
-import { useLock } from '../../shared/hooks/useLock';
 import { useToast } from '../../../../components/ToastNotification';
 
 interface DriverCardProps {
@@ -28,38 +26,19 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 }) => {
     const { t } = useTranslation();
     const { addToast } = useToast();
-    const { isLocked, toggleLock, isLoading: isLockLoading, lockedBy, canEdit } = useLock({
-        collectionPath: 'drivers',
-        docId: driver.id,
-        entity: driver,
-        userId: currentUserId
-    });
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!canEdit) {
-            addToast('error', `Locked by ${lockedBy === currentUserId ? 'you' : 'another admin'}`);
-            if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-            return;
-        }
         onEdit(driver);
     };
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!canEdit) {
-            addToast('error', 'Cannot delete locked driver');
-            return;
-        }
         onDelete(driver.id);
     };
 
     const handleStatusToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!canEdit) {
-            addToast('error', 'Profile is locked');
-            return;
-        }
         onUpdateStatus(driver.id, driver.status === DriverStatus.ACTIVE ? DriverStatus.OFFLINE : DriverStatus.ACTIVE);
     };
 
@@ -68,20 +47,6 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
             : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
             }`}>
-            {/* Lock Icon - Absolute Top Right */}
-            <div className="absolute top-4 right-4 z-10">
-                <LockIcon
-                    isLocked={isLocked}
-                    isLoading={isLockLoading}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        toggleLock();
-                    }}
-                    lockedBy={lockedBy}
-                    currentUserId={currentUserId}
-                    size={22}
-                />
-            </div>
 
             <div className="flex items-center gap-4">
                 <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#0d9488]' : 'border-gray-200 group-hover:border-[#0d9488]'
@@ -99,7 +64,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                 className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 mt-3 ${driver.status === DriverStatus.ACTIVE
                                     ? 'bg-green-500'
                                     : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
-                                    } ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    }`}
                             >
                                 <span
                                     className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${driver.status === DriverStatus.ACTIVE ? 'translate-x-7' : 'translate-x-0'
@@ -113,11 +78,11 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         </>
                     ) : (
                         <div className="mt-3">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${driver.status === DriverStatus.ACTIVE
-                                ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                            <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm ${driver.status === DriverStatus.ACTIVE
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
                                 : theme === 'dark'
-                                    ? 'bg-gray-700 text-gray-400 border border-gray-600'
-                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                    ? 'bg-gray-700 text-gray-300 border border-gray-600'
+                                    : 'bg-gray-200 text-gray-600'
                                 }`}>
                                 {driver.status === DriverStatus.ACTIVE ? t('active') : t('offline')}
                             </span>
@@ -144,7 +109,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
                             ? 'bg-[#0d9488]/10 text-[#0d9488] hover:bg-[#0d9488]/20 border border-[#0d9488]/20'
                             : 'bg-[#0d9488]/10 text-[#0d9488] hover:bg-[#0d9488]/20 border border-[#0d9488]/20'
-                            } ${!canEdit ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                            }`}
                     >
                         <EditIcon className="w-4 h-4" />
                         <span>{t('edit')}</span>
@@ -154,7 +119,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
                             ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
                             : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                            } ${!canEdit ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                            }`}
                     >
                         <TrashIcon className="w-4 h-4" />
                         <span>{t('delete')}</span>
