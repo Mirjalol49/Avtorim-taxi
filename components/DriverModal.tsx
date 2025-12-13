@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon } from './Icons';
 import { Driver, DriverStatus } from '../types';
 import { sanitizeInput } from '../utils/security';
+import { decodeHtml } from '../utils/textUtils';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -27,9 +28,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
   useEffect(() => {
     if (isOpen && editingDriver) {
-      setName(editingDriver.name);
-      setLicensePlate(editingDriver.licensePlate);
-      setCarModel(editingDriver.carModel);
+      setName(decodeHtml(editingDriver.name));
+      setLicensePlate(decodeHtml(editingDriver.licensePlate));
+      setCarModel(decodeHtml(editingDriver.carModel));
       setPhone(editingDriver.phone);
       setAvatar(editingDriver.avatar);
       setStatus(editingDriver.status);
@@ -217,7 +218,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(sanitizeInput(e.target.value))}
+                onChange={(e) => setName(e.target.value)}
                 className={inputClass}
                 placeholder="Ism Familiya"
               />
@@ -253,7 +254,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="text"
                 required
                 value={carModel}
-                onChange={(e) => setCarModel(sanitizeInput(e.target.value))}
+                onChange={(e) => setCarModel(e.target.value)}
                 className={inputClass}
                 placeholder="Chevrolet Cobalt"
               />
@@ -264,7 +265,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="text"
                 required
                 value={licensePlate}
-                onChange={(e) => setLicensePlate(sanitizeInput(e.target.value))}
+                onChange={(e) => setLicensePlate(e.target.value)}
                 className={inputClass}
                 placeholder="01 A 777 AA"
               />

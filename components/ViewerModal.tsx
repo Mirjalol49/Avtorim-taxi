@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon, PhoneIcon, UserIcon, EditIcon, UserPlusIcon } from './Icons';
 import { Viewer } from '../types';
-import { sanitizeInput } from '../utils/security';
+import { decodeHtml } from '../utils/textUtils';
 
 interface ViewerModalProps {
     isOpen: boolean;
@@ -30,9 +30,9 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
 
     useEffect(() => {
         if (editingViewer) {
-            setName(editingViewer.name);
-            setPhoneNumber(editingViewer.phoneNumber);
-            setPassword(editingViewer.password || '');
+            setName(decodeHtml(editingViewer.name));
+            setPhoneNumber(editingViewer.phoneNumber); // Phone usually strongly typed/formatted, but could use decode if needed. Let's assume phone is safe or use decodeHtml to be safe? Phone usually doesn't have quotes.
+            setPassword(decodeHtml(editingViewer.password || ''));
             setAvatar(editingViewer.avatar);
             setIsActive(editingViewer.active);
         } else {
@@ -140,7 +140,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                         <input
                             type="text"
                             value={name}
-                            onChange={(e) => setName(sanitizeInput(e.target.value))}
+                            onChange={(e) => setName(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
                                 ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
@@ -161,7 +161,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                         <input
                             type="text"
                             value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(sanitizeInput(e.target.value))}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
                                 ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
@@ -182,7 +182,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                         <input
                             type="text"
                             value={password}
-                            onChange={(e) => setPassword(sanitizeInput(e.target.value))}
+                            onChange={(e) => setPassword(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
                                 ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
