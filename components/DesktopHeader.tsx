@@ -74,7 +74,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       case Tab.DRIVERS:
         return t('driversList');
       case Tab.FINANCE:
-        return t('transactions');
+        return t('financialReports');
       case Tab.SALARY:
         return t('salaryManagement');
       case Tab.ROLES:

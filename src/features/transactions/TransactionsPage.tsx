@@ -96,10 +96,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
     return (
         <div className="space-y-6 animate-fadeIn">
-            {/* Header */}
-            <h1 className={`text-2xl font-bold px-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('transactions')}
-            </h1>
+            {/* Header Removed - Managed by DesktopHeader */}
 
             {/* Filters */}
             <div className={`p-4 rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -111,6 +108,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             value={filters.startDate ? new Date(filters.startDate) : new Date()}
                             onChange={(date) => setFilters(prev => ({ ...prev, startDate: date.toISOString() }))}
                             theme={theme}
+                            labelClassName="text-white"
                         />
                     </div>
                     {/* End Date */}
@@ -120,6 +118,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             value={filters.endDate ? new Date(filters.endDate) : new Date()}
                             onChange={(date) => setFilters(prev => ({ ...prev, endDate: date.toISOString() }))}
                             theme={theme}
+                            labelClassName="text-white"
                         />
                     </div>
                     {/* Driver Select */}
@@ -134,6 +133,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             ]}
                             theme={theme}
                             icon={UsersIcon}
+                            labelClassName="text-white"
                         />
                     </div>
                     {/* Type Select */}
@@ -150,6 +150,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             theme={theme}
                             icon={FilterIcon}
                             showSearch={false}
+                            labelClassName="text-white"
                         />
                     </div>
                 </div>

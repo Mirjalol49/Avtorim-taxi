@@ -70,9 +70,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         <div className="w-full" ref={dropdownRef}>
             {/* Label */}
             {label && (
-                <div className="flex items-center gap-2 mb-2.5">
+                <div className="flex items-center gap-2 mb-3">
                     {Icon && <Icon className={`w-3.5 h-3.5 ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />}
-                    <span className={`text-[11px] font-bold uppercase tracking-widest ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
                         {label}
                     </span>
                 </div>
@@ -82,9 +82,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
             <div className="relative">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-all duration-200 outline-none ${theme === 'dark'
-                        ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-white'
-                        : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900'
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 outline-none ${theme === 'dark'
+                        ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
+                        : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                         } ${isOpen ? `ring-2 ring-[#0d9488] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}` : ''}`}
                     type="button"
                 >

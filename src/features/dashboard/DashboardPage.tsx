@@ -239,19 +239,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                                 <h4 className={`font-bold text-sm whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.fullName}</h4>
                                                             </div>
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('income')}</span>
-                                                                <span className="text-sm font-bold text-[#0d9488]">+{data.Income.toLocaleString()}</span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('expense')}</span>
-                                                                <span className="text-sm font-bold text-red-500">-{data.Expense.toLocaleString()}</span>
-                                                            </div>
-                                                            <div className={`pt-2 mt-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                                                        <div className="space-y-3">
+                                                            {/* Income & Expense - Kept compact */}
+                                                            <div className="space-y-2">
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-bold uppercase ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('netProfit')}</span>
-                                                                    <span className={`text-base font-black ${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{profit > 0 ? '+' : ''}{profit.toLocaleString()}</span>
+                                                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('income')}</span>
+                                                                    <span className="text-sm font-bold text-[#0d9488] font-mono">+{data.Income.toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('expense')}</span>
+                                                                    <span className="text-sm font-bold text-red-500 font-mono">-{data.Expense.toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Net Profit - Vertical Stack (Block) */}
+                                                            <div className={`pt-3 mt-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('netProfit')}</span>
+                                                                    <span className={`text-xl font-black font-mono ${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                        {profit > 0 ? '+' : ''}{profit.toLocaleString()}
+                                                                    </span>
                                                                 </div>
                                                             </div>
                                                         </div>

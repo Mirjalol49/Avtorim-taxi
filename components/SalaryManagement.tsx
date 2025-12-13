@@ -263,12 +263,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {t('salaryManagement')}
-                    </h2>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {t('manageSalariesDescription')}
-                    </p>
+                    {/* Title Removed - Managed by DesktopHeader */}
                 </div>
 
                 <div className="flex flex-col md:flex-row items-center gap-3">
