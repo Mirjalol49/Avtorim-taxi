@@ -4,6 +4,7 @@
  */
 
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 const passwordService = require('./passwordService');
 const crypto = require('crypto');
 
@@ -19,7 +20,7 @@ const INACTIVE_ARCHIVE_DAYS = 120;
  */
 const createAccount = async (data, createdBy) => {
     const { email, username, password, displayName } = data;
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
 
     try {
         // 1. Validate unique email/username
@@ -88,7 +89,7 @@ const createAccount = async (data, createdBy) => {
  * @param {string} token - Verification token
  */
 const verifyEmail = async (token) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
 
     try {
         const snapshot = await db.collection('admin_users')
@@ -127,7 +128,7 @@ const verifyEmail = async (token) => {
  * @param {string} approvedBy - Admin who approved
  */
 const approveAccount = async (accountId, approvedBy) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
 
     try {
         const accountRef = db.collection('admin_users').doc(accountId);
@@ -166,7 +167,7 @@ const approveAccount = async (accountId, approvedBy) => {
  * @param {string} reason - Rejection reason
  */
 const rejectAccount = async (accountId, rejectedBy, reason) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
 
     try {
         const accountRef = db.collection('admin_users').doc(accountId);
@@ -199,7 +200,7 @@ const rejectAccount = async (accountId, rejectedBy, reason) => {
  * Check uniqueness of email/username
  */
 const checkUniqueness = async (email, username) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const errors = [];
 
     // Check email
@@ -232,7 +233,7 @@ const checkUniqueness = async (email, username) => {
  * Get accounts pending approval
  */
 const getPendingAccounts = async () => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const snapshot = await db.collection('admin_users')
         .where('status', '==', 'pending_approval')
         .orderBy('createdAt', 'desc')
@@ -245,7 +246,7 @@ const getPendingAccounts = async () => {
  * Flag inactive accounts (90+ days)
  */
 const flagInactiveAccounts = async () => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const cutoff = Date.now() - (INACTIVE_FLAG_DAYS * 24 * 60 * 60 * 1000);
 
     const snapshot = await db.collection('admin_users')
@@ -275,7 +276,7 @@ const flagInactiveAccounts = async () => {
  * Archive accounts inactive for 120+ days
  */
 const archiveInactiveAccounts = async () => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const cutoff = Date.now() - (INACTIVE_ARCHIVE_DAYS * 24 * 60 * 60 * 1000);
 
     const snapshot = await db.collection('admin_users')
@@ -308,7 +309,7 @@ const archiveInactiveAccounts = async () => {
  * @param {string} userId - User ID
  */
 const updateLastActivity = async (userId) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     await db.collection('admin_users').doc(userId).update({
         lastActivity: admin.firestore.FieldValue.serverTimestamp()
     });

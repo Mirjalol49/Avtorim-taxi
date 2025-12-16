@@ -4,6 +4,7 @@ const auth = require('basic-auth');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 const TelegramService = require('./telegramService');
 
 const app = express();
@@ -17,29 +18,42 @@ app.use(bodyParser.json());
 
 // Initialize Firebase Admin
 let firestore;
+let serviceAccount; // Declare in outer scope
 try {
-    let serviceAccount;
+    // Force load local file to avoid stale env vars
+    serviceAccount = require('./serviceAccountKey.json');
+    console.log('🔑 Loaded Service Account for Project:', serviceAccount.project_id);
+} catch (e) {
+    // If parsing fails, maybe it's a path string? But typically Env var is JSON content.
+    // Fallback to local file if env var is weird or missing.
+    console.warn("Could not parse SERVICE_ACCOUNT_KEY env var, falling back to local file.");
     try {
-        serviceAccount = process.env.SERVICE_ACCOUNT_KEY
-            ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY)
-            : require('./serviceAccountKey.json');
-    } catch (e) {
-        // If parsing fails, maybe it's a path string? But typically Env var is JSON content.
-        // Fallback to local file if env var is weird or missing.
-        console.warn("Could not parse SERVICE_ACCOUNT_KEY env var, falling back to local file.");
         serviceAccount = require('./serviceAccountKey.json');
+    } catch (e) {
+        console.warn('Service account key not found. Backend features may be limited.');
+        serviceAccount = null; // Ensure serviceAccount is null if file also fails
     }
-
-    if (!admin.apps.length) {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-    }
-    firestore = admin.firestore();
-    console.log('✅ Firebase Admin Initialized in server.js');
-} catch (error) {
-    console.warn('⚠️ Firebase Admin could not be initialized:', error.message);
 }
+
+
+if (serviceAccount) {
+    try {
+        if (!admin.apps.length) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+        }
+        // Use modular getFirestore to explicitly target the named 'default' database
+        // This fixes the NOT_FOUND error caused by looking for '(default)'
+        firestore = getFirestore(admin.app(), 'default');
+        console.log('✅ Firebase Admin Initialized with database: default in server.js');
+    } catch (error) {
+        console.warn('⚠️ Firebase Admin could not be initialized:', error.message);
+    }
+} else {
+    console.warn('⚠️ Firebase Admin not initialized due to missing service account key.');
+}
+
 
 // Database Setup (SQLite for OwnTracks legacy)
 const dbPath = path.resolve(__dirname, 'database.sqlite');
@@ -54,7 +68,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 // Initialize Telegram Bot
 let telegramService = null;
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8003294766:AAHl6z1O0Qr1V0plDj0t_tyRfxSYGBvurWM';
 
 function createTable() {
     const sql = `
@@ -261,7 +275,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     try {
-        const db = admin.firestore();
+        const db = firestore; // Use the configured named database instance
         const snapshot = await db.collection('admin_users').get();
 
         for (const doc of snapshot.docs) {
@@ -331,7 +345,12 @@ app.post('/api/auth/login', async (req, res) => {
         return res.status(401).json({ success: false, error: 'Invalid password' });
     } catch (error) {
         console.error('Auth error:', error);
-        return res.status(500).json({ success: false, error: 'Authentication system error' });
+        return res.status(500).json({
+            success: false,
+            error: 'Authentication system error',
+            debug: error.message,
+            stack: error.stack
+        });
     }
 });
 

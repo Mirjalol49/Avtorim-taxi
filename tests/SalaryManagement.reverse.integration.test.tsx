@@ -41,7 +41,7 @@ describe('SalaryManagement Reverse integration', () => {
           theme="dark"
           userRole="admin"
           language="en"
-          onPaySalary={() => {}}
+          onPaySalary={() => { }}
           salaryHistory={salaryHistory as any}
           adminName={'Admin'}
         />

@@ -342,7 +342,7 @@ export const subscribeToAdminProfile = (callback: (admin: any) => void) => {
 export const updateAdminProfile = async (admin: any) => {
     try {
         console.log('📝 Updating admin profile:', { name: admin.name, role: admin.role, hasAvatar: !!admin.avatar, hasPassword: !!admin.password });
-        
+
         // 1. Update legacy profile (UI source)
         const adminRef = doc(db, ADMIN_COLLECTION, 'profile');
         // Use merge: true to preserve existing fields while updating provided ones

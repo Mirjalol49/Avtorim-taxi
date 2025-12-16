@@ -8,19 +8,19 @@ import { getFirestore } from 'firebase/firestore';
 // TODO: Replace with your Firebase project configuration
 // You can get these values from Firebase Console
 const firebaseConfig = {
-    apiKey: "AIzaSyDMteL-XNVEkVcvpQxU9p0wlGc6zIaY02M",
-    authDomain: "avtorim-taxi.firebaseapp.com",
-    projectId: "avtorim-taxi",
-    storageBucket: "avtorim-taxi.firebasestorage.app",
-    messagingSenderId: "964002518354",
-    appId: "1:964002518354:web:4468e48fb9564cb6c3168b",
-    measurementId: "G-0JTYLPW7SX"
+    apiKey: "AIzaSyAce_xYPwb5IAV_r2U4QTskIkeK25PnxQk",
+    authDomain: "taksapark-3e375.firebaseapp.com",
+    projectId: "taksapark-3e375",
+    storageBucket: "taksapark-3e375.firebasestorage.app",
+    messagingSenderId: "119121883252",
+    appId: "1:119121883252:web:8786ec719650c1e94ea121",
+    measurementId: "G-L33RLZNEEG"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore
-export const db = getFirestore(app);
+export const db = getFirestore(app, 'default');
 
 export default app;

@@ -420,7 +420,6 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                 title="Delete Admin User"
                 message={`Are you sure you want to delete user "${deleteConfirm.username}"? This action cannot be undone.`}
                 isDanger={true}
-                lang="uz"
                 theme="dark"
             />
 

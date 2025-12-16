@@ -7,6 +7,7 @@ const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const APP_NAME = 'Avtorim Taxi Admin';
 const BACKUP_CODE_COUNT = 10;
@@ -37,7 +38,7 @@ const generateMFASecret = async (userId, username) => {
         }));
 
         // Store MFA data in Firestore
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         await db.collection('admin_users').doc(userId).collection('mfa').doc('config').set({
             secret: secret.base32,
             enabled: false, // Not enabled until verified
@@ -64,7 +65,7 @@ const generateMFASecret = async (userId, username) => {
  */
 const verifyTOTP = async (userId, token) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const mfaDoc = await db.collection('admin_users').doc(userId).collection('mfa').doc('config').get();
 
         if (!mfaDoc.exists) {
@@ -106,7 +107,7 @@ const verifyTOTP = async (userId, token) => {
  */
 const verifyBackupCode = async (userId, code) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const mfaDoc = await db.collection('admin_users').doc(userId).collection('mfa').doc('config').get();
 
         if (!mfaDoc.exists) {
@@ -154,7 +155,7 @@ const verifyBackupCode = async (userId, code) => {
  */
 const getMFAStatus = async (userId) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const mfaDoc = await db.collection('admin_users').doc(userId).collection('mfa').doc('config').get();
 
         if (!mfaDoc.exists) {
@@ -176,7 +177,7 @@ const getMFAStatus = async (userId) => {
  */
 const disableMFA = async (userId, adminId) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const mfaRef = db.collection('admin_users').doc(userId).collection('mfa').doc('config');
 
         await mfaRef.delete();
@@ -203,7 +204,7 @@ const disableMFA = async (userId, adminId) => {
  */
 const regenerateBackupCodes = async (userId) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const mfaRef = db.collection('admin_users').doc(userId).collection('mfa').doc('config');
         const mfaDoc = await mfaRef.get();
 

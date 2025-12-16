@@ -5,6 +5,7 @@
 
 const bcrypt = require('bcryptjs');
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const SALT_ROUNDS = 12;
 const PASSWORD_HISTORY_LIMIT = 5;
@@ -91,7 +92,7 @@ const comparePassword = async (password, hash) => {
  */
 const checkPasswordCollision = async (password, excludeUserId = null) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const snapshot = await db.collection('admin_users').get();
 
         for (const doc of snapshot.docs) {
@@ -134,7 +135,7 @@ const checkPasswordCollision = async (password, excludeUserId = null) => {
  */
 const checkPasswordHistory = async (userId, password) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const historyRef = db.collection('admin_users').doc(userId).collection('password_history');
         const snapshot = await historyRef.orderBy('createdAt', 'desc').limit(PASSWORD_HISTORY_LIMIT).get();
 
@@ -163,7 +164,7 @@ const checkPasswordHistory = async (userId, password) => {
  */
 const addToPasswordHistory = async (userId, passwordHash) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const historyRef = db.collection('admin_users').doc(userId).collection('password_history');
 
         // Add new entry
@@ -233,7 +234,7 @@ const validatePassword = async (password, userId = null, excludeUserId = null) =
  */
 const migratePasswordToHash = async (userId, plainPassword) => {
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const hash = await hashPassword(plainPassword);
 
         await db.collection('admin_users').doc(userId).update({

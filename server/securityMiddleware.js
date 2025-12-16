@@ -4,6 +4,7 @@
  */
 
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 
 // Default security settings (can be overridden per user)
 const DEFAULT_SETTINGS = {
@@ -82,7 +83,7 @@ const timeBasedAccess = (userSettings = null) => {
  * Checks concurrent sessions and enforces limit
  */
 const sessionLimit = async (userId) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const sessionsRef = db.collection('admin_users').doc(userId).collection('sessions');
 
     const snapshot = await sessionsRef
@@ -115,7 +116,7 @@ const sessionLimit = async (userId) => {
  * @param {Object} metadata - { ip, userAgent }
  */
 const createSession = async (userId, metadata) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const sessionsRef = db.collection('admin_users').doc(userId).collection('sessions');
 
     // Check session limits first
@@ -136,7 +137,7 @@ const createSession = async (userId, metadata) => {
  * Invalidate session
  */
 const invalidateSession = async (userId, sessionId) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     await db.collection('admin_users').doc(userId)
         .collection('sessions').doc(sessionId)
         .update({
@@ -149,7 +150,7 @@ const invalidateSession = async (userId, sessionId) => {
  * Invalidate all sessions for user
  */
 const invalidateAllSessions = async (userId, reason = 'manual_logout') => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     const sessionsRef = db.collection('admin_users').doc(userId).collection('sessions');
     const snapshot = await sessionsRef.where('active', '==', true).get();
 
@@ -170,7 +171,7 @@ const invalidateAllSessions = async (userId, reason = 'manual_logout') => {
  * Audit action logging
  */
 const auditLog = async (action, data) => {
-    const db = admin.firestore();
+    const db = getFirestore(admin.app(), 'default');
     await db.collection('audit_logs').add({
         action,
         ...data,

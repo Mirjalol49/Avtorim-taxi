@@ -4,6 +4,7 @@
  */
 
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 const passwordService = require('./passwordService');
 const mfaService = require('./mfaService');
 const accountService = require('./accountService');
@@ -195,7 +196,7 @@ exports.changePassword = async (req, res) => {
     }
 
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const userRef = db.collection('admin_users').doc(userId);
         const userDoc = await userRef.get();
 
@@ -383,7 +384,7 @@ exports.getSessions = async (req, res) => {
     const { userId } = req.params;
 
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const snapshot = await db.collection('admin_users').doc(userId)
             .collection('sessions')
             .where('active', '==', true)
@@ -441,7 +442,7 @@ exports.getAuditLogs = async (req, res) => {
     const { limit = 100, action, userId } = req.query;
 
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         let query = db.collection('audit_logs').orderBy('timestamp', 'desc').limit(parseInt(limit));
 
         if (action) {
@@ -502,7 +503,7 @@ exports.createAccount = async (req, res) => {
             accountId: userRecord.uid
         });
 
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         await db.collection('accounts').doc(userRecord.uid).set({
             accountName,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -539,7 +540,7 @@ exports.toggleAccountStatus = async (req, res) => {
     try {
         await admin.auth().updateUser(uid, { disabled });
 
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         await db.collection('accounts').doc(uid).update({
             status: disabled ? 'disabled' : 'active',
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -565,7 +566,7 @@ exports.listAccounts = async (req, res) => {
     }
 
     try {
-        const db = admin.firestore();
+        const db = getFirestore(admin.app(), 'default');
         const snapshot = await db.collection('accounts').get();
 
         const accounts = [];

@@ -23,11 +23,8 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
         strength: 0
     });
     const [isChecking, setIsChecking] = useState(false);
-    const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-
         if (!password || password.length < 3) {
             setValidation({ valid: false, errors: [], strength: 0 });
             return;
@@ -47,6 +44,7 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
 
                 const result = await response.json();
                 setValidation(result);
+                // Only call callback if result actually changes (optional optimization, but good practice is to just call it)
                 onValidationChange?.(result.valid, result.errors);
             } catch (error) {
                 console.error('Password validation error:', error);
@@ -55,7 +53,6 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
             }
         }, 500);
 
-        setDebounceTimer(timer);
         return () => clearTimeout(timer);
     }, [password]);
 
@@ -86,8 +83,8 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
                     />
                 </div>
                 <span className={`text-xs font-bold ${validation.strength >= 75 ? 'text-green-500' :
-                        validation.strength >= 50 ? 'text-yellow-500' :
-                            'text-red-500'
+                    validation.strength >= 50 ? 'text-yellow-500' :
+                        'text-red-500'
                     }`}>
                     {isChecking ? '...' : getStrengthLabel()}
                 </span>
