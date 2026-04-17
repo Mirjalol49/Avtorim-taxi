@@ -347,9 +347,7 @@ app.post('/api/auth/login', async (req, res) => {
         console.error('Auth error:', error);
         return res.status(500).json({
             success: false,
-            error: 'Authentication system error',
-            debug: error.message,
-            stack: error.stack
+            error: 'Authentication system error'
         });
     }
 });

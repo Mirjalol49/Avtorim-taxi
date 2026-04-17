@@ -45,46 +45,54 @@ export const useAuth = () => {
 
     // Validate Admin Account
     useEffect(() => {
-        const validateAdminAccount = async () => {
-            if (userRole === 'admin' && adminUser && adminUser.id) {
-                const result = await validateAccountOnInit(adminUser);
-
-                if (!result.isValid) {
-                    console.warn('Initial account validation failed');
-                    handleLogout();
-                    return;
-                }
-
-                if (result.userData) {
-                    setAdminUser(result.userData);
-                    localStorage.setItem('avtorim_admin_user', JSON.stringify(result.userData));
-                }
-
-                const unsubscribe = subscribeToAccountValidity(
-                    adminUser.id,
-                    (reason) => {
-                        console.warn('Account invalidated in real-time:', reason);
-                        addToast('error', reason);
-                        handleLogout();
-                    },
-                    (updatedData) => {
-                        setAdminUser(updatedData);
-                        localStorage.setItem('avtorim_admin_user', JSON.stringify(updatedData));
-                    }
-                );
-
-                setIsAuthChecking(false);
-                return () => unsubscribe();
-            } else {
-                setIsAuthChecking(false);
-            }
-        };
-
-        if (isAuthenticated) {
-            validateAdminAccount();
-        } else {
+        if (!isAuthenticated) {
             setIsAuthChecking(false);
+            return;
         }
+
+        if (userRole !== 'admin' || !adminUser?.id) {
+            setIsAuthChecking(false);
+            return;
+        }
+
+        let unsubscribeValidity: (() => void) | null = null;
+        let cancelled = false;
+
+        validateAccountOnInit(adminUser).then((result) => {
+            if (cancelled) return;
+
+            if (!result.isValid) {
+                console.warn('Initial account validation failed');
+                handleLogout();
+                return;
+            }
+
+            if (result.userData) {
+                setAdminUser(result.userData);
+                localStorage.setItem('avtorim_admin_user', JSON.stringify(result.userData));
+            }
+
+            unsubscribeValidity = subscribeToAccountValidity(
+                adminUser.id,
+                (reason) => {
+                    console.warn('Account invalidated in real-time:', reason);
+                    addToast('error', reason);
+                    handleLogout();
+                },
+                (updatedData) => {
+                    setAdminUser(updatedData);
+                    localStorage.setItem('avtorim_admin_user', JSON.stringify(updatedData));
+                }
+            );
+
+            setIsAuthChecking(false);
+        });
+
+        return () => {
+            cancelled = true;
+            if (unsubscribeValidity) unsubscribeValidity();
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, adminUser?.id, userRole]);
 
     // Auth Persistence
@@ -127,10 +135,14 @@ export const useAuth = () => {
 
         setIsAuthenticated(false);
         setUserRole('viewer');
+        setAdminUser(null);
+        setAdminProfile(null);
         localStorage.removeItem('avtorim_auth');
         localStorage.removeItem('avtorim_viewer_auth');
         localStorage.removeItem('avtorim_admin_auth');
-        setAdminUser(null);
+        localStorage.removeItem('avtorim_role');
+        localStorage.removeItem('avtorim_admin_user');
+        localStorage.removeItem('avtorim_viewer_profile');
     };
 
     // Auto-Lock Logic
@@ -157,7 +169,8 @@ export const useAuth = () => {
             clearTimeout(inactivityTimer);
             events.forEach(event => document.removeEventListener(event, resetTimer));
         };
-    }, [isAuthenticated, userRole]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated, userRole, handleLogout]);
 
 
     return {

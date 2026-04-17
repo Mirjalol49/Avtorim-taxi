@@ -58,10 +58,11 @@ const timeBasedAccess = (userSettings = null) => {
             return next();
         }
 
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTime = currentHour * 100 + currentMinute;
+        // Use timezone-aware time via toLocaleString to respect the configured timezone
+        const timezone = settings.timezone || 'Asia/Tashkent';
+        const nowStr = new Date().toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false });
+        const [hourStr, minuteStr] = nowStr.split(':');
+        const currentTime = parseInt(hourStr, 10) * 100 + parseInt(minuteStr, 10);
 
         const startTime = parseTime(settings.accessHoursStart);
         const endTime = parseTime(settings.accessHoursEnd);

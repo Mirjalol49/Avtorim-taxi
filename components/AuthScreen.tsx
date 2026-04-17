@@ -86,13 +86,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
 
       Promise.all(adminsNeeded.map(async (adminId) => {
         try {
-          // Try admin_users first
           const adminRef = doc(db, 'admin_users', adminId);
           const adminSnap = await getDoc(adminRef);
           if (adminSnap.exists()) {
             return { id: adminId, name: adminSnap.data().username };
           }
-          // Try generic admin profile or fallback
           return { id: adminId, name: 'Unknown Admin' };
         } catch (e) {
           return { id: adminId, name: 'Unknown Admin' };
@@ -100,6 +98,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
       })).then(results => {
         results.forEach(r => { adminMap[r.id] = r.name; });
         setResolvingAdmins(adminMap);
+        setLoading(false);
+      }).catch(() => {
         setLoading(false);
       });
 

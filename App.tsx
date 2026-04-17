@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-
-// Disable context menu globally
-document.addEventListener('contextmenu', (e) => e.preventDefault());
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -51,7 +48,6 @@ import { AuthProvider, useAuthContext } from './src/features/auth/context/AuthCo
 import { UIProvider, useUIContext } from './src/features/shared/context/UIContext';
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
-import { writeBatch, doc, collection } from 'firebase/firestore';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, Notification } from './services/notificationService';
 import { playLockSound } from './services/soundService';
 import logo from './Images/logo_winter.png';
@@ -101,6 +97,13 @@ const AppContent: React.FC = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Disable context menu globally for the app
+  useEffect(() => {
+    const handler = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener('contextmenu', handler);
+    return () => document.removeEventListener('contextmenu', handler);
+  }, []);
 
   // Modals
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);

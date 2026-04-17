@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { writeBatch, doc, collection, onSnapshot, query, orderBy, getDocs, getDoc, collectionGroup, where, documentId } from 'firebase/firestore';
+import { writeBatch, doc, collection, onSnapshot, query, orderBy, getDocs, getDoc } from 'firebase/firestore';
 import { PaymentReversal, Transaction, DriverSalary, PaymentStatus, TransactionType } from '../types';
 
 const REVERSALS_COLLECTION = 'payment_reversals';
@@ -92,13 +92,15 @@ export const reverseSalaryPayment = async (
  */
 export const approveReversal = async (reversalId: string, approvedBy: string, fleetId?: string): Promise<void> => {
     try {
-        // Get the reversal details
-        const reversalDoc = await getDocs(query(collection(db, getCollectionPath(REVERSALS_COLLECTION, fleetId))));
-        const reversal = reversalDoc.docs.find(d => d.id === reversalId)?.data() as PaymentReversal;
+        // Get the reversal details by ID directly
+        const reversalDocRef = doc(db, getCollectionPath(REVERSALS_COLLECTION, fleetId), reversalId);
+        const reversalDoc = await getDoc(reversalDocRef);
 
-        if (!reversal) {
+        if (!reversalDoc.exists()) {
             throw new Error('Reversal not found');
         }
+
+        const reversal = reversalDoc.data() as PaymentReversal;
 
         if (reversal.approvalStatus !== 'pending') {
             throw new Error('Reversal is not pending approval');
@@ -192,47 +194,22 @@ export const refundSalaryPayment = async (
 
         let salaryDoc = await getDoc(salaryRef);
 
-        // FALLBACK STRATEGY: If not found, check the "other" location (Root vs Fleet)
+        // FALLBACK STRATEGY: If not found in fleet path, try root collection
         if (!salaryDoc.exists()) {
-            const alternativePath = fleetId ? SALARIES_COLLECTION : `fleets/${fleetId || 'default'}/${SALARIES_COLLECTION}`;
-            console.warn(`[Refund] Salary not found at ${salaryPath}. Trying alternative: ${alternativePath}`);
+            console.warn(`[Refund] Salary not found at ${salaryPath}. Trying root collection.`);
 
-            // Try fetching from root if we were looking in fleet, or generic fleet check?
-            // Safer: Just try root 'driver_salaries' if we were looking in a fleet.
-            // Or if we were looking in root, maybe it's in a fleet? (Harder to guess fleetId).
-
-            // Let's assume the most common case: Data might be in root 'driver_salaries' even if fleetId is passed, 
-            // OR data is in a fleet but fleetId wasn't passed.
-
-            // Case 1: Try Root explicitly
             if (salaryPath !== SALARIES_COLLECTION) {
                 const rootRef = doc(db, SALARIES_COLLECTION, salaryId);
                 const rootDoc = await getDoc(rootRef);
                 if (rootDoc.exists()) {
-                    console.log('[Refund] Found salary in ROOT collection.');
-                    salaryRef = rootRef;
-                    salaryDoc = rootDoc;
-                    // We must NOT use fleetId for the transaction fallback if we found the salary in root
-                    // But let's act on the salaryRef we found.
-                }
-            }
-
-            // Case 2: Explicitly check Root path if Fleet path failed
-            // This handles cases where data is in "root" but a fleetPath was requested
-            if (!salaryDoc.exists() && salaryPath !== SALARIES_COLLECTION) {
-                console.log(`[Refund] Checking Root path: ${SALARIES_COLLECTION}/${salaryId}`);
-                const rootRef = doc(db, SALARIES_COLLECTION, salaryId);
-                const rootDoc = await getDoc(rootRef);
-                if (rootDoc.exists()) {
-                    console.log(`[Refund] Found salary in Root (fallback) at: ${SALARIES_COLLECTION}/${salaryId}`);
+                    console.log(`[Refund] Found salary in root collection.`);
                     salaryRef = rootRef;
                     salaryDoc = rootDoc;
                 }
             }
 
-            // If still not found...
             if (!salaryDoc.exists()) {
-                console.error(`[Refund] Salary document ${salaryId} truly not found via ${salaryPath} or Root.`);
+                console.error(`[Refund] Salary document ${salaryId} not found at ${salaryPath} or root.`);
                 throw new Error(`Salary document not found! Please refresh the page.`);
             }
         }

@@ -472,9 +472,9 @@ export const migrateFromLocalStorage = async () => {
         }
 
         // Migrate transactions
-        const txData = localStorage.getItem('avtorim_transactions');
-        if (txData) {
-            const transactions = JSON.parse(txData);
+        const txRaw = localStorage.getItem('avtorim_transactions');
+        if (txRaw) {
+            const transactions = JSON.parse(txRaw);
             if (transactions.length > 0) {
                 for (const tx of transactions) {
                     const { id, ...txData } = tx;
@@ -579,7 +579,6 @@ export const authenticateAdminUser = async (password: string): Promise<any | nul
 export const invalidateUserSessions = async (userId: string): Promise<void> => {
     try {
         // Add audit log for session invalidation
-        const auditRef = doc(collection(db, AUDIT_LOGS_COLLECTION));
         await addDoc(collection(db, AUDIT_LOGS_COLLECTION), {
             action: 'INVALIDATE_USER_SESSIONS',
             targetId: userId,
