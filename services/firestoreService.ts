@@ -113,7 +113,7 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
     supabase
         .from('audit_logs')
         .select('*')
-        .order('timestamp', { ascending: false })
+        .order('timestamp_ms', { ascending: false })
         .limit(100)
         .then(({ data }) => { if (data) callback(data); });
 
@@ -123,7 +123,7 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
             supabase
                 .from('audit_logs')
                 .select('*')
-                .order('timestamp', { ascending: false })
+                .order('timestamp_ms', { ascending: false })
                 .limit(100)
                 .then(({ data }) => { if (data) callback(data); });
         })

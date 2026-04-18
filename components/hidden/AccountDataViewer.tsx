@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { XIcon, UsersIcon, TrendingUpIcon, WalletIcon, CalendarIcon } from '../Icons';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { getCollectionPath } from '../../services/firestoreService';
+import { supabase } from '../../supabase';
 import { formatNumberSmart } from '../../utils/formatNumber';
 
 interface AccountDataViewerProps {
@@ -31,18 +29,19 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
         try {
             const fleetId = user.id;
 
-            // Fetch drivers
-            const driversRef = collection(db, getCollectionPath('drivers', fleetId));
-            const driversSnapshot = await getDocs(driversRef);
-            const driversData = driversSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setDrivers(driversData);
+            const { data: driversData } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('fleet_id', fleetId);
+            setDrivers(driversData || []);
 
-            // Fetch transactions (last 50)
-            const txRef = collection(db, getCollectionPath('transactions', fleetId));
-            const txQuery = query(txRef, orderBy('timestamp', 'desc'), limit(50));
-            const txSnapshot = await getDocs(txQuery);
-            const txData = txSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setTransactions(txData);
+            const { data: txData } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .order('timestamp_ms', { ascending: false })
+                .limit(50);
+            setTransactions(txData || []);
 
             // Calculate stats
             const income = txData.filter((t: any) => t.type === 'income').reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
@@ -185,7 +184,7 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                                                     <div>
                                                         <div className="text-sm text-white">{tx.description || 'No description'}</div>
                                                         <div className="text-xs text-gray-500">
-                                                            {new Date(tx.timestamp).toLocaleString()}
+                                                            {new Date(tx.timestamp_ms).toLocaleString()}
                                                         </div>
                                                     </div>
                                                 </div>

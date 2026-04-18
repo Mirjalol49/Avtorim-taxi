@@ -1,5 +1,4 @@
 const { Telegraf, Markup } = require('telegraf');
-const admin = require('firebase-admin');
 
 // --- TRANSLATIONS & CONSTANTS ---
 const SUPPORT_PHONE = "+998 93 748 91 41";

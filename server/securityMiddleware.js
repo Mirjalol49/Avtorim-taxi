@@ -69,7 +69,7 @@ const sessionLimit = async (userId) => {
 
     const { data: activeSessions } = await supabase
         .from('sessions')
-        .select('id, created_at')
+        .select('id, created_ms')
         .eq('user_id', userId)
         .eq('active', true)
         .order('created_ms', { ascending: true });

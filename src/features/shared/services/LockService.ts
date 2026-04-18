@@ -1,46 +1,32 @@
-import { db } from '../../../../firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '../../../../supabase';
 import { LockState } from '../../../core/types/lock.types';
-import { getCollectionPath } from '../../../../services/firestoreService';
 
 export class LockService {
 
-    /**
-     * Toggles lock state for any entity (Driver, Transaction, etc.)
-     * Uses atomic Firestore update to prevent race conditions.
-     */
     static async toggleLock(
-        collectionPath: string,
+        tableName: string,
         docId: string,
         userId: string,
         currentLockState?: LockState
     ): Promise<boolean> {
-        // Resolve path: If it's a simple name (e.g. 'drivers'), scope it to fleet using userId
-        const finalPath = collectionPath.includes('/')
-            ? collectionPath
-            : getCollectionPath(collectionPath, userId);
-
-        const docRef = doc(db, finalPath, docId);
         const now = Date.now();
-
-        // Determine new state
         const newIsLocked = !currentLockState?.isLocked;
         const newLockState: LockState = {
             isLocked: newIsLocked,
             lockedBy: newIsLocked ? userId : null,
             lockedAt: newIsLocked ? now : null,
-            // maintain deviceId if present in future
         };
 
-        try {
-            await updateDoc(docRef, {
-                lock: newLockState
-            });
-            return newIsLocked;
-        } catch (error) {
-            console.error(`Failed to toggle lock for ${finalPath}/${docId}:`, error);
+        const { error } = await supabase
+            .from(tableName)
+            .update({ lock: newLockState })
+            .eq('id', docId);
+
+        if (error) {
+            console.error(`Failed to toggle lock for ${tableName}/${docId}:`, error);
             throw error;
         }
+        return newIsLocked;
     }
 
     /**

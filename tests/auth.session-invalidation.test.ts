@@ -1,173 +1,105 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { authService } from '../services/authService';
 
-// Mock Firebase
-vi.mock('../firebase', () => ({
-    db: {}
-}));
+vi.mock('../supabase', () => {
+    const mockSelect = vi.fn();
+    const mockInsert = vi.fn();
+    const mockFrom = vi.fn(() => ({
+        select: mockSelect,
+        insert: mockInsert
+    }));
+    return {
+        supabase: { from: mockFrom },
+        default: { from: mockFrom }
+    };
+});
 
-// Mock Firestore functions
-vi.mock('firebase/firestore', () => ({
-    collection: vi.fn(),
-    query: vi.fn(),
-    where: vi.fn(),
-    getDocs: vi.fn(),
-    addDoc: vi.fn(),
-    onSnapshot: vi.fn(),
-    doc: vi.fn()
-}));
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('Authentication - Session Invalidation', () => {
-    let invalidationCallback: ((reason: string) => void) | null = null;
-
     beforeEach(() => {
         sessionStorage.clear();
         vi.clearAllMocks();
-        invalidationCallback = null;
     });
 
     afterEach(() => {
-        if (invalidationCallback) {
-            invalidationCallback = null;
-        }
+        authService.clearSession();
     });
 
-    it('should invalidate session when account is disabled', async () => {
-        const { getDocs } = await import('firebase/firestore');
-
-        // First, create an active session
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'user-123',
-                data: () => ({
-                    username: 'testuser',
-                    password: 'pass',
-                    active: true,
-                    role: 'admin',
-                    createdAt: Date.now()
-                })
-            }]
+    async function loginUser(active = true) {
+        mockFetch.mockResolvedValueOnce({
+            json: async () => ({
+                success: true,
+                user: { id: 'user-123', username: 'testuser', role: 'admin', active, avatar: null }
+            })
         } as any);
-
         await authService.authenticateAdmin('pass');
+    }
+
+    it('should invalidate session when account is disabled', async () => {
+        await loginUser(true);
         expect(authService.getSession()).not.toBeNull();
 
-        // Now simulate account being disabled
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'user-123',
-                data: () => ({
-                    username: 'testuser',
-                    active: false, // Account disabled
-                    role: 'admin'
+        const { supabase } = await import('../supabase');
+        vi.mocked(supabase.from).mockReturnValueOnce({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    single: vi.fn().mockResolvedValue({ data: { active: false }, error: null })
                 })
-            }]
+            })
         } as any);
 
         const isValid = await authService.checkSessionValidity();
-
         expect(isValid).toBe(false);
         expect(authService.getSession()).toBeNull();
     });
 
     it('should call invalidation callback when session is invalidated', async () => {
-        const { getDocs } = await import('firebase/firestore');
+        await loginUser(true);
 
-        // Create active session
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'user-123',
-                data: () => ({
-                    username: 'testuser',
-                    password: 'pass',
-                    active: true,
-                    role: 'admin',
-                    createdAt: Date.now()
-                })
-            }]
-        } as any);
-
-        await authService.authenticateAdmin('pass');
-
-        // Register callback
         const mockCallback = vi.fn();
         authService.onSessionInvalidated(mockCallback);
 
-        // Simulate account disabled
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'user-123',
-                data: () => ({
-                    active: false
+        const { supabase } = await import('../supabase');
+        vi.mocked(supabase.from).mockReturnValueOnce({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    single: vi.fn().mockResolvedValue({ data: { active: false }, error: null })
                 })
-            }]
+            })
         } as any);
 
         await authService.checkSessionValidity();
-
         expect(mockCallback).toHaveBeenCalledWith('Your account has been disabled');
     });
 
     it('should clear session on logout', async () => {
-        const { getDocs, addDoc } = await import('firebase/firestore');
-
-        // Create session
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'user-123',
-                data: () => ({
-                    username: 'testuser',
-                    password: 'pass',
-                    active: true,
-                    role: 'admin',
-                    createdAt: Date.now()
-                })
-            }]
-        } as any);
-
-        await authService.authenticateAdmin('pass');
+        await loginUser(true);
         expect(authService.getSession()).not.toBeNull();
 
-        vi.mocked(addDoc).mockResolvedValueOnce({ id: 'log-id' } as any);
+        const { supabase } = await import('../supabase');
+        vi.mocked(supabase.from).mockReturnValue({
+            insert: vi.fn().mockResolvedValue({ error: null })
+        } as any);
 
         await authService.logout();
-
         expect(authService.getSession()).toBeNull();
     });
 
     it('should handle account deletion during active session', async () => {
-        const { getDocs } = await import('firebase/firestore');
+        await loginUser(true);
 
-        // Create session
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'user-123',
-                data: () => ({
-                    username: 'testuser',
-                    password: 'pass',
-                    active: true,
-                    role: 'admin',
-                    createdAt: Date.now()
+        const { supabase } = await import('../supabase');
+        vi.mocked(supabase.from).mockReturnValueOnce({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    single: vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } })
                 })
-            }]
-        } as any);
-
-        await authService.authenticateAdmin('pass');
-
-        // Simulate account deleted (user no longer exists)
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: true,
-            docs: []
+            })
         } as any);
 
         const isValid = await authService.checkSessionValidity();
-
         expect(isValid).toBe(false);
         expect(authService.getSession()).toBeNull();
     });

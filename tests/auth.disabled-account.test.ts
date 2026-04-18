@@ -1,44 +1,27 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { authService } from '../services/authService';
 
-// Mock Firebase
-vi.mock('../firebase', () => ({
-    db: {}
+vi.mock('../supabase', () => ({
+    supabase: { from: vi.fn() },
+    default: { from: vi.fn() }
 }));
 
-// Mock Firestore functions
-vi.mock('firebase/firestore', () => ({
-    collection: vi.fn(() => ({ type: 'collection', path: 'audit_logs' })),
-    query: vi.fn(),
-    where: vi.fn(),
-    getDocs: vi.fn(),
-    addDoc: vi.fn(),
-    onSnapshot: vi.fn(),
-    doc: vi.fn()
-}));
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('Authentication - Disabled Account Prevention', () => {
     beforeEach(() => {
-        // Clear session storage before each test
         sessionStorage.clear();
         vi.clearAllMocks();
     });
 
+    afterEach(() => {
+        authService.clearSession();
+    });
+
     it('should prevent login with disabled admin account', async () => {
-        // Mock Firestore to return a disabled account
-        const { getDocs } = await import('firebase/firestore');
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'test-user-id',
-                data: () => ({
-                    username: '+998937489141',
-                    password: 'testpassword',
-                    role: 'admin',
-                    active: false, // Account is disabled
-                    createdAt: Date.now()
-                })
-            }]
+        mockFetch.mockResolvedValueOnce({
+            json: async () => ({ success: false, error: 'Account is disabled. Contact administrator.' })
         } as any);
 
         const result = await authService.authenticateAdmin('testpassword');
@@ -49,76 +32,46 @@ describe('Authentication - Disabled Account Prevention', () => {
     });
 
     it('should show specific error message for disabled accounts', async () => {
-        const { getDocs } = await import('firebase/firestore');
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'test-user-id',
-                data: () => ({
-                    username: 'testuser',
-                    password: 'testpass',
-                    role: 'admin',
-                    active: false,
-                    createdAt: Date.now()
-                })
-            }]
+        mockFetch.mockResolvedValueOnce({
+            json: async () => ({ success: false, error: 'Account is disabled. Contact administrator.' })
         } as any);
 
         const result = await authService.authenticateAdmin('testpass');
-
         expect(result.error).toBe('Account is disabled. Contact administrator.');
     });
 
     it('should not create session for disabled account', async () => {
-        const { getDocs } = await import('firebase/firestore');
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'disabled-user',
-                data: () => ({
-                    username: 'disabled',
-                    password: 'pass',
-                    active: false,
-                    role: 'admin',
-                    createdAt: Date.now()
-                })
-            }]
+        mockFetch.mockResolvedValueOnce({
+            json: async () => ({ success: false, error: 'Account is disabled. Contact administrator.' })
         } as any);
 
         await authService.authenticateAdmin('pass');
-
-        const session = authService.getSession();
-        expect(session).toBeNull();
+        expect(authService.getSession()).toBeNull();
     });
 
-    it('should log failed attempt for disabled account', async () => {
-        const { getDocs, addDoc } = await import('firebase/firestore');
-
-        vi.mocked(getDocs).mockResolvedValueOnce({
-            empty: false,
-            docs: [{
-                id: 'disabled-user',
-                data: () => ({
-                    username: 'testuser',
-                    password: 'testpass',
-                    active: false,
-                    role: 'admin',
-                    createdAt: Date.now()
-                })
-            }]
+    it('should handle server returning active=false in user data', async () => {
+        // Server should reject before this point, but if a disabled user somehow
+        // reaches the response, the session should not be trusted on next validity check.
+        mockFetch.mockResolvedValueOnce({
+            json: async () => ({
+                success: true,
+                user: { id: 'user-123', username: 'testuser', role: 'admin', active: true, avatar: null }
+            })
         } as any);
 
-        vi.mocked(addDoc).mockResolvedValueOnce({ id: 'log-id' } as any);
+        await authService.authenticateAdmin('pass');
+        expect(authService.getSession()).not.toBeNull();
 
-        await authService.authenticateAdmin('testpass');
-
-        expect(addDoc).toHaveBeenCalledWith(
-            expect.anything(),
-            expect.objectContaining({
-                action: 'LOGIN_FAILED',
-                targetName: 'testuser',
-                reason: 'Account disabled'
+        const { supabase } = await import('../supabase');
+        vi.mocked(supabase.from).mockReturnValueOnce({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    single: vi.fn().mockResolvedValue({ data: { active: false }, error: null })
+                })
             })
-        );
+        } as any);
+
+        const isValid = await authService.checkSessionValidity();
+        expect(isValid).toBe(false);
     });
 });
