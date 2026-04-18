@@ -39,11 +39,13 @@ export const getAllSalaries = async (fleetId?: string) => {
 };
 
 export const subscribeToSalaries = (callback: (salaries: DriverSalary[]) => void, fleetId?: string) => {
+    if (!fleetId) return () => {};
+
     const fetch = () =>
         supabase
             .from('driver_salaries')
             .select('*')
-            .eq('fleet_id', fleetId ?? null)
+            .eq('fleet_id', fleetId)
             .order('period_start', { ascending: false })
             .then(({ data }) => { if (data) callback(data as DriverSalary[]); });
 

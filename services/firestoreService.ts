@@ -135,11 +135,13 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
 // ==================== DRIVERS ====================
 
 export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetId?: string) => {
+    if (!fleetId) return () => {};
+
     const fetchDrivers = () =>
         supabase
             .from('drivers')
             .select('*')
-            .eq('fleet_id', fleetId ?? null)
+            .eq('fleet_id', fleetId)
             .then(({ data }) => {
                 if (data) callback(data.map(r => ({ ...r, id: r.id, createdAt: toMs(r.created_ms) } as Driver)));
             });
@@ -187,11 +189,13 @@ export const deleteDriver = async (id: string, auditInfo?: { adminName: string; 
 // ==================== TRANSACTIONS ====================
 
 export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void, fleetId?: string) => {
+    if (!fleetId) return () => {};
+
     const fetchTx = () =>
         supabase
             .from('transactions')
             .select('*')
-            .eq('fleet_id', fleetId ?? null)
+            .eq('fleet_id', fleetId)
             .then(({ data }) => {
                 if (data) callback(data.map(r => ({ ...r, timestamp: toMs(r.timestamp) } as Transaction)));
             });

@@ -8,14 +8,12 @@ export const useNotifications = (adminUser: AdminUser | null, userRole: UserRole
     const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        const notificationUserId = adminUser?.id || 'global';
-        const userCreatedAt = adminUser?.createdAt || 0;
-        const userRoleForNotifications = userRole;
+        if (!adminUser?.id) return;
 
         const unsubscribe = subscribeToNotifications(
-            notificationUserId,
-            userCreatedAt,
-            userRoleForNotifications,
+            adminUser.id,
+            adminUser.createdAt || 0,
+            userRole,
             (newNotifications, count, readIds) => {
                 setNotifications(newNotifications);
                 setReadNotificationIds(readIds);

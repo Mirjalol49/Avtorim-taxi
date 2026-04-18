@@ -197,7 +197,7 @@ CREATE TABLE notifications (
 CREATE TABLE notification_reads (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     notification_id UUID REFERENCES notifications(id) ON DELETE CASCADE,
-    user_id         UUID NOT NULL,
+    user_id         TEXT NOT NULL,
     read_at         BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     UNIQUE (notification_id, user_id)
 );
@@ -208,7 +208,7 @@ CREATE TABLE notification_reads (
 CREATE TABLE notification_deletes (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     notification_id UUID REFERENCES notifications(id) ON DELETE CASCADE,
-    user_id         UUID NOT NULL,
+    user_id         TEXT NOT NULL,
     deleted_at      BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     UNIQUE (notification_id, user_id)
 );
