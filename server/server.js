@@ -3,59 +3,18 @@ const bodyParser = require('body-parser');
 const auth = require('basic-auth');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const admin = require('firebase-admin');
-const { getFirestore } = require('firebase-admin/firestore');
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
 const TelegramService = require('./telegramService');
+const { supabase } = require('./supabaseAdmin');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-const cors = require('cors');
-
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Initialize Firebase Admin
-let firestore;
-let serviceAccount; // Declare in outer scope
-try {
-    // Force load local file to avoid stale env vars
-    serviceAccount = require('./serviceAccountKey.json');
-    console.log('🔑 Loaded Service Account for Project:', serviceAccount.project_id);
-} catch (e) {
-    // If parsing fails, maybe it's a path string? But typically Env var is JSON content.
-    // Fallback to local file if env var is weird or missing.
-    console.warn("Could not parse SERVICE_ACCOUNT_KEY env var, falling back to local file.");
-    try {
-        serviceAccount = require('./serviceAccountKey.json');
-    } catch (e) {
-        console.warn('Service account key not found. Backend features may be limited.');
-        serviceAccount = null; // Ensure serviceAccount is null if file also fails
-    }
-}
-
-
-if (serviceAccount) {
-    try {
-        if (!admin.apps.length) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-            });
-        }
-        // Use modular getFirestore to explicitly target the named 'default' database
-        // This fixes the NOT_FOUND error caused by looking for '(default)'
-        firestore = getFirestore(admin.app(), 'default');
-        console.log('✅ Firebase Admin Initialized with database: default in server.js');
-    } catch (error) {
-        console.warn('⚠️ Firebase Admin could not be initialized:', error.message);
-    }
-} else {
-    console.warn('⚠️ Firebase Admin not initialized due to missing service account key.');
-}
-
-
-// Database Setup (SQLite for OwnTracks legacy)
+// SQLite for OwnTracks legacy
 const dbPath = path.resolve(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
@@ -66,9 +25,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-// Initialize Telegram Bot
+// Telegram bot
 let telegramService = null;
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8003294766:AAHl6z1O0Qr1V0plDj0t_tyRfxSYGBvurWM';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 function createTable() {
     const sql = `
@@ -87,22 +46,18 @@ function createTable() {
             console.error('Error creating table:', err.message);
         } else {
             console.log('Table drivers_location ready.');
-            // Initialize Telegram service with Firestore
-            if (TELEGRAM_BOT_TOKEN && firestore) {
-                telegramService = new TelegramService(TELEGRAM_BOT_TOKEN, firestore);
+            if (TELEGRAM_BOT_TOKEN) {
+                telegramService = new TelegramService(TELEGRAM_BOT_TOKEN, null);
             } else {
-                console.warn('⚠️  Telegram Bot not started: Missing Token or Firestore');
+                console.warn('Telegram Bot not started: TELEGRAM_BOT_TOKEN not set');
             }
         }
     });
 }
 
-// Basic Authentication Middleware
+// Basic auth for OwnTracks / admin endpoints
 const basicAuth = (req, res, next) => {
     const credentials = auth(req);
-
-    // Replace these with your actual secure credentials or load from environment variables
-    // For this example, we use placeholders as requested
     const EXPECTED_USERNAME = process.env.OWNS_USERNAME || 'driver123';
     const EXPECTED_PASSWORD = process.env.OWNS_PASSWORD || 'secretKey';
 
@@ -113,24 +68,15 @@ const basicAuth = (req, res, next) => {
     next();
 };
 
-// Webhook Endpoint
+// OwnTracks webhook
 app.post('/api/owntracks/location', basicAuth, (req, res) => {
     const data = req.body;
 
-    console.log('Received data:', JSON.stringify(data));
-
-    // Verify _type
     if (data._type !== 'location') {
-        console.log(`Ignored event type: ${data._type}`);
         return res.status(200).json({ status: 'ignored', reason: 'not a location type' });
     }
 
-    // Extract fields
-    const { lat, lon, tst, tid } = data;
-
-    // Use username from auth as driver_id, or fallback to tid if preferred. 
-    // Request says: "derived from the authenticated username or tid"
-    // We'll use the authenticated username to ensure it matches the authorized driver.
+    const { lat, lon, tst } = data;
     const credentials = auth(req);
     const driver_id = credentials.name;
 
@@ -138,7 +84,6 @@ app.post('/api/owntracks/location', basicAuth, (req, res) => {
         return res.status(400).json({ error: 'Missing required location fields' });
     }
 
-    // Upsert into Database
     const sql = `
         INSERT INTO drivers_location (driver_id, latitude, longitude, last_update_ts)
         VALUES (?, ?, ?, ?)
@@ -153,34 +98,23 @@ app.post('/api/owntracks/location', basicAuth, (req, res) => {
             console.error('Error upserting location:', err.message);
             return res.status(500).json({ error: 'Database error' });
         }
-        console.log(`Updated location for driver ${driver_id}`);
         res.status(200).json({ status: 'success' });
     });
 });
 
-// Get All Drivers Location
 app.get('/api/drivers', (req, res) => {
-    const sql = "SELECT * FROM drivers_location";
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            console.error('Error fetching drivers:', err.message);
-            return res.status(500).json({ error: 'Database error' });
-        }
+    db.all('SELECT * FROM drivers_location', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
         res.json(rows);
     });
 });
 
-// Register Driver with Telegram ID
 app.post('/api/telegram/register', (req, res) => {
     const { driver_id, telegram_user_id } = req.body;
-
     if (!driver_id || !telegram_user_id) {
         return res.status(400).json({ error: 'driver_id and telegram_user_id are required' });
     }
-
-    if (!telegramService) {
-        return res.status(503).json({ error: 'Telegram service not available' });
-    }
+    if (!telegramService) return res.status(503).json({ error: 'Telegram service not available' });
 
     telegramService.registerDriver(driver_id, telegram_user_id, (success, error) => {
         if (success) {
@@ -191,31 +125,19 @@ app.post('/api/telegram/register', (req, res) => {
     });
 });
 
-// Get all registered drivers with Telegram
 app.get('/api/telegram/drivers', (req, res) => {
-    const sql = "SELECT driver_id, telegram_user_id, is_live FROM drivers_location WHERE telegram_user_id IS NOT NULL";
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            console.error('Error fetching telegram drivers:', err.message);
-            return res.status(500).json({ error: 'Database error' });
-        }
+    db.all('SELECT driver_id, telegram_user_id, is_live FROM drivers_location WHERE telegram_user_id IS NOT NULL', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
         res.json(rows);
     });
 });
 
-// --- NOTIFICATIONS API ---
 app.post('/api/notifications/salary', async (req, res) => {
     const { driverId, amount, date } = req.body;
-    console.log(`[API] Received Salary Notification Request for Driver: ${driverId}, Amount: ${amount}`);
-
     if (!driverId || !amount || !date) {
         return res.status(400).json({ error: 'Missing required fields: driverId, amount, date' });
     }
-
-    if (!telegramService) {
-        console.warn('[API] TelegramService is NULL');
-        return res.status(503).json({ error: 'Telegram service not available' });
-    }
+    if (!telegramService) return res.status(503).json({ error: 'Telegram service not available' });
 
     try {
         const result = await telegramService.sendSalaryNotification(driverId, amount, date);
@@ -230,13 +152,9 @@ app.post('/api/notifications/salary', async (req, res) => {
     }
 });
 
-
-// Import Admin Controller
+// Admin API routes
 const adminController = require('./adminController');
 
-// --- SUPER ADMIN API ---
-
-// Account Management
 app.post('/api/admin/create-account', basicAuth, adminController.createAccount);
 app.post('/api/admin/create-account-enhanced', basicAuth, adminController.createAccountEnhanced);
 app.post('/api/admin/verify-email', adminController.verifyEmail);
@@ -245,28 +163,18 @@ app.post('/api/admin/reject-account', basicAuth, adminController.rejectAccount);
 app.get('/api/admin/pending-accounts', basicAuth, adminController.getPendingAccounts);
 app.post('/api/admin/toggle-status', basicAuth, adminController.toggleAccountStatus);
 app.get('/api/admin/accounts', basicAuth, adminController.listAccounts);
-
-// Password Management
 app.post('/api/admin/validate-password', basicAuth, adminController.validatePassword);
 app.post('/api/admin/change-password', basicAuth, adminController.changePassword);
-
-// MFA Management
 app.post('/api/admin/mfa/setup', basicAuth, adminController.setupMFA);
 app.post('/api/admin/mfa/verify', basicAuth, adminController.verifyMFA);
 app.post('/api/admin/mfa/verify-backup', basicAuth, adminController.verifyBackupCode);
 app.get('/api/admin/mfa/status/:userId', basicAuth, adminController.getMFAStatus);
 app.post('/api/admin/mfa/regenerate-codes', basicAuth, adminController.regenerateBackupCodes);
-
-// Session Management
 app.get('/api/admin/sessions/:userId', basicAuth, adminController.getSessions);
 app.post('/api/admin/logout-all', basicAuth, adminController.logoutAllSessions);
-
-// Audit Logs
 app.get('/api/admin/audit-logs', basicAuth, adminController.getAuditLogs);
 
 // ==================== PUBLIC AUTH ENDPOINT ====================
-// This endpoint is used for login - no basicAuth required
-const bcrypt = require('bcryptjs');
 app.post('/api/auth/login', async (req, res) => {
     const { password } = req.body;
 
@@ -274,102 +182,88 @@ app.post('/api/auth/login', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Password required' });
     }
 
+    if (!supabase) {
+        return res.status(503).json({ success: false, error: 'Database not configured' });
+    }
+
     try {
-        const db = firestore; // Use the configured named database instance
-        const snapshot = await db.collection('admin_users').get();
+        const { data: users } = await supabase
+            .from('admin_users')
+            .select('id, username, role, active, password_hash, password, avatar, mfa_enabled');
 
-        for (const doc of snapshot.docs) {
-            const userData = doc.data();
+        for (const user of (users || [])) {
+            if (!user.active) continue;
 
-            // Check if account is active first
-            if (!userData.active) continue;
-
-            // Check bcrypt hash
-            if (userData.passwordHash) {
-                const match = await bcrypt.compare(password, userData.passwordHash);
+            // Bcrypt hash check
+            if (user.password_hash) {
+                const match = await bcrypt.compare(password, user.password_hash);
                 if (match) {
-                    // Log successful login
-                    await db.collection('audit_logs').add({
+                    await supabase.from('audit_logs').insert({
                         action: 'LOGIN_SUCCESS',
-                        targetId: doc.id,
-                        targetName: userData.username,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                        target_id: user.id,
+                        target_name: user.username,
+                        timestamp: Date.now()
                     });
 
                     return res.json({
                         success: true,
                         user: {
-                            id: doc.id,
-                            username: userData.username,
-                            role: userData.role || 'admin',
-                            active: userData.active,
-                            avatar: userData.avatar,
-                            mfaEnabled: userData.mfaEnabled || false
+                            id: user.id,
+                            username: user.username,
+                            role: user.role || 'admin',
+                            active: user.active,
+                            avatar: user.avatar,
+                            mfaEnabled: user.mfa_enabled || false
                         }
                     });
                 }
             }
 
-            // Legacy: Check plain text password (migration support)
-            if (userData.password && userData.password === password) {
-                // Log and return
-                await db.collection('audit_logs').add({
+            // Legacy: plain-text password (migration support)
+            if (user.password && user.password === password) {
+                await supabase.from('audit_logs').insert({
                     action: 'LOGIN_SUCCESS_LEGACY',
-                    targetId: doc.id,
-                    targetName: userData.username,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp()
+                    target_id: user.id,
+                    target_name: user.username,
+                    timestamp: Date.now()
                 });
 
                 return res.json({
                     success: true,
                     user: {
-                        id: doc.id,
-                        username: userData.username,
-                        role: userData.role || 'admin',
-                        active: userData.active,
-                        avatar: userData.avatar,
-                        mfaEnabled: userData.mfaEnabled || false
+                        id: user.id,
+                        username: user.username,
+                        role: user.role || 'admin',
+                        active: user.active,
+                        avatar: user.avatar,
+                        mfaEnabled: user.mfa_enabled || false
                     },
                     warning: 'Password migration recommended'
                 });
             }
         }
 
-        // No match found
-        await db.collection('audit_logs').add({
+        await supabase.from('audit_logs').insert({
             action: 'LOGIN_FAILED',
-            reason: 'Invalid credentials',
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
+            details: { reason: 'Invalid credentials' },
+            timestamp: Date.now()
         });
 
         return res.status(401).json({ success: false, error: 'Invalid password' });
     } catch (error) {
         console.error('Auth error:', error);
-        return res.status(500).json({
-            success: false,
-            error: 'Authentication system error'
-        });
+        return res.status(500).json({ success: false, error: 'Authentication system error' });
     }
 });
 
-
-// Start Server
 app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Server listening at http://0.0.0.0:${port}`);
-    console.log(`📍 OwnTracks webhook: POST /api/owntracks/location`);
-    console.log(`🤖 Telegram registration: POST /api/telegram/register`);
-    console.log(`✨ Notification API: POST /api/notifications/salary (NEW)`);
-    console.log(`🔐 Admin API: POST /api/admin/*`);
-    console.log(`🔑 Security APIs:`);
-    console.log(`   - Login: POST /api/auth/login`);
-    console.log(`   - Password validation: POST /api/admin/validate-password`);
-    console.log(`   - MFA setup: POST /api/admin/mfa/setup`);
-    console.log(`   - Audit logs: GET /api/admin/audit-logs`);
-
+    console.log(`Server listening at http://0.0.0.0:${port}`);
+    console.log(`OwnTracks webhook: POST /api/owntracks/location`);
+    console.log(`Auth: POST /api/auth/login`);
+    console.log(`Admin API: POST /api/admin/*`);
     if (TELEGRAM_BOT_TOKEN) {
-        console.log(`✅ Telegram Bot is ACTIVE`);
+        console.log('Telegram Bot is ACTIVE');
     } else {
-        console.log(`⚠️  Telegram Bot is DISABLED (no token provided)`);
-        console.log(`   Set TELEGRAM_BOT_TOKEN environment variable to enable`);
+        console.log('Telegram Bot DISABLED (set TELEGRAM_BOT_TOKEN to enable)');
     }
 });

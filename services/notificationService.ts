@@ -1,20 +1,4 @@
-import {
-    collection,
-    addDoc,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    updateDoc,
-    doc,
-    deleteDoc,
-    getDocs,
-    writeBatch,
-    Timestamp,
-    serverTimestamp,
-    arrayUnion
-} from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import {
     Notification,
     NotificationCategory,
@@ -25,7 +9,6 @@ import {
     NotificationDeliveryTracking
 } from '../src/core/types';
 
-// Re-export types for backward compatibility
 export type NotificationType = 'payment_reminder' | 'feature_update' | 'announcement' | 'system';
 export type {
     Notification,
@@ -34,13 +17,18 @@ export type {
     UserNotificationRead
 };
 
-const NOTIFICATIONS_COLLECTION = 'notifications';
-const NOTIFICATION_READS_COLLECTION = 'notification_reads';
-const NOTIFICATION_DELETES_COLLECTION = 'notification_deletes';
+function isNotificationTargetedToUser(
+    targetUsers: NotificationTargetType,
+    userId: string,
+    userRole: 'admin' | 'viewer'
+): boolean {
+    if (targetUsers === 'all') return true;
+    if (targetUsers === 'role:admin' && userRole === 'admin') return true;
+    if (targetUsers === 'role:viewer' && userRole === 'viewer') return true;
+    if (Array.isArray(targetUsers) && targetUsers.includes(userId)) return true;
+    return false;
+}
 
-/**
- * Send a new notification with enhanced targeting and tracking
- */
 export const sendNotification = async (
     notificationData: {
         title: string;
@@ -49,392 +37,206 @@ export const sendNotification = async (
         category: NotificationCategory;
         priority: NotificationPriority;
         targetUsers: NotificationTargetType;
-        expiresIn?: number; // Milliseconds from now, defaults to 24 hours
+        expiresIn?: number;
         minAccountAge?: number;
     },
     createdBy: string,
     createdByName: string
 ): Promise<string> => {
-    try {
-        const now = Date.now();
-        const expiresAt = now + (notificationData.expiresIn || 24 * 60 * 60 * 1000);
+    const now = Date.now();
+    const expiresAt = now + (notificationData.expiresIn || 24 * 60 * 60 * 1000);
 
-        // Build notification object, excluding undefined values
-        const notification: Record<string, any> = {
+    const { data, error } = await supabase
+        .from('notifications')
+        .insert({
             title: notificationData.title,
             message: notificationData.message,
             type: notificationData.type,
             category: notificationData.category,
             priority: notificationData.priority,
-            targetUsers: notificationData.targetUsers,
-            createdBy,
-            createdByName,
-            createdAt: now,
-            expiresAt,
-            deliveryTracking: {
-                sent: now,
-                delivered: [],
-                read: []
-            }
-        };
+            target_users: notificationData.targetUsers,
+            created_by: createdBy || null,
+            created_by_name: createdByName,
+            created_at: now,
+            expires_at: expiresAt,
+            delivery_tracking: { sent: now, delivered: [], read: [] },
+            min_account_age: notificationData.minAccountAge ?? null
+        })
+        .select('id')
+        .single();
 
-        // Only add minAccountAge if it's defined (Firestore rejects undefined)
-        if (notificationData.minAccountAge !== undefined) {
-            notification.minAccountAge = notificationData.minAccountAge;
-        }
-
-        const docRef = await addDoc(collection(db, NOTIFICATIONS_COLLECTION), notification);
-        console.log('✅ Notification created:', docRef.id);
-        return docRef.id;
-    } catch (error) {
-        console.error('Error sending notification:', error);
-        throw error;
-    }
+    if (error) throw error;
+    return data.id as string;
 };
 
-/**
- * Subscribe to notifications for a user with account-specific filtering
- * 
- * Filters notifications based on:
- * - Expiration date
- * - User/role targeting
- * - Deletion status
- */
 export const subscribeToNotifications = (
     userId: string,
-    userCreatedAt: number,
+    _userCreatedAt: number,
     userRole: 'admin' | 'viewer',
     callback: (notifications: Notification[], unreadCount: number, readIds: Set<string>) => void
 ) => {
     const now = Date.now();
 
-    // Query notifications that haven't expired yet
-    // Note: Removed createdAt >= userCreatedAt filter as it was too restrictive
-    const q = query(
-        collection(db, NOTIFICATIONS_COLLECTION),
-        where('expiresAt', '>', now),
-        orderBy('expiresAt', 'desc')
-    );
+    const fetchAndNotify = async () => {
+        const { data: rows } = await supabase
+            .from('notifications')
+            .select('*')
+            .gt('expires_at', now)
+            .order('expires_at', { ascending: false });
 
-    console.log('📡 Subscribing to notifications for user:', userId, 'role:', userRole);
+        const notifications: Notification[] = (rows ?? [])
+            .filter(r => isNotificationTargetedToUser(r.target_users as NotificationTargetType, userId, userRole))
+            .map(r => ({
+                id: r.id,
+                title: r.title,
+                message: r.message,
+                type: r.type,
+                category: r.category,
+                priority: r.priority,
+                targetUsers: r.target_users,
+                createdBy: r.created_by,
+                createdByName: r.created_by_name,
+                createdAt: r.created_at,
+                expiresAt: r.expires_at,
+                deliveryTracking: r.delivery_tracking,
+                minAccountAge: r.min_account_age
+            } as Notification));
 
-    return onSnapshot(q, async (snapshot) => {
-        const notifications: Notification[] = [];
+        const { data: reads } = await supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', userId);
+        const readIds = new Set<string>((reads ?? []).map(r => r.notification_id));
 
-        console.log('📬 Raw notifications from DB:', snapshot.size);
+        const { data: deletes } = await supabase
+            .from('notification_deletes')
+            .select('notification_id')
+            .eq('user_id', userId);
+        const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
 
-        snapshot.forEach((doc) => {
-            const data = doc.data() as Omit<Notification, 'id'>;
+        const active = notifications.filter(n => !deletedIds.has(n.id));
+        const unreadCount = active.filter(n => !readIds.has(n.id)).length;
+        callback(active, unreadCount, readIds);
+    };
 
-            // Check if notification is targeted to this user
-            const isTargeted = isNotificationTargetedToUser(
-                data.targetUsers,
-                userId,
-                userRole
-            );
+    fetchAndNotify();
 
-            if (isTargeted) {
-                notifications.push({ id: doc.id, ...data } as Notification);
+    const channel = supabase
+        .channel(`notifications_${userId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchAndNotify)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${userId}` }, fetchAndNotify)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_deletes', filter: `user_id=eq.${userId}` }, fetchAndNotify)
+        .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+};
+
+export const markNotificationAsRead = async (notificationId: string, userId: string): Promise<void> => {
+    const { data: existing } = await supabase
+        .from('notification_reads')
+        .select('id')
+        .eq('notification_id', notificationId)
+        .eq('user_id', userId)
+        .limit(1);
+
+    if (!existing || existing.length === 0) {
+        await supabase.from('notification_reads').insert({
+            notification_id: notificationId,
+            user_id: userId,
+            read_at: Date.now()
+        });
+
+        const { data: notif } = await supabase
+            .from('notifications')
+            .select('delivery_tracking')
+            .eq('id', notificationId)
+            .single();
+        if (notif) {
+            const dt = notif.delivery_tracking ?? { sent: 0, delivered: [], read: [] };
+            const readArr: string[] = Array.isArray(dt.read) ? dt.read : [];
+            if (!readArr.includes(userId)) {
+                await supabase.from('notifications').update({
+                    delivery_tracking: { ...dt, read: [...readArr, userId] }
+                }).eq('id', notificationId);
             }
-        });
+        }
+    }
+};
 
-        console.log('📩 Targeted notifications:', notifications.length);
+export const markAllNotificationsAsRead = async (notificationIds: string[], userId: string): Promise<void> => {
+    const { data: existing } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('user_id', userId);
+    const existingIds = new Set<string>((existing ?? []).map(r => r.notification_id));
 
-        // Get read status for this user
-        const readsQuery = query(
-            collection(db, NOTIFICATION_READS_COLLECTION),
-            where('userId', '==', userId)
-        );
-        const readsSnapshot = await getDocs(readsQuery);
-        const readIds = new Set<string>();
-        readsSnapshot.forEach((doc) => {
-            readIds.add(doc.data().notificationId);
-        });
+    const toInsert = notificationIds
+        .filter(id => !existingIds.has(id))
+        .map(id => ({ notification_id: id, user_id: userId, read_at: Date.now() }));
 
-        // Get deleted status for this user
-        const deletesQuery = query(
-            collection(db, NOTIFICATION_DELETES_COLLECTION),
-            where('userId', '==', userId)
-        );
-        const deletesSnapshot = await getDocs(deletesQuery);
-        const deletedIds = new Set<string>();
-        deletesSnapshot.forEach((doc) => {
-            deletedIds.add(doc.data().notificationId);
-        });
+    if (toInsert.length > 0) {
+        await supabase.from('notification_reads').insert(toInsert);
+    }
+};
 
-        // Filter out deleted notifications
-        const activeNotifications = notifications.filter(n => !deletedIds.has(n.id));
-
-        console.log('🔔 Active notifications (after delete filter):', activeNotifications.length);
-
-        // Count unread
-        const unreadCount = activeNotifications.filter(n => !readIds.has(n.id)).length;
-
-        callback(activeNotifications, unreadCount, readIds);
-    }, (error) => {
-        console.error('Error subscribing to notifications:', error);
+export const deleteNotification = async (notificationId: string, userId: string): Promise<void> => {
+    await supabase.from('notification_deletes').insert({
+        notification_id: notificationId,
+        user_id: userId,
+        deleted_at: Date.now()
     });
 };
 
-/**
- * Helper: Check if notification is targeted to a specific user
- */
-function isNotificationTargetedToUser(
-    targetUsers: NotificationTargetType,
-    userId: string,
-    userRole: 'admin' | 'viewer'
-): boolean {
-    // Broadcast to all users
-    if (targetUsers === 'all') {
-        return true;
-    }
+export const clearAllReadNotifications = async (userId: string): Promise<void> => {
+    const { data: reads } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('user_id', userId);
+    const readIds = (reads ?? []).map(r => r.notification_id);
+    if (readIds.length === 0) return;
 
-    // Role-based targeting
-    if (targetUsers === 'role:admin' && userRole === 'admin') {
-        return true;
-    }
-    if (targetUsers === 'role:viewer' && userRole === 'viewer') {
-        return true;
-    }
+    const { data: deletes } = await supabase
+        .from('notification_deletes')
+        .select('notification_id')
+        .eq('user_id', userId);
+    const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
 
-    // Specific user IDs
-    if (Array.isArray(targetUsers) && targetUsers.includes(userId)) {
-        return true;
-    }
+    const toInsert = readIds
+        .filter(id => !deletedIds.has(id))
+        .map(id => ({ notification_id: id, user_id: userId, deleted_at: Date.now() }));
 
-    return false;
-}
-
-/**
- * Mark a notification as read and update delivery tracking
- */
-export const markNotificationAsRead = async (
-    notificationId: string,
-    userId: string
-): Promise<void> => {
-    try {
-        // Check if already marked as read
-        const q = query(
-            collection(db, NOTIFICATION_READS_COLLECTION),
-            where('notificationId', '==', notificationId),
-            where('userId', '==', userId)
-        );
-        const existing = await getDocs(q);
-
-        if (existing.empty) {
-            // Add to reads collection
-            await addDoc(collection(db, NOTIFICATION_READS_COLLECTION), {
-                notificationId,
-                userId,
-                readAt: Date.now()
-            });
-
-            // Update notification's delivery tracking
-            const notificationRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
-            await updateDoc(notificationRef, {
-                'deliveryTracking.read': arrayUnion(userId)
-            });
-        }
-    } catch (error) {
-        console.error('Error marking notification as read:', error);
-        throw error;
+    if (toInsert.length > 0) {
+        await supabase.from('notification_deletes').insert(toInsert);
     }
 };
 
-// Mark all notifications as read for a user
-export const markAllNotificationsAsRead = async (
-    notificationIds: string[],
-    userId: string
-): Promise<void> => {
-    try {
-        // Get existing reads
-        const q = query(
-            collection(db, NOTIFICATION_READS_COLLECTION),
-            where('userId', '==', userId)
-        );
-        const existing = await getDocs(q);
-        const existingIds = new Set<string>();
-        existing.forEach((doc) => {
-            existingIds.add(doc.data().notificationId);
-        });
-
-        // Add reads for notifications not yet marked
-        const batch = writeBatch(db);
-        const now = Date.now();
-
-        notificationIds.forEach((notificationId) => {
-            if (!existingIds.has(notificationId)) {
-                const docRef = doc(collection(db, NOTIFICATION_READS_COLLECTION));
-                batch.set(docRef, {
-                    notificationId,
-                    userId,
-                    readAt: now
-                });
-            }
-        });
-
-        await batch.commit();
-    } catch (error) {
-        console.error('Error marking all notifications as read:', error);
-        throw error;
-    }
-};
-
-// Delete a notification for a user
-export const deleteNotification = async (
-    notificationId: string,
-    userId: string
-): Promise<void> => {
-    try {
-        await addDoc(collection(db, NOTIFICATION_DELETES_COLLECTION), {
-            notificationId,
-            userId,
-            deletedAt: Date.now()
-        });
-    } catch (error) {
-        console.error('Error deleting notification:', error);
-        throw error;
-    }
-};
-
-// Clear all read notifications for a user
-export const clearAllReadNotifications = async (
-    userId: string
-): Promise<void> => {
-    try {
-        // Get all read notifications
-        const readsQuery = query(
-            collection(db, NOTIFICATION_READS_COLLECTION),
-            where('userId', '==', userId)
-        );
-        const readsSnapshot = await getDocs(readsQuery);
-        const readIds = new Set<string>();
-        readsSnapshot.forEach((doc) => {
-            readIds.add(doc.data().notificationId);
-        });
-
-        if (readIds.size === 0) return;
-
-        // Get already deleted notifications to avoid duplicates
-        const deletesQuery = query(
-            collection(db, NOTIFICATION_DELETES_COLLECTION),
-            where('userId', '==', userId)
-        );
-        const deletesSnapshot = await getDocs(deletesQuery);
-        const deletedIds = new Set<string>();
-        deletesSnapshot.forEach((doc) => {
-            deletedIds.add(doc.data().notificationId);
-        });
-
-        const batch = writeBatch(db);
-        const now = Date.now();
-        let count = 0;
-
-        readIds.forEach((notificationId) => {
-            if (!deletedIds.has(notificationId)) {
-                const docRef = doc(collection(db, NOTIFICATION_DELETES_COLLECTION));
-                batch.set(docRef, {
-                    notificationId,
-                    userId,
-                    deletedAt: now
-                });
-                count++;
-            }
-        });
-
-        if (count > 0) {
-            await batch.commit();
-        }
-    } catch (error) {
-        console.error('Error clearing read notifications:', error);
-        throw error;
-    }
-};
-
-// Get read notification IDs for a user
 export const getReadNotificationIds = async (userId: string): Promise<Set<string>> => {
-    try {
-        const q = query(
-            collection(db, NOTIFICATION_READS_COLLECTION),
-            where('userId', '==', userId)
-        );
-        const snapshot = await getDocs(q);
-        const readIds = new Set<string>();
-        snapshot.forEach((doc) => {
-            readIds.add(doc.data().notificationId);
-        });
-        return readIds;
-    } catch (error) {
-        console.error('Error getting read notifications:', error);
-        return new Set();
-    }
+    const { data } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('user_id', userId);
+    return new Set<string>((data ?? []).map(r => r.notification_id));
 };
 
-/**
- * Cleanup expired notifications (past their expiration date)
- */
 export const cleanupExpiredNotifications = async (): Promise<void> => {
-    try {
-        const now = Date.now();
-
-        // Query expired notifications
-        const q = query(
-            collection(db, NOTIFICATIONS_COLLECTION),
-            where('expiresAt', '<=', now)
-        );
-
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) return;
-
-        const batch = writeBatch(db);
-        snapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-        console.log(`Cleaned up ${snapshot.size} expired notifications`);
-    } catch (error) {
-        console.error('Error cleaning up expired notifications:', error);
-    }
+    const now = Date.now();
+    await supabase.from('notifications').delete().lte('expires_at', now);
 };
 
-/**
- * Clear all notifications for a new account to ensure clean slate
- * Called when a new account is created
- */
 export const clearNotificationsForNewAccount = async (userId: string): Promise<void> => {
-    try {
-        // Get all existing notifications
-        const notificationsQuery = query(collection(db, NOTIFICATIONS_COLLECTION));
-        const notificationsSnapshot = await getDocs(notificationsQuery);
+    const { data: notifications } = await supabase.from('notifications').select('id');
+    if (!notifications || notifications.length === 0) return;
 
-        if (notificationsSnapshot.empty) return;
+    const now = Date.now();
+    const toInsert = notifications.map(n => ({
+        notification_id: n.id,
+        user_id: userId,
+        deleted_at: now
+    }));
 
-        const batch = writeBatch(db);
-        const now = Date.now();
-
-        // Mark all existing notifications as deleted for this new user
-        notificationsSnapshot.forEach((notificationDoc) => {
-            const deleteRef = doc(collection(db, NOTIFICATION_DELETES_COLLECTION));
-            batch.set(deleteRef, {
-                notificationId: notificationDoc.id,
-                userId,
-                deletedAt: now
-            });
-        });
-
-        await batch.commit();
-        console.log(`Cleared ${notificationsSnapshot.size} notifications for new account: ${userId}`);
-    } catch (error) {
-        console.error('Error clearing notifications for new account:', error);
-        throw error;
-    }
+    await supabase.from('notification_deletes').insert(toInsert);
 };
 
-/**
- * Send bulk notifications based on role targeting
- */
 export const sendBulkNotificationByRole = async (
     notificationData: {
         title: string;
@@ -449,10 +251,7 @@ export const sendBulkNotificationByRole = async (
     createdByName: string
 ): Promise<string> => {
     return sendNotification(
-        {
-            ...notificationData,
-            targetUsers: `role:${role}` as NotificationTargetType
-        },
+        { ...notificationData, targetUsers: `role:${role}` as NotificationTargetType },
         createdBy,
         createdByName
     );

@@ -10,8 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Language } from '../types';
 import { subscribeToViewers } from '../services/firestoreService';
 import { Viewer } from '../types';
-import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { supabase } from '../supabase';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
 
@@ -86,13 +85,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
 
       Promise.all(adminsNeeded.map(async (adminId) => {
         try {
-          const adminRef = doc(db, 'admin_users', adminId);
-          const adminSnap = await getDoc(adminRef);
-          if (adminSnap.exists()) {
-            return { id: adminId, name: adminSnap.data().username };
-          }
-          return { id: adminId, name: 'Unknown Admin' };
-        } catch (e) {
+          const { data } = await supabase.from('admin_users').select('username').eq('id', adminId).single();
+          return { id: adminId, name: data?.username ?? 'Unknown Admin' };
+        } catch {
           return { id: adminId, name: 'Unknown Admin' };
         }
       })).then(results => {

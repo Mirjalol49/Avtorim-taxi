@@ -3,21 +3,16 @@
  * IP restrictions, time-based access, session limits, audit logging
  */
 
-const admin = require('firebase-admin');
-const { getFirestore } = require('firebase-admin/firestore');
+const { supabase } = require('./supabaseAdmin');
 
-// Default security settings (can be overridden per user)
 const DEFAULT_SETTINGS = {
-    allowedIpRanges: null, // null = allow all
-    accessHoursStart: null, // null = 24/7 access
+    allowedIpRanges: null,
+    accessHoursStart: null,
     accessHoursEnd: null,
     maxConcurrentSessions: 2,
     timezone: 'Asia/Tashkent'
 };
 
-/**
- * IP Restriction Middleware
- */
 const ipRestriction = (userSettings = null) => {
     return (req, res, next) => {
         const settings = { ...DEFAULT_SETTINGS, ...userSettings };
@@ -27,29 +22,20 @@ const ipRestriction = (userSettings = null) => {
         }
 
         const clientIp = req.ip || req.connection.remoteAddress;
-
         const isAllowed = settings.allowedIpRanges.some(range => {
-            if (range.includes('/')) {
-                return isIpInRange(clientIp, range);
-            }
+            if (range.includes('/')) return isIpInRange(clientIp, range);
             return clientIp === range;
         });
 
         if (!isAllowed) {
-            console.warn(`🚫 Access denied for IP: ${clientIp}`);
-            return res.status(403).json({
-                error: 'Access denied',
-                message: 'Your IP address is not authorized'
-            });
+            console.warn(`Access denied for IP: ${clientIp}`);
+            return res.status(403).json({ error: 'Access denied', message: 'Your IP address is not authorized' });
         }
 
         next();
     };
 };
 
-/**
- * Time-based Access Restriction Middleware
- */
 const timeBasedAccess = (userSettings = null) => {
     return (req, res, next) => {
         const settings = { ...DEFAULT_SETTINGS, ...userSettings };
@@ -58,7 +44,6 @@ const timeBasedAccess = (userSettings = null) => {
             return next();
         }
 
-        // Use timezone-aware time via toLocaleString to respect the configured timezone
         const timezone = settings.timezone || 'Asia/Tashkent';
         const nowStr = new Date().toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false });
         const [hourStr, minuteStr] = nowStr.split(':');
@@ -68,7 +53,7 @@ const timeBasedAccess = (userSettings = null) => {
         const endTime = parseTime(settings.accessHoursEnd);
 
         if (currentTime < startTime || currentTime > endTime) {
-            console.warn(`🚫 Access denied: Outside allowed hours (${settings.accessHoursStart} - ${settings.accessHoursEnd})`);
+            console.warn(`Access denied: Outside allowed hours (${settings.accessHoursStart} - ${settings.accessHoursEnd})`);
             return res.status(403).json({
                 error: 'Access denied',
                 message: `Access is only allowed between ${settings.accessHoursStart} and ${settings.accessHoursEnd}`
@@ -79,117 +64,96 @@ const timeBasedAccess = (userSettings = null) => {
     };
 };
 
-/**
- * Session Limit Middleware
- * Checks concurrent sessions and enforces limit
- */
 const sessionLimit = async (userId) => {
-    const db = getFirestore(admin.app(), 'default');
-    const sessionsRef = db.collection('admin_users').doc(userId).collection('sessions');
+    if (!supabase) return { currentSessions: 0, invalidatedOldest: false };
 
-    const snapshot = await sessionsRef
-        .where('active', '==', true)
-        .orderBy('createdAt', 'asc')
-        .get();
+    const { data: activeSessions } = await supabase
+        .from('sessions')
+        .select('id, created_at')
+        .eq('user_id', userId)
+        .eq('active', true)
+        .order('created_at', { ascending: true });
 
-    const activeSessions = snapshot.docs;
+    const sessions = activeSessions || [];
     const maxSessions = DEFAULT_SETTINGS.maxConcurrentSessions;
 
-    // If at limit, invalidate oldest session
-    if (activeSessions.length >= maxSessions) {
-        const oldestSession = activeSessions[0];
-        await oldestSession.ref.update({
+    if (sessions.length >= maxSessions) {
+        await supabase.from('sessions').update({
             active: false,
-            invalidatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            invalidationReason: 'session_limit_exceeded'
-        });
+            invalidated_at: Date.now(),
+            invalidation_reason: 'session_limit_exceeded'
+        }).eq('id', sessions[0].id);
     }
 
     return {
-        currentSessions: activeSessions.length,
-        invalidatedOldest: activeSessions.length >= maxSessions
+        currentSessions: sessions.length,
+        invalidatedOldest: sessions.length >= maxSessions
     };
 };
 
-/**
- * Create new session
- * @param {string} userId - User ID
- * @param {Object} metadata - { ip, userAgent }
- */
 const createSession = async (userId, metadata) => {
-    const db = getFirestore(admin.app(), 'default');
-    const sessionsRef = db.collection('admin_users').doc(userId).collection('sessions');
+    if (!supabase) return null;
 
-    // Check session limits first
     await sessionLimit(userId);
 
-    const sessionRef = await sessionsRef.add({
+    const { data } = await supabase.from('sessions').insert({
+        user_id: userId,
         active: true,
-        ip: metadata.ip,
-        userAgent: metadata.userAgent,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastActivity: admin.firestore.FieldValue.serverTimestamp()
-    });
+        ip: metadata.ip || null,
+        user_agent: metadata.userAgent || null,
+        created_at: Date.now(),
+        last_activity: Date.now()
+    }).select('id').single();
 
-    return sessionRef.id;
+    return data?.id || null;
 };
 
-/**
- * Invalidate session
- */
 const invalidateSession = async (userId, sessionId) => {
-    const db = getFirestore(admin.app(), 'default');
-    await db.collection('admin_users').doc(userId)
-        .collection('sessions').doc(sessionId)
-        .update({
-            active: false,
-            invalidatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+    if (!supabase) return;
+    await supabase.from('sessions').update({
+        active: false,
+        invalidated_at: Date.now()
+    }).eq('id', sessionId).eq('user_id', userId);
 };
 
-/**
- * Invalidate all sessions for user
- */
 const invalidateAllSessions = async (userId, reason = 'manual_logout') => {
-    const db = getFirestore(admin.app(), 'default');
-    const sessionsRef = db.collection('admin_users').doc(userId).collection('sessions');
-    const snapshot = await sessionsRef.where('active', '==', true).get();
+    if (!supabase) return { invalidatedCount: 0 };
 
-    const batch = db.batch();
-    snapshot.forEach(doc => {
-        batch.update(doc.ref, {
+    const { data: sessions } = await supabase.from('sessions').select('id').eq('user_id', userId).eq('active', true);
+    const count = (sessions || []).length;
+
+    if (count > 0) {
+        await supabase.from('sessions').update({
             active: false,
-            invalidatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            invalidationReason: reason
-        });
-    });
+            invalidated_at: Date.now(),
+            invalidation_reason: reason
+        }).eq('user_id', userId).eq('active', true);
+    }
 
-    await batch.commit();
-    return { invalidatedCount: snapshot.size };
+    return { invalidatedCount: count };
 };
 
-/**
- * Audit action logging
- */
 const auditLog = async (action, data) => {
-    const db = getFirestore(admin.app(), 'default');
-    await db.collection('audit_logs').add({
+    if (!supabase) return;
+    await supabase.from('audit_logs').insert({
         action,
-        ...data,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
+        performed_by: data.userId || null,
+        target_id: data.targetId || null,
+        target_name: data.targetName || null,
+        details: data.metadata ? data.metadata : (data.details || {}),
+        timestamp: Date.now()
     });
 };
 
-/**
- * Log admin action with before/after state
- */
 const logStateChange = async (action, { userId, targetId, before, after, metadata = {} }) => {
     return auditLog(action, {
-        performedBy: userId,
+        userId,
         targetId,
-        stateBefore: before ? JSON.stringify(before) : null,
-        stateAfter: after ? JSON.stringify(after) : null,
-        ...metadata
+        metadata: {
+            state_before: before ? JSON.stringify(before) : null,
+            state_after: after ? JSON.stringify(after) : null,
+            ...metadata
+        }
     });
 };
 
@@ -198,15 +162,11 @@ const logStateChange = async (action, { userId, targetId, before, after, metadat
 function isIpInRange(ip, cidr) {
     const [range, bitsStr] = cidr.split('/');
     const bits = parseInt(bitsStr, 10);
-
     const ipParts = ip.split('.').map(Number);
     const rangeParts = range.split('.').map(Number);
-
     const ipNum = (ipParts[0] << 24) | (ipParts[1] << 16) | (ipParts[2] << 8) | ipParts[3];
     const rangeNum = (rangeParts[0] << 24) | (rangeParts[1] << 16) | (rangeParts[2] << 8) | rangeParts[3];
-
     const mask = (-1 << (32 - bits)) >>> 0;
-
     return (ipNum & mask) === (rangeNum & mask);
 }
 

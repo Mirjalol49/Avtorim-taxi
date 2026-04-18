@@ -1,9 +1,7 @@
-import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, onSnapshot, doc } from 'firebase/firestore';
+import { supabase } from '../supabase';
 
-// Session storage keys
 const SESSION_KEY = 'avtorim_session';
-const SESSION_CHECK_INTERVAL = 60000; // 60 seconds
+const SESSION_CHECK_INTERVAL = 60000;
 
 export interface AuthUser {
     id: string;
@@ -11,8 +9,8 @@ export interface AuthUser {
     role: 'admin' | 'super_admin' | 'viewer';
     active: boolean;
     createdAt: number;
-    password?: string; // Include password for profile display
-    avatar?: string;   // Include avatar for profile display
+    password?: string;
+    avatar?: string;
 }
 
 export interface AuthSession {
@@ -21,21 +19,12 @@ export interface AuthSession {
     expiresAt: number;
 }
 
-/**
- * Centralized authentication service with proper security checks
- */
 class AuthService {
     private sessionCheckInterval: NodeJS.Timeout | null = null;
     private sessionInvalidatedCallbacks: Array<(reason: string) => void> = [];
 
-    /**
-     * Authenticate an admin user by password
-     * Uses server-side bcrypt verification for security
-     */
     async authenticateAdmin(password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
         try {
-            // Call server login API for bcrypt verification
-            // Use relative path to leverage Vite proxy (avoids CORS/port issues)
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -48,7 +37,6 @@ class AuthService {
                 return { success: false, error: result.error || 'Invalid password' };
             }
 
-            // Successful authentication
             const user: AuthUser = {
                 id: result.user.id,
                 username: result.user.username,
@@ -58,42 +46,35 @@ class AuthService {
                 avatar: result.user.avatar
             };
 
-            // Create session
             this.createSession(user);
-
             return { success: true, user };
-        } catch (error) {
-            console.error('Authentication error:', error);
-
-            // Fallback to direct Firestore query for plain-text passwords (legacy support)
+        } catch (_err) {
+            // Fallback: direct Supabase query (legacy plain-text password support)
             try {
-                const q = query(
-                    collection(db, 'admin_users'),
-                    where('password', '==', password)
-                );
-                const snapshot = await getDocs(q);
+                const { data, error } = await supabase
+                    .from('admin_users')
+                    .select('*')
+                    .eq('password', password)
+                    .eq('active', true)
+                    .limit(1)
+                    .single();
 
-                if (!snapshot.empty) {
-                    const userDoc = snapshot.docs[0];
-                    const userData = userDoc.data();
-
-                    if (userData.active) {
-                        const user: AuthUser = {
-                            id: userDoc.id,
-                            username: userData.username,
-                            role: userData.role || 'admin',
-                            active: userData.active,
-                            createdAt: userData.createdAt,
-                            password: userData.password,
-                            avatar: userData.avatar
-                        };
-
-                        this.createSession(user);
-                        return { success: true, user };
-                    } else {
-                        return { success: false, error: 'Account is disabled' };
-                    }
+                if (error || !data) {
+                    return { success: false, error: 'Invalid password' };
                 }
+
+                const user: AuthUser = {
+                    id: data.id,
+                    username: data.username,
+                    role: data.role || 'admin',
+                    active: data.active,
+                    createdAt: data.created_at,
+                    password: data.password,
+                    avatar: data.avatar
+                };
+
+                this.createSession(user);
+                return { success: true, user };
             } catch (fallbackError) {
                 console.error('Fallback auth error:', fallbackError);
             }
@@ -102,163 +83,85 @@ class AuthService {
         }
     }
 
-    /**
-     * Authenticate a viewer user by password
-     * Checks both password match AND active status
-     */
     async authenticateViewer(password: string): Promise<{ success: boolean; user?: any; error?: string }> {
-        try {
-            // Query viewers collection for matching password
-            const q = query(
-                collection(db, 'viewers'),
-                where('password', '==', password)
-            );
-            const snapshot = await getDocs(q);
+        const { data, error } = await supabase
+            .from('viewers')
+            .select('*')
+            .eq('password', password)
+            .limit(1)
+            .single();
 
-            if (snapshot.empty) {
-                await this.logAuthAttempt('unknown', false, 'Invalid credentials', 'viewer');
-                return { success: false, error: 'Invalid password' };
-            }
-
-            const viewerDoc = snapshot.docs[0];
-            const viewerData = viewerDoc.data();
-
-            // Check if account is active
-            if (!viewerData.active) {
-                await this.logAuthAttempt(viewerData.name || 'unknown', false, 'Account disabled', 'viewer');
-                return { success: false, error: 'Account is disabled. Contact administrator.' };
-            }
-
-            // Successful authentication
-            const user = {
-                id: viewerDoc.id,
-                ...viewerData
-            };
-
-            await this.logAuthAttempt(viewerData.name || user.id, true, 'Login successful', 'viewer');
-
-            return { success: true, user };
-        } catch (error) {
-            console.error('Viewer authentication error:', error);
-            await this.logAuthAttempt('unknown', false, `System error: ${error}`, 'viewer');
-            return { success: false, error: 'Authentication system error. Please try again.' };
+        if (error || !data) {
+            await this.logAuthAttempt('unknown', false, 'Invalid credentials', 'viewer');
+            return { success: false, error: 'Invalid password' };
         }
+
+        if (!data.active) {
+            await this.logAuthAttempt(data.name || 'unknown', false, 'Account disabled', 'viewer');
+            return { success: false, error: 'Account is disabled. Contact administrator.' };
+        }
+
+        await this.logAuthAttempt(data.name || data.id, true, 'Login successful', 'viewer');
+        return { success: true, user: data };
     }
 
-    /**
-     * Log authentication attempt to audit logs
-     */
-    private async logAuthAttempt(
-        username: string,
-        success: boolean,
-        reason: string,
-        userType: 'admin' | 'viewer'
-    ): Promise<void> {
+    private async logAuthAttempt(username: string, success: boolean, reason: string, userType: 'admin' | 'viewer'): Promise<void> {
         try {
-            await addDoc(collection(db, 'audit_logs'), {
+            await supabase.from('audit_logs').insert({
                 action: success ? 'LOGIN_SUCCESS' : 'LOGIN_FAILED',
-                targetName: username,
-                userType,
-                reason,
-                timestamp: Date.now(),
-                ipAddress: this.getClientIP()
+                target_name: username,
+                details: { user_type: userType, reason, ip_address: 'client-browser' },
+                timestamp: Date.now()
             });
         } catch (error) {
             console.error('Failed to log auth attempt:', error);
-            // Don't throw - logging failure shouldn't prevent authentication
         }
     }
 
-    /**
-     * Create a session for authenticated user
-     */
     private createSession(user: AuthUser): void {
         const session: AuthSession = {
             user,
             timestamp: Date.now(),
-            expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+            expiresAt: Date.now() + (24 * 60 * 60 * 1000)
         };
-
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
-        // Start periodic session validation
         this.startSessionCheck();
     }
 
-    /**
-     * Get current session if valid
-     */
     getSession(): AuthSession | null {
         try {
             const sessionData = sessionStorage.getItem(SESSION_KEY);
             if (!sessionData) return null;
-
             const session: AuthSession = JSON.parse(sessionData);
-
-            // Check if session has expired
-            if (Date.now() > session.expiresAt) {
-                this.clearSession();
-                return null;
-            }
-
+            if (Date.now() > session.expiresAt) { this.clearSession(); return null; }
             return session;
-        } catch (error) {
-            console.error('Error reading session:', error);
+        } catch {
             return null;
         }
     }
 
-    /**
-     * Check if current session is still valid (account still active)
-     */
     async checkSessionValidity(): Promise<boolean> {
         const session = this.getSession();
         if (!session) return false;
 
-        try {
-            // Verify user account is still active in database
-            const userDoc = await getDocs(
-                query(collection(db, 'admin_users'), where('__name__', '==', session.user.id))
-            );
+        const { data, error } = await supabase
+            .from('admin_users')
+            .select('active')
+            .eq('id', session.user.id)
+            .single();
 
-            if (userDoc.empty) {
-                // User no longer exists
-                this.invalidateSession('Account no longer exists');
-                return false;
-            }
-
-            const userData = userDoc.docs[0].data();
-            if (!userData.active) {
-                // Account has been disabled
-                this.invalidateSession('Your account has been disabled');
-                return false;
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Error checking session validity:', error);
-            return true; // Don't invalidate on error
-        }
+        if (error || !data) { this.invalidateSession('Account no longer exists'); return false; }
+        if (!data.active) { this.invalidateSession('Your account has been disabled'); return false; }
+        return true;
     }
 
-    /**
-     * Start periodic session validation
-     */
     private startSessionCheck(): void {
-        // Clear existing interval if any
-        if (this.sessionCheckInterval) {
-            clearInterval(this.sessionCheckInterval);
-        }
-
-        // Check session validity every minute
+        if (this.sessionCheckInterval) clearInterval(this.sessionCheckInterval);
         this.sessionCheckInterval = setInterval(async () => {
             await this.checkSessionValidity();
         }, SESSION_CHECK_INTERVAL);
     }
 
-    /**
-     * Stop session validation checks
-     */
     private stopSessionCheck(): void {
         if (this.sessionCheckInterval) {
             clearInterval(this.sessionCheckInterval);
@@ -266,57 +169,29 @@ class AuthService {
         }
     }
 
-    /**
-     * Invalidate current session and notify listeners
-     */
     private invalidateSession(reason: string): void {
         this.clearSession();
-        this.sessionInvalidatedCallbacks.forEach(callback => callback(reason));
+        this.sessionInvalidatedCallbacks.forEach(cb => cb(reason));
     }
 
-    /**
-     * Clear session data and stop checks
-     */
     clearSession(): void {
         sessionStorage.removeItem(SESSION_KEY);
         this.stopSessionCheck();
     }
 
-    /**
-     * Logout user and log the event
-     */
     async logout(): Promise<void> {
         const session = this.getSession();
-        if (session) {
-            await this.logAuthAttempt(session.user.username, true, 'Logout', 'admin');
-        }
+        if (session) await this.logAuthAttempt(session.user.username, true, 'Logout', 'admin');
         this.clearSession();
     }
 
-    /**
-     * Register callback for session invalidation events
-     */
     onSessionInvalidated(callback: (reason: string) => void): () => void {
         this.sessionInvalidatedCallbacks.push(callback);
-
-        // Return unsubscribe function
         return () => {
-            const index = this.sessionInvalidatedCallbacks.indexOf(callback);
-            if (index > -1) {
-                this.sessionInvalidatedCallbacks.splice(index, 1);
-            }
+            const i = this.sessionInvalidatedCallbacks.indexOf(callback);
+            if (i > -1) this.sessionInvalidatedCallbacks.splice(i, 1);
         };
-    }
-
-    /**
-     * Get client IP address (placeholder - in real app would use server-side)
-     */
-    private getClientIP(): string {
-        // In a real application, this would be determined server-side
-        // For now, return a placeholder
-        return 'client-browser';
     }
 }
 
-// Export singleton instance
 export const authService = new AuthService();
