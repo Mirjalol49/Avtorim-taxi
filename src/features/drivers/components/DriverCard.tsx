@@ -49,7 +49,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             }`}>
 
             <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#0d9488]' : 'border-gray-200 group-hover:border-[#0d9488]'
+                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 transition-colors shadow-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#0f766e]' : 'border-gray-200 group-hover:border-[#0f766e]'
                     }`}>
                     <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
                 </div>
@@ -107,8 +107,8 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     <button
                         onClick={handleEdit}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150 active:scale-95 font-medium text-sm ${theme === 'dark'
-                            ? 'bg-[#0d9488]/10 text-[#0d9488] hover:bg-[#0d9488]/20 border border-[#0d9488]/20'
-                            : 'bg-[#0d9488]/10 text-[#0d9488] hover:bg-[#0d9488]/20 border border-[#0d9488]/20'
+                            ? 'bg-[#0f766e]/10 text-[#0f766e] hover:bg-[#0f766e]/20 border border-[#0f766e]/20'
+                            : 'bg-[#0f766e]/10 text-[#0f766e] hover:bg-[#0f766e]/20 border border-[#0f766e]/20'
                             }`}
                     >
                         <EditIcon className="w-4 h-4" />

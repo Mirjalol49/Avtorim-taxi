@@ -188,8 +188,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 }
                                             }}
                                             className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                                ? 'bg-gray-700 border-gray-600 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0 focus:ring-offset-gray-800'
-                                                : 'bg-white border-gray-300 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0'
+                                                ? 'bg-gray-700 border-gray-600 checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                                : 'bg-white border-gray-300 checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0'
                                                 }`}
                                         />
                                     </th>
@@ -228,8 +228,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                         }}
                                                         onClick={(e) => e.stopPropagation()}
                                                         className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                                            ? 'bg-gray-700 border-gray-600 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0 focus:ring-offset-gray-800'
-                                                            : 'bg-white border-gray-300 checked:bg-[#0d9488] checked:border-[#0d9488] hover:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-0'
+                                                            ? 'bg-gray-700 border-gray-600 checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0 focus:ring-offset-gray-800'
+                                                            : 'bg-white border-gray-300 checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0'
                                                             }`}
                                                     />
                                                 </td>
@@ -269,7 +269,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     ? t('salaryRefundDescription')
                                                     : tx.description}
                                             </td>
-                                            <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#0d9488]' : 'text-red-500'}`}>
+                                            <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'}`}>
                                                 {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} <span className="ml-1">UZS</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">

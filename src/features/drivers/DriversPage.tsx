@@ -53,7 +53,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         </div>
                         <input
                             type="text"
-                            className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-[#0d9488] sm:text-sm transition-colors ${theme === 'dark'
+                            className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e] sm:text-sm transition-colors ${theme === 'dark'
                                 ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
                                 : 'bg-gray-50 border-gray-200 text-gray-900'
                                 }`}
@@ -70,8 +70,8 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         <button
                             onClick={onAddDriver}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg ${theme === 'dark'
-                                ? 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
-                                : 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
+                                ? 'bg-gradient-to-r from-[#0f766e] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
+                                : 'bg-gradient-to-r from-[#0f766e] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
                                 }`}
                         >
                             <PlusIcon className="w-5 h-5" />
@@ -85,7 +85,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                     <button
                         onClick={() => setViewMode('grid')}
                         className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid'
-                            ? 'bg-[#0d9488] text-white shadow-md'
+                            ? 'bg-[#0f766e] text-white shadow-md'
                             : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                             }`}
                     >
@@ -94,7 +94,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                     <button
                         onClick={() => setViewMode('list')}
                         className={`p-2.5 rounded-xl transition-all ${viewMode === 'list'
-                            ? 'bg-[#0d9488] text-white shadow-md'
+                            ? 'bg-[#0f766e] text-white shadow-md'
                             : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                             }`}
                     >
@@ -170,7 +170,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
                                         className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                            ? 'bg-[#0d9488] text-white shadow-lg shadow-[#0d9488]/30'
+                                            ? 'bg-[#0f766e] text-white shadow-lg shadow-[#0f766e]/30'
                                             : theme === 'dark'
                                                 ? 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'

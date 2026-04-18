@@ -272,7 +272,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                         <button
                             onClick={() => setViewMode('current')}
                             className={`flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap ${viewMode === 'current'
-                                ? 'bg-[#0d9488] text-white'
+                                ? 'bg-[#0f766e] text-white'
                                 : theme === 'dark'
                                     ? 'bg-gray-800/50 text-gray-400 hover:bg-gray-800 hover:text-gray-300'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
@@ -283,7 +283,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                         <button
                             onClick={() => setViewMode('history')}
                             className={`flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap ${viewMode === 'history'
-                                ? 'bg-[#0d9488] text-white'
+                                ? 'bg-[#0f766e] text-white'
                                 : theme === 'dark'
                                     ? 'bg-gray-800/50 text-gray-400 hover:bg-gray-800 hover:text-gray-300'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
@@ -385,7 +385,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                             </div>
                             <input
                                 type="text"
-                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-[#0d9488] sm:text-sm transition-colors ${theme === 'dark'
+                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e] sm:text-sm transition-colors ${theme === 'dark'
                                     ? 'bg-gray-800 border-gray-600'
                                     : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-500'
                                     }`}
@@ -538,8 +538,8 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                                                                     onPaySalary(driver, effectiveDate);
                                                                 }}
                                                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95 ${theme === 'dark'
-                                                                    ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white'
-                                                                    : 'bg-[#0d9488] hover:bg-[#0f766e] text-white'
+                                                                    ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white'
+                                                                    : 'bg-[#0f766e] hover:bg-[#0f766e] text-white'
                                                                     }`}
                                                             >
                                                                 {t('paySalary')}
@@ -585,7 +585,7 @@ const SalaryManagement: React.FC<SalaryManagementProps> = ({ drivers, transactio
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <span className={`text-lg font-bold font-mono ${isRefunded ? 'line-through text-gray-500' : 'text-[#0d9488]'}`}>
+                                                    <span className={`text-lg font-bold font-mono ${isRefunded ? 'line-through text-gray-500' : 'text-[#0f766e]'}`}>
                                                         {formatNumberSmart(record.amount, false, language)} UZS
                                                     </span>
                                                 </td>

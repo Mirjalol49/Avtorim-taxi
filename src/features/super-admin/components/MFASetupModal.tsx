@@ -123,7 +123,7 @@ const MFASetupModal: React.FC<MFASetupModalProps> = ({
                             <button
                                 onClick={handleSetup}
                                 disabled={loading}
-                                className="w-full py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50"
+                                className="w-full py-3 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50"
                             >
                                 {loading ? 'Setting up...' : 'Continue'}
                             </button>
@@ -156,7 +156,7 @@ const MFASetupModal: React.FC<MFASetupModalProps> = ({
                             <button
                                 onClick={handleVerify}
                                 disabled={loading || verificationCode.length !== 6}
-                                className="w-full py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50"
+                                className="w-full py-3 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50"
                             >
                                 {loading ? 'Verifying...' : 'Verify'}
                             </button>

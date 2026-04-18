@@ -149,8 +149,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0d9488] placeholder-gray-500'
-    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0d9488] placeholder-gray-400'
+    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0f766e] placeholder-gray-500'
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'
     }`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -183,7 +183,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <div className="flex-shrink-0">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>{t('image')} <span className="text-red-500">*</span></label>
-              <div className={`relative group w-24 h-24 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#0d9488]' : 'bg-gray-50 border-gray-200 hover:border-[#0d9488]'
+              <div className={`relative group w-24 h-24 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'
                 }`}>
                 {avatar ? (
                   <img src={avatar} alt="Preview" className="w-full h-full object-cover" />
@@ -284,7 +284,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2.5 bg-[#0d9488] text-white hover:bg-[#0f766e] rounded-xl text-sm font-bold shadow-lg shadow-[#0d9488]/20 transition-all transform active:scale-95 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`px-6 py-2.5 bg-[#0f766e] text-white hover:bg-[#0f766e] rounded-xl text-sm font-bold shadow-lg shadow-[#0f766e]/20 transition-all transform active:scale-95 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? t('saving') : (editingDriver ? t('save') : t('add'))}
             </button>

@@ -93,8 +93,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0d9488] placeholder-gray-500'
-    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0d9488] placeholder-gray-400'
+    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0f766e] placeholder-gray-500'
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'
     }`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -121,7 +121,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               type="button"
               onClick={() => setType(TransactionType.INCOME)}
               className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.INCOME
-                ? 'bg-[#0d9488] text-white shadow-lg'
+                ? 'bg-[#0f766e] text-white shadow-lg'
                 : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                 }`}
             >
@@ -205,7 +205,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
             <button
               type="submit"
               className={`px-6 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all transform active:scale-95 ${type === TransactionType.INCOME
-                ? 'bg-[#0d9488] hover:bg-[#0f766e] shadow-[#0d9488]/20'
+                ? 'bg-[#0f766e] hover:bg-[#0f766e] shadow-[#0f766e]/20'
                 : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
                 }`}
             >

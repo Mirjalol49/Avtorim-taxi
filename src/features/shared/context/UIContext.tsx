@@ -17,21 +17,25 @@ interface UIContextType {
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    // Theme State
-    const [theme] = useState<'dark' | 'light'>('dark'); // Enforced Dark Mode as per App.tsx
+    // Theme State — persisted in localStorage
+    const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+        const saved = localStorage.getItem('avtorim_theme');
+        return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    });
     const { i18n } = useTranslation();
 
     useEffect(() => {
+        const root = document.documentElement;
         if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
+            root.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark');
+            root.classList.remove('dark');
         }
         localStorage.setItem('avtorim_theme', theme);
     }, [theme]);
 
     const toggleTheme = () => {
-        // Theme toggle disabled - Dark mode enforced
+        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
     };
 
     // Language State

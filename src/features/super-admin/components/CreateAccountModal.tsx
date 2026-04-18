@@ -67,7 +67,7 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
                         ⚠️ Share this securely. It cannot be retrieved again.
                     </div>
 
-                    <button onClick={resetAndClose} className="w-full py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all">
+                    <button onClick={resetAndClose} className="w-full py-3 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all">
                         Done
                     </button>
                 </div>
@@ -99,7 +99,7 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
                             required
                             minLength={3}
                             placeholder="e.g. Tashkent City Taxi"
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] transition-all ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] transition-all ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                             value={formData.accountName}
                             onChange={e => setFormData({ ...formData, accountName: e.target.value })}
                         />
@@ -111,7 +111,7 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
                             type="email"
                             required
                             placeholder="admin@company.com"
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] transition-all ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] transition-all ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                             value={formData.email}
                             onChange={e => setFormData({ ...formData, email: e.target.value })}
                         />
@@ -122,7 +122,7 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
                         <input
                             type="text"
                             placeholder="Full Name"
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] transition-all ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] transition-all ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                             value={formData.initialAdminName}
                             onChange={e => setFormData({ ...formData, initialAdminName: e.target.value })}
                         />
@@ -139,7 +139,7 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex justify-center items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="flex-1 py-3 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex justify-center items-center disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {loading ? (
                                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -85,7 +85,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 outline-none ${theme === 'dark'
                         ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
                         : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
-                        } ${isOpen ? `ring-2 ring-[#0d9488] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}` : ''}`}
+                        } ${isOpen ? `ring-2 ring-[#0f766e] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}` : ''}`}
                     type="button"
                 >
                     <span className="truncate text-sm">{displayValue}</span>
@@ -141,8 +141,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                         className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm text-left transition-all duration-150 ${index > 0 ? `border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}` : ''
                                             } ${value === option.id
                                                 ? theme === 'dark'
-                                                    ? 'bg-[#0d9488] text-white font-semibold'
-                                                    : 'bg-[#0d9488] text-white font-semibold'
+                                                    ? 'bg-[#0f766e] text-white font-semibold'
+                                                    : 'bg-[#0f766e] text-white font-semibold'
                                                 : theme === 'dark'
                                                     ? 'text-gray-200 hover:bg-gray-800/60'
                                                     : 'text-gray-700 hover:bg-gray-50'

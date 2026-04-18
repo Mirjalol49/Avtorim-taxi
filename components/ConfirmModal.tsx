@@ -42,7 +42,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           {showIcon && (
             <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isDanger
               ? 'bg-red-100 text-red-600'
-              : theme === 'dark' ? 'bg-[#0d9488]/20 text-[#0d9488]' : 'bg-[#0d9488]/10 text-[#0d9488]'
+              : theme === 'dark' ? 'bg-[#0f766e]/20 text-[#0f766e]' : 'bg-[#0f766e]/10 text-[#0f766e]'
               }`}>
               <SirenIcon className="h-6 w-6" />
             </div>
@@ -62,7 +62,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               onClick={onConfirm}
               className={`px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all min-w-[100px] ${isDanger
                 ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-                : 'bg-[#0d9488] hover:bg-[#0f766e] shadow-[#0d9488]/20'
+                : 'bg-[#0f766e] hover:bg-[#0f766e] shadow-[#0f766e]/20'
                 }`}
             >
               {confirmLabel || t('confirm')}

@@ -215,8 +215,8 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, adminData, onU
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 border ${theme === 'dark'
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0d9488] placeholder-gray-500'
-    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0d9488] placeholder-gray-400'
+    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0f766e] placeholder-gray-500'
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'
     } ${(isReadOnly || isSaving) ? 'opacity-50 cursor-not-allowed' : ''}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -258,7 +258,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, adminData, onU
           {/* Avatar Section */}
           <div className="flex justify-center mb-6">
             <div className={`relative group w-28 h-28 rounded-full overflow-hidden border-4 transition-all ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
-              } ${(!isReadOnly && !isSaving) ? 'cursor-pointer hover:border-[#0d9488]' : ''}`}>
+              } ${(!isReadOnly && !isSaving) ? 'cursor-pointer hover:border-[#0f766e]' : ''}`}>
 
               {/* Loading overlay */}
               {(isSaving || imageLoading) && (
@@ -428,7 +428,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, adminData, onU
                   ? 'bg-green-500 text-white cursor-default'
                   : isSaving || !hasChanges || !!nameError
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#0d9488] text-white hover:bg-[#0f766e] shadow-lg shadow-[#0d9488]/20 active:scale-95'
+                    : 'bg-[#0f766e] text-white hover:bg-[#0f766e] shadow-lg shadow-[#0f766e]/20 active:scale-95'
                   }`}
               >
                 {saveSuccess ? (

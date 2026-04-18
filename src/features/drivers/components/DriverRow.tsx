@@ -64,7 +64,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleStatusToggle}
-                            className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-2 ${driver.status === DriverStatus.ACTIVE
+                            className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-2 ${driver.status === DriverStatus.ACTIVE
                                 ? 'bg-green-500'
                                 : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
                                 }`}
@@ -99,7 +99,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     <div className="flex items-center justify-center gap-2">
                         <button
                             onClick={handleEdit}
-                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-[#0d9488] hover:bg-[#0d9488]/10' : 'text-gray-500 hover:text-[#0d9488] hover:bg-[#0d9488]/10'
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-[#0f766e] hover:bg-[#0f766e]/10' : 'text-gray-500 hover:text-[#0f766e] hover:bg-[#0f766e]/10'
                                 }`}
                         >
                             <EditIcon className="w-4 h-4" />

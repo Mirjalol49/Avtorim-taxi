@@ -84,7 +84,7 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
                     </p>
                     <button
                         onClick={() => { resetForm(); onClose(); }}
-                        className="w-full py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl font-bold"
+                        className="w-full py-3 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-bold"
                     >
                         Done
                     </button>
@@ -131,7 +131,7 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
                             placeholder="admin@company.com"
                             value={formData.email}
                             onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] ${theme === 'dark'
                                     ? 'bg-gray-900 border-gray-700 text-white'
                                     : 'bg-gray-50 border-gray-200 text-gray-900'
                                 }`}
@@ -150,7 +150,7 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
                             placeholder="unique_username"
                             value={formData.username}
                             onChange={e => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] font-mono ${theme === 'dark'
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] font-mono ${theme === 'dark'
                                     ? 'bg-gray-900 border-gray-700 text-white'
                                     : 'bg-gray-50 border-gray-200 text-gray-900'
                                 }`}
@@ -167,7 +167,7 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
                             placeholder="Full Name"
                             value={formData.displayName}
                             onChange={e => setFormData({ ...formData, displayName: e.target.value })}
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] ${theme === 'dark'
                                     ? 'bg-gray-900 border-gray-700 text-white'
                                     : 'bg-gray-50 border-gray-200 text-gray-900'
                                 }`}
@@ -186,7 +186,7 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
                             placeholder="••••••••••••"
                             value={formData.password}
                             onChange={e => setFormData({ ...formData, password: e.target.value })}
-                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] ${theme === 'dark'
+                            className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] ${theme === 'dark'
                                     ? 'bg-gray-900 border-gray-700 text-white'
                                     : 'bg-gray-50 border-gray-200 text-gray-900'
                                 }`}
@@ -216,7 +216,7 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
                         <button
                             type="submit"
                             disabled={loading || !passwordValid || !formData.email || !formData.username}
-                            className="flex-1 py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 py-3 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Creating...' : 'Create Account'}
                         </button>

@@ -103,7 +103,7 @@ const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ theme = 'dark' }) => {
                     </select>
                     <button
                         onClick={fetchLogs}
-                        className="px-3 py-2 bg-[#0d9488] text-white rounded-lg text-sm font-bold hover:bg-[#0f766e]"
+                        className="px-3 py-2 bg-[#0f766e] text-white rounded-lg text-sm font-bold hover:bg-[#0f766e]"
                     >
                         Refresh
                     </button>
@@ -114,7 +114,7 @@ const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ theme = 'dark' }) => {
             <div className="max-h-[500px] overflow-y-auto">
                 {loading ? (
                     <div className="p-8 text-center">
-                        <div className="w-8 h-8 border-2 border-[#0d9488] border-t-transparent rounded-full animate-spin mx-auto" />
+                        <div className="w-8 h-8 border-2 border-[#0f766e] border-t-transparent rounded-full animate-spin mx-auto" />
                     </div>
                 ) : filteredLogs.length === 0 ? (
                     <div className={`p-8 text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>

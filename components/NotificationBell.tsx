@@ -131,7 +131,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                     onClick={() => {
                                         onMarkAllAsRead();
                                     }}
-                                    className="text-xs text-[#0d9488] hover:text-[#0f766e] font-medium"
+                                    className="text-xs text-[#0f766e] hover:text-[#0f766e] font-medium"
                                 >
                                     {t('markAllAsRead') || 'Mark all as read'}
                                 </button>
@@ -179,7 +179,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                                             } ${isRead ? '' : 'font-semibold'}`}>
                                                             {notification.title}
                                                         </h4>
-                                                        {!isRead && <span className="w-2 h-2 bg-[#0d9488] rounded-full flex-shrink-0" />}
+                                                        {!isRead && <span className="w-2 h-2 bg-[#0f766e] rounded-full flex-shrink-0" />}
                                                     </div>
                                                     <p className={`text-xs mt-1 line-clamp-2 ${isRead
                                                         ? theme === 'dark' ? 'text-gray-400' : 'text-gray-500'

@@ -178,7 +178,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                                         onClick={() => handleDayClick(day)}
                                         disabled={!isCurrentMonth}
                                         className={`h-7 w-7 flex items-center justify-center text-[10px] rounded-md transition-all mx-auto ${isSelected(day)
-                                            ? 'bg-[#0d9488] text-white font-bold shadow-sm'
+                                            ? 'bg-[#0f766e] text-white font-bold shadow-sm'
                                             : isToday(day)
                                                 ? theme === 'dark'
                                                     ? 'bg-blue-500/20 text-blue-400 font-bold'

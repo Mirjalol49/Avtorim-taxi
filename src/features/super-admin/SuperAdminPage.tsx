@@ -105,7 +105,7 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
                     </div>
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-[#0d9488] text-white rounded-xl font-bold shadow-lg shadow-[#0d9488]/20 hover:bg-[#0f766e] active:scale-95 transition-all"
+                        className="flex items-center gap-2 px-6 py-3 bg-[#0f766e] text-white rounded-xl font-bold shadow-lg shadow-[#0f766e]/20 hover:bg-[#0f766e] active:scale-95 transition-all"
                     >
                         <span>+</span> Create Account
                     </button>
@@ -138,7 +138,7 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as Tab)}
                             className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all ${activeTab === tab.id
-                                    ? 'bg-[#0d9488] text-white shadow-lg'
+                                    ? 'bg-[#0f766e] text-white shadow-lg'
                                     : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
@@ -220,7 +220,7 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
                                             setSelectedUser({ id: 'current', username: 'mirjalol' });
                                             setMfaModalOpen(true);
                                         }}
-                                        className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-lg font-bold text-sm"
+                                        className="px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-lg font-bold text-sm"
                                     >
                                         Setup MFA
                                     </button>

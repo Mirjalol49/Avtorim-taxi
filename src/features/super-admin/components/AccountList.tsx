@@ -63,7 +63,7 @@ export const AccountList: React.FC<AccountListProps> = ({ accounts, loading, the
                 placeholder="Search accounts..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0d9488] transition-all ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] transition-all ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
             />
 
             <div className={`rounded-2xl border overflow-hidden ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'}`}>

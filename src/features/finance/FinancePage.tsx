@@ -81,7 +81,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
             {/* Yearly Stats Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Yearly Income */}
-                <div className="bg-[#0d9488] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
+                <div className="bg-[#0f766e] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg relative overflow-hidden group transition-all hover:shadow-xl">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                         <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
                     </div>
@@ -133,7 +133,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     </div>
                     <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#0d9488] border-gray-700' : 'bg-[#0d9488]/10 text-[#0d9488] border-[#0d9488]/20'}`}>
+                            <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#0f766e] border-gray-700' : 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/20'}`}>
                                 <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                             </div>
                             <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{analyticsYear} {t('netProfit')}</p>
@@ -217,7 +217,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                 itemStyle={{ fontSize: '12px', fontWeight: 600 }}
                                 formatter={(value: number) => value.toLocaleString()}
                             />
-                            <Bar dataKey="Income" name={t('income')} fill="#0d9488" radius={[6, 6, 0, 0]} />
+                            <Bar dataKey="Income" name={t('income')} fill="#0f766e" radius={[6, 6, 0, 0]} />
                             <Bar dataKey="Expense" name={t('expense')} fill="#EF4444" radius={[6, 6, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>

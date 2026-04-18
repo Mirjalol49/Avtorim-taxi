@@ -220,12 +220,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                   spellCheck="false"
                   autoFocus
                   disabled={success || lockoutTime > 0}
-                  className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#0d9488]/50 transition-all duration-150 ${isDark
+                  className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#0f766e]/50 transition-all duration-150 ${isDark
                     ? 'bg-gray-900/50 text-white placeholder-gray-600'
                     : 'bg-gray-50 text-gray-900 placeholder-gray-400'
                     } ${error
                       ? 'border-red-500 shake-animation'
-                      : isDark ? 'border-gray-700 group-hover:border-[#0d9488]/50' : 'border-gray-200 group-hover:border-[#0d9488]/50'
+                      : isDark ? 'border-gray-700 group-hover:border-[#0f766e]/50' : 'border-gray-200 group-hover:border-[#0f766e]/50'
                     }`}
                 />
               </div>
@@ -254,7 +254,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                   : lockoutTime > 0
                     ? isDark ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : password
-                      ? 'bg-gradient-to-r from-[#0d9488] to-[#0f766e] text-white hover:shadow-[#0d9488]/25 hover:scale-[1.02] active:scale-[0.98]'
+                      ? 'bg-gradient-to-r from-[#0f766e] to-[#0f766e] text-white hover:shadow-[#0f766e]/25 hover:scale-[1.02] active:scale-[0.98]'
                       : isDark
                         ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -293,8 +293,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                     key={viewer.id}
                     onClick={() => loginSuccess('viewer', viewer)}
                     className={`w-full p-4 rounded-xl border text-left transition-all ${isDark
-                        ? 'bg-gray-800 border-gray-700 hover:border-[#0d9488] hover:bg-gray-700'
-                        : 'bg-gray-50 border-gray-200 hover:border-[#0d9488] hover:bg-gray-100'
+                        ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e] hover:bg-gray-700'
+                        : 'bg-gray-50 border-gray-200 hover:border-[#0f766e] hover:bg-gray-100'
                       }`}
                   >
                     <div className="flex items-center justify-between">
@@ -304,7 +304,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                           {resolvingAdmins[viewer.createdBy] ? `Fleet: ${resolvingAdmins[viewer.createdBy]}` : 'Loading...'}
                         </p>
                       </div>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-[#0d9488]/20 text-[#0d9488]' : 'bg-[#0d9488]/10 text-[#0d9488]'
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-[#0f766e]/20 text-[#0f766e]' : 'bg-[#0f766e]/10 text-[#0f766e]'
                         }`}>
                         <UserIcon className="w-4 h-4" />
                       </div>
@@ -332,7 +332,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                 key={l}
                 onClick={() => i18n.changeLanguage(l)}
                 className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg border transition-all ${lang === l
-                  ? 'text-[#0d9488] border-[#0d9488]/30 bg-[#0d9488]/10'
+                  ? 'text-[#0f766e] border-[#0f766e]/30 bg-[#0f766e]/10'
                   : isDark ? 'text-gray-600 border-transparent hover:text-gray-400' : 'text-gray-400 border-transparent hover:text-gray-600'
                   }`}
               >

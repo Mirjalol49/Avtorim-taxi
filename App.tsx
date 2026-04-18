@@ -376,7 +376,7 @@ const AppContent: React.FC = () => {
       <button
         onClick={() => { navigate(path); setIsSidebarOpen(false); }}
         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all mb-2 ${isActive
-          ? 'bg-[#0d9488] text-white shadow-lg shadow-teal-900/20'
+          ? 'bg-[#0f766e] text-white shadow-lg shadow-teal-900/20'
           : theme === 'dark'
             ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
             : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
@@ -405,10 +405,10 @@ const AppContent: React.FC = () => {
   );
 
   const getBadgeColor = (index: number) => {
-    if (index === 0) return "text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]"; // Gold
-    if (index === 1) return "text-slate-300 drop-shadow-[0_0_12px_rgba(203,213,225,0.6)]"; // Silver
-    if (index === 2) return "text-orange-400 drop-shadow-[0_0_12px_rgba(251,146,60,0.6)]"; // Bronze
-    return "text-slate-700 opacity-20";
+    if (index === 0) return "text-yellow-500"; // Gold
+    if (index === 1) return "text-slate-400";  // Silver
+    if (index === 2) return "text-orange-500"; // Bronze
+    return "text-slate-600 opacity-20";
   };
 
   if (!isAuthenticated) return <AuthScreen onAuthenticated={handleLogin} theme={theme} />;
@@ -420,10 +420,10 @@ const AppContent: React.FC = () => {
         }`}>
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className={`w-12 h-12 rounded-full border-4 border-t-transparent animate-spin ${theme === 'dark' ? 'border-[#0d9488]' : 'border-[#0f766e]'
+            <div className={`w-12 h-12 rounded-full border-4 border-t-transparent animate-spin ${theme === 'dark' ? 'border-[#0f766e]' : 'border-[#0f766e]'
               }`} />
             <div className={`absolute inset-0 flex items-center justify-center`}>
-              <ShieldIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-[#0d9488]' : 'text-[#0f766e]'
+              <ShieldIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-[#0f766e]' : 'text-[#0f766e]'
                 }`} />
             </div>
           </div>
@@ -492,7 +492,25 @@ const AppContent: React.FC = () => {
 
         {/* Sidebar Bottom Section */}
         <div className="px-6 pb-4 space-y-3 md:hidden">
-          {/* Theme Toggle Removed - Dark Mode Enforced */}
+            {/* Theme Toggle - Mobile */}
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${theme === 'dark'
+              ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300'
+              : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              {theme === 'dark'
+                ? <SunIcon className="w-5 h-5 text-amber-400" />
+                : <MoonIcon className="w-5 h-5 text-gray-500" />
+              }
+              <span className="font-medium text-sm">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </div>
+            <div className={`w-10 h-5 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-gray-600' : 'bg-[#0f766e]'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${theme === 'dark' ? 'left-0.5' : 'left-5'}`} />
+            </div>
+          </button>
 
           {/* Language Selector - Mobile Only */}
           <button
@@ -688,8 +706,8 @@ const AppContent: React.FC = () => {
           {location.pathname === '/drivers' && userRole === 'admin' && (
             <>
               <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center justify-center gap-2 border px-3 py-2 rounded-xl font-medium text-xs transition-all w-full sm:w-auto ${theme === 'dark'
-                ? 'bg-[#0d9488] hover:bg-[#0f766e] border-transparent text-white'
-                : 'bg-[#0d9488] hover:bg-[#0f766e] border-transparent text-white shadow-sm'
+                ? 'bg-[#0f766e] hover:bg-[#0f766e] border-transparent text-white'
+                : 'bg-[#0f766e] hover:bg-[#0f766e] border-transparent text-white shadow-sm'
                 }`}>
                 <PlusIcon className="w-4 h-4" /> <span>{t.add}</span>
               </button>
@@ -698,8 +716,8 @@ const AppContent: React.FC = () => {
 
           {(location.pathname === '/finance' || location.pathname === '/dashboard' || location.pathname === '/transactions') && userRole === 'admin' && (
             <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
-              ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-blue-900/20'
-              : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-blue-500/30'
+              ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-blue-900/20'
+              : 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-blue-500/30'
               }`}>
               <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
             </button>

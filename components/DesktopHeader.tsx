@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  GlobeIcon, ChevronDownIcon, PlusIcon
+  GlobeIcon, ChevronDownIcon, PlusIcon, SunIcon, MoonIcon
 } from './Icons';
 import { Tab } from '../types';
 import NotificationBell from './NotificationBell';
@@ -111,15 +111,27 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       {/* RIGHT SECTION - Controls and Actions */}
       <div className="flex items-center gap-3">
 
+        {/* THEME TOGGLE */}
+        <button
+          onClick={onThemeToggle}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className={`p-2 rounded-lg border transition-all ${theme === 'dark'
+            ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400 hover:text-gray-200'
+            : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-500 hover:text-gray-700'
+            }`}
+        >
+          {theme === 'dark'
+            ? <SunIcon className="w-4 h-4" />
+            : <MoonIcon className="w-4 h-4" />
+          }
+        </button>
+
 
         {/* ACTION BUTTON - New Transaction (Finance/Dashboard) */}
         {(activeTab === Tab.DASHBOARD || activeTab === Tab.FINANCE) && userRole === 'admin' && (
           <button
             onClick={onNewTransactionClick}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${theme === 'dark'
-              ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-sm'
-              : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-sm'
-              }`}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-[#0f766e] hover:bg-[#0a5c56] text-white shadow-sm transition-all active:scale-95"
           >
             <PlusIcon className="w-4 h-4" />
             <span>{t('newTransfer')}</span>
@@ -170,8 +182,8 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                   onClick={() => handleLanguageChange(lang)}
                   className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${i18n.language === lang
                     ? theme === 'dark'
-                      ? 'bg-gray-700 text-[#0d9488]'
-                      : 'bg-gray-100 text-[#0d9488]'
+                      ? 'bg-gray-700 text-[#0f766e]'
+                      : 'bg-gray-100 text-[#0f766e]'
                     : theme === 'dark'
                       ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
@@ -188,7 +200,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                     {lang === 'en' && 'English'}
                   </span>
                   {i18n.language === lang && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0d9488]" />
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0f766e]" />
                   )}
                 </button>
               ))}
