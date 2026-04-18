@@ -17,6 +17,25 @@ export const useAuth = () => {
         const role = localStorage.getItem('avtorim_role');
         const viewerAuth = localStorage.getItem('avtorim_viewer_auth');
         const adminAuth = localStorage.getItem('avtorim_admin_auth');
+
+        // If admin auth, verify stored user ID is a valid UUID — clear stale Firebase sessions
+        if (role === 'admin' && adminAuth === 'true') {
+            const savedAdmin = localStorage.getItem('avtorim_admin_user');
+            if (savedAdmin) {
+                try {
+                    const parsed = JSON.parse(savedAdmin);
+                    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    if (!UUID_RE.test(parsed?.id ?? '')) {
+                        localStorage.removeItem('avtorim_admin_auth');
+                        localStorage.removeItem('avtorim_admin_user');
+                        localStorage.removeItem('avtorim_role');
+                        localStorage.removeItem('avtorim_auth');
+                        return false;
+                    }
+                } catch { /* ignore */ }
+            }
+        }
+
         return (role === 'viewer' && viewerAuth === 'true') || (role === 'admin' && adminAuth === 'true');
     });
 
