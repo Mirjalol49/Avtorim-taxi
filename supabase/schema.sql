@@ -301,3 +301,20 @@ ALTER TABLE audit_logs           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE mfa_config           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE password_history     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions             DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- Grant access to anon and authenticated roles
+-- (Required for PostgREST / Supabase client queries)
+-- ============================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated;
+
+-- ============================================================
+-- Seed: initial super_admin account
+-- Login password: Taksapark2024  (change after first login)
+-- ============================================================
+INSERT INTO admin_users (username, password, role, active, status, created_ms)
+VALUES ('mirjalol', 'Taksapark2024', 'super_admin', TRUE, 'active', EXTRACT(EPOCH FROM NOW())::BIGINT * 1000)
+ON CONFLICT (username) DO NOTHING;
