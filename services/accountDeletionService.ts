@@ -68,7 +68,7 @@ export const permanentlyDeleteAdminAccount = async (
             account_role: accountRow.role,
             account_created_at: accountRow.created_at
         },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     result.success = true;

@@ -106,7 +106,7 @@ export const reconcileSalaryTransactions = async (
         totalTransactions: salaryTransactions.filter(t => t.status !== PaymentStatus.REVERSED).length,
         matchedCount,
         discrepancies,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     };
 };
 

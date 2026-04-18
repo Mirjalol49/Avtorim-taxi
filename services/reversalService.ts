@@ -50,7 +50,7 @@ export const reverseSalaryPayment = async (
             amount: originalAmount,
             type: TransactionType.INCOME,
             description: `Salary reversal: ${reason}`,
-            timestamp: Date.now(),
+            timestamp_ms: Date.now(),
             status: PaymentStatus.COMPLETED,
             original_transaction_id: transactionId,
             fleet_id: fleetId ?? null
@@ -95,7 +95,7 @@ export const approveReversal = async (reversalId: string, approvedBy: string, _f
         amount: reversal.amount,
         type: TransactionType.INCOME,
         description: `Salary reversal (approved): ${reversal.reason}`,
-        timestamp: Date.now(),
+        timestamp_ms: Date.now(),
         status: PaymentStatus.COMPLETED,
         original_transaction_id: reversal.transaction_id,
         fleet_id: reversal.fleet_id ?? null
@@ -162,7 +162,7 @@ export const refundSalaryPayment = async (
                 amount,
                 type: TransactionType.INCOME,
                 description: `Salary Refund: ${description || 'Manual Correction'}`,
-                timestamp: Date.now(),
+                timestamp_ms: Date.now(),
                 status: PaymentStatus.COMPLETED,
                 fleet_id: fleetId ?? null
             });
@@ -173,7 +173,7 @@ export const refundSalaryPayment = async (
             amount,
             type: TransactionType.INCOME,
             description: `Salary Refund: ${description || 'Manual Correction'}`,
-            timestamp: Date.now(),
+            timestamp_ms: Date.now(),
             status: PaymentStatus.COMPLETED,
             fleet_id: fleetId ?? null
         });
@@ -189,6 +189,6 @@ export const refundSalaryPayment = async (
         },
         performed_by_name: refundedBy,
         fleet_id: fleetId ?? null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };

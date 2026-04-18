@@ -202,7 +202,7 @@ app.post('/api/auth/login', async (req, res) => {
                         action: 'LOGIN_SUCCESS',
                         target_id: user.id,
                         target_name: user.username,
-                        timestamp: Date.now()
+                        timestamp_ms: Date.now()
                     });
 
                     return res.json({
@@ -225,7 +225,7 @@ app.post('/api/auth/login', async (req, res) => {
                     action: 'LOGIN_SUCCESS_LEGACY',
                     target_id: user.id,
                     target_name: user.username,
-                    timestamp: Date.now()
+                    timestamp_ms: Date.now()
                 });
 
                 return res.json({
@@ -246,7 +246,7 @@ app.post('/api/auth/login', async (req, res) => {
         await supabase.from('audit_logs').insert({
             action: 'LOGIN_FAILED',
             details: { reason: 'Invalid credentials' },
-            timestamp: Date.now()
+            timestamp_ms: Date.now()
         });
 
         return res.status(401).json({ success: false, error: 'Invalid password' });

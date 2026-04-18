@@ -72,7 +72,7 @@ const sessionLimit = async (userId) => {
         .select('id, created_at')
         .eq('user_id', userId)
         .eq('active', true)
-        .order('created_at', { ascending: true });
+        .order('created_ms', { ascending: true });
 
     const sessions = activeSessions || [];
     const maxSessions = DEFAULT_SETTINGS.maxConcurrentSessions;
@@ -101,7 +101,7 @@ const createSession = async (userId, metadata) => {
         active: true,
         ip: metadata.ip || null,
         user_agent: metadata.userAgent || null,
-        created_at: Date.now(),
+        created_ms: Date.now(),
         last_activity: Date.now()
     }).select('id').single();
 
@@ -141,7 +141,7 @@ const auditLog = async (action, data) => {
         target_id: data.targetId || null,
         target_name: data.targetName || null,
         details: data.metadata ? data.metadata : (data.details || {}),
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };
 

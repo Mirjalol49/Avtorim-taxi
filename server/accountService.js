@@ -32,7 +32,7 @@ const createAccount = async (data, createdBy) => {
         verification_token: verificationToken,
         verification_expires_at: expiresAt,
         active: false,
-        created_at: Date.now(),
+        created_ms: Date.now(),
         created_by: createdBy || null
     }).select('id').single();
 
@@ -46,7 +46,7 @@ const createAccount = async (data, createdBy) => {
         target_name: username,
         performed_by: createdBy || null,
         details: { email, status: 'pending_verification' },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     return { success: true, accountId: row.id, verificationToken };
@@ -90,7 +90,7 @@ const approveAccount = async (accountId, approvedBy) => {
         action: 'ACCOUNT_APPROVED',
         target_id: accountId,
         performed_by: approvedBy || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     return { success: true };
@@ -110,7 +110,7 @@ const rejectAccount = async (accountId, rejectedBy, reason) => {
         target_id: accountId,
         performed_by: rejectedBy || null,
         details: { reason },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     return { success: true };
@@ -135,7 +135,7 @@ const getPendingAccounts = async () => {
         .from('admin_users')
         .select('*')
         .eq('status', 'pending_approval')
-        .order('created_at', { ascending: false });
+        .order('created_ms', { ascending: false });
     return data || [];
 };
 
@@ -146,7 +146,7 @@ const toggleAccountStatus = async (accountId, active, performedBy) => {
         action: active ? 'ACCOUNT_ENABLED' : 'ACCOUNT_DISABLED',
         target_id: accountId,
         performed_by: performedBy || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     if (!active) {
@@ -161,7 +161,7 @@ const toggleAccountStatus = async (accountId, active, performedBy) => {
 };
 
 const listAccounts = async () => {
-    const { data } = await supabase.from('admin_users').select('id, username, role, active, created_at, email, status');
+    const { data } = await supabase.from('admin_users').select('id, username, role, active, created_ms, email, status');
     return data || [];
 };
 
@@ -178,7 +178,7 @@ const changePassword = async (accountId, newPassword, performedBy) => {
         action: 'PASSWORD_CHANGED',
         target_id: accountId,
         performed_by: performedBy || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     return { success: true };
@@ -189,7 +189,7 @@ const getSessions = async (userId) => {
         .from('sessions')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_ms', { ascending: false });
     return data || [];
 };
 
@@ -204,7 +204,7 @@ const logoutAllSessions = async (userId, performedBy) => {
         action: 'LOGOUT_ALL_SESSIONS',
         target_id: userId,
         performed_by: performedBy || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     return { success: true };

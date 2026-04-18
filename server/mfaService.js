@@ -36,7 +36,7 @@ const generateMFASecret = async (userId, username) => {
         secret: secret.base32,
         enabled: false,
         backup_codes: hashedBackupCodes,
-        updated_at: Date.now()
+        updated_ms: Date.now()
     });
 
     return { secret: secret.base32, qrCodeDataUrl, backupCodes };
@@ -55,7 +55,7 @@ const verifyTOTP = async (userId, token) => {
     });
 
     if (verified && !mfaRow.enabled) {
-        await supabase.from('mfa_config').update({ enabled: true, updated_at: Date.now() }).eq('user_id', userId);
+        await supabase.from('mfa_config').update({ enabled: true, updated_ms: Date.now() }).eq('user_id', userId);
     }
 
     return { valid: verified, message: verified ? 'MFA verified' : 'Invalid verification code' };
@@ -82,7 +82,7 @@ const verifyBackupCode = async (userId, code) => {
     backupCodes[foundIndex].used = true;
     backupCodes[foundIndex].usedAt = new Date().toISOString();
 
-    await supabase.from('mfa_config').update({ backup_codes: backupCodes, updated_at: Date.now() }).eq('user_id', userId);
+    await supabase.from('mfa_config').update({ backup_codes: backupCodes, updated_ms: Date.now() }).eq('user_id', userId);
 
     const remainingCodes = backupCodes.filter(c => !c.used).length;
     return { valid: true, message: 'Backup code verified', remainingCodes };
@@ -100,7 +100,7 @@ const disableMFA = async (userId, adminId) => {
         action: 'MFA_DISABLED',
         target_id: userId,
         performed_by: adminId || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
     return { success: true };
 };
@@ -112,7 +112,7 @@ const regenerateBackupCodes = async (userId) => {
     const backupCodes = generateBackupCodes();
     const hashedBackupCodes = backupCodes.map(code => ({ code: hashBackupCode(code), used: false }));
 
-    await supabase.from('mfa_config').update({ backup_codes: hashedBackupCodes, updated_at: Date.now() }).eq('user_id', userId);
+    await supabase.from('mfa_config').update({ backup_codes: hashedBackupCodes, updated_ms: Date.now() }).eq('user_id', userId);
 
     return backupCodes;
 };

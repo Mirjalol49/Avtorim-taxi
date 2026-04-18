@@ -16,14 +16,14 @@ export const subscribeToAdminUsers = (callback: (users: any[]) => void) => {
         .from('admin_users')
         .select('*')
         .then(({ data }) => {
-            if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_at) })));
+            if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_ms) })));
         });
 
     const channel = supabase
         .channel('admin_users_changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
             supabase.from('admin_users').select('*').then(({ data }) => {
-                if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_at) })));
+                if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_ms) })));
             });
         })
         .subscribe();
@@ -40,7 +40,7 @@ export const addAdminUser = async (user: any, performedBy: string) => {
             role: user.role || 'admin',
             active: user.active ?? true,
             avatar: user.avatar ?? null,
-            created_at: Date.now(),
+            created_ms: Date.now(),
             created_by: performedBy || null
         })
         .select('id')
@@ -54,7 +54,7 @@ export const addAdminUser = async (user: any, performedBy: string) => {
         fleet_id: userId,
         username: user.username,
         initialized: true,
-        created_at: Date.now(),
+        created_ms: Date.now(),
         created_by: performedBy || null
     });
 
@@ -63,7 +63,7 @@ export const addAdminUser = async (user: any, performedBy: string) => {
         target_id: userId,
         target_name: user.username,
         performed_by: performedBy || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 
     const { clearNotificationsForNewAccount } = await import('./notificationService');
@@ -90,7 +90,7 @@ export const updateAdminUser = async (id: string, updates: any, performedBy: str
         target_id: id,
         performed_by: performedBy || null,
         details: { updates: JSON.stringify(updates) },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };
 
@@ -103,7 +103,7 @@ export const deleteAdminUser = async (id: string, username: string, performedBy:
         target_id: id,
         target_name: username,
         performed_by: performedBy || null,
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };
 
@@ -141,7 +141,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             .select('*')
             .eq('fleet_id', fleetId ?? null)
             .then(({ data }) => {
-                if (data) callback(data.map(r => ({ ...r, id: r.id, createdAt: toMs(r.created_at) } as Driver)));
+                if (data) callback(data.map(r => ({ ...r, id: r.id, createdAt: toMs(r.created_ms) } as Driver)));
             });
 
     fetchDrivers();
@@ -157,7 +157,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
 export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) => {
     const { data, error } = await supabase
         .from('drivers')
-        .insert({ ...driver, fleet_id: fleetId ?? null, created_at: Date.now() })
+        .insert({ ...driver, fleet_id: fleetId ?? null, created_ms: Date.now() })
         .select('id')
         .single();
     if (error) throw error;
@@ -179,7 +179,7 @@ export const deleteDriver = async (id: string, auditInfo?: { adminName: string; 
             target_id: id,
             performed_by_name: auditInfo.adminName,
             details: { reason: auditInfo.reason || 'No reason provided', fleet_id: fleetId ?? 'global' },
-            timestamp: Date.now()
+            timestamp_ms: Date.now()
         });
     }
 };
@@ -209,7 +209,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleetId?: string) => {
     const { data, error } = await supabase
         .from('transactions')
-        .insert({ ...transaction, fleet_id: fleetId ?? null, created_at: Date.now() })
+        .insert({ ...transaction, fleet_id: fleetId ?? null, created_ms: Date.now() })
         .select('id')
         .single();
     if (error) throw error;
@@ -231,7 +231,7 @@ export const deleteTransaction = async (id: string, auditInfo?: { adminName: str
                 fleet_id: fleetId ?? 'global',
                 type: 'SOFT_DELETE'
             },
-            timestamp: Date.now()
+            timestamp_ms: Date.now()
         });
     }
 };
@@ -250,7 +250,7 @@ export const deleteTransactionsBatch = async (ids: string[], auditInfo: { adminN
             fleet_id: fleetId ?? 'global',
             type: 'SOFT_DELETE'
         },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };
 
@@ -278,7 +278,7 @@ export const subscribeToAdminProfile = (callback: (admin: any) => void) => {
 export const updateAdminProfile = async (admin: any) => {
     const { error: upsertError } = await supabase
         .from('admin_profile')
-        .upsert({ id: 'profile', ...admin, updated_at: Date.now() });
+        .upsert({ id: 'profile', ...admin, updated_ms: Date.now() });
     if (upsertError) throw upsertError;
 
     if (admin.password || admin.avatar || admin.name) {
@@ -296,7 +296,7 @@ export const updateAdminProfile = async (admin: any) => {
         details: {
             avatar_type: admin.avatar && typeof admin.avatar === 'string' && admin.avatar.startsWith('data:image/') ? 'dataUrl' : 'url'
         },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };
 
@@ -321,7 +321,7 @@ export const subscribeToViewers = (callback: (viewers: Viewer[]) => void) => {
 export const addViewer = async (viewer: Omit<Viewer, 'id'>) => {
     const { data, error } = await supabase
         .from('viewers')
-        .insert({ ...viewer, created_at: Date.now() })
+        .insert({ ...viewer, created_ms: Date.now() })
         .select('id')
         .single();
     if (error) throw error;
@@ -384,7 +384,7 @@ export const invalidateUserSessions = async (userId: string): Promise<void> => {
         action: 'INVALIDATE_USER_SESSIONS',
         target_id: userId,
         details: { reason: 'Account disabled' },
-        timestamp: Date.now()
+        timestamp_ms: Date.now()
     });
 };
 
@@ -418,7 +418,7 @@ export const migrateFromLocalStorage = async () => {
     if (adminData) {
         const admin = JSON.parse(adminData);
         if (admin.name && admin.name !== 'Admin') {
-            await supabase.from('admin_profile').upsert({ id: 'profile', ...admin, updated_at: Date.now() });
+            await supabase.from('admin_profile').upsert({ id: 'profile', ...admin, updated_ms: Date.now() });
             hasData = true;
         }
     }

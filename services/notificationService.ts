@@ -96,7 +96,7 @@ export const subscribeToNotifications = (
                 targetUsers: r.target_users,
                 createdBy: r.created_by,
                 createdByName: r.created_by_name,
-                createdAt: r.created_at,
+                createdAt: r.created_ms,
                 expiresAt: r.expires_at,
                 deliveryTracking: r.delivery_tracking,
                 minAccountAge: r.min_account_age

@@ -111,7 +111,7 @@ class AuthService {
                 action: success ? 'LOGIN_SUCCESS' : 'LOGIN_FAILED',
                 target_name: username,
                 details: { user_type: userType, reason, ip_address: 'client-browser' },
-                timestamp: Date.now()
+                timestamp_ms: Date.now()
             });
         } catch (error) {
             console.error('Failed to log auth attempt:', error);
@@ -121,7 +121,7 @@ class AuthService {
     private createSession(user: AuthUser): void {
         const session: AuthSession = {
             user,
-            timestamp: Date.now(),
+            timestamp_ms: Date.now(),
             expiresAt: Date.now() + (24 * 60 * 60 * 1000)
         };
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
