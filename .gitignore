@@ -23,7 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env.local
+# Environment variables — never commit secrets
 .env
+.env.local
+.env.*.local
+server/.env
 server/serviceAccountKey.json
