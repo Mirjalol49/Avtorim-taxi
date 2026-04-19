@@ -30,7 +30,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [error, setError] = useState<string | null>(null);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
+  const [carSearch, setCarSearch] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
+  const carSearchRef = useRef<HTMLInputElement>(null);
 
   // Find the car currently assigned to this driver
   const currentAssignedCar = editingDriver
@@ -41,6 +43,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const availableCars = cars.filter(c =>
     !c.assignedDriverId || c.assignedDriverId === editingDriver?.id
   );
+
+  const filteredCars = carSearch.trim()
+    ? availableCars.filter(c =>
+        c.name.toLowerCase().includes(carSearch.toLowerCase()) ||
+        c.licensePlate.toLowerCase().includes(carSearch.toLowerCase())
+      )
+    : availableCars;
 
   const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
 
@@ -71,11 +80,18 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     const handler = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setCarPickerOpen(false);
+        setCarSearch('');
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Auto-focus search when picker opens
+  useEffect(() => {
+    if (carPickerOpen) setTimeout(() => carSearchRef.current?.focus(), 50);
+    else setCarSearch('');
+  }, [carPickerOpen]);
 
   if (!isOpen) return null;
 
@@ -310,43 +326,64 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               </button>
 
               {/* Dropdown list */}
-              {carPickerOpen && availableCars.length > 0 && (
+              {carPickerOpen && (
                 <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                  {/* No car option */}
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedCarId(''); setCarPickerOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${!selectedCarId
-                      ? 'bg-[#0f766e] text-white'
-                      : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                      <XIcon className="w-4 h-4" />
-                    </div>
-                    <span>Avtomobil biriktirmaslik</span>
-                  </button>
-                  {availableCars.map(car => (
-                    <button
-                      key={car.id}
-                      type="button"
-                      onClick={() => { setSelectedCarId(car.id); setCarPickerOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${selectedCarId === car.id
-                        ? 'bg-[#0f766e] text-white'
-                        : theme === 'dark' ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-800 hover:bg-gray-50'}`}
-                    >
-                      {car.avatar ? (
-                        <img src={car.avatar} alt={car.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-                      ) : (
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                          <CarIcon className="w-4 h-4" />
+                  {/* Search input */}
+                  <div className={`p-2 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <input
+                      ref={carSearchRef}
+                      type="text"
+                      value={carSearch}
+                      onChange={e => setCarSearch(e.target.value)}
+                      placeholder="Nomi yoki raqami bo'yicha qidiring..."
+                      className={`w-full px-3 py-2 rounded-lg text-sm outline-none border ${theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-[#0f766e]'
+                        : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-[#0f766e]'}`}
+                    />
+                  </div>
+                  <div className="max-h-52 overflow-y-auto custom-scrollbar">
+                    {/* No car option */}
+                    {!carSearch && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCarId(''); setCarPickerOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${!selectedCarId
+                          ? 'bg-[#0f766e] text-white'
+                          : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          <XIcon className="w-4 h-4" />
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className="text-sm font-semibold truncate">{car.name}</p>
-                        <p className={`text-xs font-mono ${selectedCarId === car.id ? 'text-white/70' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{car.licensePlate}</p>
-                      </div>
-                    </button>
-                  ))}
+                        <span>Avtomobil biriktirmaslik</span>
+                      </button>
+                    )}
+                    {filteredCars.length === 0 ? (
+                      <p className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hech narsa topilmadi</p>
+                    ) : (
+                      filteredCars.map(car => (
+                        <button
+                          key={car.id}
+                          type="button"
+                          onClick={() => { setSelectedCarId(car.id); setCarPickerOpen(false); setCarSearch(''); }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${selectedCarId === car.id
+                            ? 'bg-[#0f766e] text-white'
+                            : theme === 'dark' ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-800 hover:bg-gray-50'}`}
+                        >
+                          {car.avatar ? (
+                            <img src={car.avatar} alt={car.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                              <CarIcon className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0 text-left">
+                            <p className="text-sm font-semibold truncate">{car.name}</p>
+                            <p className={`text-xs font-mono ${selectedCarId === car.id ? 'text-white/70' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{car.licensePlate}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
