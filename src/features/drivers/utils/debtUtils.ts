@@ -18,8 +18,10 @@ export function calcDriverDebt(
     car: Car | null | undefined,
     transactions: Transaction[]
 ): DriverDebtInfo {
-    // Daily plan: driver's own setting takes priority, else car's plan
-    const dailyPlan = (driver as any).dailyPlan || car?.dailyPlan || 0;
+    // Car's daily plan takes priority; fall back to driver's own setting
+    const carPlan = (car?.dailyPlan ?? 0);
+    const driverPlan = (driver as any).dailyPlan ?? 0;
+    const dailyPlan = carPlan > 0 ? carPlan : driverPlan;
 
     // Filter active income transactions for this driver
     const income = transactions.filter(tx =>

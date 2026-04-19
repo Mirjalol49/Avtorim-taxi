@@ -99,12 +99,6 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                             <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{car.name}</p>
                             <span className={`inline-block text-xs font-mono px-1.5 py-0.5 rounded mt-0.5 ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{car.licensePlate}</span>
                         </div>
-                        {car.dailyPlan > 0 && !((driver as any).dailyPlan) && (
-                            <div className="flex-shrink-0 text-right">
-                                <p className={`text-[10px] font-bold uppercase ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Reja</p>
-                                <p className={`text-xs font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{fmt(car.dailyPlan)}</p>
-                            </div>
-                        )}
                     </div>
                 ) : (
                     <div className={`flex items-center gap-2 p-2.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>

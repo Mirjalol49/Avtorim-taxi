@@ -366,15 +366,15 @@ const AppContent: React.FC = () => {
       message: t.deleteConfirmDriver,
       isDanger: true,
       action: async () => {
-        // Close modal immediately
         closeConfirmModal();
 
         try {
-          // Delete from Firestore in background
+          const assignedCar = cars.find(c => c.assignedDriverId === id);
           await firestoreService.deleteDriver(id, {
             adminName: adminProfile?.name || t.unknownAdmin,
             reason: 'Manual deletion by admin'
           }, adminUser?.id);
+          if (assignedCar) await unassignCar(assignedCar.id);
         } catch (error) {
           console.error('Failed to delete driver:', error);
           addToast('error', t.driverDeleteFailed);

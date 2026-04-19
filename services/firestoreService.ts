@@ -142,6 +142,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             .from('drivers')
             .select('*')
             .eq('fleet_id', fleetId)
+            .eq('is_deleted', false)
             .then(({ data }) => {
                 if (data) callback(data.map(r => ({
                     id: r.id,
