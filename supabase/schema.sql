@@ -114,10 +114,16 @@ CREATE TABLE drivers (
     fleet_id             UUID REFERENCES admin_users(id) ON DELETE CASCADE,
     name                 TEXT NOT NULL,
     phone                TEXT,
-    car                  TEXT,
-    car_number           TEXT,
+    car                  TEXT DEFAULT '',
+    car_number           TEXT DEFAULT '',
+    status               TEXT NOT NULL DEFAULT 'OFFLINE',
+    avatar               TEXT DEFAULT '',
     balance              NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    rating               NUMERIC(4, 2) NOT NULL DEFAULT 5.0,
+    monthly_salary       NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    daily_plan           NUMERIC(12, 2) NOT NULL DEFAULT 750000,
     weekly_target        NUMERIC(12, 2),
+    telegram             TEXT,
     is_deleted           BOOLEAN NOT NULL DEFAULT FALSE,
     location             JSONB,
     last_location_update BIGINT,
@@ -338,3 +344,30 @@ GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated;
 INSERT INTO admin_users (username, password, role, active, status, created_ms)
 VALUES ('mirjalol', 'Taksapark2024', 'super_admin', TRUE, 'active', EXTRACT(EPOCH FROM NOW())::BIGINT * 1000)
 ON CONFLICT (username) DO NOTHING;
+
+-- ============================================================
+-- MIGRATION: Add missing drivers columns (safe to run on existing DB)
+-- Run this block separately if you already have a drivers table
+-- ============================================================
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS status         TEXT NOT NULL DEFAULT 'OFFLINE';
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS avatar         TEXT DEFAULT '';
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS rating         NUMERIC(4, 2) NOT NULL DEFAULT 5.0;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS monthly_salary NUMERIC(12, 2) NOT NULL DEFAULT 0;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS daily_plan     NUMERIC(12, 2) NOT NULL DEFAULT 750000;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS telegram       TEXT;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS documents      JSONB DEFAULT '[]'::JSONB;
+
+-- MIGRATION: Add cars table if not already created
+CREATE TABLE IF NOT EXISTS cars (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fleet_id            UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    license_plate       TEXT NOT NULL,
+    avatar              TEXT DEFAULT '',
+    documents           JSONB DEFAULT '[]'::JSONB,
+    assigned_driver_id  UUID REFERENCES drivers(id) ON DELETE SET NULL,
+    is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
+    created_ms          BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+);
+ALTER TABLE cars DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON cars TO anon, authenticated;

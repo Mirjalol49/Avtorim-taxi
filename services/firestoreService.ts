@@ -144,18 +144,31 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             .eq('fleet_id', fleetId)
             .then(({ data }) => {
                 if (data) callback(data.map(r => ({
-                    ...r,
                     id: r.id,
-                    createdAt: toMs(r.created_ms),
+                    fleetId: r.fleet_id,
+                    name: r.name ?? '',
+                    phone: r.phone ?? '',
+                    carModel: r.car ?? '',
+                    licensePlate: r.car_number ?? '',
+                    status: r.status ?? 'OFFLINE',
+                    avatar: r.avatar ?? '',
+                    balance: r.balance ?? 0,
+                    rating: r.rating ?? 5.0,
+                    monthlySalary: r.monthly_salary ?? 0,
+                    dailyPlan: r.daily_plan ?? 750000,
+                    telegram: r.telegram ?? '',
+                    isDeleted: r.is_deleted ?? false,
+                    location: r.location ?? { lat: 0, lng: 0, heading: 0 },
                     documents: r.documents ?? [],
+                    createdAt: toMs(r.created_ms),
                 } as Driver)));
             });
 
     fetchDrivers();
 
     const channel = supabase
-        .channel(`drivers_${fleetId ?? 'global'}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers', filter: fleetId ? `fleet_id=eq.${fleetId}` : undefined }, fetchDrivers)
+        .channel(`drivers_${fleetId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, fetchDrivers)
         .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -164,7 +177,24 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
 export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) => {
     const { data, error } = await supabase
         .from('drivers')
-        .insert({ ...driver, fleet_id: fleetId ?? null, created_ms: Date.now() })
+        .insert({
+            fleet_id: fleetId ?? null,
+            name: driver.name,
+            phone: driver.phone ?? '',
+            car: driver.carModel ?? '',
+            car_number: driver.licensePlate ?? '',
+            status: driver.status ?? 'OFFLINE',
+            avatar: driver.avatar ?? '',
+            balance: driver.balance ?? 0,
+            rating: driver.rating ?? 5.0,
+            monthly_salary: (driver as any).monthlySalary ?? 0,
+            daily_plan: (driver as any).dailyPlan ?? 750000,
+            telegram: (driver as any).telegram ?? null,
+            is_deleted: false,
+            location: driver.location ?? null,
+            documents: (driver as any).documents ?? [],
+            created_ms: Date.now(),
+        })
         .select('id')
         .single();
     if (error) throw error;
@@ -172,7 +202,22 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
 };
 
 export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId?: string) => {
-    const { error } = await supabase.from('drivers').update(driver as any).eq('id', id);
+    const payload: any = {};
+    if (driver.name !== undefined) payload.name = driver.name;
+    if (driver.phone !== undefined) payload.phone = driver.phone;
+    if ((driver as any).carModel !== undefined) payload.car = (driver as any).carModel;
+    if ((driver as any).licensePlate !== undefined) payload.car_number = (driver as any).licensePlate;
+    if (driver.status !== undefined) payload.status = driver.status;
+    if (driver.avatar !== undefined) payload.avatar = driver.avatar;
+    if (driver.balance !== undefined) payload.balance = driver.balance;
+    if (driver.rating !== undefined) payload.rating = driver.rating;
+    if ((driver as any).monthlySalary !== undefined) payload.monthly_salary = (driver as any).monthlySalary;
+    if ((driver as any).dailyPlan !== undefined) payload.daily_plan = (driver as any).dailyPlan;
+    if ((driver as any).telegram !== undefined) payload.telegram = (driver as any).telegram;
+    if ((driver as any).isDeleted !== undefined) payload.is_deleted = (driver as any).isDeleted;
+    if (driver.location !== undefined) payload.location = driver.location;
+    if ((driver as any).documents !== undefined) payload.documents = (driver as any).documents;
+    const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;
 };
 
