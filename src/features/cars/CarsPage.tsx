@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Car, CarDocument } from '../../core/types';
+import { Driver } from '../../../types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon } from '../../../components/Icons';
 
 interface CarsPageProps {
     cars: Car[];
+    drivers?: Driver[];
     isDataLoading: boolean;
     userRole: 'admin' | 'viewer';
     onAddCar: () => void;
@@ -14,7 +16,7 @@ interface CarsPageProps {
 
 const ITEMS_PER_PAGE = 12;
 
-const CarsPage: React.FC<CarsPageProps> = ({ cars, isDataLoading, userRole, onAddCar, onEditCar, onDeleteCar, theme }) => {
+const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, userRole, onAddCar, onEditCar, onDeleteCar, theme }) => {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
 
@@ -27,6 +29,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, isDataLoading, userRole, onAd
     const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
     const docCount = (car: Car) => (car.documents ?? []).length;
+    const assignedDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId);
 
     const card = `rounded-2xl border overflow-hidden transition-all ${theme === 'dark'
         ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
@@ -96,6 +99,12 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, isDataLoading, userRole, onAd
                                         <div className="w-full h-full flex items-center justify-center">
                                             <CameraIcon className={`w-12 h-12 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
                                         </div>
+                                    )}
+                                    {/* Assigned driver badge */}
+                                    {car.assignedDriverId && assignedDriver(car) && (
+                                        <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full truncate max-w-[60%]">
+                                            {assignedDriver(car)!.name.split(' ')[0]}
+                                        </span>
                                     )}
                                     {/* Doc badge */}
                                     {docCount(car) > 0 && (

@@ -11,7 +11,7 @@ import FinancialModal from './components/FinancialModal';
 import DriverModal from './components/DriverModal';
 import CarModal from './components/CarModal';
 import CarsPage from './src/features/cars/CarsPage';
-import { subscribeToCars, addCar, updateCar, deleteCar } from './services/carsService';
+import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar } from './services/carsService';
 import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
@@ -296,16 +296,19 @@ const AppContent: React.FC = () => {
 
   const handleSaveDriver = async (data: any) => {
     try {
+      const { assignedCarId, previousCarId, ...driverData } = data;
+
+      let driverId: string;
+
       if (data.id) {
-        // Update existing driver
-        const { id, ...updateData } = data;
+        const { id, ...updateData } = driverData;
         await firestoreService.updateDriver(id, updateData, adminUser?.id);
+        driverId = id;
       } else {
-        // Add new driver
         const newDriver = {
           name: data.name,
-          licensePlate: data.licensePlate,
-          carModel: data.carModel,
+          licensePlate: data.licensePlate ?? '',
+          carModel: data.carModel ?? '',
           phone: data.phone,
           status: data.status || DriverStatus.OFFLINE,
           avatar: data.avatar || '',
@@ -321,8 +324,15 @@ const AppContent: React.FC = () => {
           rating: 5.0,
           dailyPlan: data.dailyPlan || 750000
         };
+        driverId = await firestoreService.addDriver(newDriver, adminUser?.id);
+      }
 
-        await firestoreService.addDriver(newDriver, adminUser?.id);
+      // Handle car assignment changes
+      if (previousCarId && previousCarId !== assignedCarId) {
+        await unassignCar(previousCarId);
+      }
+      if (assignedCarId && assignedCarId !== previousCarId) {
+        await assignCar(assignedCarId, driverId);
       }
     } catch (error) {
       console.error('Failed to save driver:', error);
@@ -791,6 +801,7 @@ const AppContent: React.FC = () => {
             <Route path="/cars" element={
               <CarsPage
                 cars={cars}
+                drivers={drivers}
                 isDataLoading={isDataLoading}
                 userRole={userRole}
                 onAddCar={() => { setEditingCar(null); setIsCarModalOpen(true); }}
@@ -856,6 +867,7 @@ const AppContent: React.FC = () => {
         onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
         onSubmit={handleSaveDriver}
         editingDriver={editingDriver}
+        cars={cars}
         theme={theme}
       />
 

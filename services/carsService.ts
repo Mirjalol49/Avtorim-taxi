@@ -20,6 +20,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                     licensePlate: r.license_plate,
                     avatar: r.avatar ?? '',
                     documents: r.documents ?? [],
+                    assignedDriverId: r.assigned_driver_id ?? null,
                     isDeleted: r.is_deleted,
                     createdAt: toMs(r.created_ms),
                 } as Car)));
@@ -44,6 +45,7 @@ export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {
             license_plate: car.licensePlate,
             avatar: car.avatar ?? '',
             documents: car.documents ?? [],
+            assigned_driver_id: null,
             is_deleted: false,
             created_ms: Date.now(),
         })
@@ -59,11 +61,22 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.licensePlate !== undefined) payload.license_plate = car.licensePlate;
     if (car.avatar !== undefined) payload.avatar = car.avatar;
     if (car.documents !== undefined) payload.documents = car.documents;
+    if ('assignedDriverId' in car) payload.assigned_driver_id = car.assignedDriverId ?? null;
     const { error } = await supabase.from('cars').update(payload).eq('id', id);
     if (error) throw error;
 };
 
+export const assignCar = async (carId: string, driverId: string) => {
+    const { error } = await supabase.from('cars').update({ assigned_driver_id: driverId }).eq('id', carId);
+    if (error) throw error;
+};
+
+export const unassignCar = async (carId: string) => {
+    const { error } = await supabase.from('cars').update({ assigned_driver_id: null }).eq('id', carId);
+    if (error) throw error;
+};
+
 export const deleteCar = async (id: string) => {
-    const { error } = await supabase.from('cars').update({ is_deleted: true }).eq('id', id);
+    const { error } = await supabase.from('cars').update({ is_deleted: true, assigned_driver_id: null }).eq('id', id);
     if (error) throw error;
 };

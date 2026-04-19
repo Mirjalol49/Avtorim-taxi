@@ -12,6 +12,7 @@ export interface Car {
     licensePlate: string;   // e.g. "01 A 777 AA"
     avatar?: string;        // car photo
     documents?: CarDocument[];
+    assignedDriverId?: string | null;
     isDeleted?: boolean;
     createdAt?: number;
 }

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { XIcon, CameraIcon } from './Icons';
+import { XIcon, CameraIcon, CarIcon } from './Icons';
 import { Driver, DriverStatus, DriverDocument } from '../types';
-import { sanitizeInput } from '../utils/security';
+import { Car } from '../src/core/types';
 import { decodeHtml } from '../utils/textUtils';
 
 interface DriverModalProps {
@@ -10,22 +10,16 @@ interface DriverModalProps {
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
   editingDriver?: Driver | null;
+  cars: Car[];
   theme: 'light' | 'dark';
 }
 
-const DOC_CATEGORIES: { value: DriverDocument['category']; label: string }[] = [
-  { value: 'driver_license', label: "Haydovchilik guvohnomasi" },
-  { value: 'passport', label: "Pasport" },
-];
-
 const MAX_DOC_SIZE_MB = 5;
 
-const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, editingDriver, theme }) => {
-  const { t, i18n } = useTranslation();
+const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, editingDriver, cars, theme }) => {
+  const { t } = useTranslation();
 
   const [name, setName] = useState('');
-  const [licensePlate, setLicensePlate] = useState('');
-  const [carModel, setCarModel] = useState('');
   const [phone, setPhone] = useState('');
   const [avatar, setAvatar] = useState('');
   const [status, setStatus] = useState<DriverStatus>(DriverStatus.OFFLINE);
@@ -34,31 +28,54 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [docError, setDocError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const docInputRef = useRef<HTMLInputElement>(null);
+  const [selectedCarId, setSelectedCarId] = useState<string>('');
+  const [carPickerOpen, setCarPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Find the car currently assigned to this driver
+  const currentAssignedCar = editingDriver
+    ? cars.find(c => c.assignedDriverId === editingDriver.id)
+    : null;
+
+  // Available cars: unassigned, OR the one already assigned to this driver
+  const availableCars = cars.filter(c =>
+    !c.assignedDriverId || c.assignedDriverId === editingDriver?.id
+  );
+
+  const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
 
   useEffect(() => {
     if (isOpen && editingDriver) {
       setName(decodeHtml(editingDriver.name));
-      setLicensePlate(decodeHtml(editingDriver.licensePlate));
-      setCarModel(decodeHtml(editingDriver.carModel));
       setPhone(editingDriver.phone);
       setAvatar(editingDriver.avatar);
       setStatus(editingDriver.status);
       setMonthlySalary(editingDriver.monthlySalary ? editingDriver.monthlySalary.toString() : '');
       setDocuments(editingDriver.documents ?? []);
+      setSelectedCarId(currentAssignedCar?.id ?? '');
     } else if (isOpen) {
       setName('');
-      setLicensePlate('');
-      setCarModel('');
       setPhone('+998 ');
       setAvatar('');
       setStatus(DriverStatus.OFFLINE);
       setMonthlySalary('');
       setDocuments([]);
+      setSelectedCarId('');
       setError(null);
       setDocError(null);
     }
   }, [isOpen, editingDriver]);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setCarPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -67,7 +84,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     setError(null);
     setIsSubmitting(true);
 
-    if (!name.trim() || !phone.trim() || !carModel.trim() || !licensePlate.trim()) {
+    if (!name.trim() || !phone.trim()) {
       setError(t('fillAllFields') || "Barcha maydonlarni to'ldiring");
       setIsSubmitting(false);
       return;
@@ -75,16 +92,19 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
     try {
       const salaryValue = monthlySalary ? parseFloat(monthlySalary.replace(/\s/g, '').replace(/,/g, '')) : 0;
+      // carModel and licensePlate auto-filled from selected car for backward compat with display
       await onSubmit({
         id: editingDriver?.id,
         name,
-        licensePlate,
-        carModel,
         phone,
         avatar,
         status,
         monthlySalary: salaryValue,
         documents,
+        carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
+        licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
+        assignedCarId: selectedCarId || null,
+        previousCarId: currentAssignedCar?.id ?? null,
       });
       onClose();
     } catch (err) {
@@ -107,25 +127,18 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>, category: DriverDocument['category']) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > MAX_DOC_SIZE_MB * 1024 * 1024) {
       setDocError(`Fayl hajmi ${MAX_DOC_SIZE_MB}MB dan oshmasligi kerak`);
       e.target.value = '';
       return;
     }
-
     setDocError(null);
     const reader = new FileReader();
     reader.onloadend = () => {
-      setDocuments(prev => {
-        const filtered = prev.filter(d => d.category !== category);
-        return [...filtered, {
-          name: file.name,
-          type: file.type,
-          data: reader.result as string,
-          category,
-        }];
-      });
+      setDocuments(prev => [
+        ...prev.filter(d => d.category !== category),
+        { name: file.name, type: file.type, data: reader.result as string, category },
+      ]);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -159,7 +172,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`;
-
   const sectionTitle = `text-sm font-bold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`;
 
   const getDoc = (cat: DriverDocument['category']) => documents.find(d => d.category === cat);
@@ -168,27 +180,23 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     const doc = getDoc(category);
     const inputId = `doc-${category}`;
     return (
-      <div className={`rounded-xl border p-3 flex items-center gap-3 transition-colors ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
         <div className="flex-1 min-w-0">
           <p className={`text-xs font-semibold mb-0.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
-          {doc ? (
-            <p className="text-xs text-[#0f766e] truncate">{doc.name}</p>
-          ) : (
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>PDF yoki rasm tanlang</p>
-          )}
+          {doc
+            ? <p className="text-xs text-[#0f766e] truncate">{doc.name}</p>
+            : <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>PDF yoki rasm tanlang</p>
+          }
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {doc && (
             <>
-              {doc.type.startsWith('image/') ? (
-                <a href={doc.data} target="_blank" rel="noreferrer">
-                  <img src={doc.data} alt={doc.name} className="w-8 h-8 rounded object-cover border border-gray-600" />
-                </a>
-              ) : (
-                <a href={doc.data} download={doc.name} className="text-[#0f766e] text-xs font-medium hover:underline">PDF</a>
-              )}
+              {doc.type.startsWith('image/')
+                ? <a href={doc.data} target="_blank" rel="noreferrer"><img src={doc.data} alt={doc.name} className="w-8 h-8 rounded object-cover border border-gray-600" /></a>
+                : <a href={doc.data} download={doc.name} className="text-[#0f766e] text-xs font-medium hover:underline">PDF</a>
+              }
               <button type="button" onClick={() => removeDocument(category)}
-                className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}>
+                className={`p-1 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}>
                 <XIcon className="w-3.5 h-3.5" />
               </button>
             </>
@@ -216,12 +224,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+          {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm font-medium">{error}</div>}
 
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm font-medium">{error}</div>
-          )}
-
-          {/* Avatar */}
+          {/* Avatar + Name + Salary */}
           <div className="flex items-center gap-5">
             <div className="flex-shrink-0">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Foto</label>
@@ -245,7 +250,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Ism Familiya" />
               </div>
               <div>
-                <label className={labelClass}>{t('monthlySalary') || 'Oylik maosh (UZS)'}</label>
+                <label className={labelClass}>Oylik maosh (UZS)</label>
                 <input type="text" value={monthlySalary} onChange={handleSalaryChange} className={inputClass} placeholder="0" />
               </div>
             </div>
@@ -256,18 +261,98 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <input type="tel" required value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 90 123 45 67" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t('model')} <span className="text-red-500">*</span></label>
-              <input type="text" required value={carModel} onChange={(e) => setCarModel(e.target.value)} className={inputClass} placeholder="Chevrolet Cobalt" />
-            </div>
-            <div>
-              <label className={labelClass}>{t('plate')} <span className="text-red-500">*</span></label>
-              <input type="text" required value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} className={inputClass} placeholder="01 A 777 AA" />
+          {/* Car assignment picker */}
+          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <p className={sectionTitle}>
+              <CarIcon className="w-4 h-4" /> Biriktirilgan avtomobil
+            </p>
+
+            {/* Selected car preview or picker trigger */}
+            <div ref={pickerRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setCarPickerOpen(o => !o)}
+                className={`w-full rounded-xl border p-3 flex items-center gap-3 transition-colors text-left ${theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e]'
+                  : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}
+              >
+                {selectedCar ? (
+                  <>
+                    {selectedCar.avatar ? (
+                      <img src={selectedCar.avatar} alt={selectedCar.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                        <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name}</p>
+                      <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{selectedCar.licensePlate}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedCarId(''); }}
+                      className={`p-1 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                      <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                    </div>
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {availableCars.length === 0 ? "Bo'sh avtomobil yo'q" : "Avtomobil tanlang..."}
+                    </span>
+                  </>
+                )}
+              </button>
+
+              {/* Dropdown list */}
+              {carPickerOpen && availableCars.length > 0 && (
+                <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                  {/* No car option */}
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedCarId(''); setCarPickerOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${!selectedCarId
+                      ? 'bg-[#0f766e] text-white'
+                      : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                      <XIcon className="w-4 h-4" />
+                    </div>
+                    <span>Avtomobil biriktirmaslik</span>
+                  </button>
+                  {availableCars.map(car => (
+                    <button
+                      key={car.id}
+                      type="button"
+                      onClick={() => { setSelectedCarId(car.id); setCarPickerOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${selectedCarId === car.id
+                        ? 'bg-[#0f766e] text-white'
+                        : theme === 'dark' ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-800 hover:bg-gray-50'}`}
+                    >
+                      {car.avatar ? (
+                        <img src={car.avatar} alt={car.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          <CarIcon className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-sm font-semibold truncate">{car.name}</p>
+                        <p className={`text-xs font-mono ${selectedCarId === car.id ? 'text-white/70' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{car.licensePlate}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Divider */}
+          {/* Driver documents */}
           <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
               <span>👤</span> Haydovchi hujjatlari
@@ -276,11 +361,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               <DocUploadBox category="driver_license" label="Haydovchilik guvohnomasi" />
               <DocUploadBox category="passport" label="Pasport" />
             </div>
+            {docError && <p className="text-xs text-red-500 mt-2">{docError}</p>}
           </div>
-
-          {docError && (
-            <p className="text-xs text-red-500">{docError}</p>
-          )}
 
           <div className="pt-2 flex justify-end gap-3">
             <button type="button" onClick={onClose}

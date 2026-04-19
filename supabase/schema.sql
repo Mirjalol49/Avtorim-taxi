@@ -82,14 +82,15 @@ CREATE TABLE fleet_metadata (
 -- cars
 -- ============================================================
 CREATE TABLE cars (
-    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    fleet_id      UUID REFERENCES admin_users(id) ON DELETE CASCADE,
-    name          TEXT NOT NULL,
-    license_plate TEXT NOT NULL,
-    avatar        TEXT DEFAULT '',
-    documents     JSONB DEFAULT '[]'::JSONB,
-    is_deleted    BOOLEAN NOT NULL DEFAULT FALSE,
-    created_ms    BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fleet_id            UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    license_plate       TEXT NOT NULL,
+    avatar              TEXT DEFAULT '',
+    documents           JSONB DEFAULT '[]'::JSONB,
+    assigned_driver_id  UUID REFERENCES drivers(id) ON DELETE SET NULL,
+    is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
+    created_ms          BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
 
 -- ============================================================
