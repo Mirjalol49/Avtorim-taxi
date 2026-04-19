@@ -92,9 +92,9 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                         {paginated.map(car => (
                             <div key={car.id} className={card}>
                                 {/* Car image */}
-                                <div className={`h-40 relative ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                <div className={`relative ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
                                     {car.avatar ? (
-                                        <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                                        <img src={car.avatar} alt={car.name} className="w-full object-contain max-h-56" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
                                             <CameraIcon className={`w-12 h-12 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
