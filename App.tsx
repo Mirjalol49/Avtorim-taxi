@@ -21,8 +21,6 @@ import DesktopHeader from './components/DesktopHeader';
 import SalaryManagement from './components/SalaryManagement';
 import { RolesPage } from './src/features/admin/RolesPage';
 import { useAdminProfile } from './src/features/admin/hooks/useAdminProfile';
-import SnowEffect from './components/SnowEffect';
-import LogoSnowEffect from './components/LogoSnowEffect';
 import NotFound from './components/NotFound';
 
 // Lazy load heavy components for code splitting
@@ -463,8 +461,6 @@ const AppContent: React.FC = () => {
       ? 'bg-[#111827] text-gray-50'
       : 'bg-[#F3F4F6] text-gray-900'
       }`}>
-      <SnowEffect />
-
       {/* SIDEBAR */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${theme === 'dark'
@@ -475,8 +471,7 @@ const AppContent: React.FC = () => {
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
         </div>
         <div className="p-5 flex justify-center relative overflow-hidden">
-          <LogoSnowEffect />
-          <img src={logo} alt="Taksapark" className="h-12 w-auto object-contain relative z-[5]" />
+          <img src={logo} alt="Taksapark" className="h-12 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 overflow-y-auto">
           <div className={`text-xs font-semibold uppercase tracking-wider mb-4 px-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'

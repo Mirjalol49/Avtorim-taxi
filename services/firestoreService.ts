@@ -143,7 +143,12 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             .select('*')
             .eq('fleet_id', fleetId)
             .then(({ data }) => {
-                if (data) callback(data.map(r => ({ ...r, id: r.id, createdAt: toMs(r.created_ms) } as Driver)));
+                if (data) callback(data.map(r => ({
+                    ...r,
+                    id: r.id,
+                    createdAt: toMs(r.created_ms),
+                    documents: r.documents ?? [],
+                } as Driver)));
             });
 
     fetchDrivers();

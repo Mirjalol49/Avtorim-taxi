@@ -106,6 +106,7 @@ CREATE TABLE drivers (
     location             JSONB,
     last_location_update BIGINT,
     location_accuracy    NUMERIC,
+    documents            JSONB DEFAULT '[]'::JSONB,
     created_ms           BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
 
