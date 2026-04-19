@@ -1,16 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../core/types';
 import { Car } from '../../core/types/car.types';
+import { Transaction } from '../../core/types/transaction.types';
 import { useDriversList } from './hooks/useDriversList';
 import { SearchIcon, PlusIcon, GridIcon, ListIcon } from '../../../components/Icons';
 import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { useAuth } from '../auth/hooks/useAuth';
+import { calcDriverDebt } from './utils/debtUtils';
+
+const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
 interface DriversPageProps {
     drivers: Driver[];
     cars: Car[];
+    transactions: Transaction[];
     isDataLoading: boolean;
     userRole: 'admin' | 'viewer';
     onUpdateStatus: (id: string, status: DriverStatus) => void;
@@ -21,19 +26,24 @@ interface DriversPageProps {
 }
 
 const DriversPage: React.FC<DriversPageProps> = ({
-    drivers,
-    cars,
-    isDataLoading,
-    userRole,
-    onUpdateStatus,
-    onEditDriver,
-    onDeleteDriver,
-    onAddDriver,
-    theme,
+    drivers, cars, transactions, isDataLoading, userRole,
+    onUpdateStatus, onEditDriver, onDeleteDriver, onAddDriver, theme,
 }) => {
     const { t } = useTranslation();
     const { adminUser } = useAuth();
     const currentUserId = adminUser?.id || 'unknown';
+
+    const fleetStats = useMemo(() => {
+        let totalDebt = 0, totalIncome = 0, todayIncome = 0;
+        drivers.filter(d => !d.isDeleted).forEach(d => {
+            const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
+            const s = calcDriverDebt(d, car, transactions);
+            totalDebt += s.totalDebt;
+            totalIncome += s.totalIncome;
+            todayIncome += s.todayIncome;
+        });
+        return { totalDebt, totalIncome, todayIncome };
+    }, [drivers, cars, transactions]);
 
     const {
         searchQuery, setSearchQuery,
@@ -46,6 +56,26 @@ const DriversPage: React.FC<DriversPageProps> = ({
 
     return (
         <div className="space-y-6">
+            {/* Fleet debt summary */}
+            {(fleetStats.totalDebt > 0 || fleetStats.todayIncome > 0) && (
+                <div className={`grid grid-cols-3 gap-4`}>
+                    <div className={`rounded-2xl p-4 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Bugungi tushum</p>
+                        <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{fmt(fleetStats.todayIncome)} <span className="text-xs font-normal text-gray-500">UZS</span></p>
+                    </div>
+                    <div className={`rounded-2xl p-4 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Jami tushum</p>
+                        <p className={`text-lg font-bold text-green-400`}>{fmt(fleetStats.totalIncome)} <span className="text-xs font-normal text-gray-500">UZS</span></p>
+                    </div>
+                    <div className={`rounded-2xl p-4 border ${fleetStats.totalDebt > 0 ? 'border-red-500/30 bg-red-500/5' : theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${fleetStats.totalDebt > 0 ? 'text-red-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Jami qarz</p>
+                        <p className={`text-lg font-bold ${fleetStats.totalDebt > 0 ? 'text-red-400' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {fleetStats.totalDebt > 0 ? `−${fmt(fleetStats.totalDebt)}` : '0'} <span className="text-xs font-normal text-gray-500">UZS</span>
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Search Bar & View Toggle */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className={`flex-1 p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -114,6 +144,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                     key={driver.id}
                                     driver={driver}
                                     car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
+                                    transactions={transactions}
                                     theme={theme}
                                     userRole={userRole}
                                     currentUserId={currentUserId}
@@ -132,6 +163,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('driver')}</th>
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Avtomobil</th>
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Hujjatlar</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Reja / Qarz</th>
                                             {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 text-center">{t('actions')}</th>}
                                         </tr>
                                     </thead>
@@ -141,6 +173,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                                 key={driver.id}
                                                 driver={driver}
                                                 car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
+                                                transactions={transactions}
                                                 theme={theme}
                                                 userRole={userRole}
                                                 currentUserId={currentUserId}

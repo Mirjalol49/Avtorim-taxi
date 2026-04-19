@@ -785,6 +785,7 @@ const AppContent: React.FC = () => {
               <DriversPage
                 drivers={drivers}
                 cars={cars}
+                transactions={transactions}
                 isDataLoading={isDataLoading}
                 userRole={userRole}
                 onUpdateStatus={handleUpdateDriverStatus}

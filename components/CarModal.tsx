@@ -23,6 +23,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const [name, setName] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [dailyPlan, setDailyPlan] = useState('');
   const [documents, setDocuments] = useState<CarDocument[]>([]);
   const [docError, setDocError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,16 +34,23 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       setName(editingCar.name);
       setLicensePlate(editingCar.licensePlate);
       setAvatar(editingCar.avatar ?? '');
+      setDailyPlan(editingCar.dailyPlan ? editingCar.dailyPlan.toLocaleString() : '');
       setDocuments(editingCar.documents ?? []);
     } else if (isOpen) {
       setName('');
       setLicensePlate('');
       setAvatar('');
+      setDailyPlan('');
       setDocuments([]);
       setError(null);
       setDocError(null);
     }
   }, [isOpen, editingCar]);
+
+  const handleDailyPlanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/[^0-9]/g, '');
+    setDailyPlan(v ? parseInt(v, 10).toLocaleString() : '');
+  };
 
   if (!isOpen) return null;
 
@@ -55,7 +63,8 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
     }
     setIsSubmitting(true);
     try {
-      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar, documents });
+      const planValue = dailyPlan ? parseInt(dailyPlan.replace(/\s/g, '').replace(/,/g, ''), 10) : 0;
+      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar, dailyPlan: planValue, documents });
       onClose();
     } catch (err: any) {
       console.error('Car save error:', err);
@@ -188,6 +197,13 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
                   className={inputClass} placeholder="01 A 777 AA" />
               </div>
             </div>
+          </div>
+
+          {/* Daily plan */}
+          <div>
+            <label className={labelClass}>Kunlik reja (UZS) <span className={`normal-case font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>— haydovchi topishi kerak bo'lgan miqdor</span></label>
+            <input type="text" value={dailyPlan} onChange={handleDailyPlanChange}
+              className={inputClass} placeholder="750,000" />
           </div>
 
           {/* Documents */}

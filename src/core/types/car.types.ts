@@ -13,6 +13,7 @@ export interface Car {
     avatar?: string;        // car photo
     documents?: CarDocument[];
     assignedDriverId?: string | null;
+    dailyPlan?: number;     // required daily income amount
     isDeleted?: boolean;
     createdAt?: number;
 }

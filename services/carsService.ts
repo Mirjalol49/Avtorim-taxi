@@ -21,6 +21,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                     avatar: r.avatar ?? '',
                     documents: r.documents ?? [],
                     assignedDriverId: r.assigned_driver_id ?? null,
+                    dailyPlan: r.daily_plan ?? 0,
                     isDeleted: r.is_deleted,
                     createdAt: toMs(r.created_ms),
                 } as Car)));
@@ -46,6 +47,7 @@ export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {
             avatar: car.avatar ?? '',
             documents: car.documents ?? [],
             assigned_driver_id: null,
+            daily_plan: car.dailyPlan ?? 0,
             is_deleted: false,
             created_ms: Date.now(),
         })
@@ -62,6 +64,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.avatar !== undefined) payload.avatar = car.avatar;
     if (car.documents !== undefined) payload.documents = car.documents;
     if ('assignedDriverId' in car) payload.assigned_driver_id = car.assignedDriverId ?? null;
+    if (car.dailyPlan !== undefined) payload.daily_plan = car.dailyPlan;
     const { error } = await supabase.from('cars').update(payload).eq('id', id);
     if (error) throw error;
 };

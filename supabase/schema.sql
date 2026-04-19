@@ -381,8 +381,10 @@ CREATE TABLE IF NOT EXISTS cars (
     avatar              TEXT DEFAULT '',
     documents           JSONB DEFAULT '[]'::JSONB,
     assigned_driver_id  UUID REFERENCES drivers(id) ON DELETE SET NULL,
+    daily_plan          NUMERIC(12, 2) NOT NULL DEFAULT 0,
     is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
     created_ms          BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
 ALTER TABLE cars DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON cars TO anon, authenticated;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS daily_plan NUMERIC(12, 2) NOT NULL DEFAULT 0;
