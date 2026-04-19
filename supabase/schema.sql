@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS payment_reversals  CASCADE;
 DROP TABLE IF EXISTS driver_salaries    CASCADE;
 DROP TABLE IF EXISTS transactions       CASCADE;
 DROP TABLE IF EXISTS drivers            CASCADE;
+DROP TABLE IF EXISTS cars               CASCADE;
 DROP TABLE IF EXISTS viewers            CASCADE;
 DROP TABLE IF EXISTS fleet_metadata     CASCADE;
 DROP TABLE IF EXISTS admin_profile      CASCADE;
@@ -75,6 +76,20 @@ CREATE TABLE fleet_metadata (
     initialized BOOLEAN NOT NULL DEFAULT TRUE,
     created_ms  BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     created_by  UUID REFERENCES admin_users(id) ON DELETE SET NULL
+);
+
+-- ============================================================
+-- cars
+-- ============================================================
+CREATE TABLE cars (
+    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fleet_id      UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    license_plate TEXT NOT NULL,
+    avatar        TEXT DEFAULT '',
+    documents     JSONB DEFAULT '[]'::JSONB,
+    is_deleted    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_ms    BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
 
 -- ============================================================
@@ -280,6 +295,8 @@ CREATE INDEX idx_notif_deletes_user     ON notification_deletes(user_id);
 CREATE INDEX idx_sessions_user          ON sessions(user_id);
 CREATE INDEX idx_sessions_active        ON sessions(active);
 CREATE INDEX idx_viewers_fleet          ON viewers(fleet_id);
+CREATE INDEX idx_cars_fleet             ON cars(fleet_id);
+CREATE INDEX idx_cars_deleted           ON cars(is_deleted);
 CREATE INDEX idx_reversals_fleet        ON payment_reversals(fleet_id);
 CREATE INDEX idx_salaries_fleet         ON driver_salaries(fleet_id);
 CREATE INDEX idx_salaries_driver        ON driver_salaries(driver_id);
@@ -292,6 +309,7 @@ ALTER TABLE admin_profile        DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fleet_metadata       DISABLE ROW LEVEL SECURITY;
 ALTER TABLE viewers              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE drivers              DISABLE ROW LEVEL SECURITY;
+ALTER TABLE cars                 DISABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions         DISABLE ROW LEVEL SECURITY;
 ALTER TABLE driver_salaries      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_reversals    DISABLE ROW LEVEL SECURITY;

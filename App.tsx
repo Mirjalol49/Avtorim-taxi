@@ -9,6 +9,10 @@ import {
 
 import FinancialModal from './components/FinancialModal';
 import DriverModal from './components/DriverModal';
+import CarModal from './components/CarModal';
+import CarsPage from './src/features/cars/CarsPage';
+import { subscribeToCars, addCar, updateCar, deleteCar } from './services/carsService';
+import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
 import ConfirmModal from './components/ConfirmModal';
@@ -108,6 +112,17 @@ const AppContent: React.FC = () => {
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+
+  // Cars state
+  const [cars, setCars] = useState<Car[]>([]);
+  const [isCarModalOpen, setIsCarModalOpen] = useState(false);
+  const [editingCar, setEditingCar] = useState<Car | null>(null);
+
+  useEffect(() => {
+    if (!adminUser?.id) return;
+    const unsub = subscribeToCars(setCars, adminUser.id);
+    return unsub;
+  }, [adminUser?.id]);
 
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
 
@@ -356,6 +371,28 @@ const AppContent: React.FC = () => {
 
   // Finance Data Filtering Logic - REMOVED (Moved to useFinanceStats hook)
 
+  const handleSaveCar = async (data: Partial<Car>) => {
+    if (!adminUser?.id) return;
+    if (data.id) {
+      const { id, ...rest } = data;
+      await updateCar(id, rest);
+    } else {
+      await addCar(data as Omit<Car, 'id'>, adminUser.id);
+    }
+  };
+
+  const handleDeleteCar = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "O'chirish",
+      message: "Bu avtomobilni o'chirmoqchimisiz?",
+      isDanger: true,
+      action: async () => {
+        closeConfirmModal();
+        await deleteCar(id);
+      }
+    });
+  };
 
   const nonDeletedDrivers = useMemo(() => {
     return drivers.filter(d => !d.isDeleted);
@@ -435,7 +472,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/transactions', '/finance', '/salary', '/roles', '/super-admin', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/salary', '/roles', '/super-admin', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -478,6 +515,7 @@ const AppContent: React.FC = () => {
             }`}>{t.menu}</div>
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
+          {renderSidebarItem('/cars', 'Avtomobillar', CarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/salary', t.salaryManagement, WalletIcon)}
@@ -749,8 +787,19 @@ const AppContent: React.FC = () => {
               />
             } />
 
-            {/* FINANCE & FILTER COMPONENT */}
-            {/* FINANCE & FILTER COMPONENT */}
+            {/* CARS */}
+            <Route path="/cars" element={
+              <CarsPage
+                cars={cars}
+                isDataLoading={isDataLoading}
+                userRole={userRole}
+                onAddCar={() => { setEditingCar(null); setIsCarModalOpen(true); }}
+                onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
+                onDeleteCar={handleDeleteCar}
+                theme={theme}
+              />
+            } />
+
             {/* FINANCE (ANALYTICS) COMPONENT */}
             {/* FINANCE (ANALYTICS) COMPONENT */}
             <Route path="/finance" element={
@@ -807,6 +856,14 @@ const AppContent: React.FC = () => {
         onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
         onSubmit={handleSaveDriver}
         editingDriver={editingDriver}
+        theme={theme}
+      />
+
+      <CarModal
+        isOpen={isCarModalOpen}
+        onClose={() => { setIsCarModalOpen(false); setEditingCar(null); }}
+        onSubmit={handleSaveCar}
+        editingCar={editingCar}
         theme={theme}
       />
 

@@ -16,9 +16,6 @@ interface DriverModalProps {
 const DOC_CATEGORIES: { value: DriverDocument['category']; label: string }[] = [
   { value: 'driver_license', label: "Haydovchilik guvohnomasi" },
   { value: 'passport', label: "Pasport" },
-  { value: 'car_registration', label: "Avtomobil texpassporti" },
-  { value: 'car_insurance', label: "Sug'urta polisi" },
-  { value: 'other', label: "Boshqa" },
 ];
 
 const MAX_DOC_SIZE_MB = 5;
@@ -278,17 +275,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <div className="space-y-2">
               <DocUploadBox category="driver_license" label="Haydovchilik guvohnomasi" />
               <DocUploadBox category="passport" label="Pasport" />
-            </div>
-          </div>
-
-          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <p className={sectionTitle}>
-              <span>🚗</span> Avtomobil hujjatlari
-            </p>
-            <div className="space-y-2">
-              <DocUploadBox category="car_registration" label="Texpassport" />
-              <DocUploadBox category="car_insurance" label="Sug'urta polisi" />
-              <DocUploadBox category="other" label="Boshqa hujjat" />
             </div>
           </div>
 
