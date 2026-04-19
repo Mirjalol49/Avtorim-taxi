@@ -346,6 +346,21 @@ VALUES ('mirjalol', 'Taksapark2024', 'super_admin', TRUE, 'active', EXTRACT(EPOC
 ON CONFLICT (username) DO NOTHING;
 
 -- ============================================================
+-- Enable Realtime for all tables (required for live updates)
+-- ============================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE drivers;
+ALTER PUBLICATION supabase_realtime ADD TABLE cars;
+ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE notification_reads;
+ALTER PUBLICATION supabase_realtime ADD TABLE notification_deletes;
+ALTER PUBLICATION supabase_realtime ADD TABLE driver_salaries;
+ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE sessions;
+ALTER PUBLICATION supabase_realtime ADD TABLE admin_users;
+ALTER PUBLICATION supabase_realtime ADD TABLE viewers;
+
+-- ============================================================
 -- MIGRATION: Add missing drivers columns (safe to run on existing DB)
 -- Run this block separately if you already have a drivers table
 -- ============================================================
