@@ -175,10 +175,14 @@ const AppContent: React.FC = () => {
   // --- ACTIONS ---
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
-      await firestoreService.addTransaction(data, adminUser?.id);
-      // Firebase listener will automatically update the state
+      const driver = drivers.find(d => d.id === (data as any).driverId);
+      await firestoreService.addTransaction(
+        { ...data, driverName: driver?.name ?? '' } as any,
+        adminUser?.id
+      );
     } catch (error) {
       console.error('Failed to add transaction:', error);
+      addToast('error', "Tranzaksiya saqlanmadi");
     }
   };
 

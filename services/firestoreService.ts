@@ -246,24 +246,52 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             .from('transactions')
             .select('*')
             .eq('fleet_id', fleetId)
+            .neq('status', 'DELETED')
+            .order('timestamp_ms', { ascending: false })
             .then(({ data }) => {
-                if (data) callback(data.map(r => ({ ...r, timestamp: toMs(r.timestamp) } as Transaction)));
+                if (data) callback(data.map(r => ({
+                    id: r.id,
+                    driverId: r.driver_id ?? '',
+                    driverName: r.driver_name ?? '',
+                    amount: r.amount ?? 0,
+                    type: r.type,
+                    description: r.description ?? '',
+                    note: r.note ?? '',
+                    timestamp: toMs(r.timestamp_ms),
+                    status: r.status,
+                    reversedAt: r.reversed_at ?? undefined,
+                    reversedBy: r.reversed_by ?? undefined,
+                    reversalReason: r.reversal_reason ?? undefined,
+                    originalTransactionId: r.original_transaction_id ?? undefined,
+                } as Transaction)));
             });
 
     fetchTx();
 
     const channel = supabase
-        .channel(`transactions_${fleetId ?? 'global'}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: fleetId ? `fleet_id=eq.${fleetId}` : undefined }, fetchTx)
+        .channel(`transactions_${fleetId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, fetchTx)
         .subscribe();
 
     return () => { supabase.removeChannel(channel); };
 };
 
 export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleetId?: string) => {
+    const tx = transaction as any;
     const { data, error } = await supabase
         .from('transactions')
-        .insert({ ...transaction, fleet_id: fleetId ?? null, created_ms: Date.now() })
+        .insert({
+            fleet_id: fleetId ?? null,
+            driver_id: tx.driverId ?? null,
+            driver_name: tx.driverName ?? null,
+            amount: tx.amount,
+            type: tx.type,
+            status: tx.status ?? 'ACTIVE',
+            description: tx.description ?? '',
+            note: tx.note ?? null,
+            timestamp_ms: tx.timestamp ?? Date.now(),
+            created_ms: Date.now(),
+        })
         .select('id')
         .single();
     if (error) throw error;
