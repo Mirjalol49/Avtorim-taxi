@@ -68,7 +68,7 @@ class AuthService {
                     username: data.username,
                     role: data.role || 'admin',
                     active: data.active,
-                    createdAt: data.created_at,
+                    createdAt: data.created_ms,
                     password: data.password,
                     avatar: data.avatar
                 };
@@ -121,7 +121,7 @@ class AuthService {
     private createSession(user: AuthUser): void {
         const session: AuthSession = {
             user,
-            timestamp_ms: Date.now(),
+            timestamp: Date.now(),
             expiresAt: Date.now() + (24 * 60 * 60 * 1000)
         };
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));

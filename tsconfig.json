@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "types": [
       "node",
-      "vitest"
+      "vitest",
+      "vite/client"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,

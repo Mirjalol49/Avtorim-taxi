@@ -57,7 +57,7 @@ export const sendNotification = async (
             target_users: notificationData.targetUsers,
             created_by: createdBy || null,
             created_by_name: createdByName,
-            created_at: now,
+            created_ms: now,
             expires_at: expiresAt,
             delivery_tracking: { sent: now, delivered: [], read: [] },
             min_account_age: notificationData.minAccountAge ?? null

@@ -39,8 +39,8 @@ export const reconcileSalaryTransactions = async (
     const { data: txRows } = await supabase
         .from('transactions')
         .select('*')
-        .gte('timestamp', startDate)
-        .lte('timestamp', endDate)
+        .gte('timestamp_ms', startDate)
+        .lte('timestamp_ms', endDate)
         .eq('type', TransactionType.EXPENSE);
     const transactions = (txRows ?? []) as Transaction[];
 
@@ -106,7 +106,7 @@ export const reconcileSalaryTransactions = async (
         totalTransactions: salaryTransactions.filter(t => t.status !== PaymentStatus.REVERSED).length,
         matchedCount,
         discrepancies,
-        timestamp_ms: Date.now()
+        timestamp: Date.now()
     };
 };
 
