@@ -784,6 +784,7 @@ const AppContent: React.FC = () => {
             <Route path="/drivers" element={
               <DriversPage
                 drivers={drivers}
+                cars={cars}
                 isDataLoading={isDataLoading}
                 userRole={userRole}
                 onUpdateStatus={handleUpdateDriverStatus}

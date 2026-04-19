@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../core/types';
+import { Car } from '../../core/types/car.types';
 import { useDriversList } from './hooks/useDriversList';
 import { SearchIcon, PlusIcon, GridIcon, ListIcon } from '../../../components/Icons';
 import { DriverCard } from './components/DriverCard';
@@ -9,18 +10,19 @@ import { useAuth } from '../auth/hooks/useAuth';
 
 interface DriversPageProps {
     drivers: Driver[];
+    cars: Car[];
     isDataLoading: boolean;
     userRole: 'admin' | 'viewer';
     onUpdateStatus: (id: string, status: DriverStatus) => void;
     onEditDriver: (driver: Driver) => void;
     onDeleteDriver: (id: string) => void;
     onAddDriver: () => void;
-    // t, language removed
     theme: 'light' | 'dark';
 }
 
 const DriversPage: React.FC<DriversPageProps> = ({
     drivers,
+    cars,
     isDataLoading,
     userRole,
     onUpdateStatus,
@@ -111,6 +113,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                 <DriverCard
                                     key={driver.id}
                                     driver={driver}
+                                    car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
                                     theme={theme}
                                     userRole={userRole}
                                     currentUserId={currentUserId}
@@ -127,8 +130,8 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                     <thead>
                                         <tr className={`${theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'} text-xs uppercase tracking-wider`}>
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('driver')}</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('car')}</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('status')}</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Avtomobil</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Hujjatlar</th>
                                             {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 text-center">{t('actions')}</th>}
                                         </tr>
                                     </thead>
@@ -137,6 +140,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                             <DriverRow
                                                 key={driver.id}
                                                 driver={driver}
+                                                car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
                                                 theme={theme}
                                                 userRole={userRole}
                                                 currentUserId={currentUserId}
