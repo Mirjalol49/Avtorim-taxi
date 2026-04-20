@@ -55,6 +55,7 @@ import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsA
 import { playLockSound } from './services/soundService';
 import logo from './Images/logo_winter.png';
 import { addSalary } from './services/salaryService';
+import { DayOff, subscribeToDaysOff } from './services/daysOffService';
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
@@ -126,6 +127,13 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!carsFleetId) return;
     const unsub = subscribeToCars(setCars, carsFleetId);
+    return unsub;
+  }, [carsFleetId]);
+
+  // Subscribe to days off at the app level so FinancialModal can use it
+  const [allDaysOff, setAllDaysOff] = useState<DayOff[]>([]);
+  useEffect(() => {
+    const unsub = subscribeToDaysOff(setAllDaysOff, carsFleetId);
     return unsub;
   }, [carsFleetId]);
 
@@ -880,13 +888,15 @@ const AppContent: React.FC = () => {
       </div >
 
       {/* MODALS */}
-      < FinancialModal
+      <FinancialModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
         onSubmit={handleAddTransaction}
         drivers={nonDeletedDrivers}
         transactions={transactions}
         theme={theme}
+        fleetId={carsFleetId}
+        daysOff={allDaysOff}
       />
 
       <DriverModal
