@@ -33,7 +33,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Cast to any to access specific viewer properties not on AdminProfile interface
     // In viewer mode, adminProfile is actually a Viewer object
-    const fleetId = userRole === 'viewer' ? (adminProfile as any)?.createdBy : adminUser?.id;
+    // Viewer raw Supabase data uses snake_case: fleet_id or created_by
+    const fleetId = userRole === 'viewer'
+        ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+        : adminUser?.id;
 
     const { drivers, loading: driversLoading } = useDrivers(fleetId);
     const { transactions, loading: txLoading } = useTransactions(fleetId);

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
+import { SuperAdminService } from '../hooks/superAdminService';
 
 interface EnhancedCreateAccountModalProps {
     isOpen: boolean;
@@ -26,11 +27,6 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa('driver123:secretKey')
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!passwordValid) return;
@@ -39,17 +35,12 @@ const EnhancedCreateAccountModal: React.FC<EnhancedCreateAccountModalProps> = ({
         setError(null);
 
         try {
-            const response = await fetch('http://localhost:3000/api/admin/create-account-enhanced', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(formData)
+            await SuperAdminService.createAccount({
+                username: formData.username,
+                email: formData.email,
+                accountName: formData.displayName || formData.username,
+                password: formData.password,
             });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.errors?.join(', ') || data.error);
-            }
-
             setSuccess(true);
             onSuccess();
         } catch (err: any) {

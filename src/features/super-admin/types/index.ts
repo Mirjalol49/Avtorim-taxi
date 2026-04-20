@@ -1,16 +1,19 @@
 export interface SuperAdminAccount {
-    id: string; // Tenant/Account ID (Firebase UID)
+    id: string;
+    username: string;
     accountName: string;
     ownerEmail: string;
+    role: 'admin' | 'super_admin';
     status: 'active' | 'disabled';
-    createdAt?: any; // Firestore Timestamp
-    updatedAt?: any;
+    createdAt?: number;
 }
 
 export interface CreateAccountDTO {
-    email: string;
-    accountName: string;
-    initialAdminName: string;
+    email?: string;
+    username?: string;
+    accountName?: string;
+    initialAdminName?: string;
+    password?: string;
 }
 
 export interface ApiResponse<T> {

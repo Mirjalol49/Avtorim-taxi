@@ -21,11 +21,6 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
     const [mfaModalOpen, setMfaModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<{ id: string, username: string } | null>(null);
 
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa('driver123:secretKey')
-    };
-
     const fetchAccounts = async () => {
         setLoading(true);
         try {
@@ -39,13 +34,8 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
     };
 
     const fetchPendingAccounts = async () => {
-        try {
-            const response = await fetch('http://localhost:3000/api/admin/pending-accounts', { headers });
-            const data = await response.json();
-            setPendingAccounts(data);
-        } catch (err) {
-            console.error(err);
-        }
+        // No pending-accounts concept in Supabase setup; disabled accounts show in main list
+        setPendingAccounts([]);
     };
 
     useEffect(() => {
@@ -55,12 +45,7 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
 
     const handleApprove = async (accountId: string) => {
         try {
-            await fetch('http://localhost:3000/api/admin/approve-account', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ accountId })
-            });
-            fetchPendingAccounts();
+            await SuperAdminService.toggleStatus(accountId, false); // enable
             fetchAccounts();
         } catch (err) {
             console.error(err);
@@ -68,16 +53,9 @@ const SuperAdminPage: React.FC<SuperAdminPageProps> = ({ theme }) => {
     };
 
     const handleReject = async (accountId: string) => {
-        const reason = prompt('Rejection reason:');
-        if (!reason) return;
-
         try {
-            await fetch('http://localhost:3000/api/admin/reject-account', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ accountId, reason })
-            });
-            fetchPendingAccounts();
+            await SuperAdminService.toggleStatus(accountId, true); // disable
+            fetchAccounts();
         } catch (err) {
             console.error(err);
         }

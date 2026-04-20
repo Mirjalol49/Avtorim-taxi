@@ -23,62 +23,40 @@ class AuthService {
     private sessionCheckInterval: NodeJS.Timeout | null = null;
     private sessionInvalidatedCallbacks: Array<(reason: string) => void> = [];
 
-    async authenticateAdmin(password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+    async authenticateAdmin(password: string, username?: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
         try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            });
+            let query = supabase
+                .from('admin_users')
+                .select('*')
+                .eq('password', password)
+                .eq('active', true);
 
-            const result = await response.json();
+            if (username) {
+                query = query.eq('username', username);
+            }
 
-            if (!result.success) {
-                return { success: false, error: result.error || 'Invalid password' };
+            const { data, error } = await query.limit(1).single();
+
+            if (error || !data) {
+                await this.logAuthAttempt(username || 'unknown', false, 'Invalid credentials', 'admin');
+                return { success: false, error: username ? 'Invalid username or password' : 'Invalid password' };
             }
 
             const user: AuthUser = {
-                id: result.user.id,
-                username: result.user.username,
-                role: result.user.role || 'admin',
-                active: result.user.active,
-                createdAt: Date.now(),
-                avatar: result.user.avatar
+                id: data.id,
+                username: data.username,
+                role: data.role || 'admin',
+                active: data.active,
+                createdAt: data.created_ms,
+                password: data.password,
+                avatar: data.avatar
             };
 
+            await this.logAuthAttempt(user.username, true, 'Login successful', 'admin');
             this.createSession(user);
             return { success: true, user };
-        } catch (_err) {
-            // Fallback: direct Supabase query (legacy plain-text password support)
-            try {
-                const { data, error } = await supabase
-                    .from('admin_users')
-                    .select('*')
-                    .eq('password', password)
-                    .eq('active', true)
-                    .limit(1)
-                    .single();
-
-                if (error || !data) {
-                    return { success: false, error: 'Invalid password' };
-                }
-
-                const user: AuthUser = {
-                    id: data.id,
-                    username: data.username,
-                    role: data.role || 'admin',
-                    active: data.active,
-                    createdAt: data.created_ms,
-                    password: data.password,
-                    avatar: data.avatar
-                };
-
-                this.createSession(user);
-                return { success: true, user };
-            } catch (fallbackError) {
-                console.error('Fallback auth error:', fallbackError);
-            }
-
+        } catch (err) {
+            console.error('Auth error:', err);
             return { success: false, error: 'Authentication system error. Please try again.' };
         }
     }

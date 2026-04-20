@@ -1,80 +1,93 @@
+import { supabase } from '../../../../supabase';
 import { SuperAdminAccount, CreateAccountDTO } from '../types';
 
-// TODO: Move these to environment variables
-const API_URL = 'http://localhost:3000/api/admin';
-const CREDENTIALS = btoa('driver123:secretKey'); // Mock Basic Auth for consistency with server.js
-
-const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Basic ${CREDENTIALS}`
+export const generateStrongPassword = (): string => {
+    const length = 16;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return result;
 };
 
 export const SuperAdminService = {
-    /**
-     * List all accounts
-     */
     getAccounts: async (): Promise<SuperAdminAccount[]> => {
-        const response = await fetch(`${API_URL}/accounts`, {
-            method: 'GET',
-            headers
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch accounts: ${response.statusText}`);
-        }
-
-        return response.json();
+        const { data, error } = await supabase
+            .from('admin_users')
+            .select('*')
+            .order('created_ms', { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(r => ({
+            id: r.id,
+            username: r.username,
+            accountName: r.display_name || r.username,
+            ownerEmail: r.email || '',
+            role: r.role as 'admin' | 'super_admin',
+            status: r.active ? 'active' : 'disabled',
+            createdAt: r.created_ms,
+        }));
     },
 
-    /**
-     * Create a new account
-     */
-    createAccount: async (data: CreateAccountDTO): Promise<{ success: boolean; accountId: string }> => {
-        const password = generateStrongPassword(); // Generate on client for MVP, or server.
+    createAccount: async (
+        dto: CreateAccountDTO & { performedBy?: string }
+    ): Promise<{ success: boolean; accountId: string; password: string }> => {
+        const password = dto.password || generateStrongPassword();
+        const username = (dto.username || dto.accountName || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || 'user_' + Date.now();
 
-        // We send generated password to server to create user
-        const response = await fetch(`${API_URL}/create-account`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ ...data, password })
+        const { data: existing } = await supabase
+            .from('admin_users')
+            .select('id')
+            .eq('username', username)
+            .single();
+
+        if (existing) throw new Error(`Username "${username}" already exists`);
+
+        const { data: newUser, error } = await supabase
+            .from('admin_users')
+            .insert({
+                username,
+                password,
+                role: 'admin',
+                active: true,
+                email: dto.email || null,
+                display_name: dto.accountName || dto.initialAdminName || username,
+                created_ms: Date.now(),
+            })
+            .select('id')
+            .single();
+        if (error) throw error;
+
+        await supabase.from('fleet_metadata').insert({
+            fleet_id: newUser.id,
+            username,
+            initialized: true,
+            created_ms: Date.now(),
+            created_by: dto.performedBy || null,
         });
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Failed to create account');
-        }
+        await supabase.from('audit_logs').insert({
+            action: 'CREATE_ADMIN_USER',
+            target_id: newUser.id,
+            target_name: username,
+            performed_by: dto.performedBy || null,
+            timestamp_ms: Date.now(),
+        });
 
-        // Return the password so we can show it to the admin one time
-        return { ...(await response.json()), password };
+        return { success: true, accountId: newUser.id, password };
     },
 
-    /**
-     * Toggle account status
-     */
     toggleStatus: async (uid: string, disabled: boolean): Promise<{ success: boolean }> => {
-        const response = await fetch(`${API_URL}/toggle-status`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ uid, disabled })
-        });
+        const { error } = await supabase
+            .from('admin_users')
+            .update({ active: !disabled })
+            .eq('id', uid);
+        if (error) throw error;
+        return { success: true };
+    },
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Failed to update status');
-        }
-
-        return response.json();
-    }
-};
-
-// Helper: Generate Strong Password
-// Compliant with requirements: 16 chars, upper, lower, digit, symbol
-export const generateStrongPassword = (): string => {
-    const length = 16;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
-    let retVal = "";
-    for (let i = 0, n = charset.length; i < length; ++i) {
-        retVal += charset.charAt(Math.floor(Math.random() * n));
-    }
-    return retVal;
+    deleteAccount: async (uid: string): Promise<void> => {
+        const { error } = await supabase.from('admin_users').delete().eq('id', uid);
+        if (error) throw error;
+    },
 };

@@ -21,6 +21,7 @@ interface AuthScreenProps {
 
 const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState(false);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,12 +64,38 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
     }
   };
 
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+    if (error) {
+      setError(false);
+      setAnimationState('thinking');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lockoutTime > 0) return;
     setLoading(true);
 
-    // 1. Check Viewers first (for quick viewer access)
+    // If username is provided, go straight to admin auth (skip viewer check)
+    if (username.trim()) {
+      try {
+        const { authService } = await import('../services/authService');
+        const result = await authService.authenticateAdmin(password, username.trim());
+        if (result.success && result.user) {
+          loginSuccess('admin', result.user);
+        } else {
+          handleFailedLogin();
+        }
+      } catch (err) {
+        console.error('Admin auth error:', err);
+        handleFailedLogin();
+      }
+      setLoading(false);
+      return;
+    }
+
+    // 1. Check Viewers first (for quick viewer access, password-only)
     const matchingViewers = viewers.filter(v => v.active && v.password === password);
 
     if (matchingViewers.length === 1) {
@@ -204,6 +231,31 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Input Fields */}
             <div className="space-y-4">
+              {/* Username (optional, for admin accounts) */}
+              <div className={`relative group transition-all duration-150 ${lockoutTime > 0 ? 'opacity-50 grayscale' : ''}`}>
+                <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isDark ? 'text-gray-500 group-focus-within:text-teal-500' : 'text-gray-400 group-focus-within:text-teal-600'
+                  }`}>
+                  <UserIcon className="w-5 h-5" />
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={handleUsernameChange}
+                  placeholder={t('username') || 'Username (admin only)'}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  autoFocus
+                  disabled={success || lockoutTime > 0}
+                  className={`w-full border rounded-2xl px-5 py-4 pl-12 text-base font-mono focus:outline-none focus:ring-2 focus:ring-[#0f766e]/50 transition-all duration-150 ${isDark
+                    ? 'bg-gray-900/50 text-white placeholder-gray-600'
+                    : 'bg-gray-50 text-gray-900 placeholder-gray-400'
+                    } ${isDark ? 'border-gray-700 group-hover:border-[#0f766e]/50' : 'border-gray-200 group-hover:border-[#0f766e]/50'
+                    }`}
+                />
+              </div>
+
               <div className={`relative group transition-all duration-150 ${lockoutTime > 0 ? 'opacity-50 grayscale' : ''}`}>
                 <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isDark ? 'text-gray-500 group-focus-within:text-teal-500' : 'text-gray-400 group-focus-within:text-teal-600'
                   }`}>
@@ -218,7 +270,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck="false"
-                  autoFocus
                   disabled={success || lockoutTime > 0}
                   className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-[#0f766e]/50 transition-all duration-150 ${isDark
                     ? 'bg-gray-900/50 text-white placeholder-gray-600'
@@ -248,7 +299,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={success || lockoutTime > 0 || !password}
+                disabled={success || lockoutTime > 0 || !password.trim()}
                 className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transform transition-all duration-150 ${success
                   ? 'bg-green-500 text-white scale-[1.02]'
                   : lockoutTime > 0

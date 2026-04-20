@@ -118,11 +118,15 @@ const AppContent: React.FC = () => {
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
 
+  const carsFleetId = userRole === 'viewer'
+    ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+    : adminUser?.id;
+
   useEffect(() => {
-    if (!adminUser?.id) return;
-    const unsub = subscribeToCars(setCars, adminUser.id);
+    if (!carsFleetId) return;
+    const unsub = subscribeToCars(setCars, carsFleetId);
     return unsub;
-  }, [adminUser?.id]);
+  }, [carsFleetId]);
 
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
 
