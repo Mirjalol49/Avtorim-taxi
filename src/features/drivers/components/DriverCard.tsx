@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
 import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
+import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
+import { DayOffPanel } from './DayOffPanel';
 
 interface DriverCardProps {
     driver: Driver;
     car?: Car | null;
     transactions: Transaction[];
+    daysOff: DayOff[];
+    fleetId: string;
     theme: 'light' | 'dark';
     userRole: 'admin' | 'viewer';
     currentUserId: string;
@@ -22,17 +26,20 @@ const fmt = (n: number) =>
     new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
 export const DriverCard: React.FC<DriverCardProps> = ({
-    driver, car, transactions, theme, userRole, onEdit, onDelete,
+    driver, car, transactions, daysOff, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
-    const debt = calcDriverDebt(driver, car, transactions);
+    const [showDayOff, setShowDayOff] = useState(false);
+    const daysOffSet = getDaysOffSet(daysOff, driver.id);
+    const usedThisMonth = countUsedThisMonth(daysOff, driver.id);
+    const debt = calcDriverDebt(driver, car, transactions, daysOffSet);
     const explicitDebt = calcExplicitDebt(driver, transactions);
     const docs = driver.documents ?? [];
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
-    return (
+    return (<>
         <div className={`rounded-2xl flex flex-col transition-all group relative border overflow-hidden ${theme === 'dark'
             ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
             : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
@@ -53,17 +60,42 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     <h3 className={`font-bold text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h3>
                     <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.phone}</p>
                 </div>
-                {/* Debt badge */}
-                {debt.totalDebt > 0 && (
-                    <div className="flex-shrink-0 text-right">
-                        <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Qarz</p>
-                        <p className="text-sm font-bold text-red-400">−{fmt(debt.totalDebt)}</p>
-                    </div>
-                )}
+                {/* Right side badges */}
+                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                    {/* Day off badge */}
+                    <button
+                        onClick={e => { e.stopPropagation(); if (userRole === 'admin') setShowDayOff(true); }}
+                        title="Dam olish kunlari"
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                            usedThisMonth >= MONTHLY_ALLOWANCE
+                                ? 'bg-red-500/10 text-red-400'
+                                : 'bg-teal-500/10 text-teal-500 hover:bg-teal-500/20'
+                        }`}
+                    >
+                        🏖️ {usedThisMonth}/{MONTHLY_ALLOWANCE}
+                    </button>
+                    {/* Debt badge */}
+                    {debt.totalDebt > 0 && (
+                        <div className="text-right">
+                            <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Qarz</p>
+                            <p className="text-sm font-bold text-red-400">−{fmt(debt.totalDebt)}</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
+            {/* Today is day off banner */}
+            {debt.todayIsDayOff && (
+                <div className={`mx-4 mb-2 rounded-xl px-3 py-2 flex items-center gap-2 ${
+                    theme === 'dark' ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'
+                }`}>
+                    <span>🏖️</span>
+                    <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>Bugun dam olish kuni — reja kerak emas</span>
+                </div>
+            )}
+
             {/* Daily plan stats */}
-            {debt.dailyPlan > 0 && (
+            {debt.dailyPlan > 0 && !debt.todayIsDayOff && (
                 <div className={`mx-4 mb-3 rounded-xl p-3 grid grid-cols-3 gap-2 ${theme === 'dark' ? 'bg-gray-800/70' : 'bg-gray-50'}`}>
                     <div className="text-center">
                         <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Kunlik reja</p>
@@ -172,5 +204,15 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                 </div>
             )}
         </div>
-    );
+
+        {/* Day Off Panel */}
+        {showDayOff && (
+            <DayOffPanel
+                driver={{ id: driver.id, name: driver.name, fleetId }}
+                daysOff={daysOff}
+                theme={theme}
+                onClose={() => setShowDayOff(false)}
+            />
+        )}
+    </>);
 };

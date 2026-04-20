@@ -38,14 +38,22 @@ export interface DriverDebtInfo {
     totalDebt: number;
     totalIncome: number;
     workingDays: number;
+    todayIsDayOff: boolean;
 }
 
-const dateKey = (ts: number) => new Date(ts).toDateString();
+const dateKey = (ts: number) => {
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
 
 export function calcDriverDebt(
     driver: Driver,
     car: Car | null | undefined,
-    transactions: Transaction[]
+    transactions: Transaction[],
+    daysOffSet: Set<string> = new Set()  // set of 'YYYY-MM-DD' strings
 ): DriverDebtInfo {
     // Car's daily plan takes priority; fall back to driver's own setting
     const carPlan = (car?.dailyPlan ?? 0);
@@ -60,7 +68,7 @@ export function calcDriverDebt(
         (tx as any).status !== 'DELETED'
     );
 
-    // Group income by date
+    // Group income by date (YYYY-MM-DD)
     const byDate: Record<string, number> = {};
     income.forEach(tx => {
         const key = dateKey(tx.timestamp);
@@ -68,19 +76,31 @@ export function calcDriverDebt(
     });
 
     const todayKey = dateKey(Date.now());
+    const todayIsDayOff = daysOffSet.has(todayKey);
     const todayIncome = byDate[todayKey] ?? 0;
-    const todayDebt = dailyPlan > 0 ? Math.max(0, dailyPlan - todayIncome) : 0;
+    // No daily plan required on a day off
+    const todayDebt = (dailyPlan > 0 && !todayIsDayOff)
+        ? Math.max(0, dailyPlan - todayIncome)
+        : 0;
 
     let totalDebt = 0;
     let totalIncome = 0;
     const workingDays = Object.keys(byDate).length;
 
-    Object.values(byDate).forEach(dayAmount => {
+    Object.entries(byDate).forEach(([day, dayAmount]) => {
         totalIncome += dayAmount;
+        // Skip debt calculation for days off
+        if (daysOffSet.has(day)) return;
         if (dailyPlan > 0 && dayAmount < dailyPlan) {
             totalDebt += dailyPlan - dayAmount;
         }
     });
 
-    return { dailyPlan, todayIncome, todayDebt, totalDebt, totalIncome, workingDays };
+    // Also check days with zero income that are NOT days off (they still owe)
+    // Note: days with zero income don't appear in byDate, so we only count
+    // income shortfall for days that actually have a transaction record.
+    // Days with no transactions at all are not tracked (consistent with prior behavior).
+
+    return { dailyPlan, todayIncome, todayDebt, totalDebt, totalIncome, workingDays, todayIsDayOff };
 }
+

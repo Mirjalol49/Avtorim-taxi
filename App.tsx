@@ -798,6 +798,9 @@ const AppContent: React.FC = () => {
                 transactions={transactions}
                 isDataLoading={isDataLoading}
                 userRole={userRole}
+                fleetId={userRole === 'viewer'
+                  ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+                  : adminUser?.id}
                 onUpdateStatus={handleUpdateDriverStatus}
                 onEditDriver={handleEditDriverClick}
                 onDeleteDriver={handleDeleteDriver}
@@ -808,6 +811,7 @@ const AppContent: React.FC = () => {
                 theme={theme}
               />
             } />
+
 
             {/* CARS */}
             <Route path="/cars" element={

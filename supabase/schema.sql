@@ -420,4 +420,31 @@ CREATE TABLE IF NOT EXISTS notes (
 CREATE INDEX IF NOT EXISTS idx_notes_fleet ON notes(fleet_id);
 ALTER TABLE notes DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON notes TO anon, authenticated;
-ALTER PUBLICATION supabase_realtime ADD TABLE notes;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE notes;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- =====================================================
+-- DRIVER DAYS OFF
+-- Each driver gets 2 free days off per month.
+-- On a day off, their daily plan is NOT required.
+-- =====================================================
+CREATE TABLE IF NOT EXISTS driver_days_off (
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fleet_id   UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+    driver_id  UUID REFERENCES drivers(id) ON DELETE CASCADE,
+    date_key   TEXT NOT NULL,   -- 'YYYY-MM-DD'
+    month_key  TEXT NOT NULL,   -- 'YYYY-MM'
+    note       TEXT DEFAULT '',
+    created_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+    UNIQUE(driver_id, date_key)
+);
+CREATE INDEX IF NOT EXISTS idx_days_off_driver ON driver_days_off(driver_id);
+CREATE INDEX IF NOT EXISTS idx_days_off_fleet  ON driver_days_off(fleet_id);
+CREATE INDEX IF NOT EXISTS idx_days_off_month  ON driver_days_off(month_key);
+ALTER TABLE driver_days_off DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON driver_days_off TO anon, authenticated;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE driver_days_off;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+

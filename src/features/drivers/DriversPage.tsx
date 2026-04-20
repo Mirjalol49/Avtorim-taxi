@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../core/types';
 import { Car } from '../../core/types/car.types';
@@ -9,6 +9,7 @@ import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { useAuth } from '../auth/hooks/useAuth';
 import { calcDriverDebt } from './utils/debtUtils';
+import { DayOff, getDaysOffSet, subscribeToDaysOff } from '../../../services/daysOffService';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -18,6 +19,7 @@ interface DriversPageProps {
     transactions: Transaction[];
     isDataLoading: boolean;
     userRole: 'admin' | 'viewer';
+    fleetId?: string;
     onUpdateStatus: (id: string, status: DriverStatus) => void;
     onEditDriver: (driver: Driver) => void;
     onDeleteDriver: (id: string) => void;
@@ -26,24 +28,32 @@ interface DriversPageProps {
 }
 
 const DriversPage: React.FC<DriversPageProps> = ({
-    drivers, cars, transactions, isDataLoading, userRole,
+    drivers, cars, transactions, isDataLoading, userRole, fleetId,
     onUpdateStatus, onEditDriver, onDeleteDriver, onAddDriver, theme,
 }) => {
     const { t } = useTranslation();
     const { adminUser } = useAuth();
     const currentUserId = adminUser?.id || 'unknown';
 
+    // Subscribe to days off for the entire fleet
+    const [allDaysOff, setAllDaysOff] = useState<DayOff[]>([]);
+    useEffect(() => {
+        const unsub = subscribeToDaysOff(setAllDaysOff, fleetId);
+        return unsub;
+    }, [fleetId]);
+
     const fleetStats = useMemo(() => {
         let totalDebt = 0, totalIncome = 0, todayIncome = 0;
         drivers.filter(d => !d.isDeleted).forEach(d => {
             const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
-            const s = calcDriverDebt(d, car, transactions);
+            const daysOffSet = getDaysOffSet(allDaysOff, d.id);
+            const s = calcDriverDebt(d, car, transactions, daysOffSet);
             totalDebt += s.totalDebt;
             totalIncome += s.totalIncome;
             todayIncome += s.todayIncome;
         });
         return { totalDebt, totalIncome, todayIncome };
-    }, [drivers, cars, transactions]);
+    }, [drivers, cars, transactions, allDaysOff]);
 
     const {
         searchQuery, setSearchQuery,
@@ -145,6 +155,8 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                     driver={driver}
                                     car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
                                     transactions={transactions}
+                                    daysOff={allDaysOff}
+                                    fleetId={fleetId || ''}
                                     theme={theme}
                                     userRole={userRole}
                                     currentUserId={currentUserId}
@@ -174,6 +186,8 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                                 driver={driver}
                                                 car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
                                                 transactions={transactions}
+                                                daysOff={allDaysOff}
+                                                fleetId={fleetId || ''}
                                                 theme={theme}
                                                 userRole={userRole}
                                                 currentUserId={currentUserId}

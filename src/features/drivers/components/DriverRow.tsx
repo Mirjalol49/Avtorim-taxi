@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
 import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
+import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
+import { DayOffPanel } from './DayOffPanel';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -12,6 +14,8 @@ interface DriverRowProps {
     driver: Driver;
     car?: Car | null;
     transactions: Transaction[];
+    daysOff: DayOff[];
+    fleetId: string;
     theme: 'light' | 'dark';
     userRole: 'admin' | 'viewer';
     currentUserId: string;
@@ -21,17 +25,20 @@ interface DriverRowProps {
 }
 
 export const DriverRow: React.FC<DriverRowProps> = ({
-    driver, car, transactions, theme, userRole, onEdit, onDelete,
+    driver, car, transactions, daysOff, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
+    const [showDayOff, setShowDayOff] = useState(false);
     const docs = driver.documents ?? [];
-    const debt = calcDriverDebt(driver, car, transactions);
+    const daysOffSet = getDaysOffSet(daysOff, driver.id);
+    const usedThisMonth = countUsedThisMonth(daysOff, driver.id);
+    const debt = calcDriverDebt(driver, car, transactions, daysOffSet);
     const explicitDebt = calcExplicitDebt(driver, transactions);
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
-    return (
+    return (<>
         <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}>
 
             {/* Driver */}
@@ -97,10 +104,25 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                 )}
             </td>
 
-            {/* Debt */}
+            {/* Debt / Day Off */}
             <td className="p-4">
                 <div className="space-y-0.5">
-                    {debt.dailyPlan > 0 && (
+                    {/* Day off badge */}
+                    <button
+                        onClick={e => { e.stopPropagation(); if (userRole === 'admin') setShowDayOff(true); }}
+                        title="Dam olish kunlari"
+                        className={`mb-1 flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                            usedThisMonth >= MONTHLY_ALLOWANCE
+                                ? 'bg-red-500/10 text-red-400'
+                                : 'bg-teal-500/10 text-teal-500 hover:bg-teal-500/20'
+                        }`}
+                    >
+                        🏖️ {usedThisMonth}/{MONTHLY_ALLOWANCE}
+                    </button>
+                    {debt.todayIsDayOff && (
+                        <p className="text-xs font-semibold text-teal-400">🏖️ Dam olish</p>
+                    )}
+                    {debt.dailyPlan > 0 && !debt.todayIsDayOff && (
                         <>
                             <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Reja: {fmt(debt.dailyPlan)}</p>
                             {debt.totalDebt > 0 && (
@@ -120,7 +142,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                                 : "Qarz to'landi ✓"}
                         </p>
                     )}
-                    {debt.dailyPlan === 0 && explicitDebt.totalDebt === 0 && (
+                    {debt.dailyPlan === 0 && explicitDebt.totalDebt === 0 && !debt.todayIsDayOff && (
                         <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>
                     )}
                 </div>
@@ -142,5 +164,15 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                 </td>
             )}
         </tr>
-    );
+
+        {/* Day Off Panel */}
+        {showDayOff && (
+            <DayOffPanel
+                driver={{ id: driver.id, name: driver.name, fleetId }}
+                daysOff={daysOff}
+                theme={theme}
+                onClose={() => setShowDayOff(false)}
+            />
+        )}
+    </>);
 };
