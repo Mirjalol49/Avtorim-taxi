@@ -104,13 +104,14 @@ interface EditorProps {
     note?: Note | null;
     theme: 'light' | 'dark';
     saveError?: string | null;
+    isSaving?: boolean;
     labels: { title: string; takNote: string; delete: string; confirmDelete: string; cancel: string; save: string; };
     onSave: (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => void;
     onDelete?: () => void;
     onClose: () => void;
 }
 
-const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, labels, onSave, onDelete, onClose }) => {
+const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, labels, onSave, onDelete, onClose }) => {
     const [title, setTitle]       = useState(note?.title ?? '');
     const [content, setContent]   = useState(note?.content ?? '');
     const [color, setColor]       = useState<NoteColor>(note?.color ?? 'default');
@@ -208,8 +209,8 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, labels, onS
                                 <button onClick={() => setConfirmDel(false)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}>
                                     {labels.cancel}
                                 </button>
-                                <button onClick={onDelete} className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all">
-                                    {labels.confirmDelete}
+                                <button onClick={onDelete} disabled={isSaving} className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50">
+                                    {isSaving ? '...' : labels.confirmDelete}
                                 </button>
                             </>
                         )}
@@ -223,9 +224,10 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, labels, onS
                         </button>
                         <button
                             onClick={() => { if (hasContent) onSave({ title, content, color, isPinned }); else onClose(); }}
-                            className="text-xs px-4 py-1.5 rounded-lg font-bold bg-[#0f766e] text-white hover:bg-teal-600 transition-all active:scale-95"
+                            disabled={isSaving}
+                            className="text-xs px-4 py-1.5 rounded-lg font-bold bg-[#0f766e] text-white hover:bg-teal-600 transition-all active:scale-95 disabled:opacity-50 min-w-[50px]"
                         >
-                            {labels.save}
+                            {isSaving ? '...' : labels.save}
                         </button>
                     </div>
                 </div>
@@ -323,13 +325,24 @@ const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
 
 const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     const { t } = useTranslation();
-    const { notes, loading, tableError } = useNotes(fleetId);
+    const { notes: remoteNotes, loading, tableError } = useNotes(fleetId);
+
+    // Optimistic local state — UI updates instantly, syncs with DB in background
+    const [localNotes, setLocalNotes] = useState<Note[]>([]);
     const [search, setSearch] = useState('');
     const [filterColor, setFilterColor] = useState<NoteColor | 'all'>('all');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
     const [showEditor, setShowEditor] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const isDark = theme === 'dark';
+
+    // Sync remote notes into local state whenever they update
+    useEffect(() => {
+        setLocalNotes(remoteNotes);
+    }, [remoteNotes]);
+
+    const notes = localNotes;
 
     const filtered = useMemo(() => {
         let list = notes;
@@ -346,42 +359,93 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
     const openNew = () => {
         setEditingNote(null);
+        setSaveError(null);
         setShowEditor(true);
     };
 
     const openEdit = (note: Note) => {
         setEditingNote(note);
+        setSaveError(null);
         setShowEditor(true);
     };
 
     const handleSave = async (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => {
         if (!fleetId) return;
         setSaveError(null);
+        setIsSaving(true);
         const now = Date.now();
+
         try {
             if (editingNote) {
-                await updateNote((editingNote as Note).id, { ...data, updatedMs: now });
+                // Optimistic update
+                const updated: Note = { ...editingNote, ...data, updatedMs: now };
+                setLocalNotes(prev => prev.map(n => n.id === editingNote.id ? updated : n).sort((a, b) => {
+                    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+                    return b.updatedMs - a.updatedMs;
+                }));
+                setShowEditor(false);
+                // Persist in background
+                await updateNote(editingNote.id, { ...data, updatedMs: now });
             } else {
-                await addNote({ fleetId, ...data, createdMs: now, updatedMs: now });
+                // Optimistic add with temp id
+                const tempId = `temp_${Date.now()}`;
+                const newNote: Note = { id: tempId, fleetId, ...data, createdMs: now, updatedMs: now };
+                setLocalNotes(prev => {
+                    const withNew = [newNote, ...prev];
+                    return withNew.sort((a, b) => {
+                        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+                        return b.updatedMs - a.updatedMs;
+                    });
+                });
+                setShowEditor(false);
+                // Persist and replace temp id
+                const realId = await addNote({ fleetId, ...data, createdMs: now, updatedMs: now });
+                setLocalNotes(prev => prev.map(n => n.id === tempId ? { ...n, id: realId } : n));
             }
-            setShowEditor(false);
         } catch (err: any) {
+            // Rollback on error
+            setLocalNotes(remoteNotes);
             setSaveError(err?.message || 'Failed to save note');
+            setShowEditor(true);
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleDelete = async () => {
         if (!editingNote) return;
+        setIsSaving(true);
+        const noteToDelete = editingNote;
+
+        // Optimistic remove
+        setLocalNotes(prev => prev.filter(n => n.id !== noteToDelete.id));
+        setShowEditor(false);
+
         try {
-            await deleteNote((editingNote as Note).id);
-            setShowEditor(false);
+            await deleteNote(noteToDelete.id);
         } catch (err: any) {
+            // Rollback on error
+            setLocalNotes(remoteNotes);
+            setEditingNote(noteToDelete);
             setSaveError(err?.message || 'Failed to delete note');
+            setShowEditor(true);
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleTogglePin = async (note: Note) => {
-        await updateNote(note.id, { isPinned: !note.isPinned });
+        const updated = { ...note, isPinned: !note.isPinned, updatedMs: Date.now() };
+        // Optimistic update
+        setLocalNotes(prev => prev.map(n => n.id === note.id ? updated : n).sort((a, b) => {
+            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+            return b.updatedMs - a.updatedMs;
+        }));
+        try {
+            await updateNote(note.id, { isPinned: updated.isPinned });
+        } catch {
+            setLocalNotes(remoteNotes); // rollback
+        }
     };
 
     const usedColors = useMemo(() => {
@@ -415,7 +479,6 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Search + Color filter */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                    {/* Search */}
                     <div className={`relative flex-1 group`}>
                         <div className={`absolute inset-y-0 left-3 flex items-center pointer-events-none ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -442,7 +505,6 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                         )}
                     </div>
 
-                    {/* Color filter pills */}
                     {usedColors.length > 1 && (
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <button
@@ -486,7 +548,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 )}
 
                 {/* Empty state */}
-                {!loading && notes.length === 0 && (
+                {!loading && notes.length === 0 && !tableError && (
                     <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-200'}`}>
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
                             <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -560,9 +622,10 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
             {/* Editor modal */}
             {showEditor && (
                 <NoteEditor
-                    note={editingNote as Note | null}
+                    note={editingNote}
                     theme={theme}
                     saveError={saveError}
+                    isSaving={isSaving}
                     labels={{
                         title: t('title') || 'Title',
                         takNote: t('takeNote') || 'Take a note…',
