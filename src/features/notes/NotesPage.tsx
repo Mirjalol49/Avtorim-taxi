@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Note, NoteColor } from '../../core/types/note.types';
 import { addNote, updateNote, deleteNote } from '../../../services/notesService';
 import { useNotes } from './hooks/useNotes';
@@ -12,7 +13,7 @@ interface NotesPageProps {
 
 const SQL = `create table if not exists notes (
   id uuid primary key default gen_random_uuid(),
-  fleet_id uuid references admin_users(id) on delete cascade,
+  fleet_id uuid,
   title text not null default '',
   content text not null default '',
   color text not null default 'default',
@@ -20,6 +21,7 @@ const SQL = `create table if not exists notes (
   created_ms bigint not null,
   updated_ms bigint not null
 );
+create index if not exists notes_fleet_id_idx on notes (fleet_id);
 alter table notes enable row level security;
 create policy "notes_open" on notes using (true) with check (true);
 alter publication supabase_realtime add table notes;`;
@@ -98,12 +100,13 @@ function timeAgo(ms: number): string {
 interface EditorProps {
     note?: Note | null;
     theme: 'light' | 'dark';
+    saveError?: string | null;
     onSave: (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => void;
     onDelete?: () => void;
     onClose: () => void;
 }
 
-const NoteEditor: React.FC<EditorProps> = ({ note, theme, onSave, onDelete, onClose }) => {
+const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, onSave, onDelete, onClose }) => {
     const [title, setTitle]       = useState(note?.title ?? '');
     const [content, setContent]   = useState(note?.content ?? '');
     const [color, setColor]       = useState<NoteColor>(note?.color ?? 'default');
@@ -177,6 +180,13 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, onSave, onDelete, onCl
                     rows={5}
                     className={`w-full px-4 py-2 pb-4 text-sm bg-transparent border-none outline-none resize-none min-h-[120px] max-h-[60vh] overflow-y-auto placeholder-opacity-30 ${isDark ? 'text-gray-200 placeholder-gray-600' : 'text-gray-700 placeholder-gray-300'}`}
                 />
+
+                {/* Save error */}
+                {saveError && (
+                    <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
+                        ⚠ {saveError}
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
@@ -308,11 +318,13 @@ const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
+    const { t } = useTranslation();
     const { notes, loading, tableError } = useNotes(fleetId);
     const [search, setSearch] = useState('');
     const [filterColor, setFilterColor] = useState<NoteColor | 'all'>('all');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
     const [showEditor, setShowEditor] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const isDark = theme === 'dark';
 
     const filtered = useMemo(() => {
@@ -340,13 +352,18 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
     const handleSave = async (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => {
         if (!fleetId) return;
+        setSaveError(null);
         const now = Date.now();
-        if (editingNote) {
-            await updateNote((editingNote as Note).id, { ...data, updatedMs: now });
-        } else {
-            await addNote({ fleetId, ...data, createdMs: now, updatedMs: now });
+        try {
+            if (editingNote) {
+                await updateNote((editingNote as Note).id, { ...data, updatedMs: now });
+            } else {
+                await addNote({ fleetId, ...data, createdMs: now, updatedMs: now });
+            }
+            setShowEditor(false);
+        } catch (err: any) {
+            setSaveError(err?.message || 'Failed to save note');
         }
-        setShowEditor(false);
     };
 
     const handleDelete = async () => {
@@ -372,7 +389,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            Notes
+                            {t('notes')}
                         </h1>
                         {!loading && (
                             <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
@@ -384,7 +401,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                         onClick={openNew}
                         className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-teal-900/20 transition-all active:scale-95"
                     >
-                        <span className="text-lg leading-none">+</span> New Note
+                        <span className="text-lg leading-none">+</span> {t('newNote')}
                     </button>
                 </div>
 
@@ -538,9 +555,10 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 <NoteEditor
                     note={editingNote as Note | null}
                     theme={theme}
+                    saveError={saveError}
                     onSave={handleSave}
                     onDelete={editingNote ? handleDelete : undefined}
-                    onClose={() => setShowEditor(false)}
+                    onClose={() => { setShowEditor(false); setSaveError(null); }}
                 />
             )}
         </div>

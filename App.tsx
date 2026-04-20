@@ -538,7 +538,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/salary', t.salaryManagement, WalletIcon)}
-          {renderSidebarItem('/notes', 'Notes', NotesIcon)}
+          {renderSidebarItem('/notes', t.notes || 'Notes', NotesIcon)}
           {userRole === 'admin' && renderSidebarItem('/roles', t.roleManagement, ShieldIcon)}
           {userRole === 'admin' && (adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && renderSidebarItem('/mirjalol49', t.superAdmin, LockIcon)}
         </nav>
