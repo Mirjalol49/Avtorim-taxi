@@ -60,26 +60,32 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
 };
 
 export const addNote = async (note: Omit<Note, 'id'>) => {
-    console.log('[Notes] Adding note with fleet_id:', note.fleetId);
-    const { data, error } = await supabase
-        .from('notes')
-        .insert({
-            fleet_id: note.fleetId,
-            title: note.title,
-            content: note.content,
-            color: note.color,
-            is_pinned: note.isPinned,
-            created_ms: note.createdMs,
-            updated_ms: note.updatedMs,
-        })
-        .select('id')
-        .single();
-    if (error) {
-        console.error('[Notes] Insert error:', error.message, error.details, error.hint);
-        throw new Error(error.message);
+    alert(`[DEBUG] Attempting to add note for fleet: ${note.fleetId}`);
+    try {
+        const { data, error } = await supabase
+            .from('notes')
+            .insert({
+                fleet_id: note.fleetId,
+                title: note.title,
+                content: note.content,
+                color: note.color,
+                is_pinned: note.isPinned,
+                created_ms: note.createdMs,
+                updated_ms: note.updatedMs,
+            })
+            .select('id')
+            .single();
+        
+        if (error) {
+            alert(`[DEBUG] Insert Error: ${error.message} (Code: ${error.code})`);
+            throw new Error(error.message);
+        }
+        alert(`[DEBUG] Insert SUCCESS! ID: ${data.id}`);
+        return data.id as string;
+    } catch (e: any) {
+        alert(`[DEBUG] Insert Catch Error: ${e.message}`);
+        throw e;
     }
-    console.log('[Notes] Note created with id:', data.id);
-    return data.id as string;
 };
 
 export const updateNote = async (id: string, updates: Partial<Omit<Note, 'id' | 'fleetId' | 'createdMs'>>) => {
@@ -90,21 +96,21 @@ export const updateNote = async (id: string, updates: Partial<Omit<Note, 'id' | 
     if (updates.isPinned !== undefined) row.is_pinned = updates.isPinned;
     if (updates.updatedMs !== undefined) row.updated_ms = updates.updatedMs;
 
-    console.log('[Notes] Updating note:', id, row);
+    alert(`[DEBUG] Attempting to update note: ${id}`);
     const { error } = await supabase.from('notes').update(row).eq('id', id);
     if (error) {
-        console.error('[Notes] Update error:', error.message, error.details, error.hint);
+        alert(`[DEBUG] Update Error: ${error.message}`);
         throw new Error(error.message);
     }
-    console.log('[Notes] Note updated:', id);
+    alert(`[DEBUG] Update SUCCESS`);
 };
 
 export const deleteNote = async (id: string) => {
-    console.log('[Notes] Deleting note:', id);
+    alert(`[DEBUG] Attempting to delete note: ${id}`);
     const { error } = await supabase.from('notes').delete().eq('id', id);
     if (error) {
-        console.error('[Notes] Delete error:', error.message, error.details, error.hint);
+        alert(`[DEBUG] Delete Error: ${error.message}`);
         throw new Error(error.message);
     }
-    console.log('[Notes] Note deleted:', id);
+    alert(`[DEBUG] Delete SUCCESS`);
 };
