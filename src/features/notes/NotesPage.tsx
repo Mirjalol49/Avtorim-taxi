@@ -101,12 +101,13 @@ interface EditorProps {
     note?: Note | null;
     theme: 'light' | 'dark';
     saveError?: string | null;
+    labels: { title: string; takNote: string; delete: string; confirmDelete: string; cancel: string; save: string; };
     onSave: (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => void;
     onDelete?: () => void;
     onClose: () => void;
 }
 
-const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, onSave, onDelete, onClose }) => {
+const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, labels, onSave, onDelete, onClose }) => {
     const [title, setTitle]       = useState(note?.title ?? '');
     const [content, setContent]   = useState(note?.content ?? '');
     const [color, setColor]       = useState<NoteColor>(note?.color ?? 'default');
@@ -166,7 +167,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, onSave, onD
                 <input
                     value={title}
                     onChange={e => setTitle(e.target.value)}
-                    placeholder="Title"
+                    placeholder={labels.title}
                     className={`w-full px-4 py-2 text-lg font-bold bg-transparent border-none outline-none resize-none placeholder-opacity-30 ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'}`}
                 />
 
@@ -176,7 +177,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, onSave, onD
                     value={content}
                     onChange={e => { setContent(e.target.value); autoResize(); }}
                     onInput={autoResize}
-                    placeholder="Take a note…"
+                    placeholder={labels.takNote}
                     rows={5}
                     className={`w-full px-4 py-2 pb-4 text-sm bg-transparent border-none outline-none resize-none min-h-[120px] max-h-[60vh] overflow-y-auto placeholder-opacity-30 ${isDark ? 'text-gray-200 placeholder-gray-600' : 'text-gray-700 placeholder-gray-300'}`}
                 />
@@ -196,16 +197,16 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, onSave, onD
                                 onClick={() => setConfirmDel(true)}
                                 className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}
                             >
-                                Delete
+                                {labels.delete}
                             </button>
                         )}
                         {confirmDel && (
                             <>
                                 <button onClick={() => setConfirmDel(false)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}>
-                                    Cancel
+                                    {labels.cancel}
                                 </button>
                                 <button onClick={onDelete} className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all">
-                                    Confirm delete
+                                    {labels.confirmDelete}
                                 </button>
                             </>
                         )}
@@ -215,13 +216,13 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, onSave, onD
                             onClick={onClose}
                             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
                         >
-                            Cancel
+                            {labels.cancel}
                         </button>
                         <button
                             onClick={() => { if (hasContent) onSave({ title, content, color, isPinned }); else onClose(); }}
                             className="text-xs px-4 py-1.5 rounded-lg font-bold bg-[#0f766e] text-white hover:bg-teal-600 transition-all active:scale-95"
                         >
-                            Save
+                            {labels.save}
                         </button>
                     </div>
                 </div>
@@ -368,8 +369,12 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
     const handleDelete = async () => {
         if (!editingNote) return;
-        await deleteNote((editingNote as Note).id);
-        setShowEditor(false);
+        try {
+            await deleteNote((editingNote as Note).id);
+            setShowEditor(false);
+        } catch (err: any) {
+            setSaveError(err?.message || 'Failed to delete note');
+        }
     };
 
     const handleTogglePin = async (note: Note) => {
@@ -417,7 +422,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Search notes…"
+                            placeholder={t('searchNotes')}
                             className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/40 transition-all ${
                                 isDark
                                     ? 'bg-[#1F2937] border-gray-700 text-white placeholder-gray-600'
@@ -445,7 +450,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                                         : isDark ? 'bg-[#1F2937] border-gray-700 text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
                                 }`}
                             >
-                                All
+                                {t('all') || 'All'}
                             </button>
                             {usedColors.map(c => (
                                 <button
@@ -486,13 +491,13 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                                 <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
                             </svg>
                         </div>
-                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No notes yet</p>
-                        <p className={`text-xs mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Create your first note to get started</p>
+                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noNotesYet')}</p>
+                        <p className={`text-xs mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('noNotesDescription')}</p>
                         <button
                             onClick={openNew}
                             className="px-4 py-2 bg-[#0f766e] text-white rounded-xl text-sm font-bold hover:bg-teal-600 transition-all active:scale-95"
                         >
-                            + New Note
+                            + {t('newNote')}
                         </button>
                     </div>
                 )}
@@ -500,8 +505,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 {/* No search results */}
                 {!loading && notes.length > 0 && filtered.length === 0 && (
                     <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-200'}`}>
-                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No results found</p>
-                        <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Try a different search</p>
+                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noRecordsFound')}</p>
                     </div>
                 )}
 
@@ -509,7 +513,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 {!loading && pinned.length > 0 && (
                     <section>
                         <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            📌 Pinned
+                            📌 {t('pinnedSection')}
                         </p>
                         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
                             {pinned.map(note => (
@@ -531,7 +535,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                     <section>
                         {pinned.length > 0 && (
                             <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Others
+                                {t('othersSection')}
                             </p>
                         )}
                         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
@@ -556,6 +560,14 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                     note={editingNote as Note | null}
                     theme={theme}
                     saveError={saveError}
+                    labels={{
+                        title: t('title') || 'Title',
+                        takNote: t('takeNote') || 'Take a note…',
+                        delete: t('deleteNote'),
+                        confirmDelete: t('confirmDelete'),
+                        cancel: t('cancel'),
+                        save: t('save'),
+                    }}
                     onSave={handleSave}
                     onDelete={editingNote ? handleDelete : undefined}
                     onClose={() => { setShowEditor(false); setSaveError(null); }}
