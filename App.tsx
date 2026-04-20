@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon
+  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon, NotesIcon
 } from './components/Icons';
 
 import FinancialModal from './components/FinancialModal';
@@ -35,6 +35,7 @@ import Skeleton from './components/Skeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
 import DriversPage from './src/features/drivers/DriversPage';
 import SuperAdminPage from './src/features/super-admin/SuperAdminPage';
+import NotesPage from './src/features/notes/NotesPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
@@ -490,7 +491,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/salary', '/roles', '/super-admin', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/salary', '/notes', '/roles', '/super-admin', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -537,6 +538,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/salary', t.salaryManagement, WalletIcon)}
+          {renderSidebarItem('/notes', 'Notes', NotesIcon)}
           {userRole === 'admin' && renderSidebarItem('/roles', t.roleManagement, ShieldIcon)}
           {userRole === 'admin' && (adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && renderSidebarItem('/mirjalol49', t.superAdmin, LockIcon)}
         </nav>
@@ -845,6 +847,16 @@ const AppContent: React.FC = () => {
 
             {/* SALARY MANAGEMENT COMPONENT */}
             <Route path="/salary" element={<SalaryManagement theme={theme} drivers={drivers} transactions={transactions} onPaySalary={handlePaySalary} salaryHistory={salaryHistory} userRole={userRole} adminName={adminUser?.username || 'Admin'} fleetId={adminUser?.id} />} />
+
+            {/* NOTES */}
+            <Route path="/notes" element={
+              <NotesPage
+                theme={theme}
+                fleetId={userRole === 'viewer'
+                  ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+                  : adminUser?.id}
+              />
+            } />
 
             <Route path="/roles" element={userRole === 'admin' ? (
               <RolesPage

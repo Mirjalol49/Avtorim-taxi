@@ -1,0 +1,488 @@
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Note, NoteColor } from '../../core/types/note.types';
+import { addNote, updateNote, deleteNote } from '../../../services/notesService';
+import { useNotes } from './hooks/useNotes';
+
+interface NotesPageProps {
+    theme: 'light' | 'dark';
+    fleetId?: string;
+}
+
+// ─── Color Palette ────────────────────────────────────────────────────────────
+
+const COLOR_MAP: Record<NoteColor, { bg: string; border: string; dot: string; label: string }> = {
+    default: { bg: '', border: '', dot: 'bg-gray-400', label: 'Default' },
+    red:     { bg: 'bg-red-500/10',    border: 'border-red-500/30',    dot: 'bg-red-400',    label: 'Red' },
+    orange:  { bg: 'bg-orange-500/10', border: 'border-orange-500/30', dot: 'bg-orange-400', label: 'Orange' },
+    yellow:  { bg: 'bg-yellow-500/10', border: 'border-yellow-400/30', dot: 'bg-yellow-400', label: 'Yellow' },
+    green:   { bg: 'bg-green-500/10',  border: 'border-green-500/30',  dot: 'bg-green-400',  label: 'Green' },
+    teal:    { bg: 'bg-teal-500/10',   border: 'border-teal-500/30',   dot: 'bg-teal-400',   label: 'Teal' },
+    blue:    { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   dot: 'bg-blue-400',   label: 'Blue' },
+    purple:  { bg: 'bg-purple-500/10', border: 'border-purple-500/30', dot: 'bg-purple-400', label: 'Purple' },
+    pink:    { bg: 'bg-pink-500/10',   border: 'border-pink-500/30',   dot: 'bg-pink-400',   label: 'Pink' },
+};
+
+const ALL_COLORS = Object.keys(COLOR_MAP) as NoteColor[];
+
+function timeAgo(ms: number): string {
+    const diff = Date.now() - ms;
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (m < 1)  return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    if (h < 24) return `${h}h ago`;
+    if (d < 7)  return `${d}d ago`;
+    return new Date(ms).toLocaleDateString();
+}
+
+// ─── Note Editor Modal ────────────────────────────────────────────────────────
+
+interface EditorProps {
+    note?: Note | null;
+    theme: 'light' | 'dark';
+    onSave: (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => void;
+    onDelete?: () => void;
+    onClose: () => void;
+}
+
+const NoteEditor: React.FC<EditorProps> = ({ note, theme, onSave, onDelete, onClose }) => {
+    const [title, setTitle]       = useState(note?.title ?? '');
+    const [content, setContent]   = useState(note?.content ?? '');
+    const [color, setColor]       = useState<NoteColor>(note?.color ?? 'default');
+    const [isPinned, setIsPinned] = useState(note?.isPinned ?? false);
+    const [confirmDel, setConfirmDel] = useState(false);
+    const contentRef = useRef<HTMLTextAreaElement>(null);
+    const isDark = theme === 'dark';
+
+    useEffect(() => {
+        if (!note) contentRef.current?.focus();
+    }, []);
+
+    const autoResize = () => {
+        const el = contentRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    };
+
+    const hasContent = title.trim() || content.trim();
+
+    const colorCfg = COLOR_MAP[color];
+    const cardBg = isDark
+        ? color === 'default' ? 'bg-[#1F2937]' : colorCfg.bg
+        : color === 'default' ? 'bg-white' : colorCfg.bg;
+    const cardBorder = isDark
+        ? color === 'default' ? 'border-gray-700' : colorCfg.border
+        : color === 'default' ? 'border-gray-200' : colorCfg.border;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+            <div
+                onClick={e => e.stopPropagation()}
+                className={`w-full max-w-lg rounded-2xl border shadow-2xl flex flex-col overflow-hidden transition-colors ${cardBg} ${cardBorder}`}
+            >
+                {/* Color bar */}
+                <div className={`flex items-center gap-1.5 px-4 pt-4 pb-2`}>
+                    {ALL_COLORS.map(c => (
+                        <button
+                            key={c}
+                            title={COLOR_MAP[c].label}
+                            onClick={() => setColor(c)}
+                            className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-transparent scale-110' : 'opacity-60 hover:opacity-100 hover:scale-110'}`}
+                        />
+                    ))}
+                    <div className="flex-1" />
+                    <button
+                        onClick={() => setIsPinned(p => !p)}
+                        title={isPinned ? 'Unpin' : 'Pin'}
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${isPinned ? 'text-amber-400' : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        <PinIcon pinned={isPinned} />
+                    </button>
+                </div>
+
+                {/* Title */}
+                <input
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    placeholder="Title"
+                    className={`w-full px-4 py-2 text-lg font-bold bg-transparent border-none outline-none resize-none placeholder-opacity-30 ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'}`}
+                />
+
+                {/* Content */}
+                <textarea
+                    ref={contentRef}
+                    value={content}
+                    onChange={e => { setContent(e.target.value); autoResize(); }}
+                    onInput={autoResize}
+                    placeholder="Take a note…"
+                    rows={5}
+                    className={`w-full px-4 py-2 pb-4 text-sm bg-transparent border-none outline-none resize-none min-h-[120px] max-h-[60vh] overflow-y-auto placeholder-opacity-30 ${isDark ? 'text-gray-200 placeholder-gray-600' : 'text-gray-700 placeholder-gray-300'}`}
+                />
+
+                {/* Footer */}
+                <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                    <div className="flex gap-2">
+                        {onDelete && !confirmDel && (
+                            <button
+                                onClick={() => setConfirmDel(true)}
+                                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}
+                            >
+                                Delete
+                            </button>
+                        )}
+                        {confirmDel && (
+                            <>
+                                <button onClick={() => setConfirmDel(false)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}>
+                                    Cancel
+                                </button>
+                                <button onClick={onDelete} className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all">
+                                    Confirm delete
+                                </button>
+                            </>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={onClose}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => { if (hasContent) onSave({ title, content, color, isPinned }); else onClose(); }}
+                            className="text-xs px-4 py-1.5 rounded-lg font-bold bg-[#0f766e] text-white hover:bg-teal-600 transition-all active:scale-95"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Pin Icon ─────────────────────────────────────────────────────────────────
+
+const PinIcon = ({ pinned, className }: { pinned?: boolean; className?: string }) => (
+    <svg className={`w-4 h-4 ${className ?? ''}`} viewBox="0 0 24 24" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L9 9H2l5.5 4.5L5 21l7-4.5L19 21l-2.5-7.5L22 9h-7z" />
+    </svg>
+);
+
+// ─── Note Card ────────────────────────────────────────────────────────────────
+
+interface NoteCardProps {
+    note: Note;
+    theme: 'light' | 'dark';
+    onClick: () => void;
+    onTogglePin: () => void;
+}
+
+const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }) => {
+    const isDark = theme === 'dark';
+    const colorCfg = COLOR_MAP[note.color];
+    const bg = isDark
+        ? note.color === 'default' ? 'bg-[#1F2937] hover:bg-[#263244]' : `${colorCfg.bg} hover:brightness-110`
+        : note.color === 'default' ? 'bg-white hover:bg-gray-50' : `${colorCfg.bg} hover:brightness-105`;
+    const border = isDark
+        ? note.color === 'default' ? 'border-gray-700/60' : colorCfg.border
+        : note.color === 'default' ? 'border-gray-200' : colorCfg.border;
+
+    return (
+        <div
+            onClick={onClick}
+            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-150 hover:shadow-lg hover:-translate-y-0.5 ${bg} ${border}`}
+        >
+            {/* Pin badge */}
+            {note.isPinned && (
+                <div className="absolute top-3 right-3 text-amber-400 opacity-70 group-hover:opacity-100 transition-opacity">
+                    <PinIcon pinned />
+                </div>
+            )}
+
+            {/* Title */}
+            {note.title && (
+                <h3 className={`font-bold text-sm mb-1 pr-5 leading-snug ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {note.title}
+                </h3>
+            )}
+
+            {/* Content preview */}
+            {note.content && (
+                <p className={`text-xs leading-relaxed line-clamp-6 whitespace-pre-wrap ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {note.content}
+                </p>
+            )}
+
+            {/* Footer */}
+            <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                <span className={`text-[10px] font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    {timeAgo(note.updatedMs)}
+                </span>
+                <button
+                    onClick={e => { e.stopPropagation(); onTogglePin(); }}
+                    className={`w-6 h-6 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                        note.isPinned
+                            ? 'text-amber-400'
+                            : isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600'
+                    }`}
+                    title={note.isPinned ? 'Unpin' : 'Pin'}
+                >
+                    <PinIcon pinned={note.isPinned} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
+
+const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
+    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700/60' : 'bg-white border-gray-200'}`}>
+        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`} />
+        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-gray-700/70' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-gray-700/70' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-gray-700/70' : 'bg-gray-100'}`} />
+    </div>
+);
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
+    const { notes, loading } = useNotes(fleetId);
+    const [search, setSearch] = useState('');
+    const [filterColor, setFilterColor] = useState<NoteColor | 'all'>('all');
+    const [editingNote, setEditingNote] = useState<Note | null | 'new'>('new' as any);
+    const [showEditor, setShowEditor] = useState(false);
+    const isDark = theme === 'dark';
+
+    const filtered = useMemo(() => {
+        let list = notes;
+        if (filterColor !== 'all') list = list.filter(n => n.color === filterColor);
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q));
+        }
+        return list;
+    }, [notes, search, filterColor]);
+
+    const pinned   = filtered.filter(n => n.isPinned);
+    const unpinned = filtered.filter(n => !n.isPinned);
+
+    const openNew = () => {
+        setEditingNote(null);
+        setShowEditor(true);
+    };
+
+    const openEdit = (note: Note) => {
+        setEditingNote(note);
+        setShowEditor(true);
+    };
+
+    const handleSave = async (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => {
+        if (!fleetId) return;
+        const now = Date.now();
+        if (editingNote) {
+            await updateNote((editingNote as Note).id, { ...data, updatedMs: now });
+        } else {
+            await addNote({ fleetId, ...data, createdMs: now, updatedMs: now });
+        }
+        setShowEditor(false);
+    };
+
+    const handleDelete = async () => {
+        if (!editingNote) return;
+        await deleteNote((editingNote as Note).id);
+        setShowEditor(false);
+    };
+
+    const handleTogglePin = async (note: Note) => {
+        await updateNote(note.id, { isPinned: !note.isPinned });
+    };
+
+    const usedColors = useMemo(() => {
+        const set = new Set(notes.map(n => n.color));
+        return ALL_COLORS.filter(c => set.has(c));
+    }, [notes]);
+
+    return (
+        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#111827]' : 'bg-[#F3F4F6]'}`}>
+            <div className="max-w-7xl mx-auto space-y-6">
+
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            Notes
+                        </h1>
+                        <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                            {notes.length} note{notes.length !== 1 ? 's' : ''}
+                        </p>
+                    </div>
+                    <button
+                        onClick={openNew}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-teal-900/20 transition-all active:scale-95"
+                    >
+                        <span className="text-lg leading-none">+</span> New Note
+                    </button>
+                </div>
+
+                {/* Search + Color filter */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    {/* Search */}
+                    <div className={`relative flex-1 group`}>
+                        <div className={`absolute inset-y-0 left-3 flex items-center pointer-events-none ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                            </svg>
+                        </div>
+                        <input
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Search notes…"
+                            className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/40 transition-all ${
+                                isDark
+                                    ? 'bg-[#1F2937] border-gray-700 text-white placeholder-gray-600'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                            }`}
+                        />
+                        {search && (
+                            <button
+                                onClick={() => setSearch('')}
+                                className={`absolute inset-y-0 right-3 flex items-center ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Color filter pills */}
+                    {usedColors.length > 1 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                                onClick={() => setFilterColor('all')}
+                                className={`text-xs px-3 py-2 rounded-xl font-semibold border transition-all ${
+                                    filterColor === 'all'
+                                        ? 'bg-[#0f766e] text-white border-transparent'
+                                        : isDark ? 'bg-[#1F2937] border-gray-700 text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
+                                }`}
+                            >
+                                All
+                            </button>
+                            {usedColors.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => setFilterColor(filterColor === c ? 'all' : c)}
+                                    title={COLOR_MAP[c].label}
+                                    className={`w-8 h-8 rounded-xl border transition-all ${
+                                        filterColor === c
+                                            ? `${COLOR_MAP[c].dot} border-transparent ring-2 ring-white/30 scale-110`
+                                            : `${COLOR_MAP[c].dot} opacity-50 hover:opacity-90 ${isDark ? 'border-gray-700' : 'border-gray-200'}`
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Loading state */}
+                {loading && (
+                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-0">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="break-inside-avoid mb-4">
+                                <SkeletonCard theme={theme} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Empty state */}
+                {!loading && notes.length === 0 && (
+                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-200'}`}>
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                            <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                            </svg>
+                        </div>
+                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No notes yet</p>
+                        <p className={`text-xs mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Create your first note to get started</p>
+                        <button
+                            onClick={openNew}
+                            className="px-4 py-2 bg-[#0f766e] text-white rounded-xl text-sm font-bold hover:bg-teal-600 transition-all active:scale-95"
+                        >
+                            + New Note
+                        </button>
+                    </div>
+                )}
+
+                {/* No search results */}
+                {!loading && notes.length > 0 && filtered.length === 0 && (
+                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-200'}`}>
+                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No results found</p>
+                        <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Try a different search</p>
+                    </div>
+                )}
+
+                {/* Pinned section */}
+                {!loading && pinned.length > 0 && (
+                    <section>
+                        <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            📌 Pinned
+                        </p>
+                        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+                            {pinned.map(note => (
+                                <div key={note.id} className="break-inside-avoid mb-4">
+                                    <NoteCard
+                                        note={note}
+                                        theme={theme}
+                                        onClick={() => openEdit(note)}
+                                        onTogglePin={() => handleTogglePin(note)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Other notes */}
+                {!loading && unpinned.length > 0 && (
+                    <section>
+                        {pinned.length > 0 && (
+                            <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                Others
+                            </p>
+                        )}
+                        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+                            {unpinned.map(note => (
+                                <div key={note.id} className="break-inside-avoid mb-4">
+                                    <NoteCard
+                                        note={note}
+                                        theme={theme}
+                                        onClick={() => openEdit(note)}
+                                        onTogglePin={() => handleTogglePin(note)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </div>
+
+            {/* Editor modal */}
+            {showEditor && (
+                <NoteEditor
+                    note={editingNote as Note | null}
+                    theme={theme}
+                    onSave={handleSave}
+                    onDelete={editingNote ? handleDelete : undefined}
+                    onClose={() => setShowEditor(false)}
+                />
+            )}
+        </div>
+    );
+};
+
+export default NotesPage;
