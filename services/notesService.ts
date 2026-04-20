@@ -13,9 +13,14 @@ const toNote = (r: any): Note => ({
 });
 
 export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => void, fleetId?: string) => {
-    if (!fleetId) return () => {};
+    if (!fleetId) {
+        console.warn('[Notes] subscribeToNotes called without fleetId — skipping');
+        return () => {};
+    }
 
-    const fetch = () =>
+    console.log('[Notes] Subscribing to notes for fleet:', fleetId);
+
+    const fetchNotes = () =>
         supabase
             .from('notes')
             .select('*')
@@ -23,21 +28,39 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
             .order('is_pinned', { ascending: false })
             .order('updated_ms', { ascending: false })
             .then(({ data, error }) => {
-                if (error) { console.error('Notes fetch error:', error.message); callback([], true); return; }
+                if (error) {
+                    console.error('[Notes] Fetch error:', error.message, error.details, error.hint);
+                    callback([], true);
+                    return;
+                }
+                console.log(`[Notes] Fetched ${(data ?? []).length} notes for fleet ${fleetId}`);
                 callback((data ?? []).map(toNote));
+            })
+            .catch((err) => {
+                console.error('[Notes] Network error:', err);
+                callback([], true);
             });
 
-    fetch();
+    fetchNotes();
 
     const channel = supabase
         .channel(`notes_${fleetId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, fetch)
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, (payload) => {
+            console.log('[Notes] Realtime event:', payload.eventType);
+            fetchNotes();
+        })
+        .subscribe((status) => {
+            console.log('[Notes] Channel status:', status);
+            if (status === 'CHANNEL_ERROR') {
+                console.error('[Notes] Realtime channel error — check Supabase realtime config');
+            }
+        });
 
     return () => { supabase.removeChannel(channel); };
 };
 
 export const addNote = async (note: Omit<Note, 'id'>) => {
+    console.log('[Notes] Adding note with fleet_id:', note.fleetId);
     const { data, error } = await supabase
         .from('notes')
         .insert({
@@ -51,7 +74,11 @@ export const addNote = async (note: Omit<Note, 'id'>) => {
         })
         .select('id')
         .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+        console.error('[Notes] Insert error:', error.message, error.details, error.hint);
+        throw new Error(error.message);
+    }
+    console.log('[Notes] Note created with id:', data.id);
     return data.id as string;
 };
 
@@ -63,11 +90,21 @@ export const updateNote = async (id: string, updates: Partial<Omit<Note, 'id' | 
     if (updates.isPinned !== undefined) row.is_pinned = updates.isPinned;
     if (updates.updatedMs !== undefined) row.updated_ms = updates.updatedMs;
 
+    console.log('[Notes] Updating note:', id, row);
     const { error } = await supabase.from('notes').update(row).eq('id', id);
-    if (error) throw new Error(error.message);
+    if (error) {
+        console.error('[Notes] Update error:', error.message, error.details, error.hint);
+        throw new Error(error.message);
+    }
+    console.log('[Notes] Note updated:', id);
 };
 
 export const deleteNote = async (id: string) => {
+    console.log('[Notes] Deleting note:', id);
     const { error } = await supabase.from('notes').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    if (error) {
+        console.error('[Notes] Delete error:', error.message, error.details, error.hint);
+        throw new Error(error.message);
+    }
+    console.log('[Notes] Note deleted:', id);
 };

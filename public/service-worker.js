@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taksapark-v3';
+const CACHE_NAME = 'taksapark-v4';
 const SHELL_URLS = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -25,6 +25,9 @@ self.addEventListener('fetch', (event) => {
 
   // Only handle GET requests
   if (request.method !== 'GET') return;
+
+  // Never cache Supabase API calls — always hit the network
+  if (request.url.includes('supabase.co')) return;
 
   // For navigation requests (HTML pages), use network-first
   if (request.mode === 'navigate') {

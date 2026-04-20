@@ -11,30 +11,23 @@ interface NotesPageProps {
 
 // ─── SQL Setup Banner ─────────────────────────────────────────────────────────
 
-const SQL = `-- Step 1: create table
-create table if not exists notes (
-  id uuid primary key default gen_random_uuid(),
-  fleet_id uuid,
-  title text not null default '',
-  content text not null default '',
-  color text not null default 'default',
-  is_pinned boolean not null default false,
-  created_ms bigint not null,
-  updated_ms bigint not null
+const SQL = `-- Run this in Supabase SQL Editor to create the notes table
+
+CREATE TABLE IF NOT EXISTS notes (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  fleet_id   UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+  title      TEXT NOT NULL DEFAULT '',
+  content    TEXT NOT NULL DEFAULT '',
+  color      TEXT NOT NULL DEFAULT 'default',
+  is_pinned  BOOLEAN NOT NULL DEFAULT FALSE,
+  created_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+  updated_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
-create index if not exists notes_fleet_id_idx on notes (fleet_id);
 
--- Step 2: grant access (required for anon key)
-grant all on table notes to anon;
-grant all on table notes to authenticated;
-
--- Step 3: enable RLS with open policy
-alter table notes enable row level security;
-drop policy if exists "notes_open" on notes;
-create policy "notes_open" on notes using (true) with check (true);
-
--- Step 4: enable realtime
-alter publication supabase_realtime add table notes;`;
+CREATE INDEX IF NOT EXISTS idx_notes_fleet ON notes(fleet_id);
+ALTER TABLE notes DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON notes TO anon, authenticated;
+ALTER PUBLICATION supabase_realtime ADD TABLE notes;`;
 
 const SqlSetupBanner: React.FC<{ isDark: boolean }> = ({ isDark }) => {
     const [copied, setCopied] = useState(false);

@@ -252,6 +252,20 @@ CREATE TABLE audit_logs (
 );
 
 -- ============================================================
+-- notes
+-- ============================================================
+CREATE TABLE notes (
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fleet_id   UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL DEFAULT '',
+    content    TEXT NOT NULL DEFAULT '',
+    color      TEXT NOT NULL DEFAULT 'default',
+    is_pinned  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+    updated_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+);
+
+-- ============================================================
 -- mfa_config
 -- ============================================================
 CREATE TABLE mfa_config (
@@ -307,6 +321,7 @@ CREATE INDEX idx_cars_deleted           ON cars(is_deleted);
 CREATE INDEX idx_reversals_fleet        ON payment_reversals(fleet_id);
 CREATE INDEX idx_salaries_fleet         ON driver_salaries(fleet_id);
 CREATE INDEX idx_salaries_driver        ON driver_salaries(driver_id);
+CREATE INDEX idx_notes_fleet             ON notes(fleet_id);
 
 -- ============================================================
 -- Disable RLS (service-role key has full access)
@@ -327,6 +342,7 @@ ALTER TABLE audit_logs           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE mfa_config           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE password_history     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions             DISABLE ROW LEVEL SECURITY;
+ALTER TABLE notes                DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- Grant access to anon and authenticated roles
@@ -359,6 +375,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE admin_users;
 ALTER PUBLICATION supabase_realtime ADD TABLE viewers;
+ALTER PUBLICATION supabase_realtime ADD TABLE notes;
 
 -- ============================================================
 -- MIGRATION: Add missing drivers columns (safe to run on existing DB)
@@ -388,3 +405,19 @@ CREATE TABLE IF NOT EXISTS cars (
 ALTER TABLE cars DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON cars TO anon, authenticated;
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS daily_plan NUMERIC(12, 2) NOT NULL DEFAULT 0;
+
+-- MIGRATION: Add notes table if not already created
+CREATE TABLE IF NOT EXISTS notes (
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    fleet_id   UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL DEFAULT '',
+    content    TEXT NOT NULL DEFAULT '',
+    color      TEXT NOT NULL DEFAULT 'default',
+    is_pinned  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+    updated_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+);
+CREATE INDEX IF NOT EXISTS idx_notes_fleet ON notes(fleet_id);
+ALTER TABLE notes DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON notes TO anon, authenticated;
+ALTER PUBLICATION supabase_realtime ADD TABLE notes;
