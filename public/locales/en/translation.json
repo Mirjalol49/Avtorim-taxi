@@ -44,6 +44,7 @@
     "noTransactions": "No transactions yet.",
     "save": "Save",
     "cancel": "Cancel",
+    "errorSaving": "Failed to save. Please try again.",
     "confirm": "Confirm",
     "confirmDeleteTitle": "Confirm Deletion",
     "confirmActionTitle": "Confirm Action",

@@ -123,9 +123,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         previousCarId: currentAssignedCar?.id ?? null,
       });
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving driver:", err);
-      setError(t('errorSaving') || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+      setError((err?.message && err.message !== '[object Object]' ? err.message : null) || t('errorSaving') || "Xatolik yuz berdi.");
     } finally {
       setIsSubmitting(false);
     }

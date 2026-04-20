@@ -11,7 +11,8 @@ interface NotesPageProps {
 
 // ─── SQL Setup Banner ─────────────────────────────────────────────────────────
 
-const SQL = `create table if not exists notes (
+const SQL = `-- Step 1: create table
+create table if not exists notes (
   id uuid primary key default gen_random_uuid(),
   fleet_id uuid,
   title text not null default '',
@@ -22,8 +23,17 @@ const SQL = `create table if not exists notes (
   updated_ms bigint not null
 );
 create index if not exists notes_fleet_id_idx on notes (fleet_id);
+
+-- Step 2: grant access (required for anon key)
+grant all on table notes to anon;
+grant all on table notes to authenticated;
+
+-- Step 3: enable RLS with open policy
 alter table notes enable row level security;
+drop policy if exists "notes_open" on notes;
 create policy "notes_open" on notes using (true) with check (true);
+
+-- Step 4: enable realtime
 alter publication supabase_realtime add table notes;`;
 
 const SqlSetupBanner: React.FC<{ isDark: boolean }> = ({ isDark }) => {

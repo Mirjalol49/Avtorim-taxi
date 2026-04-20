@@ -44,6 +44,7 @@
     "noTransactions": "Транзакций пока нет.",
     "save": "Сохранить",
     "cancel": "Отмена",
+    "errorSaving": "Ошибка сохранения. Попробуйте снова.",
     "confirm": "Подтвердить",
     "confirmDeleteTitle": "Подтвердите удаление",
     "confirmActionTitle": "Подтвердите действие",

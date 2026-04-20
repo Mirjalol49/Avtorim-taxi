@@ -44,6 +44,7 @@
     "noTransactions": "Hozircha o'tkazmalar yo'q.",
     "save": "Saqlash",
     "cancel": "Bekor qilish",
+    "errorSaving": "Saqlashda xatolik. Qaytadan urinib ko'ring.",
     "confirm": "Tasdiqlash",
     "confirmDeleteTitle": "O'chirishni tasdiqlang",
     "confirmActionTitle": "Harakatni tasdiqlang",

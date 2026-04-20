@@ -51,7 +51,7 @@ export const addNote = async (note: Omit<Note, 'id'>) => {
         })
         .select('id')
         .single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return data.id as string;
 };
 
@@ -64,10 +64,10 @@ export const updateNote = async (id: string, updates: Partial<Omit<Note, 'id' | 
     if (updates.updatedMs !== undefined) row.updated_ms = updates.updatedMs;
 
     const { error } = await supabase.from('notes').update(row).eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 };
 
 export const deleteNote = async (id: string) => {
     const { error } = await supabase.from('notes').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 };
