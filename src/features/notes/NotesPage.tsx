@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Note, NoteColor } from '../../core/types/note.types';
 import { addNote, updateNote, deleteNote } from '../../../services/notesService';
 import { useNotes } from './hooks/useNotes';
@@ -7,6 +7,63 @@ interface NotesPageProps {
     theme: 'light' | 'dark';
     fleetId?: string;
 }
+
+// ─── SQL Setup Banner ─────────────────────────────────────────────────────────
+
+const SQL = `create table if not exists notes (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid references admin_users(id) on delete cascade,
+  title text not null default '',
+  content text not null default '',
+  color text not null default 'default',
+  is_pinned boolean not null default false,
+  created_ms bigint not null,
+  updated_ms bigint not null
+);
+alter table notes enable row level security;
+create policy "notes_open" on notes using (true) with check (true);
+alter publication supabase_realtime add table notes;`;
+
+const SqlSetupBanner: React.FC<{ isDark: boolean }> = ({ isDark }) => {
+    const [copied, setCopied] = useState(false);
+    const copy = useCallback(() => {
+        navigator.clipboard.writeText(SQL).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    }, []);
+
+    return (
+        <div className={`rounded-2xl border ${isDark ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'}`}>
+            <div className="flex items-start justify-between gap-3 p-5 pb-3">
+                <div>
+                    <p className={`font-bold text-sm mb-1 ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>
+                        ⚠ Notes table not found in Supabase
+                    </p>
+                    <p className={`text-xs ${isDark ? 'text-yellow-500/70' : 'text-yellow-600'}`}>
+                        Run this SQL in Supabase dashboard → SQL Editor, then reload.
+                    </p>
+                </div>
+                <button
+                    onClick={copy}
+                    className={`shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        copied
+                            ? 'bg-green-500 text-white'
+                            : isDark ? 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30' : 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
+                    }`}
+                >
+                    {copied ? '✓ Copied!' : 'Copy SQL'}
+                </button>
+            </div>
+            <pre
+                className={`text-xs px-5 pb-5 overflow-x-auto whitespace-pre select-text cursor-text ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
+                style={{ userSelect: 'text' }}
+            >
+                {SQL}
+            </pre>
+        </div>
+    );
+};
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
 
@@ -390,29 +447,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 </div>
 
                 {/* Table not set up yet */}
-                {tableError && (
-                    <div className={`p-5 rounded-2xl border ${isDark ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'}`}>
-                        <p className={`font-bold text-sm mb-1 ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>
-                            ⚠ Notes table not found in Supabase
-                        </p>
-                        <p className={`text-xs mb-3 ${isDark ? 'text-yellow-500/70' : 'text-yellow-600'}`}>
-                            Run this SQL in your Supabase dashboard → SQL Editor:
-                        </p>
-                        <pre className={`text-xs rounded-xl p-3 overflow-x-auto ${isDark ? 'bg-gray-900 text-gray-300' : 'bg-white text-gray-700'}`}>{`create table if not exists notes (
-  id uuid primary key default gen_random_uuid(),
-  fleet_id uuid references admin_users(id) on delete cascade,
-  title text not null default '',
-  content text not null default '',
-  color text not null default 'default',
-  is_pinned boolean not null default false,
-  created_ms bigint not null,
-  updated_ms bigint not null
-);
-alter table notes enable row level security;
-create policy "notes_open" on notes using (true) with check (true);
-alter publication supabase_realtime add table notes;`}</pre>
-                    </div>
-                )}
+                {tableError && <SqlSetupBanner isDark={isDark} />}
 
                 {/* Loading state */}
                 {loading && !tableError && (
