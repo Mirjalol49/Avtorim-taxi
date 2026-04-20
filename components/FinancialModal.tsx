@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { XIcon, UsersIcon } from './Icons';
 import CustomSelect from './CustomSelect';
 import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType } from '../src/core/types';
+import { PaymentStatus } from '../src/core/types/transaction.types';
 
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: Omit<Transaction, 'id'>) => void;
   drivers: Driver[];
-  // lang removed
+  transactions?: Transaction[];
   theme: 'light' | 'dark';
 }
 
-const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubmit, drivers, theme }) => {
+const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubmit, drivers, transactions = [], theme }) => {
   const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
@@ -22,6 +23,28 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
   const [description, setDescription] = useState('');
   const [driverId, setDriverId] = useState('');
   const [date, setDate] = useState<Date>(new Date());
+
+  const selectedDriver = drivers.find(d => d.id === driverId) ?? null;
+
+  const driverDebtInfo = useMemo(() => {
+    if (!selectedDriver || transactions.length === 0) return null;
+    const driverTxs = transactions.filter(tx =>
+      tx.driverId === selectedDriver.id &&
+      (tx as any).status !== 'DELETED' &&
+      tx.status !== PaymentStatus.DELETED
+    );
+    const totalDebt = driverTxs
+      .filter(tx => tx.type === TransactionType.DEBT)
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    if (totalDebt === 0) return null;
+    const totalIncome = driverTxs
+      .filter(tx => tx.type === TransactionType.INCOME)
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const remaining = Math.max(0, totalDebt - totalIncome);
+    return { totalDebt, totalIncome, remaining };
+  }, [selectedDriver, transactions]);
+
+  const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
   // Format number with spaces for readability (300 000, 20 000, etc.)
   const formatNumberDisplay = (value: string): string => {
@@ -66,9 +89,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
       return;
     }
 
-    // Validate comment: required for expense, optional for income
-    if (type === TransactionType.EXPENSE && !description.trim()) {
-      console.error('Comment is required for expenses.');
+    if ((type === TransactionType.EXPENSE || type === TransactionType.DEBT) && !description.trim()) {
       return;
     }
 
@@ -115,15 +136,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Type Selection */}
-          <div className={`grid grid-cols-2 p-1 rounded-full border ${theme === 'dark' ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'
-            }`}>
+          <div className={`grid grid-cols-3 p-1 rounded-full border ${theme === 'dark' ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
             <button
               type="button"
               onClick={() => setType(TransactionType.INCOME)}
               className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.INCOME
                 ? 'bg-[#0f766e] text-white shadow-lg'
-                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
             >
               {t('income')}
             </button>
@@ -132,12 +151,41 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
               onClick={() => setType(TransactionType.EXPENSE)}
               className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.EXPENSE
                 ? 'bg-red-500 text-white shadow-lg'
-                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
             >
               {t('expense')}
             </button>
+            <button
+              type="button"
+              onClick={() => setType(TransactionType.DEBT)}
+              className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.DEBT
+                ? 'bg-orange-500 text-white shadow-lg'
+                : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              Qarz
+            </button>
           </div>
+
+          {/* Debt preview: show current debt balance when adding income */}
+          {type === TransactionType.INCOME && driverDebtInfo && driverDebtInfo.remaining > 0 && (
+            <div className={`rounded-xl p-3 border border-orange-500/30 bg-orange-500/5`}>
+              <p className="text-xs font-bold text-orange-400 mb-1">⚠ Haydovchida qarz bor</p>
+              <div className="flex justify-between text-xs">
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Qolgan qarz:</span>
+                <span className="font-bold text-orange-400">−{fmt(driverDebtInfo.remaining)} UZS</span>
+              </div>
+              {amount && Number(amount) > 0 && (
+                <div className="flex justify-between text-xs mt-1">
+                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Bu to'lovdan so'ng:</span>
+                  <span className={`font-bold ${Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                    {Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0
+                      ? `−${fmt(Math.max(0, driverDebtInfo.remaining - Number(amount)))} UZS`
+                      : "Qarz to'landi ✓"}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className={labelClass}>{t('amount')} (UZS)</label>
@@ -181,15 +229,21 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
 
           <div>
             <label className={labelClass}>
-              {t('comment')}
-              {type === TransactionType.EXPENSE && <span className="text-red-500 ml-1">*</span>}
+              {type === TransactionType.DEBT ? 'Qarz sababi' : t('comment')}
+              {(type === TransactionType.EXPENSE || type === TransactionType.DEBT) && <span className="text-red-500 ml-1">*</span>}
             </label>
             <textarea
-              required={type === TransactionType.EXPENSE}
+              required={type === TransactionType.EXPENSE || type === TransactionType.DEBT}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className={`${inputClass} min-h-[100px] resize-none`}
-              placeholder={type === TransactionType.EXPENSE ? t('commentPlaceholder') || "Masalan: Benzin uchun" : t('commentPlaceholder') || "Masalan: Benzin uchun (ixtiyoriy)"}
+              className={`${inputClass} min-h-[80px] resize-none`}
+              placeholder={
+                type === TransactionType.DEBT
+                  ? "Masalan: Mashina zarari, jarima..."
+                  : type === TransactionType.EXPENSE
+                  ? t('commentPlaceholder') || "Masalan: Benzin uchun"
+                  : t('commentPlaceholder') || "Ixtiyoriy"
+              }
             />
           </div>
 
@@ -205,7 +259,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({ isOpen, onClose, onSubm
             <button
               type="submit"
               className={`px-6 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all transform active:scale-95 ${type === TransactionType.INCOME
-                ? 'bg-[#0f766e] hover:bg-[#0f766e] shadow-[#0f766e]/20'
+                ? 'bg-[#0f766e] hover:bg-[#0a5c56] shadow-[#0f766e]/20'
+                : type === TransactionType.DEBT
+                ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20'
                 : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
                 }`}
             >

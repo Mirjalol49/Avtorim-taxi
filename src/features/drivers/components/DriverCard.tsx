@@ -4,7 +4,7 @@ import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { calcDriverDebt } from '../utils/debtUtils';
+import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
 
 interface DriverCardProps {
     driver: Driver;
@@ -26,6 +26,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 }) => {
     const { t } = useTranslation();
     const debt = calcDriverDebt(driver, car, transactions);
+    const explicitDebt = calcExplicitDebt(driver, transactions);
     const docs = driver.documents ?? [];
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
@@ -77,6 +78,34 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         <p className={`text-xs font-bold ${debt.todayDebt > 0 ? 'text-red-400' : 'text-green-400'}`}>
                             {debt.todayDebt > 0 ? `−${fmt(debt.todayDebt)}` : '✓'}
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Explicit debt section */}
+            {explicitDebt.totalDebt > 0 && (
+                <div className={`mx-4 mb-3 rounded-xl border p-3 ${explicitDebt.remaining > 0
+                    ? 'border-orange-500/30 bg-orange-500/5'
+                    : theme === 'dark' ? 'border-green-500/30 bg-green-500/5' : 'border-green-200 bg-green-50'
+                }`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${explicitDebt.remaining > 0 ? 'text-orange-400' : 'text-green-500'}`}>
+                        {explicitDebt.remaining > 0 ? '⚠ Qarz' : '✓ Qarz to\'landi'}
+                    </p>
+                    <div className="grid grid-cols-3 gap-1">
+                        <div className="text-center">
+                            <p className={`text-[10px] mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Jami qarz</p>
+                            <p className="text-xs font-bold text-orange-400">−{fmt(explicitDebt.totalDebt)}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className={`text-[10px] mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>To'landi</p>
+                            <p className="text-xs font-bold text-green-400">+{fmt(explicitDebt.totalPaid)}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className={`text-[10px] mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Qoldi</p>
+                            <p className={`text-xs font-bold ${explicitDebt.remaining > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                                {explicitDebt.remaining > 0 ? `−${fmt(explicitDebt.remaining)}` : '0'}
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

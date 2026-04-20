@@ -865,6 +865,7 @@ const AppContent: React.FC = () => {
         onClose={() => setIsTxModalOpen(false)}
         onSubmit={handleAddTransaction}
         drivers={nonDeletedDrivers}
+        transactions={transactions}
         theme={theme}
       />
 

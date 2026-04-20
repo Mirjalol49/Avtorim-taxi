@@ -2,6 +2,35 @@ import { Driver } from '../../../core/types/driver.types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
 
+export interface ExplicitDebtInfo {
+    totalDebt: number;
+    totalPaid: number;
+    remaining: number;
+}
+
+export function calcExplicitDebt(driver: Driver, transactions: Transaction[]): ExplicitDebtInfo {
+    const driverTxs = transactions.filter(tx =>
+        tx.driverId === driver.id &&
+        tx.status !== PaymentStatus.DELETED &&
+        (tx as any).status !== 'DELETED'
+    );
+
+    const totalDebt = driverTxs
+        .filter(tx => tx.type === TransactionType.DEBT)
+        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+    if (totalDebt === 0) return { totalDebt: 0, totalPaid: 0, remaining: 0 };
+
+    const totalIncome = driverTxs
+        .filter(tx => tx.type === TransactionType.INCOME)
+        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+    const totalPaid = Math.min(totalIncome, totalDebt);
+    const remaining = Math.max(0, totalDebt - totalIncome);
+
+    return { totalDebt, totalPaid, remaining };
+}
+
 export interface DriverDebtInfo {
     dailyPlan: number;
     todayIncome: number;

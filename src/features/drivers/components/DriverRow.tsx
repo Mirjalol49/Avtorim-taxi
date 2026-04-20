@@ -4,7 +4,7 @@ import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { calcDriverDebt } from '../utils/debtUtils';
+import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -26,6 +26,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     const { t } = useTranslation();
     const docs = driver.documents ?? [];
     const debt = calcDriverDebt(driver, car, transactions);
+    const explicitDebt = calcExplicitDebt(driver, transactions);
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
@@ -98,21 +99,31 @@ export const DriverRow: React.FC<DriverRowProps> = ({
 
             {/* Debt */}
             <td className="p-4">
-                {debt.dailyPlan > 0 ? (
-                    <div>
-                        <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Reja: {fmt(debt.dailyPlan)}</p>
-                        {debt.totalDebt > 0 && (
-                            <p className="text-xs font-bold text-red-400 mt-0.5">Qarz: −{fmt(debt.totalDebt)}</p>
-                        )}
-                        {debt.todayIncome > 0 && (
-                            <p className={`text-xs mt-0.5 ${debt.todayIncome >= debt.dailyPlan ? 'text-green-400' : 'text-amber-400'}`}>
-                                Bugun: {fmt(debt.todayIncome)}
-                            </p>
-                        )}
-                    </div>
-                ) : (
-                    <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>
-                )}
+                <div className="space-y-0.5">
+                    {debt.dailyPlan > 0 && (
+                        <>
+                            <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Reja: {fmt(debt.dailyPlan)}</p>
+                            {debt.totalDebt > 0 && (
+                                <p className="text-xs font-bold text-red-400">Reja qarz: −{fmt(debt.totalDebt)}</p>
+                            )}
+                            {debt.todayIncome > 0 && (
+                                <p className={`text-xs ${debt.todayIncome >= debt.dailyPlan ? 'text-green-400' : 'text-amber-400'}`}>
+                                    Bugun: {fmt(debt.todayIncome)}
+                                </p>
+                            )}
+                        </>
+                    )}
+                    {explicitDebt.totalDebt > 0 && (
+                        <p className={`text-xs font-bold ${explicitDebt.remaining > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                            {explicitDebt.remaining > 0
+                                ? `Qarz: −${fmt(explicitDebt.remaining)}`
+                                : "Qarz to'landi ✓"}
+                        </p>
+                    )}
+                    {debt.dailyPlan === 0 && explicitDebt.totalDebt === 0 && (
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>
+                    )}
+                </div>
             </td>
 
             {/* Actions */}
