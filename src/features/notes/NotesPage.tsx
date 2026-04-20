@@ -251,10 +251,10 @@ const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
-    const { notes, loading } = useNotes(fleetId);
+    const { notes, loading, tableError } = useNotes(fleetId);
     const [search, setSearch] = useState('');
     const [filterColor, setFilterColor] = useState<NoteColor | 'all'>('all');
-    const [editingNote, setEditingNote] = useState<Note | null | 'new'>('new' as any);
+    const [editingNote, setEditingNote] = useState<Note | null>(null);
     const [showEditor, setShowEditor] = useState(false);
     const isDark = theme === 'dark';
 
@@ -317,9 +317,11 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                         <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             Notes
                         </h1>
-                        <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                            {notes.length} note{notes.length !== 1 ? 's' : ''}
-                        </p>
+                        {!loading && (
+                            <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                {notes.length} note{notes.length !== 1 ? 's' : ''}
+                            </p>
+                        )}
                     </div>
                     <button
                         onClick={openNew}
@@ -387,8 +389,33 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                     )}
                 </div>
 
+                {/* Table not set up yet */}
+                {tableError && (
+                    <div className={`p-5 rounded-2xl border ${isDark ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'}`}>
+                        <p className={`font-bold text-sm mb-1 ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>
+                            ⚠ Notes table not found in Supabase
+                        </p>
+                        <p className={`text-xs mb-3 ${isDark ? 'text-yellow-500/70' : 'text-yellow-600'}`}>
+                            Run this SQL in your Supabase dashboard → SQL Editor:
+                        </p>
+                        <pre className={`text-xs rounded-xl p-3 overflow-x-auto ${isDark ? 'bg-gray-900 text-gray-300' : 'bg-white text-gray-700'}`}>{`create table if not exists notes (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid references admin_users(id) on delete cascade,
+  title text not null default '',
+  content text not null default '',
+  color text not null default 'default',
+  is_pinned boolean not null default false,
+  created_ms bigint not null,
+  updated_ms bigint not null
+);
+alter table notes enable row level security;
+create policy "notes_open" on notes using (true) with check (true);
+alter publication supabase_realtime add table notes;`}</pre>
+                    </div>
+                )}
+
                 {/* Loading state */}
-                {loading && (
+                {loading && !tableError && (
                     <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-0">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div key={i} className="break-inside-avoid mb-4">

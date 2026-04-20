@@ -12,7 +12,7 @@ const toNote = (r: any): Note => ({
     updatedMs: r.updated_ms,
 });
 
-export const subscribeToNotes = (callback: (notes: Note[]) => void, fleetId?: string) => {
+export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => void, fleetId?: string) => {
     if (!fleetId) return () => {};
 
     const fetch = () =>
@@ -22,7 +22,10 @@ export const subscribeToNotes = (callback: (notes: Note[]) => void, fleetId?: st
             .eq('fleet_id', fleetId)
             .order('is_pinned', { ascending: false })
             .order('updated_ms', { ascending: false })
-            .then(({ data }) => { if (data) callback(data.map(toNote)); });
+            .then(({ data, error }) => {
+                if (error) { console.error('Notes fetch error:', error.message); callback([], true); return; }
+                callback((data ?? []).map(toNote));
+            });
 
     fetch();
 
