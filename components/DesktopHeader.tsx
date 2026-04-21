@@ -127,8 +127,8 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         </button>
 
 
-        {/* ACTION BUTTON - New Transaction (Finance/Dashboard) */}
-        {(activeTab === Tab.DASHBOARD || activeTab === Tab.FINANCE) && userRole === 'admin' && (
+        {/* ACTION BUTTON - New Transaction (Global for Admins) */}
+        {userRole === 'admin' && (
           <button
             onClick={onNewTransactionClick}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-[#0f766e] hover:bg-[#0a5c56] text-white shadow-sm transition-all active:scale-95"

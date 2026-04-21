@@ -691,10 +691,10 @@ const AppContent: React.FC = () => {
             </>
           )}
 
-          {(location.pathname === '/finance' || location.pathname === '/dashboard' || location.pathname === '/transactions') && userRole === 'admin' && (
+          {userRole === 'admin' && (
             <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
-              ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-blue-900/20'
-              : 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-blue-500/30'
+              ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-teal-900/20'
+              : 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-teal-500/30'
               }`}>
               <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
             </button>
