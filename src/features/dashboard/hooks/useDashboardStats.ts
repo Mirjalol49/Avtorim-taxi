@@ -43,8 +43,9 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
     const totalExpense = useMemo(() => filteredTx.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
     const netProfit = totalIncome - totalExpense;
 
+    // All non-deleted drivers (regardless of online/offline status - every driver has a daily plan)
     const nonDeletedDrivers = useMemo(() => {
-        return drivers.filter(d => !d.isDeleted && d.status === DriverStatus.ACTIVE);
+        return drivers.filter(d => !d.isDeleted);
     }, [drivers]);
 
     // Chart Data
