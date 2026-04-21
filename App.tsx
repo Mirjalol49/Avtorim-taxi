@@ -416,7 +416,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/notes', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
