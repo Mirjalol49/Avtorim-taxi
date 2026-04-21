@@ -7,6 +7,8 @@ import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
 import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
 import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
 import { DayOffPanel } from './DayOffPanel';
+import { XIcon } from '../../../../components/Icons';
+import { createPortal } from 'react-dom';
 
 interface DriverCardProps {
     driver: Driver;
@@ -30,10 +32,11 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 }) => {
     const { t } = useTranslation();
     const [showDayOff, setShowDayOff] = useState(false);
+    const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const daysOffSet = getDaysOffSet(daysOff, driver.id);
     const usedThisMonth = countUsedThisMonth(daysOff, driver.id);
-    const debt = calcDriverDebt(driver, car, transactions, daysOffSet);
-    const explicitDebt = calcExplicitDebt(driver, transactions);
+    // Keep daily plan resolution
+    const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
     const docs = driver.documents ?? [];
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
@@ -74,71 +77,24 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     >
                         🏖️ {usedThisMonth}/{MONTHLY_ALLOWANCE}
                     </button>
-                    {/* Debt badge */}
-                    {debt.totalDebt > 0 && (
-                        <div className="text-right">
-                            <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Qarz</p>
-                            <p className="text-sm font-bold text-red-400">−{fmt(debt.totalDebt)}</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
             {/* Today is day off banner */}
-            {debt.todayIsDayOff && (
+            {daysOffSet.has(new Date().toISOString().split('T')[0]) && (
                 <div className={`mx-4 mb-2 rounded-xl px-3 py-2 flex items-center gap-2 ${
                     theme === 'dark' ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'
                 }`}>
                     <span>🏖️</span>
-                    <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>Bugun dam olish kuni — reja kerak emas</span>
+                    <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>Bugun dam olish kuni</span>
                 </div>
             )}
 
             {/* Daily plan stats */}
-            {debt.dailyPlan > 0 && !debt.todayIsDayOff && (
-                <div className={`mx-4 mb-3 rounded-xl p-3 grid grid-cols-3 gap-2 ${theme === 'dark' ? 'bg-gray-800/70' : 'bg-gray-50'}`}>
-                    <div className="text-center">
-                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Kunlik reja</p>
-                        <p className={`text-xs font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{fmt(debt.dailyPlan)}</p>
-                    </div>
-                    <div className="text-center">
-                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Bugun</p>
-                        <p className={`text-xs font-bold ${debt.todayIncome >= debt.dailyPlan ? 'text-green-400' : 'text-amber-400'}`}>{fmt(debt.todayIncome)}</p>
-                    </div>
-                    <div className="text-center">
-                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Bugun qarz</p>
-                        <p className={`text-xs font-bold ${debt.todayDebt > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                            {debt.todayDebt > 0 ? `−${fmt(debt.todayDebt)}` : '✓'}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* Explicit debt section */}
-            {explicitDebt.totalDebt > 0 && (
-                <div className={`mx-4 mb-3 rounded-xl border p-3 ${explicitDebt.remaining > 0
-                    ? 'border-orange-500/30 bg-orange-500/5'
-                    : theme === 'dark' ? 'border-green-500/30 bg-green-500/5' : 'border-green-200 bg-green-50'
-                }`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${explicitDebt.remaining > 0 ? 'text-orange-400' : 'text-green-500'}`}>
-                        {explicitDebt.remaining > 0 ? '⚠ Qarz' : '✓ Qarz to\'landi'}
-                    </p>
-                    <div className="grid grid-cols-3 gap-1">
-                        <div className="text-center">
-                            <p className={`text-[10px] mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Jami qarz</p>
-                            <p className="text-xs font-bold text-orange-400">−{fmt(explicitDebt.totalDebt)}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className={`text-[10px] mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>To'landi</p>
-                            <p className="text-xs font-bold text-green-400">+{fmt(explicitDebt.totalPaid)}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className={`text-[10px] mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Qoldi</p>
-                            <p className={`text-xs font-bold ${explicitDebt.remaining > 0 ? 'text-orange-400' : 'text-green-400'}`}>
-                                {explicitDebt.remaining > 0 ? `−${fmt(explicitDebt.remaining)}` : '0'}
-                            </p>
-                        </div>
-                    </div>
+            {explicitDailyPlan > 0 && (
+                <div className={`mx-4 mb-3 rounded-xl p-3 flex justify-between items-center ${theme === 'dark' ? 'bg-gray-800/70 border border-gray-700' : 'bg-gray-50 border border-gray-200'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Kunlik reja</p>
+                    <p className={`text-sm font-bold font-mono ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{fmt(explicitDailyPlan)} UZS</p>
                 </div>
             )}
 
@@ -173,16 +129,23 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             {docs.length > 0 && (
                 <div className={`mx-4 mb-3 rounded-xl border p-2.5 space-y-1 ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50'}`}>
                     <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hujjatlar</p>
-                    {docs.map((doc, i) => (
-                        <a key={i} href={doc.data}
-                            download={doc.type === 'application/pdf' ? doc.name : undefined}
-                            target={doc.type !== 'application/pdf' ? '_blank' : undefined}
-                            rel="noreferrer"
-                            className="flex items-center gap-2 text-xs text-[#0f766e] hover:underline truncate">
-                            <span>{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
-                            <span className="truncate">{doc.name}</span>
-                        </a>
-                    ))}
+                    {docs.map((doc, i) => {
+                        const isImage = doc.type && doc.type.startsWith('image/');
+                        return (
+                            <button key={i} type="button"
+                                onClick={() => {
+                                    if (isImage) {
+                                        setViewingDoc(doc.data);
+                                    } else {
+                                        window.open(doc.data, '_blank');
+                                    }
+                                }}
+                                className="w-full flex items-center gap-2 text-xs text-[#0f766e] hover:underline truncate">
+                                <span>{isImage ? '🖼️' : '📄'}</span>
+                                <span className="truncate">{doc.name}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
@@ -213,6 +176,31 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                 theme={theme}
                 onClose={() => setShowDayOff(false)}
             />
+        )}
+
+        {/* ImageViewer Modal Portal */}
+        {viewingDoc && createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div 
+                    className={`absolute inset-0 transition-opacity duration-300 bg-black/80 backdrop-blur-md`} 
+                    onClick={() => setViewingDoc(null)}
+                />
+                
+                <div className="relative z-10 w-full max-w-4xl h-full max-h-[85vh] flex flex-col items-center justify-center animate-in zoom-in-95 duration-300 pointer-events-none">
+                    <img 
+                        src={viewingDoc} 
+                        alt="Document Viewer" 
+                        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto"
+                    />
+                    
+                    <button 
+                        onClick={() => setViewingDoc(null)} 
+                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-gray-800 text-white hover:bg-gray-700 pointer-events-auto`}>
+                        <XIcon className="w-6 h-6" />
+                    </button>
+                </div>
+            </div>,
+            document.body
         )}
     </>);
 };

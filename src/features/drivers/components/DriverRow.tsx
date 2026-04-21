@@ -7,6 +7,8 @@ import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
 import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
 import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
 import { DayOffPanel } from './DayOffPanel';
+import { XIcon } from '../../../../components/Icons';
+import { createPortal } from 'react-dom';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -29,11 +31,11 @@ export const DriverRow: React.FC<DriverRowProps> = ({
 }) => {
     const { t } = useTranslation();
     const [showDayOff, setShowDayOff] = useState(false);
+    const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const docs = driver.documents ?? [];
     const daysOffSet = getDaysOffSet(daysOff, driver.id);
     const usedThisMonth = countUsedThisMonth(daysOff, driver.id);
-    const debt = calcDriverDebt(driver, car, transactions, daysOffSet);
-    const explicitDebt = calcExplicitDebt(driver, transactions);
+    const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
@@ -87,17 +89,23 @@ export const DriverRow: React.FC<DriverRowProps> = ({
             <td className="p-4">
                 {docs.length > 0 ? (
                     <div className="flex flex-col gap-1">
-                        {docs.map((doc, i) => (
-                            <a key={i}
-                                href={doc.data}
-                                download={doc.type === 'application/pdf' ? doc.name : undefined}
-                                target={doc.type !== 'application/pdf' ? '_blank' : undefined}
-                                rel="noreferrer"
-                                className="flex items-center gap-1 text-xs text-[#0f766e] hover:underline truncate max-w-[140px]">
-                                <span>{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
-                                <span className="truncate">{doc.name}</span>
-                            </a>
-                        ))}
+                        {docs.map((doc, i) => {
+                            const isImage = doc.type && doc.type.startsWith('image/');
+                            return (
+                                <button key={i} type="button"
+                                    onClick={() => {
+                                        if (isImage) {
+                                            setViewingDoc(doc.data);
+                                        } else {
+                                            window.open(doc.data, '_blank');
+                                        }
+                                    }}
+                                    className="flex items-center gap-1 text-xs text-[#0f766e] hover:underline truncate max-w-[140px] text-left">
+                                    <span>{isImage ? '🖼️' : '📄'}</span>
+                                    <span className="truncate">{doc.name}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 ) : (
                     <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>
@@ -119,30 +127,13 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     >
                         🏖️ {usedThisMonth}/{MONTHLY_ALLOWANCE}
                     </button>
-                    {debt.todayIsDayOff && (
-                        <p className="text-xs font-semibold text-teal-400">🏖️ Dam olish</p>
+                    {daysOffSet.has(new Date().toISOString().split('T')[0]) && (
+                        <p className="text-xs font-semibold text-teal-400">🏖️ Bugun dam olish</p>
                     )}
-                    {debt.dailyPlan > 0 && !debt.todayIsDayOff && (
-                        <>
-                            <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Reja: {fmt(debt.dailyPlan)}</p>
-                            {debt.totalDebt > 0 && (
-                                <p className="text-xs font-bold text-red-400">Reja qarz: −{fmt(debt.totalDebt)}</p>
-                            )}
-                            {debt.todayIncome > 0 && (
-                                <p className={`text-xs ${debt.todayIncome >= debt.dailyPlan ? 'text-green-400' : 'text-amber-400'}`}>
-                                    Bugun: {fmt(debt.todayIncome)}
-                                </p>
-                            )}
-                        </>
+                    {explicitDailyPlan > 0 && !daysOffSet.has(new Date().toISOString().split('T')[0]) && (
+                        <p className={`text-xs font-mono font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Reja: {fmt(explicitDailyPlan)} UZS</p>
                     )}
-                    {explicitDebt.totalDebt > 0 && (
-                        <p className={`text-xs font-bold ${explicitDebt.remaining > 0 ? 'text-orange-400' : 'text-green-400'}`}>
-                            {explicitDebt.remaining > 0
-                                ? `Qarz: −${fmt(explicitDebt.remaining)}`
-                                : "Qarz to'landi ✓"}
-                        </p>
-                    )}
-                    {debt.dailyPlan === 0 && explicitDebt.totalDebt === 0 && !debt.todayIsDayOff && (
+                    {explicitDailyPlan === 0 && !daysOffSet.has(new Date().toISOString().split('T')[0]) && (
                         <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>
                     )}
                 </div>
@@ -173,6 +164,31 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                 theme={theme}
                 onClose={() => setShowDayOff(false)}
             />
+        )}
+
+        {/* ImageViewer Modal Portal */}
+        {viewingDoc && createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div 
+                    className={`absolute inset-0 transition-opacity duration-300 bg-black/80 backdrop-blur-md`} 
+                    onClick={() => setViewingDoc(null)}
+                />
+                
+                <div className="relative z-10 w-full max-w-4xl h-full max-h-[85vh] flex flex-col items-center justify-center animate-in zoom-in-95 duration-300 pointer-events-none">
+                    <img 
+                        src={viewingDoc} 
+                        alt="Document Viewer" 
+                        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto"
+                    />
+                    
+                    <button 
+                        onClick={() => setViewingDoc(null)} 
+                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-gray-800 text-white hover:bg-gray-700 pointer-events-auto`}>
+                        <XIcon className="w-6 h-6" />
+                    </button>
+                </div>
+            </div>,
+            document.body
         )}
     </>);
 };

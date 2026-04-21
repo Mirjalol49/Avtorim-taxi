@@ -60,25 +60,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
 
     return (
         <div className="space-y-6">
-            {/* Fleet debt summary */}
-            {(fleetStats.totalDebt > 0 || fleetStats.todayIncome > 0) && (
-                <div className={`grid grid-cols-3 gap-4`}>
-                    <div className={`rounded-2xl p-4 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Bugungi tushum</p>
-                        <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{fmt(fleetStats.todayIncome)} <span className="text-xs font-normal text-gray-500">UZS</span></p>
-                    </div>
-                    <div className={`rounded-2xl p-4 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Jami tushum</p>
-                        <p className={`text-lg font-bold text-green-400`}>{fmt(fleetStats.totalIncome)} <span className="text-xs font-normal text-gray-500">UZS</span></p>
-                    </div>
-                    <div className={`rounded-2xl p-4 border ${fleetStats.totalDebt > 0 ? 'border-red-500/30 bg-red-500/5' : theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${fleetStats.totalDebt > 0 ? 'text-red-400' : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Jami qarz</p>
-                        <p className={`text-lg font-bold ${fleetStats.totalDebt > 0 ? 'text-red-400' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {fleetStats.totalDebt > 0 ? `−${fmt(fleetStats.totalDebt)}` : '0'} <span className="text-xs font-normal text-gray-500">UZS</span>
-                        </p>
-                    </div>
-                </div>
-            )}
+            {/* Fleet debt summary removed per user request - focusing on driver management */}
 
             {/* Search Bar & View Toggle */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
