@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
-import { DayOff, MONTHLY_ALLOWANCE } from '../../../services/daysOffService';
-import { DayOff, MONTHLY_ALLOWANCE } from '../../../services/daysOffService';
+import { DayOff, MONTHLY_ALLOWANCE, countUsedThisMonth } from '../../../services/daysOffService';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -99,8 +98,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
 
-                // Always deduct exactly 2 days per month (policy: 2 free days regardless of usage)
-                const daysOffCount = MONTHLY_ALLOWANCE;
+                // Calculate working days based on actual days taken off by this specific driver in this month limit
+                const daysOffCount = countUsedThisMonth(daysOff, driver.id, mk);
                 const workingDays = totalDays - daysOffCount;
                 const monthlyTarget = dailyPlan * workingDays;
 

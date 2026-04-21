@@ -52,15 +52,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
         for (let d = 1; d <= daysInMonth; d++) {
             const date = new Date(year, month, d);
             
-            // Check day off
-            const isDayOff = daysOff.some(off => {
-                const offD = new Date(off.date);
-                return off.driverId === monthData.driver.id &&
-                       off.status === 'APPROVED' &&
-                       offD.getFullYear() === year &&
-                       offD.getMonth() === month &&
-                       offD.getDate() === d;
-            });
+            // Check day off using dateKey (YYYY-MM-DD)
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const isDayOff = daysOff.some(off => off.driverId === monthData.driver.id && off.dateKey === dateStr);
 
             // Calculate day's income
             const todaysStartObj = new Date(year, month, d, 0, 0, 0).getTime();
