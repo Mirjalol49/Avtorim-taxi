@@ -216,8 +216,14 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             <span className="font-bold text-sm sm:text-base opacity-90">{d.day}</span>
                                             
                                             {/* Details inside grid square */}
+                                            {d.status === 'DAY_OFF' && (
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-2">
+                                                    <span className="text-3xl sm:text-4xl drop-shadow-md opacity-90 hover:scale-110 transition-transform duration-300">🏝️</span>
+                                                </div>
+                                            )}
+                                            
                                             {d.status !== 'FUTURE' && d.status !== 'DAY_OFF' && (
-                                                <div className="mt-auto space-y-0.5">
+                                                <div className="mt-auto space-y-0.5 relative z-10">
                                                     {d.income > 0 && (
                                                         <div className="text-[9px] sm:text-[10px] font-mono leading-none truncate font-bold opacity-90">
                                                             +{fmt(d.income)}
