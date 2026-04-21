@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
-import { DayOff } from '../../../services/daysOffService';
+import { DayOff, MONTHLY_ALLOWANCE } from '../../../services/daysOffService';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -88,11 +88,12 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
-                const daysOffCount = daysOff.filter(
-                    d => d.driverId === driver.id && d.monthKey === mk
-                ).length;
+
+                // Always deduct exactly 2 days per month (policy: 2 free days regardless of usage)
+                const daysOffCount = MONTHLY_ALLOWANCE;
                 const workingDays = totalDays - daysOffCount;
                 const monthlyTarget = dailyPlan * workingDays;
+
 
                 const actualIncome = transactions
                     .filter(tx =>
@@ -226,7 +227,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                             </p>
                                             {row.daysOffCount > 0 && (
                                                 <p className="text-[10px] text-teal-400 mt-0.5 font-medium">
-                                                    🏖️ {row.daysOffCount} dam olish
+                                                    🏖️ {row.daysOffCount} ta dam olish (har oy)
                                                 </p>
                                             )}
                                         </div>
