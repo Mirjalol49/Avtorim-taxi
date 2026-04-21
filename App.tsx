@@ -56,6 +56,7 @@ import { playLockSound } from './services/soundService';
 import logo from './Images/logo_winter.png';
 import { addSalary } from './services/salaryService';
 import { DayOff, subscribeToDaysOff } from './services/daysOffService';
+import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
@@ -136,6 +137,17 @@ const AppContent: React.FC = () => {
     const unsub = subscribeToDaysOff(setAllDaysOff, carsFleetId);
     return unsub;
   }, [carsFleetId]);
+
+  // ── Daily 22:00 plan reminder ──────────────────────────────────────────────
+  useDailyPlanReminder({
+    drivers,
+    cars,
+    transactions,
+    daysOff: allDaysOff,
+    adminUserId:   adminUser?.id   ?? '',
+    adminUserName: adminUser?.username ?? 'Admin',
+    enabled: isAuthenticated && userRole === 'admin',
+  });
 
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
 
