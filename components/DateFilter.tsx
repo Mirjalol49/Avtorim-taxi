@@ -26,11 +26,17 @@ const DateFilter: React.FC<DateFilterProps> = ({
     const language = i18n.language as Language;
     const getDateLabel = (filter: TimeFilter, lang: Language): string => {
         const now = new Date();
-        const locale = lang === 'uz' ? 'uz-UZ' : lang === 'ru' ? 'ru-RU' : 'en-US';
 
-        // Helper for month names if Intl is not sufficient or for specific formatting
-        const getMonthName = (date: Date) => {
-            return date.toLocaleString(locale, { month: 'long' });
+        // Hardcoded month names — uz-UZ locale returns "M01" in many browsers
+        const MONTHS_UZ  = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+        const MONTHS_RU  = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+        const MONTHS_EN  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+        const getMonthName = (date: Date): string => {
+            const i = date.getMonth();
+            if (lang === 'ru') return MONTHS_RU[i];
+            if (lang === 'en') return MONTHS_EN[i];
+            return MONTHS_UZ[i];
         };
 
         switch (filter) {
@@ -38,15 +44,13 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 return `${now.getDate()} ${getMonthName(now)}`;
             case 'week': {
                 const start = new Date(now);
-                start.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+                start.setDate(now.getDate() - now.getDay());
                 const end = new Date(start);
-                end.setDate(start.getDate() + 6); // End of week (Saturday)
+                end.setDate(start.getDate() + 6);
 
-                // If same month
                 if (start.getMonth() === end.getMonth()) {
                     return `${start.getDate()} - ${end.getDate()} ${getMonthName(end)}`;
                 }
-                // Different months
                 return `${start.getDate()} ${getMonthName(start).slice(0, 3)} - ${end.getDate()} ${getMonthName(end).slice(0, 3)}`;
             }
             case 'month':
@@ -59,6 +63,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 return '';
         }
     };
+
 
     const filters: TimeFilter[] = ['today', 'week', 'month', 'year', 'all'];
 
