@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, Transaction, Car } from '../../core/types';
 import { calcDriverDebt } from '../drivers/utils/debtUtils';
-import { getDaysOffSet, DayOff } from '../../services/daysOffService';
+import { getDaysOffSet, DayOff } from '../../../services/daysOffService';
 
 interface DebtsPageProps {
     drivers: Driver[];
