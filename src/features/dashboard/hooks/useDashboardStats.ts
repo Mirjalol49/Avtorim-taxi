@@ -83,12 +83,16 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             const daysOffSet = new Set(daysOff.filter(d => d.driverId === driver.id).map(d => d.dateKey));
             const info = calcDriverDebt(driver, driverCar, transactions, daysOffSet);
 
+            // Dashboard specific totalDebt adjustment: if today has NO transactions, 
+            // debtUtils doesn't count today's shortfall in totalDebt yet. We add it here for clear UI.
+            const adjustedTotalDebt = info.totalDebt + (info.todayIncome === 0 && !isDayOff ? info.todayDebt : 0);
+
             const stat = {
                 ...driver,
                 dailyPlan: info.dailyPlan,
                 todayIncome: info.todayIncome,
                 todayDebt: info.todayDebt,
-                totalDebt: info.totalDebt,
+                totalDebt: adjustedTotalDebt,
                 isDayOff
             };
 
@@ -96,11 +100,11 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
                 // Ignore DayOff drivers from this specific "who paid today" widget maybe, or mark them as completed
                 // Let's add them to completed as "Dam olish kuni"
                 completed.push(stat);
-            } else if (info.dailyPlan === 0) {
-                // Ignore if no daily plan
-            } else if (info.todayDebt <= 0 && info.todayIncome >= info.dailyPlan) {
+            } else if (info.todayIncome >= (info.dailyPlan > 0 ? info.dailyPlan : 1)) {
+                // If they met their daily plan (or paid something when plan is missing), they are completed
                 completed.push(stat);
             } else {
+                // Anyone else (no payment, or partial payment) is pending
                 pending.push(stat);
             }
         });
