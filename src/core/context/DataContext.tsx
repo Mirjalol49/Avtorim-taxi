@@ -1,18 +1,15 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useDrivers } from '../../features/drivers/hooks/useDrivers';
 import { useTransactions } from '../../features/transactions/hooks/useTransactions';
-import { useSalaries } from '../../features/salaries/hooks/useSalaries';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { useAuthContext } from '../../features/auth/context/AuthContext';
-import { Driver, Transaction, DriverSalary, Notification } from '../../core/types';
+import { Driver, Transaction, Notification } from '../../core/types';
 
 interface DataContextType {
     drivers: Driver[];
     driversLoading: boolean;
     transactions: Transaction[];
     txLoading: boolean;
-    salaryHistory: DriverSalary[];
-    salariesLoading: boolean;
     notifications: Notification[];
     unreadCount: number;
     readNotificationIds: Set<string>;
@@ -40,7 +37,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { drivers, loading: driversLoading } = useDrivers(fleetId);
     const { transactions, loading: txLoading } = useTransactions(fleetId);
-    const { salaryHistory, loading: salariesLoading } = useSalaries(fleetId);
     const {
         notifications,
         unreadCount,
@@ -50,7 +46,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUnreadCount
     } = useNotifications(adminUser, userRole);
 
-    const loading = driversLoading || txLoading || salariesLoading;
+    const loading = driversLoading || txLoading;
 
     return (
         <DataContext.Provider value={{
@@ -58,8 +54,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             driversLoading,
             transactions,
             txLoading,
-            salaryHistory,
-            salariesLoading,
             notifications,
             unreadCount,
             readNotificationIds,

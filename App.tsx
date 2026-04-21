@@ -22,8 +22,6 @@ import DatePicker from './components/DatePicker';
 import CustomSelect from './components/CustomSelect';
 import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
-import SalaryManagement from './components/SalaryManagement';
-import { RolesPage } from './src/features/admin/RolesPage';
 import { useAdminProfile } from './src/features/admin/hooks/useAdminProfile';
 import NotFound from './components/NotFound';
 
@@ -34,18 +32,16 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Skeleton from './components/Skeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
 import DriversPage from './src/features/drivers/DriversPage';
-import SuperAdminPage from './src/features/super-admin/SuperAdminPage';
 import NotesPage from './src/features/notes/NotesPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
-import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab, DriverSalary, PaymentStatus } from './types';
+import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
 import { formatNumberSmart } from './utils/formatNumber';
 import { useDrivers } from './src/features/drivers/hooks/useDrivers';
 import { useTransactions } from './src/features/transactions/hooks/useTransactions';
 import { useAuth } from './src/features/auth/hooks/useAuth';
-import { useSalaries } from './src/features/salaries/hooks/useSalaries';
 import { useNotifications } from './src/features/notifications/hooks/useNotifications';
 import { AuthProvider, useAuthContext } from './src/features/auth/context/AuthContext';
 import { UIProvider, useUIContext } from './src/features/shared/context/UIContext';
@@ -54,7 +50,6 @@ import * as firestoreService from './services/firestoreService';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, Notification } from './services/notificationService';
 import { playLockSound } from './services/soundService';
 import logo from './Images/logo_winter.png';
-import { addSalary } from './services/salaryService';
 import { DayOff, subscribeToDaysOff } from './services/daysOffService';
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 
@@ -89,8 +84,6 @@ const AppContent: React.FC = () => {
     loading: driversLoading,
     transactions,
     txLoading,
-    salaryHistory,
-    salariesLoading,
     notifications,
     unreadCount,
     readNotificationIds,
@@ -224,8 +217,6 @@ const AppContent: React.FC = () => {
       action: async () => {
         try {
           await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' });
-          // Optimistic update removed - relying on subscription
-          // Remove from selected transactions if it was selected
           setSelectedTransactions(prev => prev.filter(txId => txId !== id));
           closeConfirmModal();
         } catch (error) {
@@ -235,93 +226,6 @@ const AppContent: React.FC = () => {
       }
     });
   };
-
-  const handlePaySalary = (driver: Driver, effectiveDate?: Date) => {
-    const monthlySalary = driver.monthlySalary || 0;
-    const dateStr = effectiveDate ? effectiveDate.toLocaleDateString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { month: 'long', year: 'numeric' }) : '';
-
-    setConfirmModal({
-      isOpen: true,
-      title: t.paySalary,
-      message: `${t.paySalary} ${driver.name}: ${formatNumberSmart(monthlySalary, false, language)} UZS${dateStr ? ` (${dateStr})` : ''}?`,
-      isDanger: false,
-      action: async () => {
-        try {
-          // Create an expense transaction for the salary payment
-          const salaryTransaction = {
-            driverId: driver.id,
-            amount: monthlySalary,
-            type: TransactionType.EXPENSE,
-            description: `${t.monthlySalary} - ${driver.name}${dateStr ? ` (${dateStr})` : ''}`,
-            timestamp: effectiveDate ? effectiveDate.getTime() : Date.now(),
-            status: PaymentStatus.COMPLETED // Default status for new payments
-          };
-
-          // Note: If your Transaction type doesn't have effectiveDate, timestamp is usually enough for sorting.
-          // But for salary history, we might want to ensure it's recorded correctly.
-          // The addTransaction service likely handles it.
-
-          await firestoreService.addTransaction(salaryTransaction, adminUser?.id);
-
-          // Add to Salary History
-          // Add to Salary History
-          await addSalary({
-            driverId: driver.id,
-            amount: monthlySalary,
-            effectiveDate: effectiveDate ? effectiveDate.getTime() : Date.now(),
-            createdBy: adminProfile?.name || 'Admin',
-            createdAt: Date.now(),
-            notes: `Salary payment${dateStr ? ` (${dateStr})` : ''}`,
-            status: PaymentStatus.COMPLETED // Default status for new payments
-          }, adminUser?.id);
-
-          // CLOSE MODAL IMMEDIATELY for snappy UI
-          closeConfirmModal();
-          addToast('success', t.salaryPaid || 'Salary paid successfully');
-
-          // Trigger Telegram Notification (Background)
-          // We don't await this to block the UI
-          const notifDate = effectiveDate
-            ? effectiveDate.toLocaleDateString('uz-UZ')
-            : new Date().toLocaleDateString('uz-UZ');
-
-          // Use relative path
-          const apiUrl = 'https://us-central1-avtorim-taxi.cloudfunctions.net/sendSalaryNotification';
-
-          console.log('🔔 Triggering salary notification:', { driverId: driver.id, amount: monthlySalary, date: notifDate });
-
-          fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              driverId: driver.id,
-              amount: Math.abs(monthlySalary),
-              date: notifDate
-            })
-          }).then(async (response) => {
-            console.log('📤 Notification response:', response.status);
-            if (response.ok) {
-              addToast('success', '📲 Telegram xabar yuborildi!');
-            } else {
-              const errData = await response.json();
-              console.warn('Notification API Warning:', errData);
-              addToast('warning', `Telegram: ${errData.error || 'Xabar yuborilmadi'}`);
-            }
-          }).catch(e => {
-            console.error('Failed to trigger salary notification:', e);
-            addToast('error', 'Telegram xabar yuborishda xatolik');
-          });
-
-        } catch (error) {
-          console.error('Failed to pay salary:', error);
-          // Only close on critical error if we haven't already
-          addToast('error', t.paySalaryError || 'Failed to process payment');
-          closeConfirmModal();
-        }
-      }
-    });
-  };
-
 
   const handleSaveDriver = async (data: any) => {
     try {
@@ -511,7 +415,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/salary', '/notes', '/roles', '/super-admin', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/notes', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -557,10 +461,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/cars', 'Avtomobillar', CarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
-          {renderSidebarItem('/salary', t.salaryManagement, WalletIcon)}
           {renderSidebarItem('/notes', t.notes || 'Notes', NotesIcon)}
-          {userRole === 'admin' && renderSidebarItem('/roles', t.roleManagement, ShieldIcon)}
-          {userRole === 'admin' && (adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && renderSidebarItem('/mirjalol49', t.superAdmin, LockIcon)}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -760,7 +661,6 @@ const AppContent: React.FC = () => {
                 {location.pathname.includes('drivers') && t.driversList}
                 {location.pathname.includes('finance') && t.analytics}
                 {location.pathname.includes('transactions') && t.transactions}
-                {location.pathname.includes('salary') && t.salaryManagement}
               </h2>
               <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
@@ -876,9 +776,6 @@ const AppContent: React.FC = () => {
               />
             } />
 
-            {/* SALARY MANAGEMENT COMPONENT */}
-            <Route path="/salary" element={<SalaryManagement theme={theme} drivers={drivers} transactions={transactions} onPaySalary={handlePaySalary} salaryHistory={salaryHistory} userRole={userRole} adminName={adminUser?.username || 'Admin'} fleetId={adminUser?.id} />} />
-
             {/* NOTES */}
             <Route path="/notes" element={
               <NotesPage
@@ -887,20 +784,6 @@ const AppContent: React.FC = () => {
                   ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
                   : adminUser?.id}
               />
-            } />
-
-            <Route path="/roles" element={userRole === 'admin' ? (
-              <RolesPage
-                theme={theme}
-                adminName={adminUser?.username || t.systemAdmin}
-                adminId={adminUser?.id || ''}
-              />
-            ) : <Navigate to="/dashboard" replace />} />
-
-            <Route path="/super-admin" element={
-              userRole === 'admin' && (adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') ? (
-                <SuperAdminPage theme={theme} />
-              ) : <Navigate to="/dashboard" replace />
             } />
           </Routes >
         </main >
