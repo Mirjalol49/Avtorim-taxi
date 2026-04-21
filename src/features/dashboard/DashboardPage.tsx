@@ -360,10 +360,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                     <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-orange-500' : 'text-orange-600'}`}>Kutilayotgan qoldiq:</span>
                                                     <span className="text-xs font-bold text-orange-400 font-mono">{(driver.todayDebt || 0).toLocaleString()} UZS</span>
                                                 </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Jami qarz:</span>
-                                                    <span className="text-sm font-black text-orange-500 font-mono">{(driver.totalDebt || 0).toLocaleString()} UZS</span>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
