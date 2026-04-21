@@ -809,6 +809,7 @@ const AppContent: React.FC = () => {
                 fleetId={userRole === 'viewer'
                   ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
                   : adminUser?.id}
+                daysOff={allDaysOff}
                 onUpdateStatus={handleUpdateDriverStatus}
                 onEditDriver={handleEditDriverClick}
                 onDeleteDriver={handleDeleteDriver}
@@ -819,6 +820,7 @@ const AppContent: React.FC = () => {
                 theme={theme}
               />
             } />
+
 
 
             {/* CARS */}
