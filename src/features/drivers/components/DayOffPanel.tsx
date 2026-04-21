@@ -8,15 +8,21 @@ interface DayOffPanelProps {
     onClose: () => void;
 }
 
+const MONTHS_UZ = [
+    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+];
+
 const monthLabel = (monthKey: string) => {
-    const [y, m] = monthKey.split('-');
-    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
+    const [y, m] = monthKey.split('-').map(Number);
+    return `${MONTHS_UZ[m - 1]} ${y}`;
 };
 
 const dateLabel = (dateKey: string) => {
-    const [y, m, d] = dateKey.split('-');
-    return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    const [y, m, d] = dateKey.split('-').map(Number);
+    return `${d} ${MONTHS_UZ[m - 1]} ${y}`;
 };
+
 
 export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme, onClose }) => {
     const isDark = theme === 'dark';

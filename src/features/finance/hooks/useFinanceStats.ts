@@ -87,14 +87,21 @@ export const useFinanceStats = (transactions: Transaction[]) => {
     const monthlyAnalyticsData = useMemo(() => {
         const monthlyData: Record<string, { name: string; Income: number; Expense: number }> = {};
 
+        // Stable short month names — avoid uz-UZ returning "M01" in some browsers
+        const SHORT_MONTHS_UZ = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+        const SHORT_MONTHS_RU = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        const SHORT_MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const getMonthName = (idx: number): string => {
+            if (language === 'ru') return SHORT_MONTHS_RU[idx];
+            if (language === 'en') return SHORT_MONTHS_EN[idx];
+            return SHORT_MONTHS_UZ[idx]; // uz default
+        };
+
         // Initialize all 12 months for the selected year
         for (let i = 0; i < 12; i++) {
-            // Use fixed year for month generation to avoid leap year issues or similar quirky date math if desired, 
-            // but new Date(year, month, 1) is standard.
-            const d = new Date(analyticsYear, i, 1);
             const key = `${analyticsYear}-${i}`;
-            const monthName = d.toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { month: 'short' });
-            monthlyData[key] = { name: monthName, Income: 0, Expense: 0 };
+            monthlyData[key] = { name: getMonthName(i), Income: 0, Expense: 0 };
         }
 
         // Logic from App.tsx: Falls back to 'transactions' if filtered list is empty.

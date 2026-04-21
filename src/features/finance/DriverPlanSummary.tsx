@@ -47,9 +47,14 @@ const daysInMonthForKey = (mk: string): number => {
     return new Date(y, m, 0).getDate();
 };
 
+const MONTHS_UZ = [
+    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+];
+
 const monthDisplayLabel = (mk: string): string => {
     const [y, m] = mk.split('-').map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
+    return `${MONTHS_UZ[m - 1]} ${y}`;
 };
 
 /** All YYYY-MM keys from startDate to endDate inclusive */
