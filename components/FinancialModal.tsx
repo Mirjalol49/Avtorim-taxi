@@ -33,6 +33,8 @@ interface FinancialModalProps {
   theme: 'light' | 'dark';
   fleetId?: string;
   daysOff?: DayOff[];
+  initialType?: TransactionType;
+  initialDriverId?: string;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -45,10 +47,18 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   // Transaction fields
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
-  const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
+  const [type, setType] = useState<TransactionType>(initialType || TransactionType.INCOME);
   const [description, setDescription] = useState('');
-  const [driverId, setDriverId] = useState('');
+  const [driverId, setDriverId] = useState(initialDriverId || '');
   const [date, setDate] = useState<Date>(new Date());
+
+  // Reset states when modal is opened or explicitly provided initials change
+  useEffect(() => {
+    if (isOpen) {
+      setType(initialType || TransactionType.INCOME);
+      if (initialDriverId) setDriverId(initialDriverId);
+    }
+  }, [isOpen, initialType, initialDriverId]);
 
   // Payment method + cheque
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');

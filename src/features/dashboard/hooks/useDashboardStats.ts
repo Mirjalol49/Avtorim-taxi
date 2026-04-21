@@ -84,9 +84,9 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             const daysOffSet = new Set(daysOff.filter(d => d.driverId === driver.id).map(d => d.dateKey));
             const info = calcDriverDebt(driver, driverCar, transactions, daysOffSet);
 
-            // Dashboard specific totalDebt adjustment: if today has NO transactions, 
-            // debtUtils doesn't count today's shortfall in totalDebt yet. We add it here for clear UI.
-            const adjustedTotalDebt = info.totalDebt + (info.todayIncome === 0 && !isDayOff ? info.todayDebt : 0);
+            // Dashboard leverages the newly unified `netDebt` architecture 
+            // which automatically evaluates missing days dynamically from origin.
+            const adjustedTotalDebt = info.netDebt;
 
             const stat = {
                 ...driver,

@@ -3,9 +3,7 @@ import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
 
 export interface ExplicitDebtInfo {
-    totalDebt: number;
-    totalPaid: number;
-    remaining: number;
+    totalExplicitDebt: number; // Sum of all DEBT transactions
 }
 
 export function calcExplicitDebt(driver: Driver, transactions: Transaction[]): ExplicitDebtInfo {
@@ -15,33 +13,26 @@ export function calcExplicitDebt(driver: Driver, transactions: Transaction[]): E
         (tx as any).status !== 'DELETED'
     );
 
-    const totalDebt = driverTxs
+    const totalExplicitDebt = driverTxs
         .filter(tx => tx.type === TransactionType.DEBT)
         .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
-    if (totalDebt === 0) return { totalDebt: 0, totalPaid: 0, remaining: 0 };
-
-    const totalIncome = driverTxs
-        .filter(tx => tx.type === TransactionType.INCOME)
-        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-
-    const totalPaid = Math.min(totalIncome, totalDebt);
-    const remaining = Math.max(0, totalDebt - totalIncome);
-
-    return { totalDebt, totalPaid, remaining };
+    return { totalExplicitDebt };
 }
 
 export interface DriverDebtInfo {
     dailyPlan: number;
     todayIncome: number;
-    todayDebt: number;
-    totalDebt: number;
-    totalIncome: number;
-    workingDays: number;
+    todayDebt: number; // Shortfall strictly based on today's income vs plan
+    totalAutoDebt: number; // Lifetime total missing daily plans
+    totalExplicitDebt: number; // Lifetime total custom penalties/debts
+    totalIncome: number; // Lifetime income
+    netDebt: number; // (Auto + Explicit) - Income (Positive = owes money, Negative = overpaid credit)
+    workingDays: number; // valid tracked days since creation
     todayIsDayOff: boolean;
 }
 
-const dateKey = (ts: number) => {
+const dateKey = (ts: number | Date) => {
     const d = new Date(ts);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -55,52 +46,83 @@ export function calcDriverDebt(
     transactions: Transaction[],
     daysOffSet: Set<string> = new Set()  // set of 'YYYY-MM-DD' strings
 ): DriverDebtInfo {
-    // Car's daily plan takes priority; fall back to driver's own setting
     const carPlan = (car?.dailyPlan ?? 0);
     const driverPlan = (driver as any).dailyPlan ?? 0;
     const dailyPlan = carPlan > 0 ? carPlan : driverPlan;
 
-    // Filter active income transactions for this driver
-    const income = transactions.filter(tx =>
+    const validTxs = transactions.filter(tx =>
         tx.driverId === driver.id &&
-        tx.type === TransactionType.INCOME &&
         tx.status !== PaymentStatus.DELETED &&
         (tx as any).status !== 'DELETED'
     );
 
-    // Group income by date (YYYY-MM-DD)
-    const byDate: Record<string, number> = {};
-    income.forEach(tx => {
+    // Sum all incomes
+    const incomeTxs = validTxs.filter(tx => tx.type === TransactionType.INCOME);
+    const totalIncome = incomeTxs.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+    // Group income strictly by date to check today's sub-stats
+    const incomeByDate: Record<string, number> = {};
+    incomeTxs.forEach(tx => {
         const key = dateKey(tx.timestamp);
-        byDate[key] = (byDate[key] || 0) + Math.abs(tx.amount);
+        incomeByDate[key] = (incomeByDate[key] || 0) + Math.abs(tx.amount);
     });
 
     const todayKey = dateKey(Date.now());
     const todayIsDayOff = daysOffSet.has(todayKey);
-    const todayIncome = byDate[todayKey] ?? 0;
-    // No daily plan required on a day off
+    const todayIncome = incomeByDate[todayKey] ?? 0;
     const todayDebt = (dailyPlan > 0 && !todayIsDayOff)
         ? Math.max(0, dailyPlan - todayIncome)
         : 0;
 
-    let totalDebt = 0;
-    let totalIncome = 0;
-    const workingDays = Object.keys(byDate).length;
-
-    Object.entries(byDate).forEach(([day, dayAmount]) => {
-        totalIncome += dayAmount;
-        // Skip debt calculation for days off
-        if (daysOffSet.has(day)) return;
-        if (dailyPlan > 0 && dayAmount < dailyPlan) {
-            totalDebt += dailyPlan - dayAmount;
-        }
+    // Sum explicit debts
+    const explicitTxs = validTxs.filter(tx => tx.type === TransactionType.DEBT);
+    let totalExplicitDebt = 0;
+    explicitTxs.forEach(tx => {
+        // Debts can technically be negative to provide balance resets/subtractions manually
+        totalExplicitDebt += tx.amount;
     });
 
-    // Also check days with zero income that are NOT days off (they still owe)
-    // Note: days with zero income don't appear in byDate, so we only count
-    // income shortfall for days that actually have a transaction record.
-    // Days with no transactions at all are not tracked (consistent with prior behavior).
+    // Calculate total Auto Debt since `createdAt`
+    let totalAutoDebt = 0;
+    let workingDays = 0;
 
-    return { dailyPlan, todayIncome, todayDebt, totalDebt, totalIncome, workingDays, todayIsDayOff };
+    // Use driver creation date OR fallback to 30 days ago to prevent catastrophic load if missing
+    // or fallback to the earliest transaction date they possess!
+    let earliestTx = Date.now();
+    validTxs.forEach(tx => {
+        if (tx.timestamp < earliestTx) earliestTx = tx.timestamp;
+    });
+    
+    // Bounds tracking safely
+    const fallbackStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime(); // max 1 month lookback if no data
+    const trackingStartMs = driver.createdAt ? driver.createdAt : Math.min(earliestTx, fallbackStart);
+    
+    let currentMs = trackingStartMs;
+    const todayMs = Date.now();
+
+    while (currentMs <= todayMs) {
+        const dKey = dateKey(currentMs);
+        if (!daysOffSet.has(dKey)) {
+            workingDays++;
+            totalAutoDebt += dailyPlan;
+        }
+        currentMs += 86400000; // Increment 1 day safely
+    }
+
+    // Final Net calculation: How much they strictly owe
+    // Net Debt = Auto Required Plans + Explicit Penalities - What they paid
+    const netDebt = (totalAutoDebt + totalExplicitDebt) - totalIncome;
+
+    return { 
+        dailyPlan, 
+        todayIncome, 
+        todayDebt, 
+        totalAutoDebt, 
+        totalExplicitDebt, 
+        totalIncome, 
+        netDebt, 
+        workingDays, 
+        todayIsDayOff 
+    };
 }
 

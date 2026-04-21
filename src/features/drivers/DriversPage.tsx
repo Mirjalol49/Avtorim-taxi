@@ -42,7 +42,9 @@ const DriversPage: React.FC<DriversPageProps> = ({
             const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
             const daysOffSet = getDaysOffSet(daysOff, d.id);
             const s = calcDriverDebt(d, car, transactions, daysOffSet);
-            totalDebt += s.totalDebt;
+            // Only aggregate if netDebt is positive (meaning they owe money)
+            // Overpayments (credit balances <= 0) don't offset total fleet owed debt
+            totalDebt += s.netDebt > 0 ? s.netDebt : 0;
             totalIncome += s.totalIncome;
             todayIncome += s.todayIncome;
         });

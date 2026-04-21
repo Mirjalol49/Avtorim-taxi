@@ -33,4 +33,5 @@ export interface Driver extends Lockable {
     rating: number;
     isDeleted?: boolean;
     documents?: DriverDocument[];
+    createdAt?: number;
 }

@@ -36,6 +36,7 @@ import NotesPage from './src/features/notes/NotesPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
+import DebtsPage from './src/features/debts/DebtsPage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -107,6 +108,8 @@ const AppContent: React.FC = () => {
 
   // Modals
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [txInitialDriverId, setTxInitialDriverId] = useState<string | undefined>(undefined);
+  const [txInitialType, setTxInitialType] = useState<TransactionType | undefined>(undefined);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
@@ -470,6 +473,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
           {renderSidebarItem('/cars', 'Avtomobillar', CarIcon)}
           {renderSidebarItem('/monthly-plan', 'Oylik Reja', CalendarIcon)}
+          {renderSidebarItem('/debts', 'Qarzlar', BanknoteIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/notes', t.notes || 'Notes', NotesIcon)}
@@ -787,6 +791,27 @@ const AppContent: React.FC = () => {
               />
             } />
 
+            {/* DEBTS COMPONENT */}
+            <Route path="/debts" element={
+              <DebtsPage
+                transactions={transactions}
+                drivers={drivers}
+                cars={cars}
+                daysOff={allDaysOff}
+                theme={theme}
+                onAddDebt={(driver) => {
+                  setTxInitialDriverId(driver.id);
+                  setTxInitialType(TransactionType.DEBT);
+                  setIsTxModalOpen(true);
+                }}
+                onAddPayment={(driver) => {
+                  setTxInitialDriverId(driver.id);
+                  setTxInitialType(TransactionType.INCOME);
+                  setIsTxModalOpen(true);
+                }}
+              />
+            } />
+
             {/* TRANSACTIONS COMPONENT */}
             <Route path="/transactions" element={
               <TransactionsPage
@@ -814,13 +839,19 @@ const AppContent: React.FC = () => {
       {/* MODALS */}
       <FinancialModal
         isOpen={isTxModalOpen}
-        onClose={() => setIsTxModalOpen(false)}
+        onClose={() => {
+            setIsTxModalOpen(false);
+            setTxInitialDriverId(undefined);
+            setTxInitialType(undefined);
+        }}
         onSubmit={handleAddTransaction}
         drivers={nonDeletedDrivers}
         transactions={transactions}
         theme={theme}
         fleetId={carsFleetId}
         daysOff={allDaysOff}
+        initialDriverId={txInitialDriverId}
+        initialType={txInitialType}
       />
 
       <DriverModal
