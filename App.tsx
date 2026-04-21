@@ -36,7 +36,6 @@ import NotesPage from './src/features/notes/NotesPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
-import DebtsPage from './src/features/debts/DebtsPage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -428,7 +427,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/debts', '/transactions', '/finance', '/monthly-plan', '/notes', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -473,7 +472,6 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
           {renderSidebarItem('/cars', 'Avtomobillar', CarIcon)}
           {renderSidebarItem('/monthly-plan', 'Oylik Reja', CalendarIcon)}
-          {renderSidebarItem('/debts', 'Qarzlar', BanknoteIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/notes', t.notes || 'Notes', NotesIcon)}
@@ -788,27 +786,6 @@ const AppContent: React.FC = () => {
                 daysOff={allDaysOff}
                 theme={theme}
                 isMobile={isMobile}
-              />
-            } />
-
-            {/* DEBTS COMPONENT */}
-            <Route path="/debts" element={
-              <DebtsPage
-                transactions={transactions}
-                drivers={drivers}
-                cars={cars}
-                daysOff={allDaysOff}
-                theme={theme}
-                onAddDebt={(driver) => {
-                  setTxInitialDriverId(driver.id);
-                  setTxInitialType(TransactionType.DEBT);
-                  setIsTxModalOpen(true);
-                }}
-                onAddPayment={(driver) => {
-                  setTxInitialDriverId(driver.id);
-                  setTxInitialType(TransactionType.INCOME);
-                  setIsTxModalOpen(true);
-                }}
               />
             } />
 
