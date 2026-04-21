@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { XIcon, UsersIcon } from './Icons';
 import CustomSelect from './CustomSelect';
@@ -14,6 +14,16 @@ import {
   DayOff,
 } from '../services/daysOffService';
 
+// ─── Payment method ──────────────────────────────────────────────────────────
+type PaymentMethod = 'cash' | 'card' | 'transfer';
+
+const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
+  { id: 'cash',     label: "Naqd",       icon: '💵' },
+  { id: 'card',     label: "Karta",      icon: '💳' },
+  { id: 'transfer', label: "O'tkazma",   icon: '🏦' },
+];
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,34 +35,43 @@ interface FinancialModalProps {
   daysOff?: DayOff[];
 }
 
+// ─── Component ───────────────────────────────────────────────────────────────
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit, drivers, transactions = [], theme, fleetId = '', daysOff = [],
 }) => {
   const { t } = useTranslation();
+  const isDark = theme === 'dark';
+
+  // Transaction fields
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
   const [description, setDescription] = useState('');
   const [driverId, setDriverId] = useState('');
   const [date, setDate] = useState<Date>(new Date());
+
+  // Payment method + cheque
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [chequeImage, setChequeImage] = useState<string | null>(null);  // base64
+  const [chequeError, setChequeError] = useState<string | null>(null);
+  const chequeRef = useRef<HTMLInputElement>(null);
+
+  // Day off
   const [isDayOff, setIsDayOff] = useState(false);
   const [dayOffSaving, setDayOffSaving] = useState(false);
   const [dayOffError, setDayOffError] = useState<string | null>(null);
 
   const selectedDriver = drivers.find(d => d.id === driverId) ?? null;
 
-  // How many days off this driver has used this month
+  // Days off checks
   const usedThisMonth = selectedDriver
     ? countUsedThisMonth(daysOff, selectedDriver.id, toMonthKey(date))
     : 0;
   const limitReached = usedThisMonth >= MONTHLY_ALLOWANCE;
-
-  // Check if selected date is already a day off for this driver
   const selectedDateKey = toDateKey(date);
-  const alreadyDayOff = daysOff.some(
-    d => d.driverId === driverId && d.dateKey === selectedDateKey
-  );
+  const alreadyDayOff = daysOff.some(d => d.driverId === driverId && d.dateKey === selectedDateKey);
 
+  // Debt preview
   const driverDebtInfo = useMemo(() => {
     if (!selectedDriver || transactions.length === 0) return null;
     const driverTxs = transactions.filter(tx =>
@@ -67,8 +86,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     const totalIncome = driverTxs
       .filter(tx => tx.type === TransactionType.INCOME)
       .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-    const remaining = Math.max(0, totalDebt - totalIncome);
-    return { totalDebt, totalIncome, remaining };
+    return { totalDebt, remaining: Math.max(0, totalDebt - totalIncome) };
   }, [selectedDriver, transactions]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
@@ -85,58 +103,82 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDisplayAmount(formatNumberDisplay(rawValue));
   };
 
-  // Reset form when modal opens/closes
+  // ── Cheque image helpers ────────────────────────────────────────────────────
+  const processImageFile = useCallback((file: File) => {
+    setChequeError(null);
+    if (!file.type.startsWith('image/')) {
+      setChequeError('Faqat rasm fayl qabul qilinadi');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setChequeError("Fayl hajmi 5MB dan oshmasligi kerak");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => setChequeImage(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }, []);
+
+  // Global paste listener
+  useEffect(() => {
+    if (!isOpen || paymentMethod !== 'card') return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) processImageFile(file);
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen, paymentMethod, processImageFile]);
+
+  // ── Reset ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) {
-      setAmount('');
-      setDisplayAmount('');
-      setDescription('');
-      setType(TransactionType.INCOME);
-      setDate(new Date());
-      setIsDayOff(false);
-      setDayOffError(null);
+      setAmount(''); setDisplayAmount(''); setDescription('');
+      setType(TransactionType.INCOME); setDate(new Date());
+      setIsDayOff(false); setDayOffError(null);
+      setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     } else if (isOpen && drivers.length > 0) {
-      if (!driverId || !drivers.find(d => d.id === driverId)) {
-        setDriverId(drivers[0].id);
-      }
+      if (!driverId || !drivers.find(d => d.id === driverId)) setDriverId(drivers[0].id);
     }
   }, [isOpen, drivers, driverId]);
 
-  // Reset day off state when driver or date changes
-  useEffect(() => {
-    setDayOffError(null);
-    setIsDayOff(false);
-  }, [driverId, date]);
+  useEffect(() => { setDayOffError(null); setIsDayOff(false); }, [driverId, date]);
 
   if (!isOpen) return null;
 
+  // ── Submit ────────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!driverId || !drivers.find(d => d.id === driverId)) return;
 
-    // ── Day off path ──────────────────────────────────────────────
+    // Day off path
     if (isDayOff) {
       if (!fleetId) { setDayOffError('Fleet ID not found'); return; }
       if (alreadyDayOff) { setDayOffError('Bu kun allaqachon dam olish kuni'); return; }
       if (limitReached) { setDayOffError(`Bu oy uchun limit (${MONTHLY_ALLOWANCE} kun) tugagan`); return; }
-
-      setDayOffSaving(true);
-      setDayOffError(null);
+      setDayOffSaving(true); setDayOffError(null);
       try {
         const [y, m, d] = selectedDateKey.split('-').map(Number);
         await addDayOff(driverId, fleetId, new Date(y, m - 1, d), description.trim() || 'Dam olish');
         resetAndClose();
-      } catch (err: any) {
-        setDayOffError(err.message);
-      } finally {
-        setDayOffSaving(false);
-      }
+      } catch (err: any) { setDayOffError(err.message); }
+      finally { setDayOffSaving(false); }
       return;
     }
 
-    // ── Normal transaction path ───────────────────────────────────
+    // Normal transaction
     if ((type === TransactionType.EXPENSE || type === TransactionType.DEBT) && !description.trim()) return;
+    if (paymentMethod === 'card' && !chequeImage) {
+      setChequeError("Karta orqali to'lovda chek rasmi talab qilinadi");
+      return;
+    }
 
     const timestamp = new Date(date);
     const now = new Date();
@@ -148,161 +190,121 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       description,
       driverId,
       timestamp: timestamp.getTime(),
-    });
+      // Extra fields stored as any — backend accepts them
+      ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
+    } as any);
     resetAndClose();
   };
 
   const resetAndClose = () => {
-    setAmount('');
-    setDisplayAmount('');
-    setDescription('');
-    setDriverId('');
-    setDate(new Date());
-    setIsDayOff(false);
-    setDayOffError(null);
+    setAmount(''); setDisplayAmount(''); setDescription(''); setDriverId('');
+    setDate(new Date()); setIsDayOff(false); setDayOffError(null);
+    setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     onClose();
   };
 
-  const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
+  // ── Styles ───────────────────────────────────────────────────────────────────
+  const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${isDark
     ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0f766e] placeholder-gray-500'
-    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'
-    }`;
+    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'}`;
 
-  const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-    }`;
+  const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
 
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+      <div className={`rounded-2xl shadow-2xl w-full max-w-md max-h-[95vh] overflow-y-auto transform transition-all animate-in fade-in zoom-in duration-200 border ${
+        isDark ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+      }`}>
+        {/* Header */}
+        <div className={`sticky top-0 z-10 px-6 py-5 border-b flex justify-between items-center ${
+          isDark ? 'border-gray-700 bg-gray-800/80 backdrop-blur-sm' : 'border-gray-100 bg-gray-50/90 backdrop-blur-sm'
         }`}>
-        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'
-          }`}>
-          <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('newTransaction')}</h3>
-          <button onClick={resetAndClose} className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'
-            }`}>
+          <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('newTransaction')}</h3>
+          <button onClick={resetAndClose} className={`transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
             <XIcon className="w-6 h-6" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
 
-          {/* ── Driver selector always first ── */}
-          <div>
-            <div className="w-full">
-              <CustomSelect
-                label={t('driver')}
-                value={driverId}
-                onChange={setDriverId}
-                options={[
-                  { id: '', name: t('selectDriver') || 'Select Driver' },
-                  ...drivers.map(d => ({ id: d.id, name: `${d.name} — ${d.carModel}` }))
-                ]}
-                theme={theme}
-                icon={UsersIcon}
-              />
-            </div>
-          </div>
+          {/* Driver */}
+          <CustomSelect
+            label={t('driver')}
+            value={driverId}
+            onChange={setDriverId}
+            options={[
+              { id: '', name: t('selectDriver') || 'Select Driver' },
+              ...drivers.map(d => ({ id: d.id, name: `${d.name} — ${d.carModel}` }))
+            ]}
+            theme={theme}
+            icon={UsersIcon}
+          />
 
-          {/* ── Date ── */}
-          <div>
-            <div className="w-full">
-              <DatePicker
-                label={t('time') || 'Date'}
-                value={date}
-                onChange={setDate}
-                theme={theme}
-              />
-            </div>
-          </div>
+          {/* Date */}
+          <DatePicker label={t('time') || 'Date'} value={date} onChange={setDate} theme={theme} />
 
-          {/* ── Day off toggle ── */}
+          {/* Day off toggle */}
           {driverId && (
             <div
-              onClick={() => {
-                if (!alreadyDayOff && !limitReached) setIsDayOff(p => !p);
-              }}
+              onClick={() => { if (!alreadyDayOff && !limitReached) setIsDayOff(p => !p); }}
               className={`flex items-center justify-between rounded-xl px-4 py-3 border transition-all select-none ${
                 isDayOff
-                  ? theme === 'dark'
-                    ? 'bg-teal-500/10 border-teal-500/40'
-                    : 'bg-teal-50 border-teal-300'
+                  ? isDark ? 'bg-teal-500/10 border-teal-500/40' : 'bg-teal-50 border-teal-300'
                   : alreadyDayOff || limitReached
-                  ? theme === 'dark' ? 'bg-gray-800/50 border-gray-700 opacity-60 cursor-not-allowed' : 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
-                  : theme === 'dark' ? 'bg-gray-800/50 border-gray-700 hover:border-teal-500/40 cursor-pointer' : 'bg-gray-50 border-gray-200 hover:border-teal-300 cursor-pointer'
+                  ? isDark ? 'bg-gray-800/50 border-gray-700 opacity-60 cursor-not-allowed' : 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
+                  : isDark ? 'bg-gray-800/50 border-gray-700 hover:border-teal-500/40 cursor-pointer' : 'bg-gray-50 border-gray-200 hover:border-teal-300 cursor-pointer'
               }`}
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">🏖️</span>
                 <div>
-                  <p className={`text-sm font-bold ${isDayOff ? theme === 'dark' ? 'text-teal-400' : 'text-teal-700' : theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <p className={`text-sm font-bold ${isDayOff ? isDark ? 'text-teal-400' : 'text-teal-700' : isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                     Dam olish kuni
                   </p>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {alreadyDayOff
-                      ? '✓ Bu kun allaqachon dam olish kuni'
-                      : limitReached
+                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {alreadyDayOff ? '✓ Bu kun allaqachon dam olish kuni' : limitReached
                       ? `Bu oy limiti tugagan (${usedThisMonth}/${MONTHLY_ALLOWANCE})`
                       : `${usedThisMonth}/${MONTHLY_ALLOWANCE} ishlatildi · Kunlik reja kerak emas`}
                   </p>
                 </div>
               </div>
-              {/* Toggle pill */}
-              <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${isDayOff ? 'bg-teal-500' : theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${isDayOff ? 'left-5' : 'left-0.5'}`} />
+              <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${isDayOff ? 'bg-teal-500' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${isDayOff ? 'left-5' : 'left-0.5'}`} />
               </div>
             </div>
           )}
+          {dayOffError && <p className="text-xs text-red-400 -mt-2">⚠ {dayOffError}</p>}
 
-          {/* ── Day off error ── */}
-          {dayOffError && (
-            <p className="text-xs text-red-400 -mt-2">⚠ {dayOffError}</p>
-          )}
-
-          {/* ── Normal transaction fields (hidden when day off is on) ── */}
+          {/* Normal transaction fields */}
           {!isDayOff && (
             <>
-              {/* Type Selection */}
-              <div className={`grid grid-cols-3 p-1 rounded-full border ${theme === 'dark' ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
-                <button
-                  type="button"
-                  onClick={() => setType(TransactionType.INCOME)}
-                  className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.INCOME
-                    ? 'bg-[#0f766e] text-white shadow-lg'
-                    : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  {t('income')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType(TransactionType.EXPENSE)}
-                  className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.EXPENSE
-                    ? 'bg-red-500 text-white shadow-lg'
-                    : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  {t('expense')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType(TransactionType.DEBT)}
-                  className={`py-2.5 rounded-full text-sm font-bold transition-all ${type === TransactionType.DEBT
-                    ? 'bg-orange-500 text-white shadow-lg'
-                    : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  Qarz
-                </button>
+              {/* Type toggle */}
+              <div className={`grid grid-cols-3 p-1 rounded-full border ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                {[
+                  { t: TransactionType.INCOME,  label: t('income'),  color: 'bg-[#0f766e]' },
+                  { t: TransactionType.EXPENSE, label: t('expense'), color: 'bg-red-500' },
+                  { t: TransactionType.DEBT,    label: 'Qarz',       color: 'bg-orange-500' },
+                ].map(item => (
+                  <button key={item.t} type="button" onClick={() => setType(item.t)}
+                    className={`py-2.5 rounded-full text-sm font-bold transition-all ${
+                      type === item.t ? `${item.color} text-white shadow-lg`
+                      : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                    }`}>{item.label}</button>
+                ))}
               </div>
 
               {/* Debt preview */}
               {type === TransactionType.INCOME && driverDebtInfo && driverDebtInfo.remaining > 0 && (
-                <div className={`rounded-xl p-3 border border-orange-500/30 bg-orange-500/5`}>
+                <div className="rounded-xl p-3 border border-orange-500/30 bg-orange-500/5">
                   <p className="text-xs font-bold text-orange-400 mb-1">⚠ Haydovchida qarz bor</p>
                   <div className="flex justify-between text-xs">
-                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Qolgan qarz:</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Qolgan qarz:</span>
                     <span className="font-bold text-orange-400">−{fmt(driverDebtInfo.remaining)} UZS</span>
                   </div>
                   {amount && Number(amount) > 0 && (
                     <div className="flex justify-between text-xs mt-1">
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Bu to'lovdan so'ng:</span>
+                      <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Bu to'lovdan so'ng:</span>
                       <span className={`font-bold ${Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0 ? 'text-orange-400' : 'text-green-400'}`}>
                         {Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0
                           ? `−${fmt(Math.max(0, driverDebtInfo.remaining - Number(amount)))} UZS`
@@ -316,16 +318,123 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               {/* Amount */}
               <div>
                 <label className={labelClass}>{t('amount')} (UZS)</label>
-                <input
-                  type="text"
-                  required
-                  inputMode="numeric"
-                  value={displayAmount}
-                  onChange={handleAmountChange}
-                  className={`${inputClass} font-mono text-lg tracking-wide`}
-                  placeholder="0"
-                />
+                <input type="text" required inputMode="numeric"
+                  value={displayAmount} onChange={handleAmountChange}
+                  className={`${inputClass} font-mono text-lg tracking-wide`} placeholder="0" />
               </div>
+
+              {/* ── Payment method ───────────────────────────── */}
+              <div>
+                <label className={labelClass}>To'lov usuli</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {PAYMENT_METHODS.map(pm => (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => { setPaymentMethod(pm.id); setChequeImage(null); setChequeError(null); }}
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-sm font-bold transition-all active:scale-95 ${
+                        paymentMethod === pm.id
+                          ? isDark
+                            ? 'bg-[#0f766e]/15 border-[#0f766e]/60 text-[#0f766e]'
+                            : 'bg-teal-50 border-teal-400 text-teal-700'
+                          : isDark
+                          ? 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-xl">{pm.icon}</span>
+                      <span className="text-xs">{pm.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Cheque card (only when card selected) ───── */}
+              {paymentMethod === 'card' && (
+                <div>
+                  <label className={labelClass}>Karta cheki 📋</label>
+
+                  {chequeImage ? (
+                    /* Preview */
+                    <div className={`relative rounded-2xl overflow-hidden border-2 shadow-lg ${
+                      isDark ? 'border-[#0f766e]/40 bg-gray-800' : 'border-teal-300 bg-gray-50'
+                    }`}
+                      style={{ background: isDark
+                        ? 'repeating-linear-gradient(90deg,#1f2937 0px,#1f2937 10px,#1a2332 10px,#1a2332 20px)'
+                        : 'repeating-linear-gradient(90deg,#f9fafb 0px,#f9fafb 10px,#f3f4f6 10px,#f3f4f6 20px)' }}
+                    >
+                      {/* Receipt top notch */}
+                      <div className="flex justify-between px-4 pt-3 pb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">💳</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>Karta cheki</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setChequeImage(null); setChequeError(null); }}
+                          className={`text-xs px-2 py-0.5 rounded-lg font-bold transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}
+                        >Olib tashlash</button>
+                      </div>
+                      {/* Dashed separator */}
+                      <div className={`mx-4 border-t-2 border-dashed mb-2 ${isDark ? 'border-gray-700' : 'border-gray-300'}`} />
+                      {/* Image */}
+                      <div className="px-4 pb-4">
+                        <img src={chequeImage} alt="Cheque" className="w-full rounded-xl object-contain max-h-56 shadow" />
+                      </div>
+                      {/* Bottom tear-off decoration */}
+                      <div className="flex justify-between px-2 pb-1">
+                        {Array.from({ length: 14 }).map((_, i) => (
+                          <div key={i} className={`w-2.5 h-2.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Upload / paste zone */
+                    <div
+                      onClick={() => chequeRef.current?.click()}
+                      onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) processImageFile(f); }}
+                      onDragOver={e => e.preventDefault()}
+                      className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all py-8 px-4 group ${
+                        isDark
+                          ? 'border-gray-600 hover:border-teal-500/60 bg-gray-800/50 hover:bg-teal-500/5'
+                          : 'border-gray-300 hover:border-teal-400 bg-gray-50 hover:bg-teal-50/40'
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        📋
+                      </div>
+                      <div className="text-center">
+                        <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Chekni joylashtiring yoki yuklang
+                        </p>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                          Ctrl+V• bosing yoki bu yerga tashlang
+                        </p>
+                        <p className={`text-[10px] mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-300'}`}>
+                          PNG · JPG · WEBP · maks 5MB
+                        </p>
+                      </div>
+                      {/* Clipboard shortcut badge */}
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold ${
+                        isDark ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-white border-gray-200 text-gray-600'
+                      }`}>
+                        <span>⌘</span><span>/</span><span>Ctrl</span><span>+</span><span>V</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {chequeError && <p className="mt-2 text-xs text-red-400">⚠ {chequeError}</p>}
+
+                  {/* Hidden file input */}
+                  <input
+                    ref={chequeRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f); }}
+                  />
+                </div>
+              )}
 
               {/* Comment */}
               <div>
@@ -336,57 +445,40 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 <textarea
                   required={type === TransactionType.EXPENSE || type === TransactionType.DEBT}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={e => setDescription(e.target.value)}
                   className={`${inputClass} min-h-[80px] resize-none`}
                   placeholder={
-                    type === TransactionType.DEBT
-                      ? 'Masalan: Mashina zarari, jarima...'
-                      : type === TransactionType.EXPENSE
-                      ? t('commentPlaceholder') || 'Masalan: Benzin uchun'
-                      : t('commentPlaceholder') || 'Ixtiyoriy'
+                    type === TransactionType.DEBT ? 'Masalan: Mashina zarari, jarima...'
+                    : type === TransactionType.EXPENSE ? t('commentPlaceholder') || 'Masalan: Benzin uchun'
+                    : t('commentPlaceholder') || 'Ixtiyoriy'
                   }
                 />
               </div>
             </>
           )}
 
-          {/* Day off: optional note field */}
+          {/* Day off note */}
           {isDayOff && (
             <div>
               <label className={labelClass}>Izoh (ixtiyoriy)</label>
-              <input
-                type="text"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Masalan: Shaxsiy sabab"
-                className={inputClass}
-              />
+              <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+                placeholder="Masalan: Shaxsiy sabab" className={inputClass} />
             </div>
           )}
 
           {/* Actions */}
           <div className="pt-2 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={resetAndClose}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-            >
+            <button type="button" onClick={resetAndClose}
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}>
               {t('cancel')}
             </button>
-            <button
-              type="submit"
-              disabled={dayOffSaving}
+            <button type="submit" disabled={dayOffSaving}
               className={`px-6 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all transform active:scale-95 disabled:opacity-60 ${
-                isDayOff
-                  ? 'bg-teal-500 hover:bg-teal-600 shadow-teal-500/20'
-                  : type === TransactionType.INCOME
-                  ? 'bg-[#0f766e] hover:bg-[#0a5c56] shadow-[#0f766e]/20'
-                  : type === TransactionType.DEBT
-                  ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20'
-                  : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-              }`}
-            >
+                isDayOff ? 'bg-teal-500 hover:bg-teal-600 shadow-teal-500/20'
+                : type === TransactionType.INCOME ? 'bg-[#0f766e] hover:bg-[#0a5c56] shadow-[#0f766e]/20'
+                : type === TransactionType.DEBT ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20'
+                : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+              }`}>
               {dayOffSaving ? '...' : isDayOff ? '🏖️ Saqlash' : t('save')}
             </button>
           </div>
