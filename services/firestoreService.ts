@@ -260,6 +260,8 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                     note: r.note ?? '',
                     timestamp: toMs(r.timestamp_ms),
                     status: r.status,
+                    paymentMethod: r.payment_method ?? undefined,
+                    chequeImage: r.cheque_image ?? undefined,
                     reversedAt: r.reversed_at ?? undefined,
                     reversedBy: r.reversed_by ?? undefined,
                     reversalReason: r.reversal_reason ?? undefined,
@@ -290,6 +292,8 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleet
             status: tx.status ?? 'ACTIVE',
             description: tx.description ?? '',
             note: tx.note ?? null,
+            payment_method: tx.paymentMethod ?? null,
+            cheque_image: tx.chequeImage ?? null,
             timestamp_ms: tx.timestamp ?? Date.now(),
             created_ms: Date.now(),
         })

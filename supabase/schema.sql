@@ -145,6 +145,8 @@ CREATE TABLE transactions (
     status       TEXT NOT NULL DEFAULT 'ACTIVE',
     description  TEXT,
     note         TEXT,
+    payment_method TEXT,
+    cheque_image TEXT,
     timestamp_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     created_ms   BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     original_transaction_id UUID,
