@@ -31,27 +31,22 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
     
-    const [startDate, setStartDate] = useState<Date>(new Date(currentYear, currentMonth, 1));
-    const [endDate, setEndDate] = useState<Date>(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date(currentYear, currentMonth, 1));
     const [driverId, setDriverId] = useState<string>('all');
+
+    const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
 
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Header Filters */}
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
                 <DatePicker
-                    label={t('fromDate') || 'Boshlanish sanasi'}
-                    value={startDate}
-                    onChange={(date) => setStartDate(date)}
-                    theme={theme}
-                    labelClassName="text-white"
-                />
-                <DatePicker
-                    label={t('toDate') || 'Tugash sanasi'}
-                    value={endDate}
-                    onChange={(date) => setEndDate(date)}
+                    label={t('selectMonth') || 'Oyni tanlang'}
+                    value={selectedDate}
+                    onChange={(date) => setSelectedDate(date)}
                     theme={theme}
                     labelClassName="text-white"
                 />

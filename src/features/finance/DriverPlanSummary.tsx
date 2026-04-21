@@ -127,58 +127,40 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 
     if (rows.length === 0) return null;
 
-    // Group by month key
-    const byMonth: Record<string, MonthRow[]> = {};
-    rows.forEach(r => {
-        if (!byMonth[r.monthKey]) byMonth[r.monthKey] = [];
-        byMonth[r.monthKey].push(r);
-    });
+    const totalTarget = rows.reduce((s, r) => s + r.monthlyTarget, 0);
+    const totalActual = rows.reduce((s, r) => s + r.actualIncome, 0);
+    const totalRemaining = totalTarget - totalActual;
+    const currentMonthKey = months[0] || toMonthKey(new Date());
 
     return (
-        <div className="space-y-5">
-            <h3 className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                <span>📊</span> Haydovchilar oylik rejasi
-            </h3>
+        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-100'}`}>
+            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-gray-800 bg-[#1E293B]/50' : 'border-gray-100 bg-gray-50'}`}>
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl">📅</span>
+                    <div>
+                        <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthDisplayLabel(currentMonthKey)}</h3>
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Umumiy Xisobot</p>
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-6">
+                    <div className="flex flex-col items-end">
+                        <span className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami Reja</span>
+                        <span className={`font-bold font-mono text-lg ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fmt(totalTarget)} UZS</span>
+                    </div>
+                    <div className={`px-4 py-2 rounded-2xl flex flex-col items-end ${totalRemaining <= 0 ? (isDark ? 'bg-green-500/10' : 'bg-green-50') : (isDark ? 'bg-red-500/10' : 'bg-red-50')}`}>
+                        <span className={`text-[10px] uppercase font-bold tracking-wider ${totalRemaining <= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {totalRemaining <= 0 ? 'Ortiqcha daromad' : 'Hali qolgan'}
+                        </span>
+                        <span className={`font-black font-mono text-lg ${totalRemaining <= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {totalRemaining <= 0 ? `+${fmt(-totalRemaining)}` : `-${fmt(totalRemaining)}`} UZS
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-            {months.map(mk => {
-                const monthRows = byMonth[mk];
-                if (!monthRows || monthRows.length === 0) return null;
-
-                const totalTarget  = monthRows.reduce((s, r) => s + r.monthlyTarget, 0);
-                const totalActual  = monthRows.reduce((s, r) => s + r.actualIncome, 0);
-                const totalRemaining = totalTarget - totalActual;
-
-                return (
-                    <div
-                        key={mk}
-                        className={`rounded-2xl border overflow-hidden shadow-sm ${isDark ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}
-                    >
-                        {/* Month header */}
-                        <div className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b ${isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50'}`}>
-                            <div className="flex items-center gap-2">
-                                <span className="text-base">📅</span>
-                                <span className={`font-black text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {monthDisplayLabel(mk)}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs flex-wrap">
-                                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>
-                                    Jami reja:{' '}
-                                    <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                        {fmt(totalTarget)} UZS
-                                    </span>
-                                </span>
-                                <span className={`font-bold ${totalRemaining <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {totalRemaining <= 0
-                                        ? `✓ Oriqcha: +${fmt(-totalRemaining)} UZS`
-                                        : `Qoldi: −${fmt(totalRemaining)} UZS`}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Driver rows as Grid Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-5">
-                            {monthRows.map(row => (
+            <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {rows.map(row => (
                                 <div
                                     key={row.driver.id}
                                     onClick={() => setSelectedMonthData(row)}
@@ -278,10 +260,9 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                 </div>
                             ))}
                         </div>
+                        </div>
                     </div>
-                );
-            })}
-
+                </div>
             {/* Modal */}
             <DriverPlanCalendarModal 
                 isOpen={selectedMonthData !== null}
