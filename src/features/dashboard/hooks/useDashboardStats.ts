@@ -71,7 +71,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         const pending: any[] = [];
 
         nonDeletedDrivers.forEach(driver => {
-            const driverCars = cars.filter(c => c.driverId === driver.id && c.status === 'active');
+            const driverCars = cars.filter(c => c.assignedDriverId === driver.id && !c.isDeleted);
             let dailyPlan = (driver as any).dailyPlan ?? 0;
             if (driverCars.length > 0 && (driverCars[0].dailyPlan ?? 0) > 0) {
                 dailyPlan = driverCars[0].dailyPlan;
