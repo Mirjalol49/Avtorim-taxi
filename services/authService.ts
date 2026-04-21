@@ -35,21 +35,23 @@ class AuthService {
                 query = query.eq('username', username);
             }
 
-            const { data, error } = await query.limit(1).single();
+            const { data, error } = await query.limit(1);
 
-            if (error || !data) {
+            if (error || !data || data.length === 0) {
                 await this.logAuthAttempt(username || 'unknown', false, 'Invalid credentials', 'admin');
                 return { success: false, error: username ? 'Invalid username or password' : 'Invalid password' };
             }
 
+            const adminData = data[0];
+
             const user: AuthUser = {
-                id: data.id,
-                username: data.username,
-                role: data.role || 'admin',
-                active: data.active,
-                createdAt: data.created_ms,
-                password: data.password,
-                avatar: data.avatar
+                id: adminData.id,
+                username: adminData.username,
+                role: adminData.role || 'admin',
+                active: adminData.active,
+                createdAt: adminData.created_ms,
+                password: adminData.password,
+                avatar: adminData.avatar
             };
 
             await this.logAuthAttempt(user.username, true, 'Login successful', 'admin');
@@ -66,21 +68,22 @@ class AuthService {
             .from('viewers')
             .select('*')
             .eq('password', password)
-            .limit(1)
-            .single();
+            .limit(1);
 
-        if (error || !data) {
+        if (error || !data || data.length === 0) {
             await this.logAuthAttempt('unknown', false, 'Invalid credentials', 'viewer');
             return { success: false, error: 'Invalid password' };
         }
 
-        if (!data.active) {
-            await this.logAuthAttempt(data.name || 'unknown', false, 'Account disabled', 'viewer');
+        const viewerData = data[0];
+
+        if (!viewerData.active) {
+            await this.logAuthAttempt(viewerData.name || 'unknown', false, 'Account disabled', 'viewer');
             return { success: false, error: 'Account is disabled. Contact administrator.' };
         }
 
-        await this.logAuthAttempt(data.name || data.id, true, 'Login successful', 'viewer');
-        return { success: true, user: data };
+        await this.logAuthAttempt(viewerData.name || viewerData.id, true, 'Login successful', 'viewer');
+        return { success: true, user: viewerData };
     }
 
     private async logAuthAttempt(username: string, success: boolean, reason: string, userType: 'admin' | 'viewer'): Promise<void> {
