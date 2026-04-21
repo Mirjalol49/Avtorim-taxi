@@ -40,6 +40,7 @@ interface FinancialModalProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit, drivers, transactions = [], theme, fleetId = '', daysOff = [],
+  initialType, initialDriverId
 }) => {
   const { t } = useTranslation();
   const isDark = theme === 'dark';
