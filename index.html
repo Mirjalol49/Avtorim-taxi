@@ -24,7 +24,6 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
 
   <style>
     body {
@@ -54,16 +53,6 @@
     }
     .animate-slide-in-right { animation: slide-in-right 0.3s ease-out; }
   </style>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(r => console.log('SW registered:', r.scope))
-          .catch(e => console.log('SW registration failed:', e));
-      });
-    }
-  </script>
 </head>
 
 <body>
