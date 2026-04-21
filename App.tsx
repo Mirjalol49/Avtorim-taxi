@@ -91,7 +91,8 @@ const AppContent: React.FC = () => {
     setNotifications,
     setReadNotificationIds,
     setUnreadCount,
-    loading: isDataLoading
+    loading: isDataLoading,
+    triggerRefresh
   } = useDataContext();
 
   const location = useLocation();
@@ -199,6 +200,7 @@ const AppContent: React.FC = () => {
         { ...data, driverName: driver?.name ?? '' } as any,
         adminUser?.id
       );
+      triggerRefresh();
     } catch (error) {
       console.error('Failed to add transaction:', error);
       addToast('error', "Tranzaksiya saqlanmadi");
@@ -219,6 +221,7 @@ const AppContent: React.FC = () => {
         try {
           await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' });
           setSelectedTransactions(prev => prev.filter(txId => txId !== id));
+          triggerRefresh();
           closeConfirmModal();
         } catch (error) {
           console.error('Failed to delete transaction:', error);
@@ -268,6 +271,7 @@ const AppContent: React.FC = () => {
       if (assignedCarId && assignedCarId !== previousCarId) {
         await assignCar(assignedCarId, driverId);
       }
+      triggerRefresh();
     } catch (error) {
       console.error('Failed to save driver:', error);
       addToast('error', t.driverSaveFailed);
@@ -283,6 +287,7 @@ const AppContent: React.FC = () => {
   const handleUpdateDriverStatus = async (driverId: string, newStatus: DriverStatus) => {
     try {
       await firestoreService.updateDriver(driverId, { status: newStatus }, adminUser?.id);
+      triggerRefresh();
     } catch (error) {
       console.error('Failed to update driver status:', error);
       addToast('error', t.statusUpdateFailed);
@@ -290,6 +295,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteDriver = (id: string) => {
+    const driver = drivers.find(d => d.id === id);
+    if (!driver) return;
+
     setConfirmModal({
       isOpen: true,
       title: t.confirmDeleteTitle,
@@ -305,6 +313,7 @@ const AppContent: React.FC = () => {
             reason: 'Manual deletion by admin'
           }, adminUser?.id);
           if (assignedCar) await unassignCar(assignedCar.id);
+          triggerRefresh();
         } catch (error) {
           console.error('Failed to delete driver:', error);
           addToast('error', t.driverDeleteFailed);

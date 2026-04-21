@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Transaction } from '../../../core/types';
 import { subscribeToTransactions } from '../../../../services/firestoreService';
 
-export const useTransactions = (fleetId?: string) => {
+export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -18,7 +18,7 @@ export const useTransactions = (fleetId?: string) => {
         );
 
         return () => unsubscribe();
-    }, [fleetId]);
+    }, [fleetId, refreshTrigger]);
 
     return { transactions, loading, error };
 };

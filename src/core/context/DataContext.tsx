@@ -17,6 +17,7 @@ interface DataContextType {
     setReadNotificationIds: React.Dispatch<React.SetStateAction<Set<string>>>;
     setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
     loading: boolean;
+    triggerRefresh: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -35,8 +36,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
         : adminUser?.id;
 
-    const { drivers, loading: driversLoading } = useDrivers(fleetId);
-    const { transactions, loading: txLoading } = useTransactions(fleetId);
+    const [refreshTrigger, setRefreshTrigger] = React.useState(0);
+    const triggerRefresh = React.useCallback(() => {
+        setRefreshTrigger(prev => prev + 1);
+    }, []);
+
+    const { drivers, loading: driversLoading } = useDrivers(fleetId, refreshTrigger);
+    const { transactions, loading: txLoading } = useTransactions(fleetId, refreshTrigger);
     const {
         notifications,
         unreadCount,
@@ -60,7 +66,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setNotifications,
             setReadNotificationIds,
             setUnreadCount,
-            loading
+            loading,
+            triggerRefresh
         }}>
             {children}
         </DataContext.Provider>
