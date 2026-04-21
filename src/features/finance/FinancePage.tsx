@@ -9,7 +9,6 @@ import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
 import NumberTooltip from '../../../components/NumberTooltip';
 import YearSelector from '../../../components/YearSelector';
-import { DriverPlanSummary } from './DriverPlanSummary';
 import {
     UsersIcon,
     TrendingUpIcon,
@@ -24,8 +23,6 @@ import {
 interface FinancePageProps {
     transactions: Transaction[];
     drivers: Driver[];
-    cars: Car[];
-    daysOff: DayOff[];
     theme: 'dark' | 'light';
     isMobile?: boolean;
 }
@@ -33,8 +30,6 @@ interface FinancePageProps {
 export const FinancePage: React.FC<FinancePageProps> = ({
     transactions: allTransactions,
     drivers,
-    cars,
-    daysOff,
     theme,
     isMobile = false
 }) => {
@@ -229,18 +224,6 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     </ResponsiveContainer>
                 </div>
             </div>
-
-            {/* Driver Monthly Plan Summary */}
-            <DriverPlanSummary
-                drivers={drivers}
-                cars={cars}
-                transactions={allTransactions}
-                daysOff={daysOff}
-                startDate={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
-                endDate={filters.endDate ? new Date(filters.endDate) : new Date()}
-                filterDriverId={filters.driverId || 'all'}
-                theme={theme}
-            />
         </div>
     );
 };

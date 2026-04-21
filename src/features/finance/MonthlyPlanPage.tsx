@@ -1,0 +1,86 @@
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Transaction, Driver } from '../../core/types';
+import { Car } from '../../core/types/car.types';
+import { DayOff } from '../../../services/daysOffService';
+import DatePicker from '../../../components/DatePicker';
+import CustomSelect from '../../../components/CustomSelect';
+import { UsersIcon } from '../../../components/Icons';
+import { DriverPlanSummary } from './DriverPlanSummary';
+
+interface MonthlyPlanPageProps {
+    transactions: Transaction[];
+    drivers: Driver[];
+    cars: Car[];
+    daysOff: DayOff[];
+    theme: 'dark' | 'light';
+    isMobile?: boolean;
+}
+
+export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
+    transactions,
+    drivers,
+    cars,
+    daysOff,
+    theme,
+    isMobile = false
+}) => {
+    const { t } = useTranslation();
+    
+    // Default filters
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    
+    const [startDate, setStartDate] = useState<Date>(new Date(currentYear, currentMonth, 1));
+    const [endDate, setEndDate] = useState<Date>(new Date());
+    const [driverId, setDriverId] = useState<string>('all');
+
+    const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
+
+    return (
+        <div className="space-y-6 animate-fadeIn">
+            {/* Header Filters */}
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
+                <DatePicker
+                    label={t('fromDate') || 'Boshlanish sanasi'}
+                    value={startDate}
+                    onChange={(date) => setStartDate(date)}
+                    theme={theme}
+                    labelClassName="text-white"
+                />
+                <DatePicker
+                    label={t('toDate') || 'Tugash sanasi'}
+                    value={endDate}
+                    onChange={(date) => setEndDate(date)}
+                    theme={theme}
+                    labelClassName="text-white"
+                />
+                <CustomSelect
+                    label={t('driver') || 'Haydovchi'}
+                    value={driverId}
+                    onChange={(val) => setDriverId(val)}
+                    options={[
+                        { id: 'all', name: t('allDrivers') || 'Barcha Haydovchilar' },
+                        ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))
+                    ]}
+                    theme={theme}
+                    showSearch={true}
+                    icon={UsersIcon}
+                    labelClassName="text-white"
+                />
+            </div>
+
+            {/* Driver Monthly Plan Summary */}
+            <DriverPlanSummary
+                drivers={drivers}
+                cars={cars}
+                transactions={transactions}
+                daysOff={daysOff}
+                startDate={startDate}
+                endDate={endDate}
+                filterDriverId={driverId}
+                theme={theme}
+            />
+        </div>
+    );
+};

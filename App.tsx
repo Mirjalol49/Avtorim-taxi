@@ -35,6 +35,7 @@ import DriversPage from './src/features/drivers/DriversPage';
 import NotesPage from './src/features/notes/NotesPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
+import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -459,6 +460,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
           {renderSidebarItem('/cars', 'Avtomobillar', CarIcon)}
+          {renderSidebarItem('/monthly-plan', 'Oylik Reja', CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/notes', t.notes || 'Notes', NotesIcon)}
@@ -660,6 +662,7 @@ const AppContent: React.FC = () => {
                 {location.pathname.includes('dashboard') && t.overview}
                 {location.pathname.includes('drivers') && t.driversList}
                 {location.pathname.includes('finance') && t.analytics}
+                {location.pathname.includes('monthly-plan') && 'Oylik Reja'}
                 {location.pathname.includes('transactions') && t.transactions}
               </h2>
               <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -667,6 +670,7 @@ const AppContent: React.FC = () => {
                 {location.pathname.includes('dashboard') && t.descDashboard}
                 {location.pathname.includes('drivers') && t.descDrivers}
                 {location.pathname.includes('finance') && t.descFinance}
+                {location.pathname.includes('monthly-plan') && "Haydovchilarning oylik ish reja va kunlari"}
                 {location.pathname.includes('transactions') && t.descTransactions}
               </p>
             </div>
@@ -752,9 +756,19 @@ const AppContent: React.FC = () => {
             } />
 
             {/* FINANCE (ANALYTICS) COMPONENT */}
-            {/* FINANCE (ANALYTICS) COMPONENT */}
             <Route path="/finance" element={
               <FinancePage
+                transactions={transactions}
+                drivers={drivers}
+                theme={theme}
+                isMobile={isMobile}
+              />
+
+            } />
+
+            {/* MONTHLY PLAN COMPONENT */}
+            <Route path="/monthly-plan" element={
+              <MonthlyPlanPage
                 transactions={transactions}
                 drivers={drivers}
                 cars={cars}
@@ -762,7 +776,6 @@ const AppContent: React.FC = () => {
                 theme={theme}
                 isMobile={isMobile}
               />
-
             } />
 
             {/* TRANSACTIONS COMPONENT */}
