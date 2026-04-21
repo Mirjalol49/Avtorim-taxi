@@ -46,6 +46,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     } = useFinanceStats(allTransactions);
 
     const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
 
@@ -265,9 +266,30 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                {tx.description === 'Salary Refund: Manual Action'
-                                                    ? t('salaryRefundDescription')
-                                                    : tx.description}
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-medium">
+                                                        {tx.description === 'Salary Refund: Manual Action'
+                                                            ? t('salaryRefundDescription')
+                                                            : tx.description || '—'}
+                                                    </span>
+                                                    {(tx.paymentMethod || tx.chequeImage) && (
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {tx.paymentMethod && (
+                                                                <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-gray-800 border-gray-600 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                                                                    {tx.paymentMethod === 'cash' ? '💵 Naqd' : tx.paymentMethod === 'card' ? '💳 Karta' : '🏦 O\'tkazma'}
+                                                                </span>
+                                                            )}
+                                                            {tx.chequeImage && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSelectedImage(tx.chequeImage!); }}
+                                                                    className={`flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full border shadow-sm transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400 hover:bg-blue-800/50 hover:border-blue-600 focus:ring-blue-500 font-medium' : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 font-medium'}`}
+                                                                >
+                                                                    📄 Chekni ko'rish
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'}`}>
                                                 {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} <span className="ml-1">UZS</span>
@@ -343,6 +365,31 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Fullscreen Image Modal */}
+            {selectedImage && (
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center animate-in zoom-in-95 duration-200">
+                        <button 
+                            className="absolute -top-14 right-0 md:-right-8 text-white/70 hover:text-white p-2 transition-colors rounded-full hover:bg-white/10"
+                            onClick={() => setSelectedImage(null)}
+                        >
+                            <svg className="w-8 h-8 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <img 
+                            src={selectedImage} 
+                            alt="Transaction Receipt" 
+                            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10"
+                            onClick={(e) => e.stopPropagation()} 
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

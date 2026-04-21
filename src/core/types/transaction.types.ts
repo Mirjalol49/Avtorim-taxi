@@ -25,6 +25,8 @@ export interface Transaction {
     type: TransactionType;
     description: string;
     timestamp: number;
+    paymentMethod?: 'cash' | 'card' | 'transfer';
+    chequeImage?: string;
     status?: PaymentStatus;
     reversedAt?: number;
     reversedBy?: string;
