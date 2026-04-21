@@ -352,9 +352,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <div className="min-w-0 flex-1">
                                             <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
                                             <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                <div className="flex items-center justify-between opacity-80">
+                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-teal-500' : 'text-teal-600'}`}>Bugun to'ladi:</span>
+                                                    <span className="text-xs font-bold text-teal-500/80 font-mono">+{(driver.todayIncome || 0).toLocaleString()} UZS</span>
+                                                </div>
                                                 <div className="flex items-center justify-between">
-                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Bugungi:</span>
-                                                    <span className="text-xs font-bold text-orange-400/80 font-mono">{(driver.todayDebt || 0).toLocaleString()} UZS</span>
+                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-orange-500' : 'text-orange-600'}`}>Kutilayotgan qoldiq:</span>
+                                                    <span className="text-xs font-bold text-orange-400 font-mono">{(driver.todayDebt || 0).toLocaleString()} UZS</span>
                                                 </div>
                                                 <div className="flex items-center justify-between">
                                                     <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Jami qarz:</span>
