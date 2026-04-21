@@ -88,6 +88,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
                 dailyPlan: info.dailyPlan,
                 todayIncome: info.todayIncome,
                 todayDebt: info.todayDebt,
+                totalDebt: info.totalDebt,
                 isDayOff
             };
 
