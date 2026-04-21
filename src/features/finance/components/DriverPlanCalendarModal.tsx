@@ -31,6 +31,11 @@ interface Props {
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
 
+const MONTHS_UZ = [
+    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+];
+
 export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, daysOff }) => {
     const isDark = theme === 'dark';
 
@@ -122,7 +127,12 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             </div>
                         )}
                         <div>
-                            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthData.driver.name}</h2>
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthData.driver.name}</h2>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
+                                    {MONTHS_UZ[parseInt(mStr, 10) - 1]} {yStr}
+                                </span>
+                            </div>
                             <p className="text-sm text-gray-400 font-medium">Reja: {fmt(monthData.dailyPlan)} UZS / kun</p>
                         </div>
                     </div>
