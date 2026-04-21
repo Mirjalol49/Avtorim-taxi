@@ -351,9 +351,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
-                                            <div className={`flex items-center justify-between mt-1 pt-1 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                                                <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Qarz:</span>
-                                                <span className="text-xs font-black text-orange-500 font-mono">{(driver.todayDebt).toLocaleString()} UZS</span>
+                                            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Bugungi:</span>
+                                                    <span className="text-xs font-bold text-orange-400/80 font-mono">{(driver.todayDebt).toLocaleString()} UZS</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Jami qarz:</span>
+                                                    <span className="text-sm font-black text-orange-500 font-mono">{(driver.totalDebt).toLocaleString()} UZS</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
