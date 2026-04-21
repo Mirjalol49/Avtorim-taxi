@@ -1,12 +1,15 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, Driver, Language } from '../../core/types';
+import { Car } from '../../core/types/car.types';
+import { DayOff } from '../../../services/daysOffService';
 import { useFinanceStats } from './hooks/useFinanceStats';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
 import NumberTooltip from '../../../components/NumberTooltip';
 import YearSelector from '../../../components/YearSelector';
+import { DriverPlanSummary } from './DriverPlanSummary';
 import {
     UsersIcon,
     TrendingUpIcon,
@@ -21,14 +24,17 @@ import {
 interface FinancePageProps {
     transactions: Transaction[];
     drivers: Driver[];
+    cars: Car[];
+    daysOff: DayOff[];
     theme: 'dark' | 'light';
-    // language removed
     isMobile?: boolean;
 }
 
 export const FinancePage: React.FC<FinancePageProps> = ({
     transactions: allTransactions,
     drivers,
+    cars,
+    daysOff,
     theme,
     isMobile = false
 }) => {
@@ -223,6 +229,18 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     </ResponsiveContainer>
                 </div>
             </div>
+
+            {/* Driver Monthly Plan Summary */}
+            <DriverPlanSummary
+                drivers={drivers}
+                cars={cars}
+                transactions={allTransactions}
+                daysOff={daysOff}
+                startDate={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
+                endDate={filters.endDate ? new Date(filters.endDate) : new Date()}
+                filterDriverId={filters.driverId || 'all'}
+                theme={theme}
+            />
         </div>
     );
 };

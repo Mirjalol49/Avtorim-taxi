@@ -843,9 +843,12 @@ const AppContent: React.FC = () => {
               <FinancePage
                 transactions={transactions}
                 drivers={drivers}
+                cars={cars}
+                daysOff={allDaysOff}
                 theme={theme}
                 isMobile={isMobile}
               />
+
             } />
 
             {/* TRANSACTIONS COMPONENT */}
