@@ -260,9 +260,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                 </div>
                             ))}
                         </div>
-                        </div>
                     </div>
-                </div>
             {/* Modal */}
             <DriverPlanCalendarModal 
                 isOpen={selectedMonthData !== null}
