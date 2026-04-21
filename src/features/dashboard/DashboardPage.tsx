@@ -13,11 +13,8 @@ import {
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import { DayOff } from '../../services/daysOffService';
+import { DayOff } from '../../../services/daysOffService';
 import Lottie from 'lottie-react';
-import rank1Animation from '../../../Images/1.json';
-import rank2Animation from '../../../Images/2.json';
-import rank3Animation from '../../../Images/3.json';
 import badgeAnimation from '../../../Images/badge.json';
 
 interface DashboardPageProps {
