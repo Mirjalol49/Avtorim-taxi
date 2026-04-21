@@ -12,6 +12,8 @@ import {
 } from '../../../components/Icons';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { Transaction, Driver, Language } from '../../core/types';
+import { Car } from '../../core/types/car.types';
+import { DayOff } from '../../services/daysOffService';
 import Lottie from 'lottie-react';
 import rank1Animation from '../../../Images/1.json';
 import rank2Animation from '../../../Images/2.json';
@@ -21,6 +23,8 @@ import badgeAnimation from '../../../Images/badge.json';
 interface DashboardPageProps {
     transactions: Transaction[];
     drivers: Driver[];
+    cars: Car[];
+    daysOff: DayOff[];
     isDataLoading: boolean;
     // language, t removed - using hooks
     theme: 'light' | 'dark';
@@ -30,6 +34,8 @@ interface DashboardPageProps {
 const DashboardPage: React.FC<DashboardPageProps> = ({
     transactions,
     drivers,
+    cars,
+    daysOff,
     isDataLoading,
     theme,
     isMobile
@@ -43,9 +49,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         dashboardViewMode, setDashboardViewMode,
         dashboardPage, setDashboardPage, dashboardItemsPerPage,
         totalIncome, totalExpense, netProfit,
-        chartData, topDrivers, activeDriversList,
-        getBadgeColor
-    } = useDashboardStats(transactions, drivers);
+        chartData, todayStats
+    } = useDashboardStats(transactions, drivers, cars, daysOff);
 
     return (
         <div className="space-y-6">
@@ -274,108 +279,96 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
             </div>
 
-            {/* TOP PERFORMERS */}
-            <div className={`p-6 sm:p-8 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-
-                <div className="flex items-center justify-between mb-8 relative z-10">
-                    <h3 className={`text-lg sm:text-xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        <div className="w-8 h-8">
-                            <Lottie animationData={badgeAnimation} loop={true} />
-                        </div>
-                        {t('topPerformers')}
-                    </h3>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border ${theme === 'dark' ? 'text-blue-200 bg-blue-500/10 border-blue-500/20' : 'text-blue-600 bg-blue-50 border-blue-100'}`}>
-                        {t(timeFilter)}
-                    </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-                    {topDrivers.length > 0 ? topDrivers.map((driver, index) => (
-                        <div key={driver.id} className={`flex flex-col items-center p-6 rounded-2xl border transition-all duration-200 ${theme === 'dark'
-                            ? 'bg-gray-800/50 border-gray-700 hover:bg-gray-800 hover:shadow-md'
-                            : 'bg-gray-50 border-gray-200 hover:bg-white hover:shadow-md'
-                            }`}>
-
-                            {/* Animated Rank Badge */}
-                            <div className="mb-4 relative">
-                                <div className="w-24 h-24 flex items-center justify-center">
-                                    {index === 0 && <Lottie animationData={rank1Animation} loop={true} className="scale-125" />}
-                                    {index === 1 && <Lottie animationData={rank2Animation} loop={true} className="scale-125" />}
-                                    {index === 2 && <Lottie animationData={rank3Animation} loop={true} className="scale-125" />}
-                                </div>
-                                {/* Glow under the badge */}
-                                <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-4 blur-xl rounded-full ${index === 0 ? 'bg-yellow-500/40' : index === 1 ? 'bg-slate-400/40' : 'bg-orange-500/40'
-                                    }`} />
-                            </div>
-
-                            {/* Driver Avatar */}
-                            <div className={`w-20 h-20 rounded-full p-1 mb-4 ${index === 0 ? 'bg-gradient-to-tr from-yellow-400 to-yellow-600' :
-                                index === 1 ? 'bg-gradient-to-tr from-slate-300 to-slate-500' :
-                                    'bg-gradient-to-tr from-orange-400 to-orange-600'
-                                }`}>
-                                <div className={`w-full h-full rounded-full border-4 overflow-hidden relative ${theme === 'dark' ? 'border-[#1E293B]' : 'border-white'}`}>
-                                    <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                </div>
-                            </div>
-
-                            <div className="text-center w-full mb-4">
-                                <p className={`text-lg font-bold whitespace-normal break-words leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
-                                <p className={`text-sm font-medium mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel}</p>
-                            </div>
-
-                            <div className="mt-auto">
-                                <p className="text-2xl font-black tracking-tight text-[#0f766e]">
-                                    {driver.income.toLocaleString()}
-                                    <span className={`text-[10px] font-bold uppercase ml-1 align-top ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
-                                </p>
-                            </div>
-                        </div>
-                    )) : (
-                        <div className={`text-center py-20 text-sm col-span-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {t('noData') || "Ma'lumotlar yo'q"}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Active Drivers List */}
-            <div className={`p-8 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                <h3 className={`text-lg font-bold mb-6 flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    <span className="inline-flex w-2.5 h-2.5 rounded-full bg-green-600 flex-shrink-0"></span>
-                    {t('activeDrivers')} ({activeDriversList.length})
-                </h3>
-                {isDataLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl border ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
-                                <Skeleton variant="circular" width={48} height={48} theme={theme} />
-                                <div className="flex-1 space-y-2">
-                                    <Skeleton variant="text" width="60%" height={14} theme={theme} />
-                                    <Skeleton variant="text" width="40%" height={12} theme={theme} />
-                                </div>
-                            </div>
-                        ))}
+            {/* DAILY PAYMENT STATUS */}
+            <div className={`p-6 sm:p-8 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 className={`text-xl sm:text-2xl font-black flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            <span className="text-3xl">📅</span>
+                            Bugungi Holat
+                        </h3>
+                        <p className={`mt-2 font-medium capitalize ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {new Date().getDate()} {['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'][new Date().getMonth()]},{' '}
+                            {['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'][new Date().getDay()]}
+                        </p>
                     </div>
-                ) : activeDriversList.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {activeDriversList.map(driver => (
-                            <div key={driver.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-colors ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-100 hover:border-gray-300'}`}>
-                                <div className="relative w-12 h-12 flex-shrink-0">
-                                    <div className="w-12 h-12 rounded-full border border-green-500/50 overflow-hidden">
-                                        <img src={driver.avatar} className="w-full h-full object-cover" />
+                    <div className="mt-4 sm:mt-0 flex gap-4">
+                        <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-[#0f766e]/20 text-teal-400 border-[#0f766e]/40' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                            ✓ {todayStats.completed.length} To'ladi
+                        </div>
+                        <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
+                            ⏳ {todayStats.pending.length} Kutilmoqda
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* COMPLETED COLUMN */}
+                    <div className="space-y-4">
+                        <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]" />
+                            To'lovni bajarganlar
+                        </h4>
+
+                        {todayStats.completed.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {todayStats.completed.map(driver => (
+                                    <div key={driver.id} className={`relative flex items-center gap-3 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-gray-800/50 border-teal-500/20 hover:border-teal-500/40' : 'bg-white border-teal-200 hover:border-teal-300 shadow-sm'}`}>
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-teal-400 flex-shrink-0">
+                                            <img src={driver.avatar} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="min-w-0 pr-8">
+                                            <div className={`text-sm font-bold truncate pr-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
+                                            <div className={`text-[11px] mt-0.5 truncate font-medium ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                                                {driver.isDayOff ? '🏖️ Dam olish kuni' : `To'ladi: +${(driver.todayIncome).toLocaleString()} UZS`}
+                                            </div>
+                                        </div>
+                                        {/* Golden Badge JSON attached to the right */}
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+                                            <Lottie animationData={badgeAnimation} loop={false} />
+                                        </div>
                                     </div>
-                                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-600 border-2 border-white dark:border-gray-800 rounded-full"></div>
-                                </div>
-                                <div className="min-w-0">
-                                    <div className={`text-sm font-bold whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
-                                    <div className={`text-xs truncate mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.carModel} • {driver.licensePlate}</div>
-                                </div>
+                                ))}
                             </div>
-                        ))}
+                        ) : (
+                            <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                Hali hech kim to'lov qilmadi
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className={`text-sm italic py-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hozirda faol haydovchilar yo'q.</div>
-                )}
+
+                    {/* PENDING COLUMN */}
+                    <div className="space-y-4">
+                        <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                            Kutilayotgan to'lovlar
+                        </h4>
+
+                        {todayStats.pending.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {todayStats.pending.map(driver => (
+                                    <div key={driver.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-gray-800/50 border-orange-500/20 hover:border-orange-500/40' : 'bg-white border-orange-200 hover:border-orange-300 shadow-sm'}`}>
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-400/50 flex-shrink-0 grayscale-[0.3]">
+                                            <img src={driver.avatar} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
+                                            <div className={`flex items-center justify-between mt-1 pt-1 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                                                <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Qarz:</span>
+                                                <span className="text-xs font-black text-orange-500 font-mono">{(driver.todayDebt).toLocaleString()} UZS</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                Barcha haydovchilar to'lovni bajardi
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

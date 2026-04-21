@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, DriverStatus } from '../../../core/types';
+import { Car } from '../../../core/types/car.types';
+import { DayOff, toDateKey } from '../../../services/daysOffService';
+import { calculateDriverDebtInfo } from '../../drivers/utils/debtUtils';
 
-export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]) => {
+export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[], daysOff: DayOff[]) => {
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
 
     // Dashboard view mode state (chart/grid)
@@ -41,7 +44,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
     const netProfit = totalIncome - totalExpense;
 
     const nonDeletedDrivers = useMemo(() => {
-        return drivers.filter(d => !d.isDeleted);
+        return drivers.filter(d => !d.isDeleted && d.status === DriverStatus.ACTIVE);
     }, [drivers]);
 
     // Chart Data
@@ -59,33 +62,59 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         });
     }, [nonDeletedDrivers, filteredTx]);
 
-    // Leaderboard
-    const topDrivers = useMemo(() => {
-        const stats = nonDeletedDrivers.map(d => {
-            const income = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
-            return { ...d, income };
+    // Daily Plan Status
+    const todayStats = useMemo(() => {
+        const todayDateKey = toDateKey(new Date());
+        
+        const completed: any[] = [];
+        const pending: any[] = [];
+
+        nonDeletedDrivers.forEach(driver => {
+            const driverCars = cars.filter(c => c.driverId === driver.id && c.status === 'active');
+            let dailyPlan = (driver as any).dailyPlan ?? 0;
+            if (driverCars.length > 0 && (driverCars[0].dailyPlan ?? 0) > 0) {
+                dailyPlan = driverCars[0].dailyPlan;
+            }
+
+            const isDayOff = daysOff.some(d => d.driverId === driver.id && d.dateKey === todayDateKey);
+            
+            // Reusing debt utility logic
+            const info = calculateDriverDebtInfo(driver, cars, transactions, daysOff);
+
+            const stat = {
+                ...driver,
+                dailyPlan: info.dailyPlan,
+                todayIncome: info.todayIncome,
+                todayDebt: info.todayDebt,
+                isDayOff
+            };
+
+            if (isDayOff) {
+                // Ignore DayOff drivers from this specific "who paid today" widget maybe, or mark them as completed
+                // Let's add them to completed as "Dam olish kuni"
+                completed.push(stat);
+            } else if (info.dailyPlan === 0) {
+                // Ignore if no daily plan
+            } else if (info.todayDebt <= 0 && info.todayIncome >= info.dailyPlan) {
+                completed.push(stat);
+            } else {
+                pending.push(stat);
+            }
         });
-        return stats.sort((a, b) => b.income - a.income).slice(0, 3); // Top 3 Only
-    }, [nonDeletedDrivers, filteredTx]);
 
-    const activeDriversList = useMemo(() => {
-        return nonDeletedDrivers.filter(d => d.status === DriverStatus.ACTIVE);
-    }, [nonDeletedDrivers]);
+        // Sort completed by income descending
+        completed.sort((a, b) => b.todayIncome - a.todayIncome);
+        // Sort pending by remaining amount ascending
+        pending.sort((a, b) => a.todayDebt - b.todayDebt);
 
-    // Badge Color Helper
-    const getBadgeColor = (index: number) => {
-        if (index === 0) return "text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]"; // Gold
-        if (index === 1) return "text-slate-300 drop-shadow-[0_0_12px_rgba(203,213,225,0.6)]"; // Silver
-        if (index === 2) return "text-orange-400 drop-shadow-[0_0_12px_rgba(251,146,60,0.6)]"; // Bronze
-        return "text-slate-700 opacity-20";
-    };
+        return { completed, pending };
+    }, [nonDeletedDrivers, cars, transactions, daysOff]);
 
     return {
         timeFilter, setTimeFilter,
         dashboardViewMode, setDashboardViewMode,
         dashboardPage, setDashboardPage, dashboardItemsPerPage,
         totalIncome, totalExpense, netProfit,
-        chartData, topDrivers, activeDriversList,
-        getBadgeColor
+        chartData, todayStats
     };
 };

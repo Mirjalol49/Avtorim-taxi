@@ -805,6 +805,8 @@ const AppContent: React.FC = () => {
             <Route path="/dashboard" element={<DashboardPage
               transactions={transactions}
               drivers={drivers}
+              cars={cars}
+              daysOff={allDaysOff}
               isDataLoading={isDataLoading}
               theme={theme}
               isMobile={isMobile}
