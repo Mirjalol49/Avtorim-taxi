@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { DayOff, toDateKey } from '../../../../services/daysOffService';
-import { calculateDriverDebtInfo } from '../../drivers/utils/debtUtils';
+import { calcDriverDebt } from '../../drivers/utils/debtUtils';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[], daysOff: DayOff[]) => {
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
@@ -79,7 +79,9 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             const isDayOff = daysOff.some(d => d.driverId === driver.id && d.dateKey === todayDateKey);
             
             // Reusing debt utility logic
-            const info = calculateDriverDebtInfo(driver, cars, transactions, daysOff);
+            const driverCar = driverCars[0] || null;
+            const daysOffSet = new Set(daysOff.filter(d => d.driverId === driver.id).map(d => d.dateKey));
+            const info = calcDriverDebt(driver, driverCar, transactions, daysOffSet);
 
             const stat = {
                 ...driver,
