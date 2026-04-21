@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DayOff, MONTHLY_ALLOWANCE } from '../../../services/daysOffService';
+import { DayOff, MONTHLY_ALLOWANCE } from '../../../services/daysOffService';
+import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,6 +78,9 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 }) => {
     const isDark = theme === 'dark';
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
+    
+    // State for modal
+    const [selectedMonthData, setSelectedMonthData] = useState<MonthRow | null>(null);
 
     const rows = useMemo((): MonthRow[] => {
         const result: MonthRow[] = [];
@@ -172,147 +177,121 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                             </div>
                         </div>
 
-                        {/* Driver rows */}
-                        <div className={`divide-y ${isDark ? 'divide-gray-700/40' : 'divide-gray-100'}`}>
+                        {/* Driver rows as Grid Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-5">
                             {monthRows.map(row => (
                                 <div
                                     key={row.driver.id}
-                                    className={`px-5 py-4 transition-colors ${isDark ? 'hover:bg-gray-800/40' : 'hover:bg-gray-50'}`}
+                                    onClick={() => setSelectedMonthData(row)}
+                                    className={`relative p-5 rounded-3xl border shadow-sm transition-all duration-300 cursor-pointer active:scale-95 group overflow-hidden ${
+                                        isDark 
+                                        ? 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-800/80 hover:border-gray-500 hover:shadow-lg' 
+                                        : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xl'
+                                    }`}
                                 >
                                     {/* Top row: driver + status badge */}
-                                    <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-start justify-between mb-4">
                                         <div className="flex items-center gap-3">
                                             {row.driver.avatar ? (
                                                 <img
                                                     src={row.driver.avatar}
                                                     alt={row.driver.name}
-                                                    className="w-9 h-9 rounded-full object-cover flex-shrink-0 border-2 border-gray-600"
+                                                    className={`w-11 h-11 rounded-full object-cover flex-shrink-0 border-2 transition-transform duration-300 group-hover:scale-105 ${isDark ? 'border-gray-600' : 'border-gray-200'}`}
                                                 />
                                             ) : (
-                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                                                <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0 transition-transform duration-300 group-hover:scale-105 ${isDark ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                                     {row.driver.name.charAt(0)}
                                                 </div>
                                             )}
                                             <div>
-                                                <p className={`font-bold text-sm leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                                <p className={`font-bold text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                     {row.driver.name}
                                                 </p>
-                                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                                                     {row.car ? `${row.car.name} · ${row.car.licensePlate}` : 'Avtomobil yo\'q'}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                                        
+                                    </div>
+                                    
+                                    <div className="mb-4">
+                                        <div className={`px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm ${
                                             row.remaining <= 0
-                                                ? 'bg-green-500/10 text-green-400'
+                                                ? isDark ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 justify-center text-green-700 border border-green-200'
                                                 : row.paidPercent >= 60
-                                                ? 'bg-amber-500/10 text-amber-400'
-                                                : 'bg-red-500/10 text-red-400'
+                                                ? isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                                : isDark ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-700 border border-red-200'
                                         }`}>
                                             {row.remaining <= 0
-                                                ? "✓ To'landi"
+                                                ? "✓ To'liq plan yopildi"
                                                 : row.paidPercent >= 60
-                                                ? '⚡ Jarayonda'
-                                                : '⚠ Qolmoqda'}
+                                                ? '⚡ Yaxshi progres ('+row.paidPercent+'%)'
+                                                : '⚠ To\'lovlar kechikmoqda'}
                                         </div>
                                     </div>
 
-                                    {/* 4-column stats */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                                        {/* Working days */}
-                                        <div className={`rounded-xl p-3 ${isDark ? 'bg-gray-800/70' : 'bg-gray-50 border border-gray-100'}`}>
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                Ish kunlari
-                                            </p>
-                                            <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                                {row.workingDays}
-                                                <span className={`text-xs font-normal ml-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                    / {row.totalDays}
-                                                </span>
-                                            </p>
-                                            {row.daysOffCount > 0 && (
-                                                <p className="text-[10px] text-teal-400 mt-0.5 font-medium">
-                                                    🏖️ {row.daysOffCount} ta dam olish (har oy)
-                                                </p>
-                                            )}
+                                    {/* Primary Mini-Stats */}
+                                    <div className="grid grid-cols-2 gap-3 mb-5">
+                                        <div className={`p-3 rounded-2xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50/80 border border-gray-100'}`}>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Oylik Reja</p>
+                                            <p className={`text-sm font-bold font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
                                         </div>
-
-                                        {/* Daily plan */}
-                                        <div className={`rounded-xl p-3 ${isDark ? 'bg-gray-800/70' : 'bg-gray-50 border border-gray-100'}`}>
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                Kunlik reja
-                                            </p>
-                                            <p className={`text-sm font-bold font-mono ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                                                {fmt(row.dailyPlan)}
-                                            </p>
-                                            <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS / kun</p>
-                                        </div>
-
-                                        {/* Monthly target */}
-                                        <div className={`rounded-xl p-3 ${isDark ? 'bg-gray-800/70' : 'bg-gray-50 border border-gray-100'}`}>
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                Oylik reja
-                                            </p>
-                                            <p className={`text-sm font-bold font-mono ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                                                {fmt(row.monthlyTarget)}
-                                            </p>
-                                            <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                = {fmt(row.dailyPlan)} × {row.workingDays}
-                                            </p>
-                                        </div>
-
-                                        {/* Actual income */}
-                                        <div className={`rounded-xl p-3 ${
+                                        <div className={`p-3 rounded-2xl ${
                                             row.remaining <= 0
-                                                ? isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'
-                                                : isDark ? 'bg-gray-800/70' : 'bg-gray-50 border border-gray-100'
+                                                ? isDark ? 'bg-green-500/10' : 'bg-green-50 border border-green-100'
+                                                : isDark ? 'bg-gray-900/50' : 'bg-gray-50/80 border border-gray-100'
                                         }`}>
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                Tushum
-                                            </p>
-                                            <p className={`text-sm font-bold font-mono ${
-                                                row.actualIncome >= row.monthlyTarget
-                                                    ? 'text-green-400'
-                                                    : isDark ? 'text-white' : 'text-gray-900'
-                                            }`}>
-                                                {fmt(row.actualIncome)}
-                                            </p>
-                                            <p className={`text-[10px] font-bold ${row.remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                                {row.remaining > 0
-                                                    ? `−${fmt(row.remaining)} qoldi`
-                                                    : `+${fmt(-row.remaining)} oriq`}
-                                            </p>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${row.remaining <= 0 ? 'text-green-500/70' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami To'ladi</p>
+                                            <p className={`text-sm font-bold font-mono ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
                                         </div>
                                     </div>
 
                                     {/* Progress bar */}
                                     <div>
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className={`text-[10px] font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {row.paidPercent}% bajarildi
                                             </span>
-                                            <span className={`text-xs font-bold ${row.remaining <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            <span className={`text-xs font-black ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-500')}`}>
                                                 {row.remaining > 0
-                                                    ? `Qoldi: ${fmt(row.remaining)} UZS`
-                                                    : `Oriqcha: ${fmt(-row.remaining)} UZS`}
+                                                    ? `Qoldi: ${fmt(row.remaining)}`
+                                                    : `+${fmt(-row.remaining)}`}
                                             </span>
                                         </div>
                                         <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
                                             <div
                                                 className={`h-full rounded-full transition-all duration-700 ease-out ${
                                                     row.paidPercent >= 100 ? 'bg-green-500' :
-                                                    row.paidPercent >= 60  ? 'bg-amber-400' : 'bg-red-500'
+                                                    row.paidPercent >= 60  ? 'bg-amber-400' : 'bg-orange-500'
                                                 }`}
                                                 style={{ width: `${row.paidPercent}%` }}
                                             />
                                         </div>
+                                        {row.daysOffCount > 0 && (
+                                            <p className="text-[10px] text-teal-500 mt-3 font-medium flex items-center justify-center opacity-80">
+                                                🏖️ Bu oyda {row.daysOffCount} ta dam olish kuni ajratilgan
+                                            </p>
+                                        )}
                                     </div>
+                                    
+                                    <div className={`absolute bottom-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none opacity-[0.03] transition-opacity duration-300 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-500' : 'bg-orange-500'}`} />
                                 </div>
                             ))}
                         </div>
                     </div>
                 );
             })}
+
+            {/* Modal */}
+            <DriverPlanCalendarModal 
+                isOpen={selectedMonthData !== null}
+                onClose={() => setSelectedMonthData(null)}
+                theme={theme}
+                monthData={selectedMonthData as unknown as DriverPlanMonthInfo}
+                transactions={transactions}
+                daysOff={daysOff}
+            />
         </div>
     );
 };
