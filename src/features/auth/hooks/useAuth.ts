@@ -164,32 +164,8 @@ export const useAuth = () => {
         localStorage.removeItem('avtorim_viewer_profile');
     };
 
-    // Auto-Lock Logic
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        if (userRole === 'viewer') return;
-
-        const INACTIVITY_TIMEOUT = 20 * 60 * 1000;
-        let inactivityTimer: NodeJS.Timeout;
-
-        const resetTimer = () => {
-            clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(() => {
-                handleLogout();
-                addToast('warning', 'Session expired due to inactivity', 5000);
-            }, INACTIVITY_TIMEOUT);
-        };
-
-        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-        events.forEach(event => document.addEventListener(event, resetTimer));
-        resetTimer();
-
-        return () => {
-            clearTimeout(inactivityTimer);
-            events.forEach(event => document.removeEventListener(event, resetTimer));
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated, userRole, handleLogout]);
+    // Auto-Lock Logic (Disabled as per user request)
+    // Removed inactivity timeout.
 
 
     return {
