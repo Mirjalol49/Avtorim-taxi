@@ -19,7 +19,6 @@ type PaymentMethod = 'cash' | 'card' | 'transfer';
 const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
   { id: 'cash',     label: "Naqd",       icon: '💵' },
   { id: 'card',     label: "Karta",      icon: '💳' },
-  { id: 'transfer', label: "O'tkazma",   icon: '🏦' },
 ];
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -591,7 +590,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 {/* ── Payment method ───────────────────────────── */}
                 <div>
                   <label className={labelClass}>To'lov usuli</label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     {PAYMENT_METHODS.map(pm => (
                       <button
                         key={pm.id}
