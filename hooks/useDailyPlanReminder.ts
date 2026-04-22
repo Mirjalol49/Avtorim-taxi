@@ -16,7 +16,6 @@ import { Driver } from '../src/core/types/driver.types';
 import { Car } from '../src/core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/transaction.types';
 import { NotificationCategory, NotificationPriority } from '../src/core/types/notification.types';
-import { DayOff, getDaysOffSet } from '../services/daysOffService';
 import { sendNotification } from '../services/notificationService';
 
 
@@ -66,7 +65,6 @@ interface UseDailyPlanReminderOptions {
     drivers: Driver[];
     cars: Car[];
     transactions: Transaction[];
-    daysOff: DayOff[];
     adminUserId: string;
     adminUserName: string;
     enabled: boolean; // only run when the user is admin
@@ -76,7 +74,6 @@ export const useDailyPlanReminder = ({
     drivers,
     cars,
     transactions,
-    daysOff,
     adminUserId,
     adminUserName,
     enabled,
@@ -105,7 +102,6 @@ export const useDailyPlanReminder = ({
         
         const behindDrivers: any[] = [];
         const completedDrivers: any[] = [];
-        const dayOffDrivers: any[] = [];
 
         activeDrivers.forEach(d => {
             const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
@@ -114,13 +110,6 @@ export const useDailyPlanReminder = ({
                 : ((d as any).dailyPlan ?? 0) as number;
 
             if (dailyPlan <= 0) return; // no plan set
-
-            // Check if today is a day off for this driver
-            const daysOffSet = getDaysOffSet(daysOff, d.id);
-            if (daysOffSet.has(today)) {
-                dayOffDrivers.push(d);
-                return;
-            }
 
             const todayIncome = getTodayIncome(d.id, transactions);
             const missing = dailyPlan - todayIncome;

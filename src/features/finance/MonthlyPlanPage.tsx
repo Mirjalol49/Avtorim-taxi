@@ -12,7 +12,6 @@ interface MonthlyPlanPageProps {
     transactions: Transaction[];
     drivers: Driver[];
     cars: Car[];
-    daysOff: DayOff[];
     theme: 'dark' | 'light';
     isMobile?: boolean;
     onDayClick?: (driverId: string, date: Date) => void;
@@ -22,7 +21,6 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     transactions,
     drivers,
     cars,
-    daysOff,
     theme,
     isMobile = false,
     onDayClick
@@ -72,7 +70,6 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                 drivers={drivers}
                 cars={cars}
                 transactions={transactions}
-                daysOff={daysOff}
                 startDate={startDate}
                 endDate={endDate}
                 filterDriverId={driverId}

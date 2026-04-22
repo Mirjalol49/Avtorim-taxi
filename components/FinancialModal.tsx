@@ -5,12 +5,8 @@ import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
 import {
-  addDayOff,
-  countUsedThisMonth,
-  MONTHLY_ALLOWANCE,
   toDateKey,
   toMonthKey,
-  DayOff,
 } from '../services/daysOffService';
 
 // ─── Payment method ──────────────────────────────────────────────────────────
@@ -31,7 +27,6 @@ interface FinancialModalProps {
   transactions?: Transaction[];
   theme: 'light' | 'dark';
   fleetId?: string;
-  daysOff?: DayOff[];
   initialType?: TransactionType;
   initialDriverId?: string;
   initialDate?: Date;
@@ -39,7 +34,7 @@ interface FinancialModalProps {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const FinancialModal: React.FC<FinancialModalProps> = ({
-  isOpen, onClose, onSubmit, drivers, cars = [], transactions = [], theme, fleetId = '', daysOff = [],
+  isOpen, onClose, onSubmit, drivers, cars = [], transactions = [], theme, fleetId = '',
   initialType, initialDriverId, initialDate
 }) => {
   const { t } = useTranslation();
@@ -76,20 +71,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [chequeError, setChequeError] = useState<string | null>(null);
   const chequeRef = useRef<HTMLInputElement>(null);
 
-  // Day off
-  const [isDayOff, setIsDayOff] = useState(false);
-  const [dayOffSaving, setDayOffSaving] = useState(false);
-  const [dayOffError, setDayOffError] = useState<string | null>(null);
-
   const selectedDriver = drivers.find(d => d.id === driverId) ?? null;
 
-  // Days off checks
-  const usedThisMonth = selectedDriver
-    ? countUsedThisMonth(daysOff, selectedDriver.id, toMonthKey(date))
-    : 0;
-  const limitReached = usedThisMonth >= MONTHLY_ALLOWANCE;
   const selectedDateKey = toDateKey(date);
-  const alreadyDayOff = daysOff.some(d => d.driverId === driverId && d.dateKey === selectedDateKey);
 
   // Debt preview
   const driverDebtInfo = useMemo(() => {
@@ -162,14 +146,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     if (!isOpen) {
       setAmount(''); setDisplayAmount(''); setDescription('');
       setType(TransactionType.INCOME); setDate(new Date());
-      setIsDayOff(false); setDayOffError(null);
       setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     } else if (isOpen && drivers.length > 0) {
       if (!driverId || !drivers.find(d => d.id === driverId)) setDriverId(drivers[0].id);
     }
   }, [isOpen, drivers, driverId]);
-
-  useEffect(() => { setDayOffError(null); setIsDayOff(false); }, [driverId, date]);
 
   if (!isOpen) return null;
 
@@ -180,21 +161,6 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       if (!driverId || !drivers.find(d => d.id === driverId)) return;
     } else {
       if (!carId || !cars.find(c => c.id === carId)) return;
-    }
-
-    // Day off path
-    if (isDayOff) {
-      if (!fleetId) { setDayOffError('Fleet ID not found'); return; }
-      if (alreadyDayOff) { setDayOffError('Bu kun allaqachon dam olish kuni'); return; }
-      if (limitReached) { setDayOffError(`Bu oy uchun limit (${MONTHLY_ALLOWANCE} kun) tugagan`); return; }
-      setDayOffSaving(true); setDayOffError(null);
-      try {
-        const [y, m, d] = selectedDateKey.split('-').map(Number);
-        await addDayOff(driverId, fleetId, new Date(y, m - 1, d), description.trim() || 'Dam olish');
-        resetAndClose();
-      } catch (err: any) { setDayOffError(err.message); }
-      finally { setDayOffSaving(false); }
-      return;
     }
 
     // Normal transaction
@@ -227,7 +193,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDriverId(''); setCarId('');
     setIsDriverDropdownOpen(false); setIsCarDropdownOpen(false);
     setDriverSearch(''); setCarSearch('');
-    setDate(new Date()); setIsDayOff(false); setDayOffError(null);
+    setDate(new Date());
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     setExpenseTarget('driver');
     onClose();
@@ -492,41 +458,6 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Date */}
             <DatePicker label={t('time') || 'Date'} value={date} onChange={setDate} theme={theme} />
 
-            {/* Day off toggle */}
-            {expenseTarget === 'driver' && driverId && (
-              <div
-                onClick={() => { if (!alreadyDayOff && !limitReached) setIsDayOff(p => !p); }}
-                className={`flex items-center justify-between rounded-xl px-4 py-3 border transition-all select-none ${
-                  isDayOff
-                    ? isDark ? 'bg-teal-500/10 border-teal-500/40' : 'bg-teal-50 border-teal-300'
-                    : alreadyDayOff || limitReached
-                    ? isDark ? 'bg-gray-800/50 border-gray-700 opacity-60 cursor-not-allowed' : 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed'
-                    : isDark ? 'bg-gray-800/50 border-gray-700 hover:border-teal-500/40 cursor-pointer' : 'bg-gray-50 border-gray-200 hover:border-teal-300 cursor-pointer'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">🏖️</span>
-                  <div>
-                    <p className={`text-sm font-bold ${isDayOff ? isDark ? 'text-teal-400' : 'text-teal-700' : isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Dam olish kuni
-                    </p>
-                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {alreadyDayOff ? '✓ Bu kun allaqachon dam olish kuni' : limitReached
-                        ? `Bu oy limiti tugagan (${usedThisMonth}/${MONTHLY_ALLOWANCE})`
-                        : `${usedThisMonth}/${MONTHLY_ALLOWANCE} ishlatildi · Kunlik reja kerak emas`}
-                    </p>
-                  </div>
-                </div>
-                <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${isDayOff ? 'bg-teal-500' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${isDayOff ? 'left-5' : 'left-0.5'}`} />
-                </div>
-              </div>
-            )}
-            {dayOffError && <p className="text-xs text-red-400 -mt-3">⚠ {dayOffError}</p>}
-
-            {/* Normal transaction fields (Left side) */}
-            {!isDayOff && (
-              <>
                 {/* Type toggle */}
                 <div className={`grid grid-cols-2 p-1 rounded-2xl border shadow-inner ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
                   {[
@@ -569,8 +500,6 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     value={displayAmount} onChange={handleAmountChange}
                     className={`${inputClass} font-mono text-3xl font-black tracking-tight h-16 shadow-inner`} placeholder="0" />
                 </div>
-              </>
-            )}
           </div>
         </div>
 
@@ -585,8 +514,6 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           <div className="px-6 pb-6 space-y-6 flex-1 -mt-2">
-            {!isDayOff && (
-              <>
                 {/* ── Payment method ───────────────────────────── */}
                 <div>
                   <label className={labelClass}>To'lov usuli</label>
@@ -692,23 +619,20 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     />
                   </div>
                 )}
-              </>
-            )}
 
             {/* Comment */}
             <div>
               <label className={labelClass}>
-                {!isDayOff ? t('comment') : 'Izoh (ixtiyoriy)'}
-                {!isDayOff && type === TransactionType.EXPENSE && <span className="text-red-500 ml-1 text-lg leading-none align-middle">*</span>}
+                {t('comment')}
+                {type === TransactionType.EXPENSE && <span className="text-red-500 ml-1 text-lg leading-none align-middle">*</span>}
               </label>
               <textarea
-                required={!isDayOff && type === TransactionType.EXPENSE}
+                required={type === TransactionType.EXPENSE}
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 className={`${inputClass} min-h-[100px] resize-none shadow-inner`}
                 placeholder={
-                  isDayOff ? 'Masalan: Shaxsiy sabab'
-                  : type === TransactionType.EXPENSE ? t('commentPlaceholder') || 'Masalan: Benzin uchun, Mashina zarari, jarima...'
+                  type === TransactionType.EXPENSE ? t('commentPlaceholder') || 'Masalan: Benzin uchun, Mashina zarari, jarima...'
                   : t('commentPlaceholder') || 'Ixtiyoriy yozuv'
                 }
               />
@@ -721,13 +645,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               className={`px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>
               {t('cancel')}
             </button>
-            <button type="submit" disabled={dayOffSaving}
-              className={`px-8 py-3 text-white rounded-xl text-sm font-black shadow-xl transition-all transform active:scale-95 disabled:opacity-60 flex-1 md:flex-none ${
-                isDayOff ? 'bg-teal-500 hover:bg-teal-400 shadow-teal-500/20'
-                : type === TransactionType.INCOME ? 'bg-[#0f766e] hover:bg-teal-600 shadow-[#0f766e]/30'
+            <button type="submit"
+              className={`px-8 py-3 text-white rounded-xl text-sm font-black shadow-xl transition-all transform active:scale-95 flex-1 md:flex-none ${
+                type === TransactionType.INCOME ? 'bg-[#0f766e] hover:bg-teal-600 shadow-[#0f766e]/30'
                 : 'bg-red-500 hover:bg-red-400 shadow-red-500/30'
               }`}>
-              {dayOffSaving ? '...' : isDayOff ? '🏖️ Dam olish saqlash' : t('save')}
+              {t('save')}
             </button>
           </div>
 

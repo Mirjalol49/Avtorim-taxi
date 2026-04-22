@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
-import { DayOff, MONTHLY_ALLOWANCE, countUsedThisMonth } from '../../../services/daysOffService';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -12,7 +11,6 @@ interface MonthRow {
     car: Car | null;
     monthKey: string;      // 'YYYY-MM'
     totalDays: number;
-    daysOffCount: number;
     workingDays: number;
     dailyPlan: number;
     monthlyTarget: number;
@@ -25,7 +23,6 @@ interface DriverPlanSummaryProps {
     drivers: Driver[];
     cars: Car[];
     transactions: Transaction[];
-    daysOff: DayOff[];
     startDate: Date;
     endDate: Date;
     filterDriverId: string; // 'all' or a driver id
@@ -74,7 +71,7 @@ const monthRange = (start: Date, end: Date): string[] => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
-    drivers, cars, transactions, daysOff, startDate, endDate, filterDriverId, theme, onDayClick
+    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onDayClick
 }) => {
     const isDark = theme === 'dark';
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
@@ -99,9 +96,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
 
-                // Calculate working days based on actual days taken off by this specific driver in this month limit
-                const daysOffCount = countUsedThisMonth(daysOff, driver.id, mk);
-                const workingDays = totalDays - daysOffCount;
+                // Calculate working days by automatically deducting 2 days off per month
+                const workingDays = Math.max(0, totalDays - 2);
                 const monthlyTarget = dailyPlan * workingDays;
 
 
@@ -120,11 +116,11 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                     ? Math.min(100, Math.round((actualIncome / monthlyTarget) * 100))
                     : 0;
 
-                result.push({ driver, car, monthKey: mk, totalDays, daysOffCount, workingDays, dailyPlan, monthlyTarget, actualIncome, remaining, paidPercent });
+                result.push({ driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, actualIncome, remaining, paidPercent });
             }
         }
         return result;
-    }, [drivers, cars, transactions, daysOff, months, filterDriverId]);
+    }, [drivers, cars, transactions, months, filterDriverId]);
 
     if (rows.length === 0) return null;
 

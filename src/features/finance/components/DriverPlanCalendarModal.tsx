@@ -4,14 +4,12 @@ import { XIcon, CalendarIcon } from '../../../../components/Icons';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { PaymentStatus } from '../../../core/types/transaction.types';
-import { DayOff } from '../../../../services/daysOffService';
 
 export interface DriverPlanMonthInfo {
     driver: Driver;
     car: Car | null;
     monthKey: string;      // 'YYYY-MM'
     totalDays: number;
-    daysOffCount: number;
     workingDays: number;
     dailyPlan: number;
     monthlyTarget: number;
@@ -26,7 +24,6 @@ interface Props {
     theme: 'dark' | 'light';
     monthData: DriverPlanMonthInfo | null;
     transactions: Transaction[]; // Only needs to be driver's transactions or all
-    daysOff: DayOff[];
     onDayClick?: (driverId: string, date: Date) => void;
 }
 
@@ -37,7 +34,7 @@ const MONTHS_UZ = [
     'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
 ];
 
-export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, daysOff, onDayClick }) => {
+export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick }) => {
     const isDark = theme === 'dark';
 
     // Disable body scroll when modal open
@@ -58,10 +55,6 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
         for (let d = 1; d <= daysInMonth; d++) {
             const date = new Date(year, month, d);
             
-            // Check day off using dateKey (YYYY-MM-DD)
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const isDayOff = daysOff.some(off => off.driverId === monthData.driver.id && off.dateKey === dateStr);
-
             // Calculate day's income
             const todaysStartObj = new Date(year, month, d, 0, 0, 0).getTime();
             const todaysEndObj = new Date(year, month, d, 23, 59, 59, 999).getTime();
@@ -92,11 +85,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 date,
                 status,
                 income: sumTushum,
-                debt: status !== 'DAY_OFF' && status !== 'FUTURE' ? Math.max(0, monthData.dailyPlan - sumTushum) : 0
+                debt: status !== 'FUTURE' ? Math.max(0, monthData.dailyPlan - sumTushum) : 0
             });
         }
         return result;
-    }, [monthData, transactions, daysOff]);
+    }, [monthData, transactions]);
 
     if (!isOpen || !monthData) return null;
 
@@ -189,7 +182,6 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-green-500"></span> To'liq to'landi</div>
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Qisman to'landi</div>
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-red-500"></span> Qarz</div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-teal-500"></span> Dam olish kuni</div>
                     </div>
 
                     {/* Calendar Grid */}
@@ -206,7 +198,6 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             {days.map((d) => {
                                 let styleClass = '';
                                 if (d.status === 'FUTURE') styleClass = isDark ? 'bg-[#1C1C1E] text-gray-600' : 'bg-gray-50 text-gray-400';
-                                else if (d.status === 'DAY_OFF') styleClass = isDark ? 'bg-[#142A27] text-teal-500 border border-teal-500/20' : 'bg-teal-50 text-teal-600 border border-teal-200';
                                 else if (d.status === 'PAID') styleClass = isDark ? 'bg-[#182C1B] text-green-500 border border-green-500/20' : 'bg-green-50 text-green-600 border border-green-200';
                                 else if (d.status === 'PARTIAL') styleClass = isDark ? 'bg-[#2E2011] text-orange-500 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200';
                                 else if (d.status === 'UNPAID') styleClass = isDark ? 'bg-[#2C181A] text-red-500 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200';
@@ -225,14 +216,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     >
                                         <span className={`font-semibold text-xs sm:text-sm md:text-base ${styleClass.includes('FUTURE') ? 'opacity-50' : 'opacity-90'}`}>{d.day}</span>
                                         
-                                        {/* Details inside grid square */}
-                                        {d.status === 'DAY_OFF' && (
-                                            <div className="flex-1 flex items-center justify-center mt-1">
-                                                <span className="text-3xl sm:text-4xl drop-shadow-md opacity-90 transition-transform duration-300 hover:scale-110">🏝️</span>
-                                            </div>
-                                        )}
-                                        
-                                        {d.status !== 'FUTURE' && d.status !== 'DAY_OFF' && (
+                                        {d.status !== 'FUTURE' && (
                                             <div className="mt-auto space-y-0.5 pt-2 flex flex-col items-start w-full">
                                                 {d.income > 0 && (
                                                     <div className="text-[10px] sm:text-xs md:text-sm font-medium tracking-tight opacity-90 truncate w-full">

@@ -51,7 +51,7 @@ import * as firestoreService from './services/firestoreService';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, Notification } from './services/notificationService';
 import { playLockSound } from './services/soundService';
 import logo from './Images/logo_winter.png';
-import { DayOff, subscribeToDaysOff } from './services/daysOffService';
+
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 
 const AppContent: React.FC = () => {
@@ -129,19 +129,13 @@ const AppContent: React.FC = () => {
     return unsub;
   }, [carsFleetId]);
 
-  // Subscribe to days off at the app level so FinancialModal can use it
-  const [allDaysOff, setAllDaysOff] = useState<DayOff[]>([]);
-  useEffect(() => {
-    const unsub = subscribeToDaysOff(setAllDaysOff, carsFleetId);
-    return unsub;
-  }, [carsFleetId]);
+
 
   // ── Daily 22:00 plan reminder ──────────────────────────────────────────────
   useDailyPlanReminder({
     drivers,
     cars,
     transactions,
-    daysOff: allDaysOff,
     adminUserId:   adminUser?.id   ?? '',
     adminUserName: adminUser?.username ?? 'Admin',
     enabled: isAuthenticated && userRole === 'admin',
@@ -731,7 +725,6 @@ const AppContent: React.FC = () => {
               transactions={transactions}
               drivers={drivers}
               cars={cars}
-              daysOff={allDaysOff}
               isDataLoading={isDataLoading}
               theme={theme}
               isMobile={isMobile}
@@ -748,7 +741,6 @@ const AppContent: React.FC = () => {
                 fleetId={userRole === 'viewer'
                   ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
                   : adminUser?.id}
-                daysOff={allDaysOff}
                 onUpdateStatus={handleUpdateDriverStatus}
                 onEditDriver={handleEditDriverClick}
                 onDeleteDriver={handleDeleteDriver}
@@ -793,7 +785,6 @@ const AppContent: React.FC = () => {
                 transactions={transactions}
                 drivers={drivers}
                 cars={cars}
-                daysOff={allDaysOff}
                 theme={theme}
                 isMobile={isMobile}
                 onDayClick={(driverId, date) => {
@@ -844,7 +835,6 @@ const AppContent: React.FC = () => {
         transactions={transactions}
         theme={theme}
         fleetId={carsFleetId}
-        daysOff={allDaysOff}
         initialDriverId={txInitialDriverId}
         initialType={txInitialType}
         initialDate={txInitialDate}
