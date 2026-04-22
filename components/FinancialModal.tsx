@@ -493,7 +493,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             <DatePicker label={t('time') || 'Date'} value={date} onChange={setDate} theme={theme} />
 
             {/* Day off toggle */}
-            {driverId && (
+            {expenseTarget === 'driver' && driverId && (
               <div
                 onClick={() => { if (!alreadyDayOff && !limitReached) setIsDayOff(p => !p); }}
                 className={`flex items-center justify-between rounded-xl px-4 py-3 border transition-all select-none ${
