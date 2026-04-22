@@ -189,6 +189,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-green-500"></span> To'liq to'landi</div>
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Qisman to'landi</div>
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-red-500"></span> Qarz</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 🏝️ Dam olish</div>
                     </div>
 
                     {/* Calendar Grid */}
@@ -205,6 +206,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             {days.map((d) => {
                                 let styleClass = '';
                                 if (d.status === 'FUTURE') styleClass = isDark ? 'bg-[#1C1C1E] text-gray-600' : 'bg-gray-50 text-gray-400';
+                                else if (d.status === 'DAY_OFF') styleClass = isDark ? 'bg-[#0f1f3d] text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200';
                                 else if (d.status === 'PAID') styleClass = isDark ? 'bg-[#182C1B] text-green-500 border border-green-500/20' : 'bg-green-50 text-green-600 border border-green-200';
                                 else if (d.status === 'PARTIAL') styleClass = isDark ? 'bg-[#2E2011] text-orange-500 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200';
                                 else if (d.status === 'UNPAID') styleClass = isDark ? 'bg-[#2C181A] text-red-500 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200';
@@ -223,7 +225,12 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     >
                                         <span className={`font-semibold text-xs sm:text-sm md:text-base ${styleClass.includes('FUTURE') ? 'opacity-50' : 'opacity-90'}`}>{d.day}</span>
                                         
-                                        {d.status !== 'FUTURE' && (
+                                        {d.status === 'DAY_OFF' ? (
+                                            <div className="flex flex-col items-center justify-center h-full w-full py-2 gap-1">
+                                                <span className="text-2xl sm:text-3xl">🏝️</span>
+                                                <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">Dam olish</span>
+                                            </div>
+                                        ) : d.status !== 'FUTURE' && (
                                             <div className="mt-auto space-y-0.5 pt-2 flex flex-col items-start w-full">
                                                 {d.income > 0 && (
                                                     <div className="text-[10px] sm:text-xs md:text-sm font-medium tracking-tight opacity-90 truncate w-full">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
 
 interface DatePickerProps {
@@ -12,6 +12,19 @@ interface DatePickerProps {
 const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setDropdownPos({
+                top: rect.bottom + window.scrollY + 8,
+                left: rect.left + window.scrollX + rect.width / 2,
+                width: rect.width,
+            });
+        }
+    }, [isOpen]);
 
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthNamesFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -99,6 +112,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
 
             {/* Date Display */}
             <button
+                ref={buttonRef}
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${theme === 'dark'
@@ -112,17 +126,24 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                 </div>
             </button>
 
-            {/* Calendar Dropdown */}
+            {/* Calendar Dropdown — fixed to escape overflow:hidden containers */}
             {isOpen && (
                 <>
                     {/* Backdrop */}
-                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+                    <div className="fixed inset-0 z-[9999]" onClick={() => setIsOpen(false)} />
 
                     {/* Calendar */}
-                    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark'
-                        ? 'bg-[#1F2937] border-gray-700'
-                        : 'bg-white border-gray-200'
-                        }`}>
+                    <div
+                        className={`fixed z-[10000] w-64 p-3 rounded-xl border shadow-xl ${theme === 'dark'
+                            ? 'bg-[#1F2937] border-gray-700'
+                            : 'bg-white border-gray-200'
+                            }`}
+                        style={{
+                            top: dropdownPos.top,
+                            left: dropdownPos.left,
+                            transform: 'translateX(-50%)'
+                        }}
+                    >
                         {/* Month/Year Header */}
                         <div className="flex items-center justify-between mb-2">
                             <h3 className={`text-xs font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
