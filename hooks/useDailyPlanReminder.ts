@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useInterval } from './useInterval';
 import { Driver } from '../src/core/types/driver.types';
 import { Car } from '../src/core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/transaction.types';
@@ -35,16 +36,10 @@ const todayDateKey = () => {
     return `${y}-${m}-${day}`;
 };
 
-/** Milliseconds until next 22:00 local time */
-const msUntilTenPM = (): number => {
+/** Check if it's currently past 10 PM (22:00) */
+const isPastTenPM = (): boolean => {
     const now = new Date();
-    const target = new Date(now);
-    target.setHours(22, 0, 0, 0);
-    if (target <= now) {
-        // Already past 22:00 today → aim for tomorrow
-        target.setDate(target.getDate() + 1);
-    }
-    return target.getTime() - now.getTime();
+    return now.getHours() >= 22;
 };
 
 /** Returns today's income for a driver */
@@ -92,102 +87,98 @@ export const useDailyPlanReminder = ({
         dataRef.current = { drivers, cars, transactions, daysOff, adminUserId, adminUserName };
     });
 
-    useEffect(() => {
+    const fire = async () => {
         if (!enabled || !adminUserId) return;
 
-        let fireTimeout: ReturnType<typeof setTimeout>;
-        let nextDayTimeout: ReturnType<typeof setTimeout>;
+        const { drivers, cars, transactions, daysOff, adminUserId: aId, adminUserName: aName } = dataRef.current;
 
-        const fire = async () => {
-            const { drivers, cars, transactions, daysOff, adminUserId, adminUserName } =
-                dataRef.current;
+        const today = todayDateKey();
+        const lastSent = localStorage.getItem(STORAGE_KEY);
+        
+        // Only run if it's past 10 PM and we haven't sent it today
+        if (!isPastTenPM() || lastSent === today) {
+            return;
+        }
 
-            const today = todayDateKey();
+        // ── Analyze drivers ──────────────────
+        const activeDrivers = drivers.filter(d => !d.isDeleted && d.status === 'ACTIVE');
+        
+        const behindDrivers: any[] = [];
+        const completedDrivers: any[] = [];
+        const dayOffDrivers: any[] = [];
 
-            // Deduplicate: only fire once per day
-            const lastSent = localStorage.getItem(STORAGE_KEY);
-            if (lastSent === today) {
-                scheduleNextDay();
+        activeDrivers.forEach(d => {
+            const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
+            const dailyPlan = (car?.dailyPlan ?? 0) > 0
+                ? (car!.dailyPlan as number)
+                : ((d as any).dailyPlan ?? 0) as number;
+
+            if (dailyPlan <= 0) return; // no plan set
+
+            // Check if today is a day off for this driver
+            const daysOffSet = getDaysOffSet(daysOff, d.id);
+            if (daysOffSet.has(today)) {
+                dayOffDrivers.push(d);
                 return;
             }
 
-            // ── Find drivers who haven't completed today's plan ──────────────────
-            const behindDrivers = drivers
-                .filter(d => !d.isDeleted && d.status === 'ACTIVE')
-                .map(d => {
-                    const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
-                    const dailyPlan = (car?.dailyPlan ?? 0) > 0
-                        ? (car!.dailyPlan as number)
-                        : ((d as any).dailyPlan ?? 0) as number;
-
-                    if (dailyPlan <= 0) return null; // no plan set
-
-                    // Check if today is a day off for this driver
-                    const daysOffSet = getDaysOffSet(daysOff, d.id);
-                    if (daysOffSet.has(today)) return null; // day off → skip
-
-                    const todayIncome = getTodayIncome(d.id, transactions);
-                    const missing = dailyPlan - todayIncome;
-                    if (missing <= 0) return null; // done ✓
-
-                    return { driver: d, dailyPlan, todayIncome, missing };
-                })
-                .filter(Boolean) as { driver: Driver; dailyPlan: number; todayIncome: number; missing: number }[];
-
-            if (behindDrivers.length === 0) {
-                // All drivers are done — still mark as sent
-                localStorage.setItem(STORAGE_KEY, today);
-                scheduleNextDay();
-                return;
+            const todayIncome = getTodayIncome(d.id, transactions);
+            const missing = dailyPlan - todayIncome;
+            
+            if (missing <= 0) {
+                completedDrivers.push({ driver: d, dailyPlan, todayIncome });
+            } else {
+                behindDrivers.push({ driver: d, dailyPlan, todayIncome, missing });
             }
+        });
 
-            // ── Send one notification per driver who is behind ──────────────────
-            const MONTHS_UZ = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-            const now = new Date();
-            const dateStr = `${now.getDate()} ${MONTHS_UZ[now.getMonth()]} ${now.getFullYear()}`;
+        // ── Send Notification ──────────────────
+        const MONTHS_UZ = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+        const now = new Date();
+        const dateStr = `${now.getDate()} ${MONTHS_UZ[now.getMonth()]} ${now.getFullYear()}`;
 
-            try {
-                // Send a single grouped notification listing all behind drivers
+        try {
+            const completedCount = completedDrivers.length;
+            const behindCount = behindDrivers.length;
+            const dayOffCount = dayOffDrivers.length;
+            
+            let message = `Kunlik hisobot:\n✅ To'laganlar: ${completedCount} ta\n❌ Qarzlar: ${behindCount} ta`;
+            if (dayOffCount > 0) message += `\n🏖️ Dam olish: ${dayOffCount} ta`;
+
+            if (behindCount > 0) {
                 const driverLines = behindDrivers
-                    .map((bd, i) =>
-                        `${i + 1}. ${bd.driver.name} — ${fmtUZS(bd.todayIncome)}/${fmtUZS(bd.dailyPlan)} UZS (${fmtUZS(bd.missing)} UZS qoldi)`
-                    )
+                    .map((bd, i) => `${i + 1}. ${bd.driver.name} — ${fmtUZS(bd.missing)} UZS qoldi`)
                     .join('\n');
-
-                await sendNotification(
-                    {
-                        title: `🌙 Kechki reja tekshiruvi — ${dateStr}`,
-                        message:
-                            `Bugun ${behindDrivers.length} ta haydovchi kunlik rejani bajarmadi:\n\n${driverLines}\n\nUlarga eslatma yuboring yoki hisob-kitob qiling.`,
-                        type: 'payment_reminder',
-                        category: NotificationCategory.PAYMENT_REMINDER,
-                        priority: NotificationPriority.HIGH,
-                        targetUsers: 'role:admin',
-                        expiresIn: 12 * 60 * 60 * 1000, // expires in 12 hours
-                    },
-                    adminUserId,
-                    adminUserName
-                );
-
-                localStorage.setItem(STORAGE_KEY, today);
-            } catch (err) {
-                console.error('[DailyPlanReminder] Failed to send notification:', err);
+                message += `\n\nTo'lamaganlar ro'yxati:\n${driverLines}`;
+            } else {
+                message += `\n\n🎉 Barcha haydovchilar bugungi rejani bajarishdi!`;
             }
 
-            scheduleNextDay();
-        };
+            await sendNotification(
+                {
+                    title: `🌙 Kechki reja hisoboti — ${dateStr}`,
+                    message,
+                    type: 'payment_reminder',
+                    category: NotificationCategory.PAYMENT_REMINDER,
+                    priority: behindCount > 0 ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
+                    targetUsers: 'role:admin',
+                    expiresIn: 12 * 60 * 60 * 1000, // expires in 12 hours
+                },
+                aId,
+                aName
+            );
 
-        const scheduleNextDay = () => {
-            // Re-schedule for next 22:00
-            nextDayTimeout = setTimeout(fire, msUntilTenPM());
-        };
+            localStorage.setItem(STORAGE_KEY, today);
+        } catch (err) {
+            console.error('[DailyPlanReminder] Failed to send notification:', err);
+        }
+    };
 
-        // Schedule for today's 22:00 (or tomorrow's if it's already past)
-        fireTimeout = setTimeout(fire, msUntilTenPM());
+    // Run interval every 1 minute
+    useInterval(fire, 60 * 1000);
 
-        return () => {
-            clearTimeout(fireTimeout);
-            clearTimeout(nextDayTimeout);
-        };
-    }, [enabled, adminUserId]); // only re-bind when admin changes
+    // Also run once on mount in case it's already past 10 PM
+    useEffect(() => {
+        fire();
+    }, [enabled, adminUserId]);
 };
