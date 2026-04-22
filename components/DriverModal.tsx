@@ -24,7 +24,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [extraPhone, setExtraPhone] = useState('');
   const [avatar, setAvatar] = useState('');
   const [status, setStatus] = useState<DriverStatus>(DriverStatus.OFFLINE);
-  const [monthlySalary, setMonthlySalary] = useState('');
   const [notes, setNotes] = useState('');
   const [documents, setDocuments] = useState<DriverDocument[]>([]);
   const [docError, setDocError] = useState<string | null>(null);
@@ -62,7 +61,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setExtraPhone(editingDriver.extraPhone ?? '');
       setAvatar(editingDriver.avatar);
       setStatus(editingDriver.status);
-      setMonthlySalary(editingDriver.monthlySalary ? editingDriver.monthlySalary.toString() : '');
       setNotes(editingDriver.notes ?? '');
       setDocuments(editingDriver.documents ?? []);
       setSelectedCarId(currentAssignedCar?.id ?? '');
@@ -72,7 +70,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setExtraPhone('');
       setAvatar('');
       setStatus(DriverStatus.OFFLINE);
-      setMonthlySalary('');
       setNotes('');
       setDocuments([]);
       setSelectedCarId('');
@@ -113,7 +110,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     }
 
     try {
-      const salaryValue = monthlySalary ? parseFloat(monthlySalary.replace(/\s/g, '').replace(/,/g, '')) : 0;
       // carModel and licensePlate auto-filled from selected car for backward compat with display
       await onSubmit({
         id: editingDriver?.id,
@@ -123,7 +119,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         avatar,
         status,
         notes,
-        monthlySalary: salaryValue,
+        monthlySalary: 0,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
@@ -250,7 +246,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto custom-scrollbar">
           {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm font-medium">{error}</div>}
 
-          {/* Avatar + Name + Salary */}
+          {/* Avatar + Name */}
           <div className="flex items-center gap-5">
             <div className="flex-shrink-0">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Foto</label>
@@ -268,15 +264,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 <input id="driver-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </div>
             </div>
-            <div className="flex-1 space-y-3">
-              <div>
-                <label className={labelClass}>{t('name')} <span className="text-red-500">*</span></label>
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Ism Familiya" />
-              </div>
-              <div>
-                <label className={labelClass}>Oylik maosh (UZS)</label>
-                <input type="text" value={monthlySalary} onChange={handleSalaryChange} className={inputClass} placeholder="0" />
-              </div>
+            <div className="flex-1">
+              <label className={labelClass}>{t('name')} <span className="text-red-500">*</span></label>
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Ism Familiya" />
             </div>
           </div>
 
