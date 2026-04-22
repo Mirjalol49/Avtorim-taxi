@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { XIcon, UsersIcon } from './Icons';
-import CustomSelect from './CustomSelect';
+import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon } from './Icons';
 import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
@@ -47,11 +46,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const isDark = theme === 'dark';
 
   // Transaction fields
-  const [amount, setAmount] = useState('');
-  const [displayAmount, setDisplayAmount] = useState('');
   const [type, setType] = useState<TransactionType>(initialType || TransactionType.INCOME);
+  const [driverId, setDriverId] = useState<string>(initialDriverId || '');
+  const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false);
+  const [driverSearch, setDriverSearch] = useState('');
+  const [amount, setAmount] = useState<string>('');
+  const [displayAmount, setDisplayAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [driverId, setDriverId] = useState(initialDriverId || '');
   const [date, setDate] = useState<Date>(new Date());
 
   // Reset states when modal is opened or explicitly provided initials change
@@ -60,6 +61,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       setType(initialType || TransactionType.INCOME);
       if (initialDriverId) setDriverId(initialDriverId);
       if (initialDate) setDate(initialDate);
+      setIsDriverDropdownOpen(!initialDriverId); // Open dropdown if no driver is pre-selected
+      setDriverSearch('');
     }
   }, [isOpen, initialType, initialDriverId, initialDate]);
 
@@ -210,7 +213,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   };
 
   const resetAndClose = () => {
-    setAmount(''); setDisplayAmount(''); setDescription(''); setDriverId('');
+    setAmount(''); setDisplayAmount(''); setDescription('');    setDriverId('');
+    setIsDriverDropdownOpen(false);
+    setDriverSearch('');
+    setAmount('');
     setDate(new Date()); setIsDayOff(false); setDayOffError(null);
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     onClose();
@@ -222,6 +228,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
+
+  const filteredDrivers = drivers.filter(d => 
+    d.name.toLowerCase().includes(driverSearch.toLowerCase()) || 
+    (d.carModel && d.carModel.toLowerCase().includes(driverSearch.toLowerCase())) ||
+    (d.licensePlate && d.licensePlate.toLowerCase().includes(driverSearch.toLowerCase()))
+  );
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -251,18 +263,96 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Driver */}
-            <CustomSelect
-              label={t('driver')}
-              value={driverId}
-              onChange={setDriverId}
-              options={[
-                { id: '', name: t('selectDriver') || 'Select Driver' },
-                ...drivers.map(d => ({ id: d.id, name: `${d.name} — ${d.carModel}` }))
-              ]}
-              theme={theme}
-              icon={UsersIcon}
-            />
+            {/* Rich Driver Selector (Apple Style) */}
+            <div className="w-full relative">
+              <div className="flex items-center gap-2 mb-3">
+                <UsersIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {t('driver')}
+                </span>
+              </div>
+
+              {!isDriverDropdownOpen && selectedDriver ? (
+                <div 
+                  onClick={() => setIsDriverDropdownOpen(true)}
+                  className={`cursor-pointer p-4 rounded-2xl border transition-all active:scale-[0.98] group ${isDark ? 'bg-gray-800/80 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm hover:shadow'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {selectedDriver.avatar ? (
+                        <img src={selectedDriver.avatar} alt={selectedDriver.name} className={`w-12 h-12 rounded-full object-cover border-2 shadow-sm transition-transform group-hover:scale-105 ${isDark ? 'border-gray-600' : 'border-white'}`} />
+                      ) : (
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-sm transition-transform group-hover:scale-105 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                          {selectedDriver.name.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</h4>
+                        <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {selectedDriver.carModel || 'Avtomobil yo\'q'} • <span className="font-mono">{selectedDriver.licensePlate || ''}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isDark ? 'bg-gray-700/50 text-gray-400 group-hover:text-white' : 'bg-gray-100 text-gray-500 group-hover:text-gray-900'} transition-colors`}>
+                      <ChevronDownIcon className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className={`rounded-2xl border overflow-hidden transition-all animate-in slide-in-from-top-2 ${isDark ? 'bg-gray-800/90 border-gray-700 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
+                  <div className={`p-3 border-b ${isDark ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50/80'}`}>
+                    <div className="relative">
+                      <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <input 
+                        type="text" 
+                        value={driverSearch}
+                        onChange={(e) => setDriverSearch(e.target.value)}
+                        placeholder="Haydovchini qidirish..."
+                        autoFocus
+                        className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm transition-all ${isDark ? 'bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0f766e]' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:ring-2 focus:ring-[#0f766e] focus:border-transparent'}`}
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-[260px] overflow-y-auto divide-y dark:divide-gray-700/50 custom-scrollbar">
+                    {filteredDrivers.map(d => (
+                      <div 
+                        key={d.id}
+                        onClick={() => {
+                          setDriverId(d.id);
+                          setIsDriverDropdownOpen(false);
+                          setDriverSearch('');
+                        }}
+                        className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${driverId === d.id ? (isDark ? 'bg-[#0f766e]/20' : 'bg-teal-50') : (isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50')}`}
+                      >
+                        {d.avatar ? (
+                          <img src={d.avatar} alt={d.name} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                            {d.name.charAt(0)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{d.name}</h4>
+                          <p className={`text-[11px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{d.carModel} • {d.licensePlate}</p>
+                        </div>
+                        {driverId === d.id && <CheckIcon className="w-5 h-5 text-[#0f766e]" />}
+                      </div>
+                    ))}
+                    {filteredDrivers.length === 0 && (
+                      <div className="p-6 text-center text-sm text-gray-500">Haydovchi topilmadi</div>
+                    )}
+                  </div>
+                  {selectedDriver && (
+                    <div 
+                      onClick={() => setIsDriverDropdownOpen(false)}
+                      className={`p-3 text-center border-t cursor-pointer text-sm font-medium transition-colors ${isDark ? 'border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700/50' : 'border-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}
+                    >
+                      Bekor qilish
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Date */}
             <DatePicker label={t('time') || 'Date'} value={date} onChange={setDate} theme={theme} />
