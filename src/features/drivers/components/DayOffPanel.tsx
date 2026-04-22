@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DayOff, addDayOff, removeDayOff, countUsedThisMonth, MONTHLY_ALLOWANCE, toDateKey, toMonthKey } from '../../../../services/daysOffService';
 
 interface DayOffPanelProps {
@@ -8,24 +9,19 @@ interface DayOffPanelProps {
     onClose: () => void;
 }
 
-const MONTHS_UZ = [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
-];
-
-const monthLabel = (monthKey: string) => {
-    const [y, m] = monthKey.split('-').map(Number);
-    return `${MONTHS_UZ[m - 1]} ${y}`;
-};
-
-const dateLabel = (dateKey: string) => {
-    const [y, m, d] = dateKey.split('-').map(Number);
-    return `${d} ${MONTHS_UZ[m - 1]} ${y}`;
-};
-
 
 export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme, onClose }) => {
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
+    const monthNames = t('months', { returnObjects: true }) as string[];
+    const monthLabel = (monthKey: string) => {
+        const [y, m] = monthKey.split('-').map(Number);
+        return `${monthNames[m - 1] ?? monthKey} ${y}`;
+    };
+    const dateLabel = (dateKey: string) => {
+        const [y, m, d] = dateKey.split('-').map(Number);
+        return `${d} ${monthNames[m - 1] ?? dateKey} ${y}`;
+    };
     const thisMonth = toMonthKey(new Date());
     const todayKey = toDateKey(new Date());
 
@@ -88,7 +84,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                 <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
                     <div>
                         <h2 className={`font-bold text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            🏖️ Dam olish kunlari
+                            🏖️ {t('dayOffDays')}
                         </h2>
                         <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.name}</p>
                     </div>
@@ -121,10 +117,10 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                 ? isDark ? 'text-red-400' : 'text-red-600'
                                 : isDark ? 'text-teal-400' : 'text-teal-700'
                         }`}>
-                            {limitReached ? 'Bu oy limiti tugadi' : `${remaining} ta dam olish qoldi`}
+                            {limitReached ? t('dayOffLimitReached') : `${remaining} ${t('dayOffDays')} ${t('remainingShort')}`}
                         </p>
                         <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {usedThisMonth} / {MONTHLY_ALLOWANCE} ishlatildi · {monthLabel(thisMonth)}
+                            {usedThisMonth} / {MONTHLY_ALLOWANCE} {t('used')} · {monthLabel(thisMonth)}
                         </p>
                     </div>
                 </div>
@@ -133,7 +129,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                 {!limitReached && (
                     <div className={`mx-5 mt-3 rounded-xl p-3 ${isDark ? 'bg-gray-800/70' : 'bg-gray-50'}`}>
                         <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Dam olish kuni qo'shish
+                            {t('addDayOff')}
                         </p>
                         <div className="flex gap-2">
                             <input
@@ -151,7 +147,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                 disabled={saving || !selectedDate}
                                 className="px-4 py-2 rounded-lg bg-[#0f766e] text-white text-sm font-bold hover:bg-teal-600 transition-all active:scale-95 disabled:opacity-50 min-w-[80px]"
                             >
-                                {saving ? '...' : "Qo'shish"}
+                                {saving ? '...' : t('add')}
                             </button>
                         </div>
                         {error && (
@@ -168,7 +164,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                 <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4 max-h-72">
                     {sortedMonths.length === 0 ? (
                         <p className={`text-sm text-center py-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`}>
-                            Hali dam olish kunlari yo'q
+                            {t('noDaysOffYet')}
                         </p>
                     ) : (
                         sortedMonths.map(mk => (
@@ -207,7 +203,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                                         ? 'text-gray-600 hover:text-red-400 hover:bg-red-500/10'
                                                         : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
                                                 }`}
-                                                title="Bekor qilish"
+                                                title={t('cancel')}
                                             >
                                                 {removing === d.id ? (
                                                     <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

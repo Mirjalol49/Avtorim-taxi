@@ -22,6 +22,7 @@ export enum FineStatus {
 export interface Transaction {
     id: string;
     driverId?: string;
+    driverName?: string;
     carId?: string;
     carName?: string;
     amount: number;

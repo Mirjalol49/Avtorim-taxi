@@ -199,8 +199,8 @@ const AppContent: React.FC = () => {
         ...data,
       };
 
-      if (driver) payload.driverName = driver.name;
-      if (car) payload.carName = `${car.name} ${car.model} — ${car.plateNumber}`;
+      if (driver) (payload as any).driverName = driver.name;
+      if (car) payload.carName = `${car.name} — ${car.licensePlate}`;
 
       await firestoreService.addTransaction(
         payload as any,
@@ -209,7 +209,7 @@ const AppContent: React.FC = () => {
       triggerRefresh();
     } catch (error) {
       console.error('Failed to add transaction:', error);
-      addToast('error', "Tranzaksiya saqlanmadi");
+      addToast('error', t.transactionSaveFailed);
     }
   };
 
@@ -343,8 +343,8 @@ const AppContent: React.FC = () => {
   const handleDeleteCar = (id: string) => {
     setConfirmModal({
       isOpen: true,
-      title: "O'chirish",
-      message: "Bu avtomobilni o'chirmoqchimisiz?",
+      title: t.confirmDeleteTitle,
+      message: t.deleteConfirmCar,
       isDanger: true,
       action: async () => {
         closeConfirmModal();
@@ -474,11 +474,11 @@ const AppContent: React.FC = () => {
             }`}>{t.menu}</div>
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
-          {renderSidebarItem('/cars', 'Avtomobillar', CarIcon)}
-          {renderSidebarItem('/monthly-plan', 'Oylik Reja', CalendarIcon)}
+          {renderSidebarItem('/cars', t.cars, CarIcon)}
+          {renderSidebarItem('/monthly-plan', t.monthlyPlan, CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
-          {renderSidebarItem('/notes', t.notes || 'Notes', NotesIcon)}
+          {renderSidebarItem('/notes', t.notes, NotesIcon)}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -605,7 +605,6 @@ const AppContent: React.FC = () => {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Desktop Header - Hidden on Mobile */}
-        {/* Desktop Header - Hidden on Mobile */}
         <DesktopHeader
           theme={theme}
           onThemeToggle={toggleTheme}
@@ -674,19 +673,23 @@ const AppContent: React.FC = () => {
             <div>
               <h2 className={`text-xl font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                {location.pathname.includes('dashboard') && t.overview}
-                {location.pathname.includes('drivers') && t.driversList}
-                {location.pathname.includes('finance') && t.analytics}
-                {location.pathname.includes('monthly-plan') && 'Oylik Reja'}
-                {location.pathname.includes('transactions') && t.transactions}
+                {location.pathname === '/dashboard' && t.overview}
+                {location.pathname === '/drivers' && t.driversList}
+                {location.pathname === '/cars' && t.cars}
+                {location.pathname === '/finance' && t.analytics}
+                {location.pathname === '/monthly-plan' && t.monthlyPlan}
+                {location.pathname === '/transactions' && t.transactions}
+                {location.pathname === '/notes' && t.notes}
               </h2>
               <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                {location.pathname.includes('dashboard') && t.descDashboard}
-                {location.pathname.includes('drivers') && t.descDrivers}
-                {location.pathname.includes('finance') && t.descFinance}
-                {location.pathname.includes('monthly-plan') && "Haydovchilarning oylik ish reja va kunlari"}
-                {location.pathname.includes('transactions') && t.descTransactions}
+                {location.pathname === '/dashboard' && t.descDashboard}
+                {location.pathname === '/drivers' && t.descDrivers}
+                {location.pathname === '/cars' && t.descCars}
+                {location.pathname === '/finance' && t.descFinance}
+                {location.pathname === '/monthly-plan' && t.monthlyPlanDesc}
+                {location.pathname === '/transactions' && t.descTransactions}
+                {location.pathname === '/notes' && t.descNotes}
               </p>
             </div>
           </div>

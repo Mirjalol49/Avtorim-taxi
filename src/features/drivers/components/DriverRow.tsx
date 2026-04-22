@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
-import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { XIcon } from '../../../../components/Icons';
-import { XIcon } from '../../../../components/Icons';
+import { EditIcon, TrashIcon, CameraIcon, XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
@@ -111,7 +109,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                 <div className="space-y-0.5">
                     {/* Day off badge */}
                     {explicitDailyPlan > 0 && (
-                        <p className={`text-xs font-mono font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Reja: {fmt(explicitDailyPlan)} UZS</p>
+                        <p className={`text-xs font-mono font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('dailyPlan')}: {fmt(explicitDailyPlan)} UZS</p>
                     )}
                     {explicitDailyPlan === 0 && (
                         <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>

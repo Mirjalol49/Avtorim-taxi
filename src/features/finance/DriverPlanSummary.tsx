@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
@@ -46,14 +47,9 @@ const daysInMonthForKey = (mk: string): number => {
     return new Date(y, m, 0).getDate();
 };
 
-const MONTHS_UZ = [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
-];
-
-const monthDisplayLabel = (mk: string): string => {
+const monthDisplayLabel = (mk: string, months: string[]): string => {
     const [y, m] = mk.split('-').map(Number);
-    return `${MONTHS_UZ[m - 1]} ${y}`;
+    return `${months[m - 1] ?? mk} ${y}`;
 };
 
 /** All YYYY-MM keys from startDate to endDate inclusive */
@@ -73,7 +69,9 @@ const monthRange = (start: Date, end: Date): string[] => {
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onDayClick
 }) => {
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
+    const monthNames = t('months', { returnObjects: true }) as string[];
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
     
     // State for modal
@@ -135,18 +133,18 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">📅</span>
                     <div>
-                        <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthDisplayLabel(currentMonthKey)}</h3>
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Umumiy Xisobot</p>
+                        <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthDisplayLabel(currentMonthKey, monthNames)}</h3>
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('overallReport')}</p>
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-6">
                     <div className="flex flex-col items-end">
-                        <span className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami Reja</span>
+                        <span className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPlanTarget')}</span>
                         <span className={`font-bold font-mono text-lg ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fmt(totalTarget)} UZS</span>
                     </div>
                     <div className={`px-4 py-2 rounded-2xl flex flex-col items-end ${totalRemaining <= 0 ? (isDark ? 'bg-green-500/10' : 'bg-green-50') : (isDark ? 'bg-red-500/10' : 'bg-red-50')}`}>
                         <span className={`text-[10px] uppercase font-bold tracking-wider ${totalRemaining <= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {totalRemaining <= 0 ? 'Ortiqcha daromad' : 'Hali qolgan'}
+                            {totalRemaining <= 0 ? t('surplusIncome') : t('remainingLabel')}
                         </span>
                         <span className={`font-black font-mono text-lg ${totalRemaining <= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {totalRemaining <= 0 ? `+${fmt(-totalRemaining)}` : `-${fmt(totalRemaining)}`} UZS
@@ -189,7 +187,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                                     {row.driver.name}
                                                 </p>
                                                 <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                    {row.car ? `${row.car.name} · ${row.car.licensePlate}` : 'Avtomobil yo\'q'}
+                                                    {row.car ? `${row.car.name} · ${row.car.licensePlate}` : t('noCar')}
                                                 </p>
                                             </div>
                                         </div>
@@ -205,21 +203,21 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                                 : isDark ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-red-100/80 text-red-700 border border-red-200'
                                         }`}>
                                             {row.remaining <= 0
-                                                ? "✓ To'liq plan yopildi"
+                                                ? `✓ ${t('planCompleted')}`
                                                 : row.paidPercent >= 60
-                                                ? `⚡ Yaxshi progres (${row.paidPercent}%)`
-                                                : '⚠ To\'lovlar kechikmoqda'}
+                                                ? `⚡ ${t('progressGood')} (${row.paidPercent}%)`
+                                                : `⚠ ${t('paymentsLate')}`}
                                         </div>
                                     </div>
 
                                     {/* Primary Mini-Stats */}
                                     <div className="grid grid-cols-2 gap-4 mb-6">
                                         <div className="flex flex-col gap-1">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Oylik Reja</p>
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('monthlyPlan')}</p>
                                             <p className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
                                         </div>
                                         <div className="flex flex-col gap-1 items-start">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-green-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami To'ladi</p>
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-green-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPaidAmount')}</p>
                                             <p className={`text-lg font-black tracking-tight ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
                                         </div>
                                     </div>
@@ -228,11 +226,11 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                     <div className="relative z-10">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                {row.paidPercent}% bajarildi
+                                                {row.paidPercent}% {t('completedPercent')}
                                             </span>
                                             <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-500')}`}>
                                                 {row.remaining > 0
-                                                    ? `Qoldi: ${fmt(row.remaining)}`
+                                                    ? `${t('remainingShort')}: ${fmt(row.remaining)}`
                                                     : `+${fmt(-row.remaining)}`}
                                             </span>
                                         </div>

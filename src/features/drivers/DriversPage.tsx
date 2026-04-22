@@ -147,9 +147,9 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                     <thead>
                                         <tr className={`${theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'} text-xs uppercase tracking-wider`}>
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('driver')}</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Avtomobil</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Hujjatlar</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Reja / Dam olish</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('car')}</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('documents')}</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('planDayOff')}</th>
                                             {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 text-center">{t('actions')}</th>}
                                         </tr>
                                     </thead>

@@ -73,21 +73,27 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         return t('globalTracking');
       case Tab.DRIVERS:
         return t('driversList');
+      case Tab.TRANSACTIONS:
+        return t('transactions');
       case Tab.FINANCE:
         return t('financialReports');
       case Tab.SALARY:
         return t('salaryManagement');
       case Tab.ROLES:
         return t('roleManagement');
+      case Tab.CARS:
+        return t('cars');
+      case Tab.NOTES:
+        return t('notes');
+      case Tab.MONTHLY_PLAN:
+        return t('monthlyPlan');
       default:
-        return t('transactions');
+        return t('overview');
     }
   };
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
-    // Persist to localStorage if needed, but App.tsx might handle it or i18next plugin
-    localStorage.setItem('language', lang);
     setIsLangMenuOpen(false);
   };
 

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { XIcon, CalendarIcon } from '../../../../components/Icons';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
@@ -29,13 +30,10 @@ interface Props {
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
 
-const MONTHS_UZ = [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
-];
-
 export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick }) => {
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
+    const monthNames = t('months', { returnObjects: true }) as string[];
 
     // Disable body scroll when modal open
     React.useEffect(() => {
@@ -133,10 +131,10 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             <div className="flex items-center gap-2 mb-0.5">
                                 <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthData.driver.name}</h2>
                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
-                                    {MONTHS_UZ[parseInt(mStr, 10) - 1]} {yStr}
+                                    {monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}
                                 </span>
                             </div>
-                            <p className="text-sm text-gray-400 font-medium">Reja: {fmt(monthData.dailyPlan)} UZS / kun</p>
+                            <p className="text-sm text-gray-400 font-medium">{t('dailyPlan')}: {fmt(monthData.dailyPlan)} UZS {t('dailyPlanUnit')}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>
@@ -149,11 +147,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     {/* Top Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className={`p-4 rounded-2xl ${isDark ? 'bg-gray-800' : 'bg-gray-50 border border-gray-100'}`}>
-                            <p className="text-xs font-bold text-gray-400 uppercase">Oylik Reja</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase">{t('monthlyPlan')}</p>
                             <p className={`text-lg font-black font-mono mt-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(monthData.monthlyTarget)}</p>
                         </div>
                         <div className={`p-4 rounded-2xl ${isDark ? 'bg-[#0f766e]/10 border border-[#0f766e]/20' : 'bg-teal-50 border border-teal-200'}`}>
-                            <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase">Jami Kiritildi</p>
+                            <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase">{t('totalPaidAmount')}</p>
                             <p className="text-lg font-black font-mono text-teal-600 dark:text-teal-400 mt-1">{fmt(monthData.actualIncome)}</p>
                         </div>
                         <div className={`p-4 rounded-2xl ${
@@ -161,13 +159,13 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             ? isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'
                             : isDark ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50 border border-orange-200'
                         }`}>
-                            <p className={`text-xs font-bold uppercase ${monthData.remaining <= 0 ? 'text-green-500' : 'text-orange-500'}`}>Hozirgi Qarz</p>
+                            <p className={`text-xs font-bold uppercase ${monthData.remaining <= 0 ? 'text-green-500' : 'text-orange-500'}`}>{t('currentDebt')}</p>
                             <p className={`text-lg font-black font-mono mt-1 ${monthData.remaining <= 0 ? 'text-green-500' : 'text-orange-500'}`}>
                                 {monthData.remaining > 0 ? fmt(monthData.remaining) : '+ ' + fmt(-monthData.remaining)}
                             </p>
                         </div>
                         <div className={`p-4 rounded-2xl ${isDark ? 'bg-gray-800' : 'bg-gray-50 border border-gray-100'}`}>
-                            <p className="text-xs font-bold text-gray-400 uppercase">Ish Kunlari</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase">{t('workingDays')}</p>
                             <p className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthData.workingDays} <span className="text-sm font-normal text-gray-500">/ {monthData.totalDays}</span></p>
                         </div>
                     </div>
@@ -175,7 +173,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     {/* Progress Bar */}
                     <div>
                         <div className="flex justify-between text-xs font-bold mb-2">
-                            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Tushum progressi</span>
+                            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t('incomeProgress')}</span>
                             <span className={isDark ? 'text-white' : 'text-gray-900'}>{monthData.paidPercent}%</span>
                         </div>
                         <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
@@ -188,17 +186,17 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
 
                     {/* Legend */}
                     <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-green-500"></span> To'liq to'landi</div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Qisman to'landi</div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-red-500"></span> Qarz</div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 🏝️ Dam olish</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-green-500"></span> {t('legendPaid')}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-orange-500"></span> {t('legendPartial')}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-red-500"></span> {t('legendDebt')}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 🏝️ {t('legendDayOff')}</div>
                     </div>
 
                     {/* Calendar Grid */}
                     <div className="mt-4">
                         <div className="grid grid-cols-7 gap-2 sm:gap-3 mb-2">
-                            {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].map(day => (
-                                <div key={day} className={`text-center text-[10px] sm:text-xs font-semibold py-1 uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{day}</div>
+                            {(t('weekdays', { returnObjects: true }) as string[]).slice(1).concat((t('weekdays', { returnObjects: true }) as string[])[0]).map(day => (
+                                <div key={day} className={`text-center text-[10px] sm:text-xs font-semibold py-1 uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{day.slice(0, 2)}</div>
                             ))}
                         </div>
                         <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
@@ -230,7 +228,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         {d.status === 'DAY_OFF' ? (
                                             <div className="flex flex-col items-center justify-center h-full w-full py-2 gap-1">
                                                 <span className="text-2xl sm:text-3xl">🏝️</span>
-                                                <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">Dam olish</span>
+                                                <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">{t('legendDayOff')}</span>
                                             </div>
                                         ) : d.status !== 'FUTURE' && (
                                             <div className="mt-auto space-y-0.5 pt-2 flex flex-col items-start w-full">

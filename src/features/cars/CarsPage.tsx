@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Car, CarDocument } from '../../core/types';
 import { Driver } from '../../../types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon } from '../../../components/Icons';
@@ -17,6 +18,7 @@ interface CarsPageProps {
 const ITEMS_PER_PAGE = 12;
 
 const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, userRole, onAddCar, onEditCar, onDeleteCar, theme }) => {
+    const { t } = useTranslation();
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
 
@@ -49,7 +51,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                             className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] transition-colors ${theme === 'dark'
                                 ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-500'}`}
-                            placeholder="Avtomobil nomi yoki raqami..."
+                            placeholder={t('searchPlaceholder')}
                             value={search}
                             onChange={e => { setSearch(e.target.value); setPage(1); }}
                         />
