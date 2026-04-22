@@ -484,9 +484,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 {/* Type toggle */}
                 <div className={`grid grid-cols-3 p-1 rounded-2xl border shadow-inner ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
                   {[
-                    { t: TransactionType.INCOME,  label: t('income') || 'Kirim',  color: 'bg-[#0f766e]' },
-                    { t: TransactionType.EXPENSE, label: t('expense') || 'Chiqim', color: 'bg-red-500' },
-                    { t: TransactionType.DAY_OFF, label: t('dayOff') || 'Dam olish', color: 'bg-blue-500' },
+                    { t: TransactionType.INCOME,  label: 'Kirim',      color: 'bg-[#0f766e]' },
+                    { t: TransactionType.EXPENSE, label: 'Chiqim',     color: 'bg-red-500' },
+                    { t: TransactionType.DAY_OFF, label: 'Dam olish',  color: 'bg-blue-500' },
                   ].map(item => (
                     <button key={item.t} type="button" onClick={() => { setType(item.t); if(item.t === TransactionType.INCOME) setExpenseTarget('driver'); }}
                       className={`py-3 rounded-xl text-sm font-bold transition-all ${
@@ -540,6 +540,19 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           <div className="px-6 pb-6 space-y-6 flex-1 -mt-2">
+                {/* ── DAY OFF INFO CARD ───────────────────────── */}
+                {type === TransactionType.DAY_OFF && (
+                  <div className={`rounded-2xl p-5 border flex flex-col items-center gap-3 text-center mt-4 ${isDark ? 'border-blue-500/30 bg-blue-500/10' : 'border-blue-200 bg-blue-50'}`}>
+                    <span className="text-4xl">🌙</span>
+                    <p className={`text-sm font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Dam olish kuni</p>
+                    <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-400/80' : 'text-blue-600/80'}`}>
+                      Tanlangan haydovchi uchun <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> sanasi dam olish kuni sifatida belgilanadi.
+                    </p>
+                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Bu kunda haydovchidan pul undirilmaydi.
+                    </p>
+                  </div>
+                )}
                 {/* ── Payment method ───────────────────────────── */}
                 {type !== TransactionType.DAY_OFF && (
                   <div>
