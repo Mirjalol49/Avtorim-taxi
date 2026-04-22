@@ -413,13 +413,17 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                          🚗
-                        </div>
+                        {selectedCar.avatar ? (
+                          <img src={selectedCar.avatar} alt={selectedCar.name} className={`w-12 h-12 rounded-full object-cover border-2 shadow-sm transition-transform group-hover:scale-105 ${isDark ? 'border-gray-600' : 'border-white'}`} />
+                        ) : (
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                            🚗
+                          </div>
+                        )}
                         <div>
-                          <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name} {selectedCar.model}</h4>
+                          <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name}</h4>
                           <p className={`text-xs mt-0.5 font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {selectedCar.plateNumber}
+                            {selectedCar.licensePlate}
                           </p>
                         </div>
                       </div>
@@ -454,12 +458,16 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                           }}
                           className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? (isDark ? 'bg-[#0f766e]/20' : 'bg-teal-50') : (isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50')}`}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                            🚗
-                          </div>
+                          {c.avatar ? (
+                            <img src={c.avatar} alt={c.name} className={`w-10 h-10 rounded-full object-cover border shadow-sm ${isDark ? 'border-gray-600' : 'border-gray-200'}`} />
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                              🚗
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
-                            <h4 className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name} {c.model}</h4>
-                            <p className={`text-[11px] truncate font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{c.plateNumber}</p>
+                            <h4 className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name}</h4>
+                            <p className={`text-[11px] truncate font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{c.licensePlate}</p>
                           </div>
                           {carId === c.id && <CheckIcon className="w-5 h-5 text-[#0f766e]" />}
                         </div>
