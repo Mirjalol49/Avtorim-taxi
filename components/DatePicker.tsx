@@ -19,8 +19,8 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
         if (isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
             setDropdownPos({
-                top: rect.bottom + window.scrollY + 8,
-                left: rect.left + window.scrollX + rect.width / 2,
+                top: rect.bottom + 8,
+                left: rect.left + rect.width / 2,
                 width: rect.width,
             });
         }
