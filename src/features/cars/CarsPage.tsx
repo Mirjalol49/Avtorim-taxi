@@ -105,13 +105,13 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                                     )}
                                     
                                     {/* Overlay Gradient for readability (stronger at bottom for text) */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none transition-opacity duration-300 group-hover:opacity-90" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/10 pointer-events-none transition-opacity duration-300 group-hover:opacity-90" />
 
                                     {/* Top badges (Driver & Docs) */}
                                     <div className="absolute top-5 left-5 flex flex-wrap gap-2 pr-5">
                                         {car.assignedDriverId && assignedDriver(car) && (
-                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-sm">
-                                                <div className="w-5 h-5 rounded-full overflow-hidden bg-white/20 flex-shrink-0 border border-white/20">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 text-white text-xs font-semibold shadow-sm">
+                                                <div className="w-5 h-5 rounded-full overflow-hidden bg-white/20 flex-shrink-0 border border-white/10">
                                                     {assignedDriver(car)!.avatar ? (
                                                         <img src={assignedDriver(car)!.avatar} alt="Driver" className="w-full h-full object-cover" />
                                                     ) : (
@@ -122,7 +122,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                                             </div>
                                         )}
                                         {docCount(car) > 0 && (
-                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-sm">
+                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 text-white text-xs font-semibold shadow-sm">
                                                 <span>📄</span>
                                                 <span>{docCount(car)}</span>
                                             </div>
@@ -135,7 +135,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                                             <h3 className="text-white font-extrabold text-2xl tracking-tight truncate drop-shadow-md mb-2">
                                                 {car.name}
                                             </h3>
-                                            <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 shadow-sm">
+                                            <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white/5 backdrop-blur-lg border border-white/10 shadow-sm">
                                                 <span className="text-xs font-mono font-bold text-white tracking-widest drop-shadow-sm">
                                                     {car.licensePlate}
                                                 </span>
@@ -146,11 +146,11 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                                         {userRole === 'admin' && (
                                             <div className="flex items-center gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out">
                                                 <button onClick={(e) => { e.stopPropagation(); onEditCar(car); }}
-                                                    className="p-3 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 text-white hover:bg-white/30 active:scale-95 transition-all shadow-sm">
+                                                    className="p-3 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm">
                                                     <EditIcon className="w-5 h-5" />
                                                 </button>
                                                 <button onClick={(e) => { e.stopPropagation(); onDeleteCar(car.id); }}
-                                                    className="p-3 rounded-2xl bg-red-500/80 backdrop-blur-md border border-red-500/30 text-white hover:bg-red-500 active:scale-95 transition-all shadow-sm">
+                                                    className="p-3 rounded-2xl bg-red-500/50 backdrop-blur-lg border border-red-500/20 text-white hover:bg-red-500/80 active:scale-95 transition-all shadow-sm">
                                                     <TrashIcon className="w-5 h-5" />
                                                 </button>
                                             </div>
