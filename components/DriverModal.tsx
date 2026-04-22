@@ -21,9 +21,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [extraPhone, setExtraPhone] = useState('');
   const [avatar, setAvatar] = useState('');
   const [status, setStatus] = useState<DriverStatus>(DriverStatus.OFFLINE);
   const [monthlySalary, setMonthlySalary] = useState('');
+  const [notes, setNotes] = useState('');
   const [documents, setDocuments] = useState<DriverDocument[]>([]);
   const [docError, setDocError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,17 +59,21 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     if (isOpen && editingDriver) {
       setName(decodeHtml(editingDriver.name));
       setPhone(editingDriver.phone);
+      setExtraPhone(editingDriver.extraPhone ?? '');
       setAvatar(editingDriver.avatar);
       setStatus(editingDriver.status);
       setMonthlySalary(editingDriver.monthlySalary ? editingDriver.monthlySalary.toString() : '');
+      setNotes(editingDriver.notes ?? '');
       setDocuments(editingDriver.documents ?? []);
       setSelectedCarId(currentAssignedCar?.id ?? '');
     } else if (isOpen) {
       setName('');
       setPhone('+998 ');
+      setExtraPhone('');
       setAvatar('');
       setStatus(DriverStatus.OFFLINE);
       setMonthlySalary('');
+      setNotes('');
       setDocuments([]);
       setSelectedCarId('');
       setError(null);
@@ -113,8 +119,10 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         id: editingDriver?.id,
         name,
         phone,
+        extraPhone,
         avatar,
         status,
+        notes,
         monthlySalary: salaryValue,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
@@ -272,9 +280,20 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>{t('phone')} <span className="text-red-500">*</span></label>
+              <input type="tel" required value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 90 123 45 67" />
+            </div>
+            <div>
+              <label className={labelClass}>Qo'shimcha telefon</label>
+              <input type="tel" value={extraPhone} onChange={(e) => setExtraPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 " />
+            </div>
+          </div>
+
           <div>
-            <label className={labelClass}>{t('phone')} <span className="text-red-500">*</span></label>
-            <input type="tel" required value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 90 123 45 67" />
+            <label className={labelClass}>Eslatmalar (Ixtiyoriy)</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder="Haydovchi haqida qo'shimcha ma'lumot..."></textarea>
           </div>
 
           {/* Car assignment picker */}

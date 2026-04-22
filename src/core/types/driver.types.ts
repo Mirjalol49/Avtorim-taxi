@@ -33,5 +33,7 @@ export interface Driver extends Lockable {
     rating: number;
     isDeleted?: boolean;
     documents?: DriverDocument[];
+    notes?: string;
+    extraPhone?: string;
     createdAt?: number;
 }

@@ -158,6 +158,8 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
                     monthlySalary: r.monthly_salary ?? 0,
                     dailyPlan: r.daily_plan ?? 750000,
                     telegram: r.telegram ?? '',
+                    notes: r.notes ?? '',
+                    extraPhone: r.extra_phone ?? '',
                     isDeleted: r.is_deleted ?? false,
                     location: r.location ?? { lat: 0, lng: 0, heading: 0 },
                     documents: r.documents ?? [],
@@ -191,6 +193,8 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
             monthly_salary: (driver as any).monthlySalary ?? 0,
             daily_plan: (driver as any).dailyPlan ?? 750000,
             telegram: (driver as any).telegram ?? null,
+            notes: (driver as any).notes ?? null,
+            extra_phone: (driver as any).extraPhone ?? null,
             is_deleted: false,
             location: driver.location ?? null,
             documents: (driver as any).documents ?? [],
@@ -215,6 +219,8 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).monthlySalary !== undefined) payload.monthly_salary = (driver as any).monthlySalary;
     if ((driver as any).dailyPlan !== undefined) payload.daily_plan = (driver as any).dailyPlan;
     if ((driver as any).telegram !== undefined) payload.telegram = (driver as any).telegram;
+    if ((driver as any).notes !== undefined) payload.notes = (driver as any).notes;
+    if ((driver as any).extraPhone !== undefined) payload.extra_phone = (driver as any).extraPhone;
     if ((driver as any).isDeleted !== undefined) payload.is_deleted = (driver as any).isDeleted;
     if (driver.location !== undefined) payload.location = driver.location;
     if ((driver as any).documents !== undefined) payload.documents = (driver as any).documents;

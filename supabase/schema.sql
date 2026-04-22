@@ -124,6 +124,8 @@ CREATE TABLE drivers (
     daily_plan           NUMERIC(12, 2) NOT NULL DEFAULT 750000,
     weekly_target        NUMERIC(12, 2),
     telegram             TEXT,
+    notes                TEXT,
+    extra_phone          TEXT,
     is_deleted           BOOLEAN NOT NULL DEFAULT FALSE,
     location             JSONB,
     last_location_update BIGINT,
