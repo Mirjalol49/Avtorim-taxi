@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import { DayOff } from '../../../services/daysOffService';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
 import { UsersIcon } from '../../../components/Icons';

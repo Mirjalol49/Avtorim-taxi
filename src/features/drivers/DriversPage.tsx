@@ -9,7 +9,6 @@ import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { useAuth } from '../auth/hooks/useAuth';
 import { calcDriverDebt } from './utils/debtUtils';
-import { DayOff, getDaysOffSet } from '../../../services/daysOffService';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -20,7 +19,6 @@ interface DriversPageProps {
     isDataLoading: boolean;
     userRole: 'admin' | 'viewer';
     fleetId?: string;
-    daysOff: DayOff[];
     onUpdateStatus: (id: string, status: DriverStatus) => void;
     onEditDriver: (driver: Driver) => void;
     onDeleteDriver: (id: string) => void;
@@ -29,7 +27,7 @@ interface DriversPageProps {
 }
 
 const DriversPage: React.FC<DriversPageProps> = ({
-    drivers, cars, transactions, isDataLoading, userRole, fleetId, daysOff,
+    drivers, cars, transactions, isDataLoading, userRole, fleetId,
     onUpdateStatus, onEditDriver, onDeleteDriver, onAddDriver, theme,
 }) => {
     const { t } = useTranslation();
@@ -40,7 +38,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
         let totalDebt = 0, totalIncome = 0, todayIncome = 0;
         drivers.filter(d => !d.isDeleted).forEach(d => {
             const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
-            const daysOffSet = getDaysOffSet(daysOff, d.id);
+            const daysOffSet = new Set<string>();
             const s = calcDriverDebt(d, car, transactions, daysOffSet);
             // Only aggregate if netDebt is positive (meaning they owe money)
             // Overpayments (credit balances <= 0) don't offset total fleet owed debt
@@ -49,7 +47,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
             todayIncome += s.todayIncome;
         });
         return { totalDebt, totalIncome, todayIncome };
-    }, [drivers, cars, transactions, daysOff]);
+    }, [drivers, cars, transactions]);
 
     const {
         searchQuery, setSearchQuery,
@@ -163,7 +161,6 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                                 driver={driver}
                                                 car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
                                                 transactions={transactions}
-                                                daysOff={daysOff}
                                                 fleetId={fleetId || ''}
                                                 theme={theme}
                                                 userRole={userRole}

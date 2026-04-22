@@ -260,7 +260,6 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 theme={theme}
                 monthData={selectedMonthData as unknown as DriverPlanMonthInfo}
                 transactions={transactions}
-                daysOff={daysOff}
                 onDayClick={onDayClick}
             />
         </div>

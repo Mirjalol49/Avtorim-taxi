@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
-import { DayOff, toDateKey } from '../../../../services/daysOffService';
+import { toDateKey } from '../../../../services/daysOffService';
 import { calcDriverDebt } from '../../drivers/utils/debtUtils';
 
-export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[], daysOff: DayOff[]) => {
+export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[]) => {
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
 
     // Dashboard view mode state (chart/grid)
@@ -77,11 +77,9 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
                 dailyPlan = driverCars[0].dailyPlan;
             }
 
-            const isDayOff = daysOff.some(d => d.driverId === driver.id && d.dateKey === todayDateKey);
-            
             // Reusing debt utility logic
             const driverCar = driverCars[0] || null;
-            const daysOffSet = new Set(daysOff.filter(d => d.driverId === driver.id).map(d => d.dateKey));
+            const daysOffSet = new Set<string>(); // Mock an empty set to comply with debtUtils architecture
             const info = calcDriverDebt(driver, driverCar, transactions, daysOffSet);
 
             // Dashboard leverages the newly unified `netDebt` architecture 
@@ -94,14 +92,10 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
                 todayIncome: info.todayIncome,
                 todayDebt: info.todayDebt,
                 totalDebt: adjustedTotalDebt,
-                isDayOff
+                isDayOff: false
             };
 
-            if (isDayOff) {
-                // Ignore DayOff drivers from this specific "who paid today" widget maybe, or mark them as completed
-                // Let's add them to completed as "Dam olish kuni"
-                completed.push(stat);
-            } else if (info.todayIncome >= (info.dailyPlan > 0 ? info.dailyPlan : 1)) {
+            if (info.todayIncome >= (info.dailyPlan > 0 ? info.dailyPlan : 1)) {
                 // If they met their daily plan (or paid something when plan is missing), they are completed
                 completed.push(stat);
             } else {
@@ -116,7 +110,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         pending.sort((a, b) => a.todayDebt - b.todayDebt);
 
         return { completed, pending };
-    }, [nonDeletedDrivers, cars, transactions, daysOff]);
+    }, [nonDeletedDrivers, cars, transactions]);
 
     return {
         timeFilter, setTimeFilter,

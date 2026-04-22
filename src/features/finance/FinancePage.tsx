@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import { DayOff } from '../../../services/daysOffService';
 import { useFinanceStats } from './hooks/useFinanceStats';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import DatePicker from '../../../components/DatePicker';

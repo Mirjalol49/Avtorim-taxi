@@ -13,7 +13,6 @@ import {
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import { DayOff } from '../../../services/daysOffService';
 import Lottie from 'lottie-react';
 import badgeAnimation from '../../../Images/badge.json';
 
@@ -21,7 +20,6 @@ interface DashboardPageProps {
     transactions: Transaction[];
     drivers: Driver[];
     cars: Car[];
-    daysOff: DayOff[];
     isDataLoading: boolean;
     // language, t removed - using hooks
     theme: 'light' | 'dark';
@@ -32,7 +30,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     transactions,
     drivers,
     cars,
-    daysOff,
     isDataLoading,
     theme,
     isMobile
@@ -47,7 +44,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         dashboardPage, setDashboardPage, dashboardItemsPerPage,
         totalIncome, totalExpense, netProfit,
         chartData, todayStats
-    } = useDashboardStats(transactions, drivers, cars, daysOff);
+    } = useDashboardStats(transactions, drivers, cars);
 
     return (
         <div className="space-y-6">

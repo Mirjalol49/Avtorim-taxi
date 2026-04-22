@@ -4,8 +4,7 @@ import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
-import { DayOffPanel } from './DayOffPanel';
+import { XIcon } from '../../../../components/Icons';
 import { XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
 
@@ -15,7 +14,6 @@ interface DriverRowProps {
     driver: Driver;
     car?: Car | null;
     transactions: Transaction[];
-    daysOff: DayOff[];
     fleetId: string;
     theme: 'light' | 'dark';
     userRole: 'admin' | 'viewer';
@@ -26,14 +24,11 @@ interface DriverRowProps {
 }
 
 export const DriverRow: React.FC<DriverRowProps> = ({
-    driver, car, transactions, daysOff, fleetId, theme, userRole, onEdit, onDelete,
+    driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
-    const [showDayOff, setShowDayOff] = useState(false);
     const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const docs = driver.documents ?? [];
-    const daysOffSet = getDaysOffSet(daysOff, driver.id);
-    const usedThisMonth = countUsedThisMonth(daysOff, driver.id);
     const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
@@ -115,24 +110,10 @@ export const DriverRow: React.FC<DriverRowProps> = ({
             <td className="p-4">
                 <div className="space-y-0.5">
                     {/* Day off badge */}
-                    <button
-                        onClick={e => { e.stopPropagation(); if (userRole === 'admin') setShowDayOff(true); }}
-                        title="Dam olish kunlari"
-                        className={`mb-1 flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-                            usedThisMonth >= MONTHLY_ALLOWANCE
-                                ? 'bg-red-500/10 text-red-400'
-                                : 'bg-teal-500/10 text-teal-500 hover:bg-teal-500/20'
-                        }`}
-                    >
-                        🏖️ {usedThisMonth}/{MONTHLY_ALLOWANCE}
-                    </button>
-                    {daysOffSet.has(new Date().toISOString().split('T')[0]) && (
-                        <p className="text-xs font-semibold text-teal-400">🏖️ Bugun dam olish</p>
-                    )}
-                    {explicitDailyPlan > 0 && !daysOffSet.has(new Date().toISOString().split('T')[0]) && (
+                    {explicitDailyPlan > 0 && (
                         <p className={`text-xs font-mono font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Reja: {fmt(explicitDailyPlan)} UZS</p>
                     )}
-                    {explicitDailyPlan === 0 && !daysOffSet.has(new Date().toISOString().split('T')[0]) && (
+                    {explicitDailyPlan === 0 && (
                         <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>—</span>
                     )}
                 </div>
@@ -154,16 +135,6 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                 </td>
             )}
         </tr>
-
-        {/* Day Off Panel */}
-        {showDayOff && (
-            <DayOffPanel
-                driver={{ id: driver.id, name: driver.name, fleetId }}
-                daysOff={daysOff}
-                theme={theme}
-                onClose={() => setShowDayOff(false)}
-            />
-        )}
 
         {/* ImageViewer Modal Portal */}
         {viewingDoc && createPortal(
