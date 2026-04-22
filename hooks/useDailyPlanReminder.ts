@@ -78,16 +78,15 @@ export const useDailyPlanReminder = ({
     adminUserName,
     enabled,
 }: UseDailyPlanReminderOptions) => {
-    // Keep up-to-date data in a ref so the timeout closure always sees fresh data
-    const dataRef = useRef({ drivers, cars, transactions, daysOff, adminUserId, adminUserName });
+    const dataRef = useRef({ drivers, cars, transactions, adminUserId, adminUserName });
     useEffect(() => {
-        dataRef.current = { drivers, cars, transactions, daysOff, adminUserId, adminUserName };
+        dataRef.current = { drivers, cars, transactions, adminUserId, adminUserName };
     });
 
     const fire = async () => {
         if (!enabled || !adminUserId) return;
 
-        const { drivers, cars, transactions, daysOff, adminUserId: aId, adminUserName: aName } = dataRef.current;
+        const { drivers, cars, transactions, adminUserId: aId, adminUserName: aName } = dataRef.current;
 
         const today = todayDateKey();
         const lastSent = localStorage.getItem(STORAGE_KEY);
