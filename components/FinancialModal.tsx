@@ -101,7 +101,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       tx.status !== PaymentStatus.DELETED
     );
     const totalDebt = driverTxs
-      .filter(tx => tx.type === TransactionType.DEBT)
+      .filter(tx => tx.type === 'DEBT')
       .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
     if (totalDebt === 0) return null;
     const totalIncome = driverTxs
@@ -199,7 +199,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     }
 
     // Normal transaction
-    if ((type === TransactionType.EXPENSE || type === TransactionType.DEBT) && !description.trim()) return;
+    if (type === TransactionType.EXPENSE && !description.trim()) return;
     if (paymentMethod === 'card' && !chequeImage) {
       setChequeError("Karta orqali to'lovda chek rasmi talab qilinadi");
       return;
@@ -691,18 +691,17 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Comment */}
             <div>
               <label className={labelClass}>
-                {!isDayOff ? (type === TransactionType.DEBT ? 'Qarz sababi' : t('comment')) : 'Izoh (ixtiyoriy)'}
-                {!isDayOff && (type === TransactionType.EXPENSE || type === TransactionType.DEBT) && <span className="text-red-500 ml-1 text-lg leading-none align-middle">*</span>}
+                {!isDayOff ? t('comment') : 'Izoh (ixtiyoriy)'}
+                {!isDayOff && type === TransactionType.EXPENSE && <span className="text-red-500 ml-1 text-lg leading-none align-middle">*</span>}
               </label>
               <textarea
-                required={!isDayOff && (type === TransactionType.EXPENSE || type === TransactionType.DEBT)}
+                required={!isDayOff && type === TransactionType.EXPENSE}
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 className={`${inputClass} min-h-[100px] resize-none shadow-inner`}
                 placeholder={
                   isDayOff ? 'Masalan: Shaxsiy sabab'
-                  : type === TransactionType.DEBT ? 'Masalan: Mashina zarari, jarima...'
-                  : type === TransactionType.EXPENSE ? t('commentPlaceholder') || 'Masalan: Benzin uchun'
+                  : type === TransactionType.EXPENSE ? t('commentPlaceholder') || 'Masalan: Benzin uchun, Mashina zarari, jarima...'
                   : t('commentPlaceholder') || 'Ixtiyoriy yozuv'
                 }
               />
@@ -719,7 +718,6 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               className={`px-8 py-3 text-white rounded-xl text-sm font-black shadow-xl transition-all transform active:scale-95 disabled:opacity-60 flex-1 md:flex-none ${
                 isDayOff ? 'bg-teal-500 hover:bg-teal-400 shadow-teal-500/20'
                 : type === TransactionType.INCOME ? 'bg-[#0f766e] hover:bg-teal-600 shadow-[#0f766e]/30'
-                : type === TransactionType.DEBT ? 'bg-orange-500 hover:bg-orange-400 shadow-orange-500/30'
                 : 'bg-red-500 hover:bg-red-400 shadow-red-500/30'
               }`}>
               {dayOffSaving ? '...' : isDayOff ? '🏖️ Dam olish saqlash' : t('save')}
