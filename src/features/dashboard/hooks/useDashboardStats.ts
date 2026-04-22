@@ -79,8 +79,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
             // Reusing debt utility logic
             const driverCar = driverCars[0] || null;
-            const daysOffSet = new Set<string>(); // Mock an empty set to comply with debtUtils architecture
-            const info = calcDriverDebt(driver, driverCar, transactions, daysOffSet);
+            const info = calcDriverDebt(driver, driverCar, transactions);
 
             // Dashboard leverages the newly unified `netDebt` architecture 
             // which automatically evaluates missing days dynamically from origin.

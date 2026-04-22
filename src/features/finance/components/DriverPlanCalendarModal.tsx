@@ -68,9 +68,18 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 tx.timestamp <= todaysEndObj
             ).reduce((acc, tx) => acc + Math.abs(tx.amount), 0);
 
+            const isDayOff = transactions.some(tx => 
+                tx.driverId === monthData.driver.id &&
+                tx.type === 'DAY_OFF' &&
+                tx.timestamp >= todaysStartObj &&
+                tx.timestamp <= todaysEndObj
+            );
+
             let status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' = 'UNPAID';
             
-            if (date.getTime() > new Date().getTime()) {
+            if (isDayOff) {
+                status = 'DAY_OFF';
+            } else if (date.getTime() > new Date().getTime()) {
                 status = 'FUTURE'; // Can't owe for tomorrow yet
             } else if (sumTushum >= monthData.dailyPlan) {
                 status = 'PAID';

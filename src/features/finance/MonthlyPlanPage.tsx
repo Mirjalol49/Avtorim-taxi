@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import DatePicker from '../../../components/DatePicker';
+import MonthPicker from '../../../components/MonthPicker';
 import CustomSelect from '../../../components/CustomSelect';
 import { UsersIcon } from '../../../components/Icons';
 import { DriverPlanSummary } from './DriverPlanSummary';
@@ -42,7 +42,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
         <div className="space-y-6 animate-fadeIn">
             {/* Header Filters */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
-                <DatePicker
+                <MonthPicker
                     label={t('selectMonth') || 'Oyni tanlang'}
                     value={selectedDate}
                     onChange={(date) => setSelectedDate(date)}

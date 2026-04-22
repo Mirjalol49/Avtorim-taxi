@@ -9,7 +9,8 @@ export enum PaymentStatus {
 export enum TransactionType {
     INCOME = 'INCOME',
     EXPENSE = 'EXPENSE',
-    DEBT = 'DEBT'
+    DEBT = 'DEBT',
+    DAY_OFF = 'DAY_OFF'
 }
 
 export enum FineStatus {

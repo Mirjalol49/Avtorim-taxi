@@ -181,6 +181,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
     // Normal transaction
     if (type === TransactionType.EXPENSE && !description.trim()) return;
+    
+    let finalAmount = Number(amount);
+    if (type === TransactionType.DAY_OFF) finalAmount = 0;
+    
+    if (type !== TransactionType.DAY_OFF && (isNaN(finalAmount) || finalAmount <= 0)) {
+        return;
+    }
     if (paymentMethod === 'card' && !chequeImage) {
       setChequeError("Karta orqali to'lovda chek rasmi talab qilinadi");
       return;
@@ -193,7 +200,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     const isCarExpense = type === TransactionType.EXPENSE && expenseTarget === 'car';
 
     onSubmit({
-      amount: Number(amount),
+      amount: finalAmount,
       type,
       description,
       ...(isCarExpense ? { carId } : { driverId }),
@@ -475,10 +482,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             <DatePicker label={t('time') || 'Date'} value={date} onChange={setDate} theme={theme} />
 
                 {/* Type toggle */}
-                <div className={`grid grid-cols-2 p-1 rounded-2xl border shadow-inner ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                <div className={`grid grid-cols-3 p-1 rounded-2xl border shadow-inner ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
                   {[
-                    { t: TransactionType.INCOME,  label: t('income'),  color: 'bg-[#0f766e]' },
-                    { t: TransactionType.EXPENSE, label: t('expense'), color: 'bg-red-500' },
+                    { t: TransactionType.INCOME,  label: t('income') || 'Kirim',  color: 'bg-[#0f766e]' },
+                    { t: TransactionType.EXPENSE, label: t('expense') || 'Chiqim', color: 'bg-red-500' },
+                    { t: TransactionType.DAY_OFF, label: t('dayOff') || 'Dam olish', color: 'bg-blue-500' },
                   ].map(item => (
                     <button key={item.t} type="button" onClick={() => { setType(item.t); if(item.t === TransactionType.INCOME) setExpenseTarget('driver'); }}
                       className={`py-3 rounded-xl text-sm font-bold transition-all ${
@@ -510,12 +518,14 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 )}
 
                 {/* Amount */}
-                <div>
-                  <label className={labelClass}>{t('amount')} (UZS)</label>
-                  <input type="text" required inputMode="numeric"
-                    value={displayAmount} onChange={handleAmountChange}
-                    className={`${inputClass} font-mono text-3xl font-black tracking-tight h-16 shadow-inner`} placeholder="0" />
-                </div>
+                {type !== TransactionType.DAY_OFF && (
+                  <div>
+                    <label className={labelClass}>{t('amount')} (UZS)</label>
+                    <input type="text" required inputMode="numeric"
+                      value={displayAmount} onChange={handleAmountChange}
+                      className={`${inputClass} font-mono text-3xl font-black tracking-tight h-16 shadow-inner`} placeholder="0" />
+                  </div>
+                )}
           </div>
         </div>
 
@@ -531,8 +541,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
           <div className="px-6 pb-6 space-y-6 flex-1 -mt-2">
                 {/* ── Payment method ───────────────────────────── */}
-                <div>
-                  <label className={labelClass}>To'lov usuli</label>
+                {type !== TransactionType.DAY_OFF && (
+                  <div>
+                    <label className={labelClass}>To'lov usuli</label>
                   <div className="grid grid-cols-2 gap-3">
                     {PAYMENT_METHODS.map(pm => (
                       <button
@@ -555,6 +566,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     ))}
                   </div>
                 </div>
+                )}
 
                 {/* ── Cheque card (only when card selected) ───── */}
                 {paymentMethod === 'card' && (
