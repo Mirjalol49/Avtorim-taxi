@@ -70,9 +70,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
 
             let status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' = 'UNPAID';
             
-            if (isDayOff) {
-                status = 'DAY_OFF';
-            } else if (date.getTime() > new Date().getTime()) {
+            if (date.getTime() > new Date().getTime()) {
                 status = 'FUTURE'; // Can't owe for tomorrow yet
             } else if (sumTushum >= monthData.dailyPlan) {
                 status = 'PAID';
