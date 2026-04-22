@@ -153,7 +153,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">{t('driver')}</th>
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Avtomobil</th>
                                             <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Hujjatlar</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Reja / Qarz</th>
+                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">Reja / Dam olish</th>
                                             {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 text-center">{t('actions')}</th>}
                                         </tr>
                                     </thead>

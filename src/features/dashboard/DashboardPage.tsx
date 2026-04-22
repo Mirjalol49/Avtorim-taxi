@@ -356,10 +356,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                     <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-teal-500' : 'text-teal-600'}`}>Bugun to'ladi:</span>
                                                     <span className="text-xs font-bold text-teal-500/80 font-mono">+{(driver.todayIncome || 0).toLocaleString()} UZS</span>
                                                 </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-orange-500' : 'text-orange-600'}`}>Kutilayotgan qoldiq:</span>
-                                                    <span className="text-xs font-bold text-orange-400 font-mono">{(driver.todayDebt || 0).toLocaleString()} UZS</span>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>

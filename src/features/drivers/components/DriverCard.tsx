@@ -4,7 +4,6 @@ import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { calcDriverDebt, calcExplicitDebt } from '../utils/debtUtils';
 import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
 import { DayOffPanel } from './DayOffPanel';
 import { XIcon } from '../../../../components/Icons';
