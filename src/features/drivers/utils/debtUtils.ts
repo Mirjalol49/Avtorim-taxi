@@ -68,9 +68,9 @@ export function calcDriverDebt(
     });
 
     const todayKey = dateKey(Date.now());
-    const todayIsDayOff = daysOffSet.has(todayKey);
+    const todayIsDayOff = false; // Deprecated manual day off
     const todayIncome = incomeByDate[todayKey] ?? 0;
-    const todayDebt = (dailyPlan > 0 && !todayIsDayOff)
+    const todayDebt = (dailyPlan > 0)
         ? Math.max(0, dailyPlan - todayIncome)
         : 0;
 
@@ -97,17 +97,27 @@ export function calcDriverDebt(
     const fallbackStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime(); // max 1 month lookback if no data
     const trackingStartMs = driver.createdAt ? driver.createdAt : Math.min(earliestTx, fallbackStart);
     
+    // Group days by month to apply 2 days off per month
+    const daysPerMonth: Record<string, number> = {};
     let currentMs = trackingStartMs;
     const todayMs = Date.now();
 
     while (currentMs <= todayMs) {
-        const dKey = dateKey(currentMs);
-        if (!daysOffSet.has(dKey)) {
-            workingDays++;
-            totalAutoDebt += dailyPlan;
-        }
+        const d = new Date(currentMs);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const monthKey = `${y}-${m}`;
+        
+        daysPerMonth[monthKey] = (daysPerMonth[monthKey] || 0) + 1;
         currentMs += 86400000; // Increment 1 day safely
     }
+
+    // Apply rule: max 2 days off per month
+    Object.values(daysPerMonth).forEach(daysInMonth => {
+        const activeDays = Math.max(0, daysInMonth - 2);
+        workingDays += activeDays;
+        totalAutoDebt += (activeDays * dailyPlan);
+    });
 
     // Final Net calculation: How much they strictly owe
     // Net Debt = Auto Required Plans + Explicit Penalities - What they paid
