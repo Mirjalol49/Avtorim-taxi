@@ -112,7 +112,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 onClick={onClose}
             />
             
-            <div className={`relative w-full max-w-4xl h-full max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-300 ${
+            <div className={`relative w-full max-w-6xl h-full max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-300 ${
                 isDark ? 'bg-[#111827] border-gray-700' : 'bg-white border-gray-200'
             }`}>
                 
@@ -198,45 +198,43 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 <div key={day} className={`text-center text-[10px] sm:text-xs font-semibold py-1 uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{day}</div>
                             ))}
                         </div>
-                        <div className="grid grid-cols-7 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
                             {Array(padDays).fill(null).map((_, i) => (
-                                <div key={`pad-${i}`} className="w-full pt-[100%] rounded-2xl bg-transparent" />
+                                <div key={`pad-${i}`} className="w-full min-h-[80px] sm:min-h-[100px] md:min-h-[120px] rounded-2xl bg-transparent" />
                             ))}
                             {days.map((d) => {
                                 let styleClass = '';
                                 if (d.status === 'FUTURE') styleClass = isDark ? 'bg-[#1C1C1E] text-gray-600' : 'bg-gray-50 text-gray-400';
-                                else if (d.status === 'DAY_OFF') styleClass = isDark ? 'bg-[#142A27] text-teal-500' : 'bg-teal-50 text-teal-600';
-                                else if (d.status === 'PAID') styleClass = isDark ? 'bg-[#182C1B] text-green-500' : 'bg-green-50 text-green-600';
-                                else if (d.status === 'PARTIAL') styleClass = isDark ? 'bg-[#2E2011] text-orange-500' : 'bg-orange-50 text-orange-600';
-                                else if (d.status === 'UNPAID') styleClass = isDark ? 'bg-[#2C181A] text-red-500' : 'bg-red-50 text-red-600';
+                                else if (d.status === 'DAY_OFF') styleClass = isDark ? 'bg-[#142A27] text-teal-500 border border-teal-500/20' : 'bg-teal-50 text-teal-600 border border-teal-200';
+                                else if (d.status === 'PAID') styleClass = isDark ? 'bg-[#182C1B] text-green-500 border border-green-500/20' : 'bg-green-50 text-green-600 border border-green-200';
+                                else if (d.status === 'PARTIAL') styleClass = isDark ? 'bg-[#2E2011] text-orange-500 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200';
+                                else if (d.status === 'UNPAID') styleClass = isDark ? 'bg-[#2C181A] text-red-500 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200';
 
                                 return (
-                                    <div key={d.day} className={`relative pt-[100%] rounded-xl sm:rounded-2xl transition-all ${styleClass}`}>
-                                        <div className="absolute inset-0 p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden">
-                                            <span className={`font-semibold text-xs sm:text-sm ${styleClass.includes('FUTURE') ? 'opacity-50' : 'opacity-90'}`}>{d.day}</span>
-                                            
-                                            {/* Details inside grid square */}
-                                            {d.status === 'DAY_OFF' && (
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-2">
-                                                    <span className="text-3xl sm:text-4xl drop-shadow-md opacity-90 transition-transform duration-300">🏝️</span>
-                                                </div>
-                                            )}
-                                            
-                                            {d.status !== 'FUTURE' && d.status !== 'DAY_OFF' && (
-                                                <div className="mt-auto space-y-0.5 relative z-10 flex flex-col items-start">
-                                                    {d.income > 0 && (
-                                                        <div className="text-[9px] sm:text-[11px] font-medium tracking-tight opacity-90 truncate w-full">
-                                                            {fmt(d.income)}
-                                                        </div>
-                                                    )}
-                                                    {d.debt > 0 && (
-                                                        <div className={`text-[9px] sm:text-[11px] font-medium tracking-tight opacity-80 truncate w-full ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-                                                            -{fmt(d.debt)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
+                                    <div key={d.day} className={`flex flex-col justify-between p-2 sm:p-3 md:p-4 min-h-[80px] sm:min-h-[100px] md:min-h-[120px] rounded-xl sm:rounded-2xl transition-all hover:scale-[1.02] cursor-default ${styleClass}`}>
+                                        <span className={`font-semibold text-xs sm:text-sm md:text-base ${styleClass.includes('FUTURE') ? 'opacity-50' : 'opacity-90'}`}>{d.day}</span>
+                                        
+                                        {/* Details inside grid square */}
+                                        {d.status === 'DAY_OFF' && (
+                                            <div className="flex-1 flex items-center justify-center mt-1">
+                                                <span className="text-3xl sm:text-4xl drop-shadow-md opacity-90 transition-transform duration-300 hover:scale-110">🏝️</span>
+                                            </div>
+                                        )}
+                                        
+                                        {d.status !== 'FUTURE' && d.status !== 'DAY_OFF' && (
+                                            <div className="mt-auto space-y-0.5 pt-2 flex flex-col items-start w-full">
+                                                {d.income > 0 && (
+                                                    <div className="text-[10px] sm:text-xs md:text-sm font-medium tracking-tight opacity-90 truncate w-full">
+                                                        {fmt(d.income)}
+                                                    </div>
+                                                )}
+                                                {d.debt > 0 && (
+                                                    <div className={`text-[10px] sm:text-xs md:text-sm font-bold tracking-tight opacity-90 truncate w-full ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                        -{fmt(d.debt)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             })}
