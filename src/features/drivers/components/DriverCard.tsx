@@ -60,7 +60,12 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                     <h3 className={`font-bold text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h3>
-                    <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.phone}</p>
+                    <div className="flex flex-col mt-0.5 gap-0.5">
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.phone}</p>
+                        {driver.extraPhone && (
+                            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.extraPhone}</p>
+                        )}
+                    </div>
                 </div>
                 {/* Right side badges */}
                 <div className="flex-shrink-0 flex flex-col items-end gap-1">
