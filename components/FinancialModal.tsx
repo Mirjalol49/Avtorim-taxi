@@ -238,8 +238,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const selectedCar = cars.find(c => c.id === carId);
   const filteredCars = cars.filter(c =>
     c.name.toLowerCase().includes(carSearch.toLowerCase()) ||
-    c.model.toLowerCase().includes(carSearch.toLowerCase()) ||
-    c.plateNumber.toLowerCase().includes(carSearch.toLowerCase())
+    c.licensePlate.toLowerCase().includes(carSearch.toLowerCase())
   );
 
   // ── Render ───────────────────────────────────────────────────────────────────

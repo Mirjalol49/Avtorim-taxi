@@ -37,6 +37,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     const { t, i18n } = useTranslation();
     // Ensure accurate type for helpers that expect specific Language string
     const currentLanguage = (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
+    const months = t('months', { returnObjects: true }) as string[];
+    const weekdays = t('weekdays', { returnObjects: true }) as string[];
 
     const {
         timeFilter, setTimeFilter,
@@ -280,19 +282,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div>
                         <h3 className={`text-xl sm:text-2xl font-black flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             <span className="text-3xl">📅</span>
-                            Bugungi Holat
+                            {t('todayStatus')}
                         </h3>
                         <p className={`mt-2 font-medium capitalize ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {new Date().getDate()} {['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'][new Date().getMonth()]},{' '}
-                            {['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'][new Date().getDay()]}
+                            {new Date().getDate()} {months[new Date().getMonth()]},{' '}
+                            {weekdays[new Date().getDay()]}
                         </p>
                     </div>
                     <div className="mt-4 sm:mt-0 flex gap-4">
                         <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-[#0f766e]/20 text-teal-400 border-[#0f766e]/40' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                            ✓ {todayStats.completed.length} To'ladi
+                            ✓ {todayStats.completed.length} {t('paid')}
                         </div>
                         <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
-                            ⏳ {todayStats.pending.length} Kutilmoqda
+                            ⏳ {todayStats.pending.length} {t('statusPending')}
                         </div>
                     </div>
                 </div>
@@ -302,7 +304,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="space-y-4">
                         <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
                             <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]" />
-                            To'lovni bajarganlar
+                            {t('driversPaidToday')}
                         </h4>
 
                         {todayStats.completed.length > 0 ? (
@@ -315,7 +317,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <div className="min-w-0 pr-8">
                                             <div className={`text-sm font-bold truncate pr-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
                                             <div className={`text-[11px] mt-0.5 truncate font-medium ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                                                {driver.isDayOff ? '🏖️ Dam olish kuni' : `To'ladi: +${(driver.todayIncome || 0).toLocaleString()} UZS`}
+                                                {driver.isDayOff ? `🏖️ ${t('dayOffLabel')}` : `${t('todayPaidLabel')}: +${(driver.todayIncome || 0).toLocaleString()} UZS`}
                                             </div>
                                         </div>
                                         {/* Golden Badge JSON attached to the right */}
@@ -327,7 +329,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             </div>
                         ) : (
                             <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                Hali hech kim to'lov qilmadi
+                                {t('noPaymentsYet')}
                             </div>
                         )}
                     </div>
@@ -336,7 +338,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="space-y-4">
                         <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
                             <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
-                            Kutilayotgan to'lovlar
+                            {t('pendingPaymentsLabel')}
                         </h4>
 
                         {todayStats.pending.length > 0 ? (
@@ -350,7 +352,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
                                             <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                                                 <div className="flex items-center justify-between opacity-80">
-                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-teal-500' : 'text-teal-600'}`}>Bugun to'ladi:</span>
+                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-teal-500' : 'text-teal-600'}`}>{t('todayPaidLabel')}:</span>
                                                     <span className="text-xs font-bold text-teal-500/80 font-mono">+{(driver.todayIncome || 0).toLocaleString()} UZS</span>
                                                 </div>
                                             </div>
@@ -360,7 +362,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             </div>
                         ) : (
                             <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                Barcha haydovchilar to'lovni bajardi
+                                {t('allPaidToday')}
                             </div>
                         )}
                     </div>

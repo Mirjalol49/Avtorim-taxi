@@ -168,8 +168,8 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                         selectedYear={analyticsYear}
                         onYearChange={setAnalyticsYear}
                         theme={theme}
-                        startYear={new Date().getFullYear()}
-                        endYear={new Date().getFullYear() + 10}
+                        startYear={new Date().getFullYear() - 5}
+                        endYear={new Date().getFullYear()}
                     />
                 </div>
                 <div className="flex-1 -mx-2 sm:mx-0">

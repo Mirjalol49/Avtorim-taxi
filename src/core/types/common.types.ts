@@ -15,4 +15,7 @@ export enum Tab {
     FINANCE = 'FINANCE',
     SALARY = 'SALARY',
     ROLES = 'ROLES',
+    CARS = 'CARS',
+    NOTES = 'NOTES',
+    MONTHLY_PLAN = 'MONTHLY-PLAN',
 }
