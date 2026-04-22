@@ -90,72 +90,101 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {paginated.map(car => (
-                            <div key={car.id} className={card}>
-                                {/* Car image */}
-                                <div className={`relative ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                            <div key={car.id} className={`group relative rounded-[2rem] overflow-hidden transition-all duration-300 ${theme === 'dark'
+                                ? 'bg-[#1a222e] border border-gray-800 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/50'
+                                : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-xl hover:shadow-gray-200/50'}`}>
+                                
+                                {/* Image Container */}
+                                <div className={`relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden ${theme === 'dark' ? 'bg-[#111827]' : 'bg-gray-100'}`}>
                                     {car.avatar ? (
-                                        <img src={car.avatar} alt={car.name} className="w-full object-contain max-h-56" />
+                                        <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
-                                            <CameraIcon className={`w-12 h-12 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
+                                            <CameraIcon className={`w-12 h-12 ${theme === 'dark' ? 'text-gray-700' : 'text-gray-300'}`} />
                                         </div>
                                     )}
-                                    {/* Assigned driver badge */}
-                                    {car.assignedDriverId && assignedDriver(car) && (
-                                        <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full truncate max-w-[60%]">
-                                            {assignedDriver(car)!.name.split(' ')[0]}
-                                        </span>
-                                    )}
-                                    {/* Doc badge */}
-                                    {docCount(car) > 0 && (
-                                        <span className="absolute top-2 right-2 bg-[#0f766e] text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                            {docCount(car)} hujjat
-                                        </span>
-                                    )}
-                                </div>
+                                    
+                                    {/* Overlay Gradient for readability (stronger at bottom for text) */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none transition-opacity duration-300 group-hover:opacity-90" />
 
-                                {/* Info */}
-                                <div className="p-4">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0">
-                                            <p className={`font-bold text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                                {car.name}
-                                            </p>
-                                            <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-lg text-xs font-mono font-semibold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                                                {car.licensePlate}
-                                            </span>
-                                        </div>
-                                        {userRole === 'admin' && (
-                                            <div className="flex gap-1 flex-shrink-0">
-                                                <button onClick={() => onEditCar(car)}
-                                                    className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
-                                                    <EditIcon className="w-4 h-4" />
-                                                </button>
-                                                <button onClick={() => onDeleteCar(car.id)}
-                                                    className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}>
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
+                                    {/* Top badges (Driver & Docs) */}
+                                    <div className="absolute top-5 left-5 flex flex-wrap gap-2 pr-5">
+                                        {car.assignedDriverId && assignedDriver(car) && (
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-sm">
+                                                <div className="w-5 h-5 rounded-full overflow-hidden bg-white/20 flex-shrink-0 border border-white/20">
+                                                    {assignedDriver(car)!.avatar ? (
+                                                        <img src={assignedDriver(car)!.avatar} alt="Driver" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-[10px]">👤</div>
+                                                    )}
+                                                </div>
+                                                <span className="truncate max-w-[120px]">{assignedDriver(car)!.name.split(' ')[0]}</span>
+                                            </div>
+                                        )}
+                                        {docCount(car) > 0 && (
+                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-sm">
+                                                <span>📄</span>
+                                                <span>{docCount(car)}</span>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Documents list */}
-                                    {(car.documents ?? []).length > 0 && (
-                                        <div className={`mt-3 pt-3 border-t space-y-1 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                                    {/* Bottom Info (Overlaid on image) */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-white font-extrabold text-2xl tracking-tight truncate drop-shadow-md mb-2">
+                                                {car.name}
+                                            </h3>
+                                            <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 shadow-sm">
+                                                <span className="text-xs font-mono font-bold text-white tracking-widest drop-shadow-sm">
+                                                    {car.licensePlate}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        {userRole === 'admin' && (
+                                            <div className="flex items-center gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out">
+                                                <button onClick={(e) => { e.stopPropagation(); onEditCar(car); }}
+                                                    className="p-3 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 text-white hover:bg-white/30 active:scale-95 transition-all shadow-sm">
+                                                    <EditIcon className="w-5 h-5" />
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); onDeleteCar(car.id); }}
+                                                    className="p-3 rounded-2xl bg-red-500/80 backdrop-blur-md border border-red-500/30 text-white hover:bg-red-500 active:scale-95 transition-all shadow-sm">
+                                                    <TrashIcon className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Documents list (Below image, clean) */}
+                                {(car.documents ?? []).length > 0 && (
+                                    <div className={`p-5 pt-4 ${theme === 'dark' ? 'bg-[#1a222e]' : 'bg-white'}`}>
+                                        <div className="space-y-2">
                                             {car.documents!.map((doc, i) => (
                                                 <a key={i}
                                                     href={doc.data}
                                                     download={doc.type === 'application/pdf' ? doc.name : undefined}
                                                     target={doc.type !== 'application/pdf' ? '_blank' : undefined}
                                                     rel="noreferrer"
-                                                    className="flex items-center gap-2 text-xs text-[#0f766e] hover:underline truncate">
-                                                    <span>{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
-                                                    <span className="truncate">{doc.name}</span>
+                                                    className={`group/doc flex items-center gap-4 p-3 rounded-2xl transition-all ${theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-50'}`}>
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors shadow-sm ${theme === 'dark' ? 'bg-gray-800 group-hover/doc:bg-teal-500/20' : 'bg-gray-100 group-hover/doc:bg-teal-50'}`}>
+                                                        <span className="text-base">{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className={`text-sm font-semibold truncate transition-colors ${theme === 'dark' ? 'text-gray-200 group-hover/doc:text-teal-400' : 'text-gray-800 group-hover/doc:text-teal-700'}`}>
+                                                            {doc.name}
+                                                        </p>
+                                                        <p className={`text-[10px] font-medium uppercase tracking-wider mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                            {doc.type === 'application/pdf' ? 'PDF Hujjat' : 'Rasm'}
+                                                        </p>
+                                                    </div>
                                                 </a>
                                             ))}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
