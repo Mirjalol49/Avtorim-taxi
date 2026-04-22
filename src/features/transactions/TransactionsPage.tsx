@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transaction, Driver, TransactionType, PaymentStatus, UserRole, AdminUser, Language } from '../../core/types';
+import { Transaction, Driver, TransactionType, PaymentStatus, UserRole, AdminUser, Language, Car } from '../../core/types';
 import { useFinanceStats } from '../finance/hooks/useFinanceStats';
 import * as firestoreService from '../../../services/firestoreService';
 import { formatNumberSmart } from '../../../utils/formatNumber';
@@ -16,6 +16,7 @@ import { useToast } from '../../../components/ToastNotification';
 interface TransactionsPageProps {
     transactions: Transaction[];
     drivers: Driver[];
+    cars?: Car[];
     userRole: UserRole;
     adminUser: AdminUser | null;
     theme: 'dark' | 'light';
@@ -25,6 +26,7 @@ interface TransactionsPageProps {
 export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     transactions: allTransactions,
     drivers,
+    cars = [],
     userRole,
     adminUser,
     theme
@@ -211,7 +213,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                 </tr>
                             ) : (
                                 paginatedTransactions.map(tx => {
-                                    const driver = drivers.find(d => d.id === tx.driverId);
+                                    const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
+                                    const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
                                     return (
                                         <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
@@ -241,28 +244,51 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
-                                                        {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className="w-full h-full bg-gray-300" />}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-sm font-bold ${driver?.isDeleted ? (theme === 'dark' ? 'text-red-400' : 'text-red-600') : (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>
-                                                                {driver?.name || 'Deleted'}
-                                                            </span>
-                                                            {driver?.isDeleted && (
-                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
-                                                                    {t('deleted')}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        {driver?.isDeleted && (
-                                                            <div className={`text-xs flex gap-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                                <span>{driver.licensePlate}</span>
-                                                                <span>•</span>
-                                                                <span>{driver.phone}</span>
+                                                    {car ? (
+                                                        <>
+                                                            <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center text-lg ${theme === 'dark' ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-100'}`}>
+                                                                🚗
                                                             </div>
-                                                        )}
-                                                    </div>
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                                                        {car.name} {car.model}
+                                                                    </span>
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase ${theme === 'dark' ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-gray-100 text-gray-500'}`}>
+                                                                        Mashina
+                                                                    </span>
+                                                                </div>
+                                                                <div className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                                    {car.plateNumber}
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                                                                {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`text-sm font-bold ${driver?.isDeleted ? (theme === 'dark' ? 'text-red-400' : 'text-red-600') : (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>
+                                                                        {driver?.name || tx.driverName || 'Deleted'}
+                                                                    </span>
+                                                                    {driver?.isDeleted && (
+                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
+                                                                            {t('deleted')}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {(driver?.isDeleted || driver) && (
+                                                                    <div className={`text-xs flex gap-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                                        <span>{driver?.licensePlate}</span>
+                                                                        <span>•</span>
+                                                                        <span>{driver?.phone}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>

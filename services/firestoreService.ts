@@ -252,8 +252,10 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             .then(({ data }) => {
                 if (data) callback(data.map(r => ({
                     id: r.id,
-                    driverId: r.driver_id ?? '',
-                    driverName: r.driver_name ?? '',
+                    driverId: r.driver_id ?? undefined,
+                    driverName: r.driver_name ?? undefined,
+                    carId: r.car_id ?? undefined,
+                    carName: r.car_name ?? undefined,
                     amount: r.amount ?? 0,
                     type: r.type,
                     description: r.description ?? '',
@@ -287,6 +289,8 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleet
             fleet_id: fleetId ?? null,
             driver_id: tx.driverId ?? null,
             driver_name: tx.driverName ?? null,
+            car_id: tx.carId ?? null,
+            car_name: tx.carName ?? null,
             amount: tx.amount,
             type: tx.type,
             status: tx.status ?? 'ACTIVE',

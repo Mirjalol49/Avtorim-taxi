@@ -198,9 +198,18 @@ const AppContent: React.FC = () => {
   // --- ACTIONS ---
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
-      const driver = drivers.find(d => d.id === (data as any).driverId);
+      const driver = data.driverId ? drivers.find(d => d.id === data.driverId) : undefined;
+      const car = data.carId ? cars.find(c => c.id === data.carId) : undefined;
+
+      const payload: Omit<Transaction, 'id'> = {
+        ...data,
+      };
+
+      if (driver) payload.driverName = driver.name;
+      if (car) payload.carName = `${car.name} ${car.model} — ${car.plateNumber}`;
+
       await firestoreService.addTransaction(
-        { ...data, driverName: driver?.name ?? '' } as any,
+        payload as any,
         adminUser?.id
       );
       triggerRefresh();
@@ -800,6 +809,7 @@ const AppContent: React.FC = () => {
               <TransactionsPage
                 transactions={transactions}
                 drivers={drivers}
+                cars={cars}
                 userRole={userRole}
                 adminUser={adminUser}
                 theme={theme}
@@ -830,6 +840,7 @@ const AppContent: React.FC = () => {
         }}
         onSubmit={handleAddTransaction}
         drivers={nonDeletedDrivers}
+        cars={cars}
         transactions={transactions}
         theme={theme}
         fleetId={carsFleetId}

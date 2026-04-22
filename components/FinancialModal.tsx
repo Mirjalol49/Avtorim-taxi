@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next';
 import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon } from './Icons';
 import DatePicker from './DatePicker';
-import { Driver, Transaction, TransactionType } from '../src/core/types';
+import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
 import {
   addDayOff,
@@ -28,6 +28,7 @@ interface FinancialModalProps {
   onClose: () => void;
   onSubmit: (data: Omit<Transaction, 'id'>) => void;
   drivers: Driver[];
+  cars?: Car[];
   transactions?: Transaction[];
   theme: 'light' | 'dark';
   fleetId?: string;
@@ -39,7 +40,7 @@ interface FinancialModalProps {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const FinancialModal: React.FC<FinancialModalProps> = ({
-  isOpen, onClose, onSubmit, drivers, transactions = [], theme, fleetId = '', daysOff = [],
+  isOpen, onClose, onSubmit, drivers, cars = [], transactions = [], theme, fleetId = '', daysOff = [],
   initialType, initialDriverId, initialDate
 }) => {
   const { t } = useTranslation();
@@ -47,9 +48,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
   // Transaction fields
   const [type, setType] = useState<TransactionType>(initialType || TransactionType.INCOME);
+  const [expenseTarget, setExpenseTarget] = useState<'driver' | 'car'>('driver');
   const [driverId, setDriverId] = useState<string>(initialDriverId || '');
+  const [carId, setCarId] = useState<string>('');
   const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false);
+  const [isCarDropdownOpen, setIsCarDropdownOpen] = useState(false);
   const [driverSearch, setDriverSearch] = useState('');
+  const [carSearch, setCarSearch] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -172,7 +177,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   // ── Submit ────────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!driverId || !drivers.find(d => d.id === driverId)) return;
+    if (type !== TransactionType.EXPENSE || expenseTarget === 'driver') {
+      if (!driverId || !drivers.find(d => d.id === driverId)) return;
+    } else {
+      if (!carId || !cars.find(c => c.id === carId)) return;
+    }
 
     // Day off path
     if (isDayOff) {
@@ -200,11 +209,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     const now = new Date();
     timestamp.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
 
+    const isCarExpense = type === TransactionType.EXPENSE && expenseTarget === 'car';
+
     onSubmit({
       amount: Number(amount),
       type,
       description,
-      driverId,
+      ...(isCarExpense ? { carId } : { driverId }),
       timestamp: timestamp.getTime(),
       // Extra fields stored as any — backend accepts them
       ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
@@ -213,12 +224,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   };
 
   const resetAndClose = () => {
-    setAmount(''); setDisplayAmount(''); setDescription('');    setDriverId('');
-    setIsDriverDropdownOpen(false);
-    setDriverSearch('');
-    setAmount('');
+    setAmount(''); setDisplayAmount(''); setDescription('');
+    setDriverId(''); setCarId('');
+    setIsDriverDropdownOpen(false); setIsCarDropdownOpen(false);
+    setDriverSearch(''); setCarSearch('');
     setDate(new Date()); setIsDayOff(false); setDayOffError(null);
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
+    setExpenseTarget('driver');
     onClose();
   };
 
@@ -233,6 +245,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     d.name.toLowerCase().includes(driverSearch.toLowerCase()) || 
     (d.carModel && d.carModel.toLowerCase().includes(driverSearch.toLowerCase())) ||
     (d.licensePlate && d.licensePlate.toLowerCase().includes(driverSearch.toLowerCase()))
+  );
+
+  const selectedCar = cars.find(c => c.id === carId);
+  const filteredCars = cars.filter(c =>
+    c.name.toLowerCase().includes(carSearch.toLowerCase()) ||
+    c.model.toLowerCase().includes(carSearch.toLowerCase()) ||
+    c.plateNumber.toLowerCase().includes(carSearch.toLowerCase())
   );
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -263,16 +282,47 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Rich Driver Selector (Apple Style) */}
+            {/* Toggle between Driver and Car (only for Expenses) */}
+            {type === TransactionType.EXPENSE && (
+              <div className={`flex p-1 mb-4 rounded-xl border ${isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                <button
+                  type="button"
+                  onClick={() => { setExpenseTarget('driver'); setCarId(''); setIsCarDropdownOpen(false); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    expenseTarget === 'driver'
+                      ? (isDark ? 'bg-gray-700 text-white shadow' : 'bg-white text-gray-900 shadow')
+                      : (isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')
+                  }`}
+                >
+                  Haydovchi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setExpenseTarget('car'); setDriverId(''); setIsDriverDropdownOpen(false); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    expenseTarget === 'car'
+                      ? (isDark ? 'bg-gray-700 text-white shadow' : 'bg-white text-gray-900 shadow')
+                      : (isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')
+                  }`}
+                >
+                  Mashina
+                </button>
+              </div>
+            )}
+
+            {/* Rich Driver / Car Selector (Apple Style) */}
             <div className="w-full relative">
               <div className="flex items-center gap-2 mb-3">
                 <UsersIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                 <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {t('driver')}
+                  {expenseTarget === 'driver' ? t('driver') : 'Mashina'}
                 </span>
               </div>
 
-              {!isDriverDropdownOpen && selectedDriver ? (
+              {expenseTarget === 'driver' ? (
+                <>
+                  {/* --- DRIVER SELECTOR --- */}
+                  {!isDriverDropdownOpen && selectedDriver ? (
                 <div 
                   onClick={() => setIsDriverDropdownOpen(true)}
                   className={`cursor-pointer p-4 rounded-2xl border transition-all active:scale-[0.98] group ${isDark ? 'bg-gray-800/80 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm hover:shadow'}`}
@@ -351,6 +401,84 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                   )}
                 </div>
+                )}
+                </>
+              ) : (
+                <>
+                  {/* --- CAR SELECTOR --- */}
+                  {!isCarDropdownOpen && selectedCar ? (
+                  <div 
+                    onClick={() => setIsCarDropdownOpen(true)}
+                    className={`cursor-pointer p-4 rounded-2xl border transition-all active:scale-[0.98] group ${isDark ? 'bg-gray-800/80 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm hover:shadow'}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                          🚗
+                        </div>
+                        <div>
+                          <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name} {selectedCar.model}</h4>
+                          <p className={`text-xs mt-0.5 font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {selectedCar.plateNumber}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isDark ? 'bg-gray-700/50 text-gray-400 group-hover:text-white' : 'bg-gray-100 text-gray-500 group-hover:text-gray-900'} transition-colors`}>
+                        <ChevronDownIcon className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`rounded-2xl border overflow-hidden transition-all animate-in slide-in-from-top-2 ${isDark ? 'bg-gray-800/90 border-gray-700 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50/80'}`}>
+                      <div className="relative">
+                        <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <input 
+                          type="text" 
+                          value={carSearch}
+                          onChange={(e) => setCarSearch(e.target.value)}
+                          placeholder="Mashinani qidirish..."
+                          autoFocus
+                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm transition-all ${isDark ? 'bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0f766e]' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:ring-2 focus:ring-[#0f766e] focus:border-transparent'}`}
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[260px] overflow-y-auto divide-y dark:divide-gray-700/50 custom-scrollbar">
+                      {filteredCars.map(c => (
+                        <div 
+                          key={c.id}
+                          onClick={() => {
+                            setCarId(c.id);
+                            setIsCarDropdownOpen(false);
+                            setCarSearch('');
+                          }}
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? (isDark ? 'bg-[#0f766e]/20' : 'bg-teal-50') : (isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50')}`}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                            🚗
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name} {c.model}</h4>
+                            <p className={`text-[11px] truncate font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{c.plateNumber}</p>
+                          </div>
+                          {carId === c.id && <CheckIcon className="w-5 h-5 text-[#0f766e]" />}
+                        </div>
+                      ))}
+                      {filteredCars.length === 0 && (
+                        <div className="p-6 text-center text-sm text-gray-500">Mashina topilmadi</div>
+                      )}
+                    </div>
+                    {selectedCar && (
+                      <div 
+                        onClick={() => setIsCarDropdownOpen(false)}
+                        className={`p-3 text-center border-t cursor-pointer text-sm font-medium transition-colors ${isDark ? 'border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700/50' : 'border-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}
+                      >
+                        Bekor qilish
+                      </div>
+                    )}
+                  </div>
+                )}
+                </>
               )}
             </div>
 
@@ -393,13 +521,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {!isDayOff && (
               <>
                 {/* Type toggle */}
-                <div className={`grid grid-cols-3 p-1 rounded-2xl border shadow-inner ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                <div className={`grid grid-cols-2 p-1 rounded-2xl border shadow-inner ${isDark ? 'bg-[#111827] border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
                   {[
                     { t: TransactionType.INCOME,  label: t('income'),  color: 'bg-[#0f766e]' },
                     { t: TransactionType.EXPENSE, label: t('expense'), color: 'bg-red-500' },
-                    { t: TransactionType.DEBT,    label: 'Qarz',       color: 'bg-orange-500' },
                   ].map(item => (
-                    <button key={item.t} type="button" onClick={() => setType(item.t)}
+                    <button key={item.t} type="button" onClick={() => { setType(item.t); if(item.t === TransactionType.INCOME) setExpenseTarget('driver'); }}
                       className={`py-3 rounded-xl text-sm font-bold transition-all ${
                         type === item.t ? `${item.color} text-white shadow-lg scale-[1.02]`
                         : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
