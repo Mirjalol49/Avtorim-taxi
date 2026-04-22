@@ -35,12 +35,13 @@ interface FinancialModalProps {
   daysOff?: DayOff[];
   initialType?: TransactionType;
   initialDriverId?: string;
+  initialDate?: Date;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit, drivers, transactions = [], theme, fleetId = '', daysOff = [],
-  initialType, initialDriverId
+  initialType, initialDriverId, initialDate
 }) => {
   const { t } = useTranslation();
   const isDark = theme === 'dark';
@@ -58,8 +59,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     if (isOpen) {
       setType(initialType || TransactionType.INCOME);
       if (initialDriverId) setDriverId(initialDriverId);
+      if (initialDate) setDate(initialDate);
     }
-  }, [isOpen, initialType, initialDriverId]);
+  }, [isOpen, initialType, initialDriverId, initialDate]);
 
   // Payment method + cheque
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');

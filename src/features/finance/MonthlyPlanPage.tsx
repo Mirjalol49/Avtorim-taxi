@@ -15,6 +15,7 @@ interface MonthlyPlanPageProps {
     daysOff: DayOff[];
     theme: 'dark' | 'light';
     isMobile?: boolean;
+    onDayClick?: (driverId: string, date: Date) => void;
 }
 
 export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
@@ -23,7 +24,8 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     cars,
     daysOff,
     theme,
-    isMobile = false
+    isMobile = false,
+    onDayClick
 }) => {
     const { t } = useTranslation();
     
@@ -75,6 +77,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                 endDate={endDate}
                 filterDriverId={driverId}
                 theme={theme}
+                onDayClick={onDayClick}
             />
         </div>
     );

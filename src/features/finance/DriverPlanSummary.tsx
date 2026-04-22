@@ -30,6 +30,7 @@ interface DriverPlanSummaryProps {
     endDate: Date;
     filterDriverId: string; // 'all' or a driver id
     theme: 'dark' | 'light';
+    onDayClick?: (driverId: string, date: Date) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -73,7 +74,7 @@ const monthRange = (start: Date, end: Date): string[] => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
-    drivers, cars, transactions, daysOff, startDate, endDate, filterDriverId, theme,
+    drivers, cars, transactions, daysOff, startDate, endDate, filterDriverId, theme, onDayClick
 }) => {
     const isDark = theme === 'dark';
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
@@ -269,6 +270,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 monthData={selectedMonthData as unknown as DriverPlanMonthInfo}
                 transactions={transactions}
                 daysOff={daysOff}
+                onDayClick={onDayClick}
             />
         </div>
     );

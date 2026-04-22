@@ -109,6 +109,7 @@ const AppContent: React.FC = () => {
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txInitialDriverId, setTxInitialDriverId] = useState<string | undefined>(undefined);
   const [txInitialType, setTxInitialType] = useState<TransactionType | undefined>(undefined);
+  const [txInitialDate, setTxInitialDate] = useState<Date | undefined>(undefined);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
@@ -786,6 +787,11 @@ const AppContent: React.FC = () => {
                 daysOff={allDaysOff}
                 theme={theme}
                 isMobile={isMobile}
+                onDayClick={(driverId, date) => {
+                  setTxInitialDriverId(driverId);
+                  setTxInitialDate(date);
+                  setIsTxModalOpen(true);
+                }}
               />
             } />
 
@@ -820,6 +826,7 @@ const AppContent: React.FC = () => {
             setIsTxModalOpen(false);
             setTxInitialDriverId(undefined);
             setTxInitialType(undefined);
+            setTxInitialDate(undefined);
         }}
         onSubmit={handleAddTransaction}
         drivers={nonDeletedDrivers}
@@ -829,6 +836,7 @@ const AppContent: React.FC = () => {
         daysOff={allDaysOff}
         initialDriverId={txInitialDriverId}
         initialType={txInitialType}
+        initialDate={txInitialDate}
       />
 
       <DriverModal

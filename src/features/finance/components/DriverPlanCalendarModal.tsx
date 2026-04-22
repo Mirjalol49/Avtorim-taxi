@@ -27,6 +27,7 @@ interface Props {
     monthData: DriverPlanMonthInfo | null;
     transactions: Transaction[]; // Only needs to be driver's transactions or all
     daysOff: DayOff[];
+    onDayClick?: (driverId: string, date: Date) => void;
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
@@ -36,7 +37,7 @@ const MONTHS_UZ = [
     'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
 ];
 
-export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, daysOff }) => {
+export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, daysOff, onDayClick }) => {
     const isDark = theme === 'dark';
 
     // Disable body scroll when modal open
@@ -211,7 +212,17 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 else if (d.status === 'UNPAID') styleClass = isDark ? 'bg-[#2C181A] text-red-500 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200';
 
                                 return (
-                                    <div key={d.day} className={`flex flex-col justify-between p-2 sm:p-3 md:p-4 min-h-[80px] sm:min-h-[100px] md:min-h-[120px] rounded-xl sm:rounded-2xl transition-all hover:scale-[1.02] cursor-default ${styleClass}`}>
+                                    <div 
+                                        key={d.day} 
+                                        onClick={() => {
+                                            if (onDayClick && d.status !== 'FUTURE') {
+                                                const [year, month] = monthData.monthKey.split('-').map(Number);
+                                                const date = new Date(year, month - 1, d.day);
+                                                onDayClick(monthData.driver.id, date);
+                                            }
+                                        }}
+                                        className={`flex flex-col justify-between p-2 sm:p-3 md:p-4 min-h-[80px] sm:min-h-[100px] md:min-h-[120px] rounded-xl sm:rounded-2xl transition-all hover:scale-[1.02] ${d.status !== 'FUTURE' ? 'cursor-pointer hover:shadow-lg' : 'cursor-default'} ${styleClass}`}
+                                    >
                                         <span className={`font-semibold text-xs sm:text-sm md:text-base ${styleClass.includes('FUTURE') ? 'opacity-50' : 'opacity-90'}`}>{d.day}</span>
                                         
                                         {/* Details inside grid square */}
