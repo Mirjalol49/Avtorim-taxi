@@ -9,9 +9,11 @@ import CustomSelect from '../../../components/CustomSelect';
 import {
     TrashIcon,
     UsersIcon,
-    FilterIcon
+    FilterIcon,
+    EditIcon
 } from '../../../components/Icons';
 import { useToast } from '../../../components/ToastNotification';
+import FinancialModal from '../../../components/FinancialModal';
 
 interface TransactionsPageProps {
     transactions: Transaction[];
@@ -49,6 +51,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
     const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
 
@@ -67,6 +70,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 console.error('Failed to delete transaction:', error);
                 addToast('error', 'Failed to delete transaction');
             }
+        }
+    };
+
+    const handleEditSubmit = async (data: Omit<Transaction, 'id'>, id?: string) => {
+        if (!id) return;
+        try {
+            await firestoreService.updateTransaction(id, data);
+            addToast('success', 'Transaction updated successfully');
+            setEditingTransaction(null);
+        } catch (error) {
+            console.error('Failed to update transaction:', error);
+            addToast('error', 'Failed to update transaction');
         }
     };
 
@@ -322,9 +337,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 {userRole === 'admin' && (
-                                                    <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}>
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button onClick={() => setEditingTransaction(tx)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
+                                                            <EditIcon className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}>
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </td>
                                         </tr>
@@ -415,6 +435,19 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         />
                     </div>
                 </div>
+            )}
+
+            {/* Edit Transaction Modal */}
+            {editingTransaction && (
+                <FinancialModal
+                    isOpen={true}
+                    onClose={() => setEditingTransaction(null)}
+                    onSubmit={handleEditSubmit}
+                    drivers={drivers}
+                    cars={cars}
+                    theme={theme}
+                    initialTransaction={editingTransaction}
+                />
             )}
         </div>
     );

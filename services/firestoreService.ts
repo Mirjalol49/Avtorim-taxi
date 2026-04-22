@@ -313,6 +313,23 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleet
     return data.id as string;
 };
 
+export const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    const tx = updates as any;
+    const payload: any = {};
+    if (tx.amount !== undefined) payload.amount = tx.amount;
+    if (tx.type !== undefined) payload.type = tx.type;
+    if (tx.description !== undefined) payload.description = tx.description;
+    if (tx.paymentMethod !== undefined) payload.payment_method = tx.paymentMethod;
+    if (tx.chequeImage !== undefined) payload.cheque_image = tx.chequeImage;
+    if (tx.timestamp !== undefined) payload.timestamp_ms = tx.timestamp;
+
+    const { error } = await supabase
+        .from('transactions')
+        .update(payload)
+        .eq('id', id);
+    if (error) throw error;
+};
+
 export const deleteTransaction = async (id: string, auditInfo?: { adminName: string; reason?: string; transactionDetails?: any }, fleetId?: string) => {
     const { error } = await supabase.from('transactions').update({ status: 'DELETED' }).eq('id', id);
     if (error) throw error;

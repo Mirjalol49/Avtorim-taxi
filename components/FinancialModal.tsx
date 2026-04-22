@@ -21,7 +21,7 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<Transaction, 'id'>) => void;
+  onSubmit: (data: Omit<Transaction, 'id'>, id?: string) => void;
   drivers: Driver[];
   cars?: Car[];
   transactions?: Transaction[];
@@ -30,12 +30,13 @@ interface FinancialModalProps {
   initialType?: TransactionType;
   initialDriverId?: string;
   initialDate?: Date;
+  initialTransaction?: Transaction;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit, drivers, cars = [], transactions = [], theme, fleetId = '',
-  initialType, initialDriverId, initialDate
+  initialType, initialDriverId, initialDate, initialTransaction
 }) => {
   const { t } = useTranslation();
   const isDark = theme === 'dark';
@@ -57,13 +58,28 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   // Reset states when modal is opened or explicitly provided initials change
   useEffect(() => {
     if (isOpen) {
-      setType(initialType || TransactionType.INCOME);
-      if (initialDriverId) setDriverId(initialDriverId);
-      if (initialDate) setDate(initialDate);
-      setIsDriverDropdownOpen(!initialDriverId); // Open dropdown if no driver is pre-selected
-      setDriverSearch('');
+      if (initialTransaction) {
+        setType(initialTransaction.type);
+        setExpenseTarget(initialTransaction.driverId ? 'driver' : 'car');
+        setDriverId(initialTransaction.driverId || '');
+        setCarId(initialTransaction.carId || '');
+        setAmount(initialTransaction.amount.toString());
+        setDisplayAmount(formatNumberDisplay(initialTransaction.amount.toString()));
+        setDescription(initialTransaction.description || '');
+        setDate(new Date(initialTransaction.timestamp));
+        setPaymentMethod(initialTransaction.paymentMethod || 'cash');
+        setChequeImage(initialTransaction.chequeImage || null);
+        setIsDriverDropdownOpen(false);
+        setIsCarDropdownOpen(false);
+      } else {
+        setType(initialType || TransactionType.INCOME);
+        if (initialDriverId) setDriverId(initialDriverId);
+        if (initialDate) setDate(initialDate);
+        setIsDriverDropdownOpen(!initialDriverId); // Open dropdown if no driver is pre-selected
+        setDriverSearch('');
+      }
     }
-  }, [isOpen, initialType, initialDriverId, initialDate]);
+  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction]);
 
   // Payment method + cheque
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
@@ -184,7 +200,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       timestamp: timestamp.getTime(),
       // Extra fields stored as any — backend accepts them
       ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
-    } as any);
+    } as any, initialTransaction?.id);
     resetAndClose();
   };
 
@@ -238,7 +254,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           }`}>
             <h3 className={`font-bold text-lg flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               <span className="text-xl">💸</span>
-              {t('newTransaction')}
+              {initialTransaction ? 'Tahrirlash' : t('newTransaction')}
             </h3>
             {/* Close button (Mobile only) */}
             <button type="button" onClick={resetAndClose} className={`md:hidden transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
