@@ -96,15 +96,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
 
-                // Calculate explicit DAY_OFFs for this month (max 2)
-                const dayOffsThisMonth = transactions.filter(tx => 
-                    tx.driverId === driver.id && 
-                    tx.type === 'DAY_OFF' && 
-                    toMonthKey(new Date(tx.timestamp)) === mk
-                ).length;
-                
-                const appliedDayOffs = Math.min(2, dayOffsThisMonth);
-                const workingDays = Math.max(0, totalDays - appliedDayOffs);
+                // The global rule: every driver gets 2 days off per month automatically
+                const workingDays = Math.max(0, totalDays - 2);
                 const monthlyTarget = dailyPlan * workingDays;
 
 

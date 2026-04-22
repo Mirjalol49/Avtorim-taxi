@@ -97,34 +97,25 @@ export function calcDriverDebt(
     // Bounds tracking safely
     const fallbackStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime(); // max 1 month lookback if no data
     const trackingStartMs = driver.createdAt ? driver.createdAt : Math.min(earliestTx, fallbackStart);
-    
-    // Compute daysOffSet from DAY_OFF transactions, enforcing max 2 per month
-    const daysOffSet = new Set<string>();
-    const dayOffTxs = validTxs.filter(tx => tx.type === 'DAY_OFF').sort((a, b) => a.timestamp - b.timestamp);
-    const monthlyDayOffCount: Record<string, number> = {};
-
-    dayOffTxs.forEach(tx => {
-        const d = new Date(tx.timestamp);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const currentCount = monthlyDayOffCount[monthKey] || 0;
-        
-        if (currentCount < 2) {
-            monthlyDayOffCount[monthKey] = currentCount + 1;
-            daysOffSet.add(dateKey(tx.timestamp));
-        }
-    });
-
+    // Group days by month to apply 2 days off per month dynamically
+    const daysPerMonth: Record<string, number> = {};
     let currentMs = trackingStartMs;
     const todayMs = Date.now();
 
     while (currentMs <= todayMs) {
-        const dKey = dateKey(currentMs);
-        if (!daysOffSet.has(dKey)) {
-            workingDays++;
-            totalAutoDebt += dailyPlan;
-        }
+        const d = new Date(currentMs);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        
+        daysPerMonth[monthKey] = (daysPerMonth[monthKey] || 0) + 1;
         currentMs += 86400000; // Increment 1 day safely
     }
+
+    // Apply rule: max 2 days off per month automatically
+    Object.values(daysPerMonth).forEach(daysInMonth => {
+        const activeDays = Math.max(0, daysInMonth - 2);
+        workingDays += activeDays;
+        totalAutoDebt += (activeDays * dailyPlan);
+    });
 
     // Final Net calculation: How much they strictly owe
     // Net Debt = Auto Required Plans + Explicit Penalities - What they paid
