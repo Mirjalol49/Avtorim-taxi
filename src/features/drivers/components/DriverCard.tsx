@@ -4,8 +4,6 @@ import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { DayOff, getDaysOffSet, countUsedThisMonth, MONTHLY_ALLOWANCE } from '../../../../services/daysOffService';
-import { DayOffPanel } from './DayOffPanel';
 import { XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
 
@@ -13,7 +11,6 @@ interface DriverCardProps {
     driver: Driver;
     car?: Car | null;
     transactions: Transaction[];
-    daysOff: DayOff[];
     fleetId: string;
     theme: 'light' | 'dark';
     userRole: 'admin' | 'viewer';
@@ -27,13 +24,10 @@ const fmt = (n: number) =>
     new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
 export const DriverCard: React.FC<DriverCardProps> = ({
-    driver, car, transactions, daysOff, fleetId, theme, userRole, onEdit, onDelete,
+    driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
-    const [showDayOff, setShowDayOff] = useState(false);
     const [viewingDoc, setViewingDoc] = useState<string | null>(null);
-    const daysOffSet = getDaysOffSet(daysOff, driver.id);
-    const usedThisMonth = countUsedThisMonth(daysOff, driver.id);
     // Keep daily plan resolution
     const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
     const docs = driver.documents ?? [];
@@ -67,32 +61,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         )}
                     </div>
                 </div>
-                {/* Right side badges */}
-                <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                    {/* Day off badge */}
-                    <button
-                        onClick={e => { e.stopPropagation(); if (userRole === 'admin') setShowDayOff(true); }}
-                        title="Dam olish kunlari"
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-                            usedThisMonth >= MONTHLY_ALLOWANCE
-                                ? 'bg-red-500/10 text-red-400'
-                                : 'bg-teal-500/10 text-teal-500 hover:bg-teal-500/20'
-                        }`}
-                    >
-                        🏖️ {usedThisMonth}/{MONTHLY_ALLOWANCE}
-                    </button>
-                </div>
             </div>
-
-            {/* Today is day off banner */}
-            {daysOffSet.has(new Date().toISOString().split('T')[0]) && (
-                <div className={`mx-4 mb-2 rounded-xl px-3 py-2 flex items-center gap-2 ${
-                    theme === 'dark' ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'
-                }`}>
-                    <span>🏖️</span>
-                    <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>Bugun dam olish kuni</span>
-                </div>
-            )}
 
             {/* Daily plan stats */}
             {explicitDailyPlan > 0 && (
@@ -103,31 +72,47 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             )}
 
             {/* Attached car */}
-            <div className={`mx-4 mb-3 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                {car ? (
-                    <div className="flex items-center gap-3 p-2.5">
-                        <div className={`w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                            {car.avatar ? (
-                                <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                    <CameraIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
+            {car ? (
+                <div className={`group relative mx-4 mb-3 rounded-2xl overflow-hidden transition-all duration-300 ${theme === 'dark'
+                    ? 'bg-[#1a222e] border border-gray-800 hover:border-gray-700 hover:shadow-lg hover:shadow-black/40'
+                    : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-md hover:shadow-gray-200/50'}`}>
+                    
+                    {/* Image Container */}
+                    <div className={`relative h-24 sm:h-28 overflow-hidden ${theme === 'dark' ? 'bg-[#111827]' : 'bg-gray-100'}`}>
+                        {car.avatar ? (
+                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <CameraIcon className={`w-8 h-8 ${theme === 'dark' ? 'text-gray-700' : 'text-gray-300'}`} />
+                            </div>
+                        )}
+                        
+                        {/* Overlay Gradient for readability */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/5 pointer-events-none transition-opacity duration-300 group-hover:opacity-90" />
+
+                        {/* Bottom Info (Overlaid on image) */}
+                        <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-white font-extrabold text-lg tracking-tight truncate drop-shadow-md mb-1.5">
+                                    {car.name}
+                                </h3>
+                                <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/5 backdrop-blur-lg border border-white/10 shadow-sm">
+                                    <span className="text-[10px] font-mono font-bold text-white tracking-widest drop-shadow-sm">
+                                        {car.licensePlate}
+                                    </span>
                                 </div>
-                            )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Avtomobil</p>
-                            <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{car.name}</p>
-                            <span className={`inline-block text-xs font-mono px-1.5 py-0.5 rounded mt-0.5 ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{car.licensePlate}</span>
+                            </div>
                         </div>
                     </div>
-                ) : (
+                </div>
+            ) : (
+                <div className={`mx-4 mb-3 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
                     <div className={`flex items-center gap-2 p-2.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>
                         <CameraIcon className="w-4 h-4" />
                         <span className="text-xs">Avtomobil biriktirilmagan</span>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Documents */}
             {docs.length > 0 && (
@@ -171,16 +156,6 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                 </div>
             )}
         </div>
-
-        {/* Day Off Panel */}
-        {showDayOff && (
-            <DayOffPanel
-                driver={{ id: driver.id, name: driver.name, fleetId }}
-                daysOff={daysOff}
-                theme={theme}
-                onClose={() => setShowDayOff(false)}
-            />
-        )}
 
         {/* ImageViewer Modal Portal */}
         {viewingDoc && createPortal(

@@ -133,7 +133,6 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                     driver={driver}
                                     car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
                                     transactions={transactions}
-                                    daysOff={daysOff}
                                     fleetId={fleetId || ''}
                                     theme={theme}
                                     userRole={userRole}
