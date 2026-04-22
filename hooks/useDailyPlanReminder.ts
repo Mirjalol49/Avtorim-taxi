@@ -138,21 +138,17 @@ export const useDailyPlanReminder = ({
         const dateStr = `${now.getDate()} ${MONTHS_UZ[now.getMonth()]} ${now.getFullYear()}`;
 
         try {
-            const completedCount = completedDrivers.length;
             const behindCount = behindDrivers.length;
-            const dayOffCount = dayOffDrivers.length;
             
-            let message = `Kunlik hisobot:\n✅ To'laganlar: ${completedCount} ta\n❌ Qarzlar: ${behindCount} ta`;
-            if (dayOffCount > 0) message += `\n🏖️ Dam olish: ${dayOffCount} ta`;
-
-            if (behindCount > 0) {
-                const driverLines = behindDrivers
-                    .map((bd, i) => `${i + 1}. ${bd.driver.name} — ${fmtUZS(bd.missing)} UZS qoldi`)
-                    .join('\n');
-                message += `\n\nTo'lamaganlar ro'yxati:\n${driverLines}`;
-            } else {
-                message += `\n\n🎉 Barcha haydovchilar bugungi rejani bajarishdi!`;
+            if (behindCount === 0) {
+                localStorage.setItem(STORAGE_KEY, today);
+                return;
             }
+
+            const driverLines = behindDrivers
+                .map((bd, i) => `${i + 1}. ${bd.driver.name} — ${fmtUZS(bd.missing)} UZS qoldi`)
+                .join('\n');
+            const message = `Bugun ${behindCount} ta haydovchi kunlik rejani bajarmadi:\n\n${driverLines}`;
 
             await sendNotification(
                 {
