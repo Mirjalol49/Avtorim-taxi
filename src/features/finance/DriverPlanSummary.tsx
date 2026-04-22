@@ -161,31 +161,34 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                 <div
                                     key={row.driver.id}
                                     onClick={() => setSelectedMonthData(row)}
-                                    className={`relative p-5 rounded-3xl border shadow-sm transition-all duration-300 cursor-pointer active:scale-95 group overflow-hidden ${
+                                    className={`relative p-5 rounded-3xl border transition-all duration-400 cursor-pointer active:scale-[0.98] group overflow-hidden isolation-auto ${
                                         isDark 
-                                        ? 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-800/80 hover:border-gray-500 hover:shadow-lg' 
-                                        : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xl'
+                                        ? 'bg-[#1C1C1E]/40 border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-[#1C1C1E]/60 backdrop-blur-2xl' 
+                                        : 'bg-white/60 border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-white/80 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] backdrop-blur-xl'
                                     }`}
                                 >
+                                    {/* Inner Glow Pseudo-element */}
+                                    <div className="absolute inset-0 rounded-3xl border-[0.5px] border-white/10 dark:border-white/5 pointer-events-none" />
+
                                     {/* Top row: driver + status badge */}
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
+                                    <div className="flex items-start justify-between mb-5">
+                                        <div className="flex items-center gap-3.5">
                                             {row.driver.avatar ? (
                                                 <img
                                                     src={row.driver.avatar}
                                                     alt={row.driver.name}
-                                                    className={`w-11 h-11 rounded-full object-cover flex-shrink-0 border-2 transition-transform duration-300 group-hover:scale-105 ${isDark ? 'border-gray-600' : 'border-gray-200'}`}
+                                                    className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-gray-700/50' : 'border-gray-200/50 shadow-sm'}`}
                                                 />
                                             ) : (
-                                                <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0 transition-transform duration-300 group-hover:scale-105 ${isDark ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                                                     {row.driver.name.charAt(0)}
                                                 </div>
                                             )}
-                                            <div>
-                                                <p className={`font-bold text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            <div className="flex flex-col">
+                                                <p className={`font-semibold text-base tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                     {row.driver.name}
                                                 </p>
-                                                <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                     {row.car ? `${row.car.name} · ${row.car.licensePlate}` : 'Avtomobil yo\'q'}
                                                 </p>
                                             </div>
@@ -193,67 +196,59 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                         
                                     </div>
                                     
-                                    <div className="mb-4">
-                                        <div className={`px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm ${
+                                    <div className="mb-6">
+                                        <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide inline-flex items-center gap-1.5 backdrop-blur-md shadow-sm transition-colors ${
                                             row.remaining <= 0
-                                                ? isDark ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 justify-center text-green-700 border border-green-200'
+                                                ? isDark ? 'bg-green-500/15 text-green-400 border border-green-500/20' : 'bg-green-100/80 text-green-700 border border-green-200'
                                                 : row.paidPercent >= 60
-                                                ? isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                                : isDark ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-700 border border-red-200'
+                                                ? isDark ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' : 'bg-amber-100/80 text-amber-700 border border-amber-200'
+                                                : isDark ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-red-100/80 text-red-700 border border-red-200'
                                         }`}>
                                             {row.remaining <= 0
                                                 ? "✓ To'liq plan yopildi"
                                                 : row.paidPercent >= 60
-                                                ? '⚡ Yaxshi progres ('+row.paidPercent+'%)'
+                                                ? `⚡ Yaxshi progres (${row.paidPercent}%)`
                                                 : '⚠ To\'lovlar kechikmoqda'}
                                         </div>
                                     </div>
 
                                     {/* Primary Mini-Stats */}
-                                    <div className="grid grid-cols-2 gap-3 mb-5">
-                                        <div className={`p-3 rounded-2xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50/80 border border-gray-100'}`}>
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Oylik Reja</p>
-                                            <p className={`text-sm font-bold font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="flex flex-col gap-1">
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Oylik Reja</p>
+                                            <p className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
                                         </div>
-                                        <div className={`p-3 rounded-2xl ${
-                                            row.remaining <= 0
-                                                ? isDark ? 'bg-green-500/10' : 'bg-green-50 border border-green-100'
-                                                : isDark ? 'bg-gray-900/50' : 'bg-gray-50/80 border border-gray-100'
-                                        }`}>
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${row.remaining <= 0 ? 'text-green-500/70' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami To'ladi</p>
-                                            <p className={`text-sm font-bold font-mono ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
+                                        <div className="flex flex-col gap-1 items-start">
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-green-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami To'ladi</p>
+                                            <p className={`text-lg font-black tracking-tight ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
                                         </div>
                                     </div>
 
                                     {/* Progress bar */}
-                                    <div>
+                                    <div className="relative z-10">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {row.paidPercent}% bajarildi
                                             </span>
-                                            <span className={`text-xs font-black ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-500')}`}>
+                                            <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-500')}`}>
                                                 {row.remaining > 0
                                                     ? `Qoldi: ${fmt(row.remaining)}`
                                                     : `+${fmt(-row.remaining)}`}
                                             </span>
                                         </div>
-                                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200/80'}`}>
                                             <div
-                                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                                className={`h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
                                                     row.paidPercent >= 100 ? 'bg-green-500' :
-                                                    row.paidPercent >= 60  ? 'bg-amber-400' : 'bg-orange-500'
+                                                    row.paidPercent >= 60  ? 'bg-amber-400' : 'bg-red-500'
                                                 }`}
-                                                style={{ width: `${row.paidPercent}%` }}
+                                                style={{ width: `${Math.min(100, row.paidPercent)}%` }}
                                             />
                                         </div>
-                                        {row.daysOffCount > 0 && (
-                                            <p className="text-[10px] text-teal-500 mt-3 font-medium flex items-center justify-center opacity-80">
-                                                🏖️ Bu oyda {row.daysOffCount} ta dam olish kuni ajratilgan
-                                            </p>
-                                        )}
                                     </div>
                                     
-                                    <div className={`absolute bottom-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none opacity-[0.03] transition-opacity duration-300 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-500' : 'bg-orange-500'}`} />
+                                    {/* Subtle Background Glow */}
+                                    <div className={`absolute bottom-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none transition-opacity duration-700 ease-in-out mix-blend-screen opacity-0 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-400' : 'bg-blue-400'}`} />
                                 </div>
                             ))}
                         </div>
