@@ -51,28 +51,30 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
         const month = parseInt(mStr, 10) - 1; // 0-indexed for Date
         const daysInMonth = monthData.totalDays;
 
+        // Helper: get local date string YYYY-MM-DD for any timestamp
+        const toLocalDateStr = (ts: number) => {
+            const d = new Date(ts);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        };
+
         const result = [];
         for (let d = 1; d <= daysInMonth; d++) {
             const date = new Date(year, month, d);
+            const dayStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             
-            // Calculate day's income
-            const todaysStartObj = new Date(year, month, d, 0, 0, 0).getTime();
-            const todaysEndObj = new Date(year, month, d, 23, 59, 59, 999).getTime();
-
+            // Calculate day's income using local date string comparison
             const sumTushum = transactions.filter(tx => 
                 tx.driverId === monthData.driver.id &&
                 tx.type === TransactionType.INCOME &&
                 tx.status !== PaymentStatus.DELETED &&
                 (tx as any).status !== 'DELETED' &&
-                tx.timestamp >= todaysStartObj &&
-                tx.timestamp <= todaysEndObj
+                toLocalDateStr(tx.timestamp) === dayStr
             ).reduce((acc, tx) => acc + Math.abs(tx.amount), 0);
 
             const isDayOff = transactions.some(tx => 
                 tx.driverId === monthData.driver.id &&
                 tx.type === 'DAY_OFF' &&
-                tx.timestamp >= todaysStartObj &&
-                tx.timestamp <= todaysEndObj
+                toLocalDateStr(tx.timestamp) === dayStr
             );
 
             let status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' = 'UNPAID';
