@@ -475,27 +475,63 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 )}
             </div>
 
-            {/* Fullscreen Image Modal */}
+            {/* Receipt Viewer Modal */}
             {selectedImage && (
-                <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
                     onClick={() => setSelectedImage(null)}
                 >
-                    <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center animate-in zoom-in-95 duration-200">
-                        <button 
-                            className="absolute -top-14 right-0 md:-right-8 text-white/70 hover:text-white p-2 transition-colors rounded-full hover:bg-white/10"
-                            onClick={() => setSelectedImage(null)}
-                        >
-                            <svg className="w-8 h-8 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                        <img 
-                            src={selectedImage} 
-                            alt="Transaction Receipt" 
-                            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10"
-                            onClick={(e) => e.stopPropagation()} 
-                        />
+                    <div
+                        className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-[#111827] border border-gray-700' : 'bg-white border border-gray-200'}`}
+                        onClick={e => e.stopPropagation()}
+                        style={{ animation: 'modalPop 0.2s ease-out' }}
+                    >
+                        {/* Modal Header */}
+                        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${theme === 'dark' ? 'border-gray-700 bg-gray-800/60' : 'border-gray-100 bg-gray-50'}`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
+                                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('viewReceipt')}</p>
+                                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('paymentCard')}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <a
+                                    href={selectedImage}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                                    title="Download"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                </a>
+                                <button
+                                    onClick={() => setSelectedImage(null)}
+                                    className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Receipt Image */}
+                        <div className={`overflow-y-auto flex-1 p-4 ${theme === 'dark' ? 'bg-[#0d1117]' : 'bg-gray-50'}`}>
+                            <img
+                                src={selectedImage}
+                                alt="Receipt"
+                                className="w-full rounded-xl object-contain shadow-lg border border-white/5"
+                            />
+                        </div>
                     </div>
                 </div>
             )}

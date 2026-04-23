@@ -23,6 +23,51 @@ class AuthService {
     private sessionCheckInterval: NodeJS.Timeout | null = null;
     private sessionInvalidatedCallbacks: Array<(reason: string) => void> = [];
 
+    async authenticateAdminByPhone(phone: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+        try {
+            // Normalize: strip non-digits, build +998XXXXXXXXX
+            const digits = phone.replace(/\D/g, '');
+            const normalized = digits.startsWith('998') && digits.length === 12
+                ? `+${digits}`
+                : digits.length === 9 ? `+998${digits}` : `+${digits}`;
+
+            const { data, error } = await supabase
+                .from('admin_users')
+                .select('*')
+                .eq('active', true)
+                .eq('phone', normalized)
+                .eq('password', password)
+                .limit(1);
+
+            if (error || !data || data.length === 0) {
+                await this.logAuthAttempt(phone, false, 'Invalid phone or password', 'admin');
+                return { success: false, error: 'Invalid phone number or password' };
+            }
+
+            const adminData = data[0];
+            if (!adminData.active) {
+                return { success: false, error: 'Account has been disabled' };
+            }
+
+            const user: AuthUser = {
+                id: adminData.id,
+                username: adminData.username,
+                role: adminData.role || 'admin',
+                active: adminData.active,
+                createdAt: adminData.created_ms,
+                password: adminData.password,
+                avatar: adminData.avatar,
+            };
+
+            await this.logAuthAttempt(user.username, true, 'Phone login successful', 'admin');
+            this.createSession(user);
+            return { success: true, user };
+        } catch (err) {
+            console.error('Phone auth error:', err);
+            return { success: false, error: 'Authentication system error. Please try again.' };
+        }
+    }
+
     async authenticateAdmin(password: string, username?: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
         try {
             let query = supabase

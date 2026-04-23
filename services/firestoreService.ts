@@ -37,6 +37,7 @@ export const addAdminUser = async (user: any, performedBy: string) => {
         .insert({
             username: user.username,
             password: user.password,
+            phone: user.phone ?? null,
             role: user.role || 'admin',
             active: user.active ?? true,
             avatar: user.avatar ?? null,
