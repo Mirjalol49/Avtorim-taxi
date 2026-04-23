@@ -6,6 +6,7 @@ import * as firestoreService from '../../../services/firestoreService';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
+import DriverFilterModal from '../../../components/DriverFilterModal';
 import {
     TrashIcon,
     UsersIcon,
@@ -52,6 +53,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+    const [driverModalOpen, setDriverModalOpen] = useState(false);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
 
@@ -139,20 +141,71 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             labelClassName="text-white"
                         />
                     </div>
-                    {/* Driver Select */}
+                    {/* Driver Filter Button */}
                     <div className="w-full">
-                        <CustomSelect
-                            label={t('driver')}
-                            value={filters.driverId}
-                            onChange={(val) => setFilters(prev => ({ ...prev, driverId: val }))}
-                            options={[
-                                { id: 'all', name: t('allDrivers') },
-                                ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))
-                            ]}
-                            theme={theme}
-                            icon={UsersIcon}
-                            labelClassName="text-white"
-                        />
+                        {(() => {
+                            const selectedDriver = filters.driverId && filters.driverId !== 'all'
+                                ? nonDeletedDrivers.find(d => d.id === filters.driverId)
+                                : null;
+                            const selectedCar = selectedDriver
+                                ? cars.find(c => c.assignedDriverId === selectedDriver.id)
+                                : null;
+                            return (
+                                <>
+                                    <div className={`flex items-center gap-2 mb-2 text-white`}>
+                                        <UsersIcon className="w-4 h-4" />
+                                        <span className="text-xs font-bold uppercase tracking-wider">{t('driver')}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDriverModalOpen(true)}
+                                        className={`w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
+                                            driverModalOpen
+                                                ? theme === 'dark'
+                                                    ? 'bg-gray-800 border-teal-500 ring-1 ring-teal-500/40'
+                                                    : 'bg-white border-teal-500 ring-1 ring-teal-500/20'
+                                                : theme === 'dark'
+                                                    ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        {selectedDriver ? (
+                                            <>
+                                                <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600">
+                                                    {selectedDriver.avatar
+                                                        ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
+                                                        : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                                                    }
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</div>
+                                                    {selectedCar && <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{selectedCar.name} · {selectedCar.licensePlate}</div>}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="text-lg">👥</span>
+                                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('allDrivers')}</span>
+                                            </>
+                                        )}
+                                        <svg className={`w-4 h-4 ml-auto flex-shrink-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    <DriverFilterModal
+                                        isOpen={driverModalOpen}
+                                        onClose={() => setDriverModalOpen(false)}
+                                        selectedDriverId={filters.driverId || 'all'}
+                                        onSelect={(val) => setFilters(prev => ({ ...prev, driverId: val }))}
+                                        drivers={nonDeletedDrivers}
+                                        cars={cars}
+                                        theme={theme}
+                                        allLabel={t('allDrivers')}
+                                        searchPlaceholder={t('search') || 'Qidirish...'}
+                                    />
+                                </>
+                            );
+                        })()}
                     </div>
                     {/* Type Select */}
                     <div className="w-full">
