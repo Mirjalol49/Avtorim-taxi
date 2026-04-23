@@ -96,11 +96,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     if (!selectedDriver || transactions.length === 0) return null;
     const driverTxs = transactions.filter(tx =>
       tx.driverId === selectedDriver.id &&
-      (tx as any).status !== 'DELETED' &&
       tx.status !== PaymentStatus.DELETED
     );
     const totalDebt = driverTxs
-      .filter(tx => tx.type === 'DEBT')
+      .filter(tx => tx.type === TransactionType.DEBT)
       .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
     if (totalDebt === 0) return null;
     const totalIncome = driverTxs

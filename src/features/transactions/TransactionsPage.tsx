@@ -99,7 +99,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 await firestoreService.deleteTransactionsBatch(
                     selectedTransactions,
                     {
-                        adminName: adminUser?.name || 'Admin',
+                        adminName: adminUser?.username || 'Admin',
                         count: selectedTransactions.length,
                         totalAmount: totalAmount
                     },
@@ -386,16 +386,16 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${
-                                                tx.type === TransactionType.INCOME ? 'text-[#0f766e]' 
-                                                : (tx.type as string) === 'DAY_OFF' ? 'text-blue-400'
+                                                tx.type === TransactionType.INCOME ? 'text-[#0f766e]'
+                                                : tx.type === TransactionType.DAY_OFF ? 'text-blue-400'
                                                 : 'text-red-500'
                                             }`}>
-                                                {(tx.type as string) === 'DAY_OFF' ? (
+                                                {tx.type === TransactionType.DAY_OFF ? (
                                                     <span className="flex items-center justify-end gap-1.5 text-xs font-bold text-blue-400">
-                                                        <span>🏝️</span> Dam olish kuni
+                                                        <span>🏝️</span> {t('dayOffLabel')}
                                                     </span>
                                                 ) : (
-                                                    <>{tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString()} <span className="ml-1">UZS</span></>
+                                                    <>{tx.type === TransactionType.INCOME ? '+' : '-'}{formatNumberSmart(tx.amount, false, language)} <span className="ml-1">UZS</span></>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right">
