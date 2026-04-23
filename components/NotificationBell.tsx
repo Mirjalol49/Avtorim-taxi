@@ -450,7 +450,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
             <div
                 className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
                     visible ? 'translate-x-0' : 'translate-x-full'
-                } ${isDark ? 'bg-[#0f1623]' : 'bg-white'}`}
+                } ${isDark ? 'bg-[#1F2937]' : 'bg-white'}`}
                 style={{ zIndex: 9999 }}
             >
                 {/* Header */}
@@ -525,7 +525,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
                 {/* Footer */}
                 {notifications.length > 0 && (
-                    <div className={`flex-shrink-0 px-5 py-3 border-t ${isDark ? 'border-gray-700/60 bg-[#0f1623]' : 'border-gray-100 bg-white'}`}>
+                    <div className={`flex-shrink-0 px-5 py-3 border-t ${isDark ? 'border-gray-700/60 bg-[#1F2937]' : 'border-gray-100 bg-white'}`}
+>
                         <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                             {notifications.length} ta bildirishnoma · So'nggi 14 soat
                         </p>
