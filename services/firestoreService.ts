@@ -230,6 +230,7 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
 
     if (payload.name !== undefined) {
         await supabase.from('transactions').update({ driver_name: payload.name }).eq('driver_id', id).neq('status', 'DELETED');
+        await supabase.from('telegram_sessions').update({ driver_name: payload.name }).eq('driver_id', id);
     }
 
     if (payload.car !== undefined || payload.car_number !== undefined) {
