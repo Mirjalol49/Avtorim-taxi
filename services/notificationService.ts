@@ -41,6 +41,7 @@ export const sendNotification = async (
         minAccountAge?: number;
         driverAvatar?: string;
         driverId?: string;
+        extraTracking?: Record<string, unknown>;
     },
     createdBy: string,
     createdByName: string
@@ -48,7 +49,10 @@ export const sendNotification = async (
     const now = Date.now();
     const expiresAt = now + (notificationData.expiresIn || 24 * 60 * 60 * 1000);
 
-    const deliveryTracking: Record<string, unknown> = { sent: now, delivered: [], read: [] };
+    const deliveryTracking: Record<string, unknown> = {
+        sent: now, delivered: [], read: [],
+        ...(notificationData.extraTracking ?? {}),
+    };
     if (notificationData.driverAvatar) deliveryTracking.driverAvatar = notificationData.driverAvatar;
     if (notificationData.driverId) deliveryTracking.driverId = notificationData.driverId;
 

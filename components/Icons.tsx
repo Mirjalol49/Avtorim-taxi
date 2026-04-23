@@ -83,6 +83,7 @@ export {
     Package           as PackageIcon,
     AlertTriangle     as AlertTriangleIcon,
     CheckSquare       as CheckSquareIcon,
+    CheckCheck        as CheckCheckIcon,
     Copy              as CopyIcon,
     Share2            as ShareIcon,
     Printer           as PrinterIcon,
