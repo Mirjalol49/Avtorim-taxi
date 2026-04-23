@@ -439,17 +439,19 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     // ─── Sidebar portal ───────────────────────────────────────────────────────
     const sidebar = isOpen ? createPortal(
         <>
-            {/* Backdrop */}
+            {/* Backdrop — sits above sidebar nav (z-[9998]) */}
             <div
                 onClick={closeSidebar}
-                className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
+                style={{ zIndex: 9998 }}
             />
 
             {/* Drawer panel */}
             <div
-                className={`fixed top-0 right-0 bottom-0 z-50 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
+                className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
                     visible ? 'translate-x-0' : 'translate-x-full'
                 } ${isDark ? 'bg-[#0f1623]' : 'bg-white'}`}
+                style={{ zIndex: 9999 }}
             >
                 {/* Header */}
                 <div className={`flex-shrink-0 px-5 py-4 border-b ${isDark ? 'border-gray-700/60' : 'border-gray-100'}`}>
