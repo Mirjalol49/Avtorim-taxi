@@ -895,6 +895,8 @@ const AppContent: React.FC = () => {
         onUpdate={handleUpdateProfile}
         userRole={userRole}
         theme={theme}
+        onLogout={() => { playLockSound(); handleLogout(); }}
+        onLock={() => { playLockSound(); handleLogout(); }}
       />
 
       {/* CONFIRMATION MODAL */}
