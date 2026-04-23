@@ -27,7 +27,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
-    const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string; category?: string } | null>(null);
     // Keep daily plan resolution
     const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
     const docs = driver.documents ?? [];
@@ -35,7 +35,17 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
-    const getFriendlyDocName = (filename: string) => {
+    const getFriendlyDocName = (doc: any) => {
+        if (doc.category) {
+            switch (doc.category) {
+                case 'driver_license': return 'Haydovchilik guvohnomasi';
+                case 'passport': return 'Pasport';
+                case 'car_registration': return 'Texnik pasport';
+                case 'car_insurance': return 'Sug\'urta';
+            }
+        }
+        
+        const filename = doc.name || '';
         const lower = filename.toLowerCase();
         if (lower.includes('id') || lower.includes('pasport') || lower.includes('passport')) return 'ID / Pasport';
         if (lower.includes('prava') || lower.includes('license') || lower.includes('guvohnoma')) return 'Haydovchilik guvohnomasi';
@@ -139,7 +149,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         if (isImage) {
-                                            setViewingDoc({ name: doc.name, data: doc.data });
+                                            setViewingDoc({ name: doc.name, data: doc.data, category: doc.category });
                                         } else {
                                             window.open(doc.data, '_blank');
                                         }
@@ -153,7 +163,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                         <span className="text-sm">{isImage ? '🖼️' : '📄'}</span>
                                     </div>
                                     <span className="flex-1 text-left text-sm font-medium truncate">
-                                        {getFriendlyDocName(doc.name)}
+                                        {getFriendlyDocName(doc)}
                                     </span>
                                     <div className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                         {fileExt.substring(0, 4)}
@@ -204,7 +214,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     <div className="relative p-2 bg-white/5 backdrop-blur-md rounded-2xl shadow-2xl pointer-events-auto max-h-[80vh] flex items-center justify-center overflow-hidden border border-white/10 ring-1 ring-black/5">
                         <img 
                             src={viewingDoc.data} 
-                            alt={getFriendlyDocName(viewingDoc.name)} 
+                            alt={getFriendlyDocName(viewingDoc)} 
                             className="max-w-full max-h-full object-contain rounded-xl"
                         />
                     </div>
@@ -212,7 +222,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     {/* Floating Toolbar */}
                     <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-gray-900/80 hover:bg-gray-900 backdrop-blur-2xl border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl transition-all duration-300">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white">{getFriendlyDocName(viewingDoc.name)}</span>
+                            <span className="text-sm font-medium text-white">{getFriendlyDocName(viewingDoc)}</span>
                         </div>
                         <div className="w-px h-4 bg-white/20 mx-1" />
                         <button 
