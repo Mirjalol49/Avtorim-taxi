@@ -12,17 +12,26 @@ interface DatePickerProps {
 const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
-    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, openUp: false });
     const buttonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         if (isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            setDropdownPos({
-                top: rect.bottom + 8,
-                left: rect.left + rect.width / 2,
-                width: rect.width,
-            });
+            const CALENDAR_W = 256;
+            const CALENDAR_H = 300;
+            const MARGIN = 8;
+
+            // Horizontal: center on button, clamp within viewport
+            let left = rect.left + rect.width / 2 - CALENDAR_W / 2;
+            left = Math.max(MARGIN, Math.min(left, window.innerWidth - CALENDAR_W - MARGIN));
+
+            // Vertical: open downward by default, flip upward if not enough room
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const openUp = spaceBelow < CALENDAR_H && rect.top > CALENDAR_H;
+            const top = openUp ? rect.top - CALENDAR_H - MARGIN : rect.bottom + MARGIN;
+
+            setDropdownPos({ top, left, openUp });
         }
     }, [isOpen]);
 
@@ -141,7 +150,6 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                         style={{
                             top: dropdownPos.top,
                             left: dropdownPos.left,
-                            transform: 'translateX(-50%)'
                         }}
                     >
                         {/* Month/Year Header */}
