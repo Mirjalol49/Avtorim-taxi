@@ -29,3 +29,6 @@ dist-ssr
 .env.*.local
 server/.env
 server/serviceAccountKey.json
+
+# Claude Code worktrees
+.claude/

@@ -228,7 +228,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         {d.status === 'DAY_OFF' ? (
                                             <div className="flex flex-col items-center justify-center h-full w-full py-1 gap-1">
                                                 <span className="text-xl sm:text-2xl">🏝️</span>
-                                                <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">Dam olish</span>
+                                                <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">{t('legendDayOff')}</span>
                                                 {d.income > 0 && (
                                                     <span className="text-[9px] sm:text-[10px] font-bold text-green-400 mt-0.5">+{fmt(d.income)}</span>
                                                 )}
