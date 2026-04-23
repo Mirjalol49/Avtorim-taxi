@@ -19,17 +19,21 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
         if (isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
             const CALENDAR_W = 256;
-            const CALENDAR_H = 300;
+            const CALENDAR_H = 340; // actual rendered height with padding
             const MARGIN = 8;
 
             // Horizontal: center on button, clamp within viewport
             let left = rect.left + rect.width / 2 - CALENDAR_W / 2;
             left = Math.max(MARGIN, Math.min(left, window.innerWidth - CALENDAR_W - MARGIN));
 
-            // Vertical: open downward by default, flip upward if not enough room
+            // Vertical: prefer opening upward inside a modal (more reliable),
+            // open downward only if there's clearly enough room below
             const spaceBelow = window.innerHeight - rect.bottom;
-            const openUp = spaceBelow < CALENDAR_H && rect.top > CALENDAR_H;
-            const top = openUp ? rect.top - CALENDAR_H - MARGIN : rect.bottom + MARGIN;
+            const spaceAbove = rect.top;
+            const openUp = spaceBelow < CALENDAR_H || spaceAbove > spaceBelow;
+            const top = openUp
+                ? Math.max(MARGIN, rect.top - CALENDAR_H - MARGIN)
+                : rect.bottom + MARGIN;
 
             setDropdownPos({ top, left, openUp });
         }
