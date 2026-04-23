@@ -130,7 +130,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
       style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
       <div
-        className="w-full max-w-sm bg-[#0d1117] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-sm bg-[#1F2937] border border-gray-700/60 rounded-[2rem] shadow-2xl overflow-hidden"
         style={{ animation: 'modalPop 0.2s ease-out' }}
       >
         {view === 'profile' ? (
@@ -176,7 +176,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                 <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
                 {/* Online dot */}
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-[#0d1117] rounded-full" />
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-[#1F2937] rounded-full" />
               </div>
 
               {uploadProgress > 0 && uploadProgress < 100 && (
@@ -194,7 +194,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
               )}
             </div>
 
-            <div className="h-px bg-gray-800 mx-6" />
+            <div className="h-px bg-gray-700/50 mx-6" />
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
@@ -206,7 +206,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                   value={name}
                   onChange={e => { setName(e.target.value); setNameError(''); }}
                   disabled={isReadOnly || isSaving}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder-gray-600 disabled:opacity-50"
+                  className="w-full bg-[#111827]/40 border border-gray-700/60 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder-gray-500 disabled:opacity-50"
                 />
                 {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
               </div>
@@ -219,7 +219,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     type={showCurrentPw ? 'text' : 'password'}
                     value={adminData.password || '••••••••'}
                     disabled
-                    className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-2.5 text-gray-500 text-sm font-mono pr-10 opacity-70"
+                    className="w-full bg-[#111827]/20 border border-gray-700/40 rounded-xl px-4 py-2.5 text-gray-400 text-sm font-mono pr-10 opacity-70"
                   />
                   <button
                     type="button"
@@ -242,7 +242,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                       onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
                       disabled={isSaving}
                       placeholder="(ixtiyoriy - faqat o'zgartirish uchun)"
-                      className={`w-full bg-gray-900 border rounded-xl px-4 py-2.5 text-white text-sm pr-10 focus:outline-none transition-colors placeholder-gray-700 disabled:opacity-50 ${pwError ? 'border-red-500' : 'border-gray-700 focus:border-teal-500'}`}
+                      className={`w-full bg-[#111827]/40 border rounded-xl px-4 py-2.5 text-white text-sm pr-10 focus:outline-none transition-colors placeholder-gray-500 disabled:opacity-50 ${pwError ? 'border-red-500' : 'border-gray-700/60 focus:border-teal-500'}`}
                     />
                     <button
                       type="button"
@@ -280,14 +280,14 @@ const AdminModal: React.FC<AdminModalProps> = ({
               )}
             </form>
 
-            <div className="h-px bg-gray-800 mx-6" />
+            <div className="h-px bg-gray-700/50 mx-6" />
 
             {/* Lock & Logout */}
             <div className="px-6 py-4 flex gap-3">
               {onLock && (
                 <button
                   onClick={onLock}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-all text-sm font-semibold group"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 transition-all text-sm font-semibold group shadow-sm"
                 >
                   <LockIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   Qulflash
@@ -318,7 +318,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
             <div className="flex gap-3 w-full">
               <button
                 onClick={() => setView('profile')}
-                className="flex-1 py-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 transition-all font-semibold text-sm"
+                className="flex-1 py-3 rounded-xl bg-gray-700 border border-gray-600 text-gray-200 hover:text-white hover:bg-gray-600 transition-all font-semibold text-sm shadow-sm"
               >
                 Bekor qilish
               </button>

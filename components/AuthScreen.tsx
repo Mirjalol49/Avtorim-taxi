@@ -126,9 +126,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
             <div className={`transition-all ${locked ? 'opacity-50 grayscale' : ''}`}>
               <div className={`flex rounded-2xl border overflow-hidden focus-within:ring-2 focus-within:ring-teal-500/40 transition-all ${
                 error ? 'border-red-500'
-                  : isDark ? 'border-gray-700 hover:border-teal-500/40 bg-gray-900/50' : 'border-gray-200 hover:border-teal-500/40 bg-gray-50'
+                  : isDark ? 'border-gray-700/60 hover:border-teal-500/40 bg-[#111827]/40' : 'border-gray-200 hover:border-teal-500/40 bg-gray-50'
               }`}>
-                <span className={`flex items-center px-4 text-sm font-mono font-bold border-r select-none ${isDark ? 'text-teal-400 border-gray-700 bg-gray-900/80' : 'text-teal-600 border-gray-200 bg-gray-100'}`}>
+                <span className={`flex items-center px-4 text-sm font-mono font-bold border-r select-none ${isDark ? 'text-teal-400 border-gray-700/60 bg-[#111827]/60' : 'text-teal-600 border-gray-200 bg-gray-100'}`}>
                   +998
                 </span>
                 <input
@@ -139,7 +139,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                   autoComplete="tel"
                   disabled={success || locked}
                   autoFocus
-                  className={`flex-1 px-4 py-4 text-lg font-mono tracking-widest focus:outline-none bg-transparent ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'}`}
+                  className={`flex-1 px-4 py-4 text-lg font-mono tracking-widest focus:outline-none bg-transparent ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
                 />
               </div>
             </div>
@@ -160,11 +160,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                 spellCheck={false}
                 disabled={success || locked}
                 className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/40 transition-all duration-150 ${isDark
-                  ? 'bg-gray-900/50 text-white placeholder-gray-600'
+                  ? 'bg-[#111827]/40 text-white placeholder-gray-500'
                   : 'bg-gray-50 text-gray-900 placeholder-gray-400'
                 } ${error
                   ? 'border-red-500 shake-animation'
-                  : isDark ? 'border-gray-700 hover:border-teal-500/40' : 'border-gray-200 hover:border-teal-500/40'
+                  : isDark ? 'border-gray-700/60 hover:border-teal-500/40' : 'border-gray-200 hover:border-teal-500/40'
                 }`}
               />
             </div>
