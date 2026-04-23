@@ -120,6 +120,28 @@ const mainMenuKeyboard = (lang: 'uz' | 'ru') => ({
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+    // One-time webhook registration: GET /functions/v1/telegram-bot?setup=1
+    if (req.method === 'GET') {
+        const params = new URL(req.url).searchParams
+        if (params.get('setup') === '1') {
+            const webhookUrl = `${SUPABASE_URL}/functions/v1/telegram-bot`
+            const r = await fetch(`${TG}/setWebhook`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: webhookUrl, drop_pending_updates: true, allowed_updates: ['message', 'callback_query'] }),
+            })
+            const json = await r.json()
+            return new Response(JSON.stringify(json, null, 2), { headers: { 'Content-Type': 'application/json' } })
+        }
+        // GET ?info=1 → show current webhook info
+        if (params.get('info') === '1') {
+            const r = await fetch(`${TG}/getWebhookInfo`)
+            const json = await r.json()
+            return new Response(JSON.stringify(json, null, 2), { headers: { 'Content-Type': 'application/json' } })
+        }
+        return new Response('Telegram Bot is running')
+    }
+
     if (req.method !== 'POST') return new Response('OK')
 
     let body: Record<string, unknown>
