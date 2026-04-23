@@ -85,9 +85,9 @@ const HiddenDashboard: React.FC = () => {
     const getTabColor = (tabId: TabType, isActive: boolean) => {
         if (!isActive) return 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white';
         switch (tabId) {
-            case 'users': return 'bg-blue-600 text-white shadow-lg shadow-blue-600/20';
-            case 'audit': return 'bg-purple-600 text-white shadow-lg shadow-purple-600/20';
-            case 'notifications': return 'bg-teal-600 text-white shadow-lg shadow-teal-600/20';
+            case 'users': return 'bg-blue-600 text-white shadow-sm';
+            case 'audit': return 'bg-purple-600 text-white shadow-sm';
+            case 'notifications': return 'bg-teal-600 text-white shadow-sm';
             default: return 'bg-gray-600 text-white';
         }
     };
@@ -99,7 +99,7 @@ const HiddenDashboard: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-700 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/30 transform hover:scale-105 transition-transform">
+                            <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-sm transform hover:scale-105 transition-transform">
                                 <ShieldIcon className="w-5 h-5 text-white" />
                             </div>
                             <div>

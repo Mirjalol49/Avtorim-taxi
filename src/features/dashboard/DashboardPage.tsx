@@ -303,7 +303,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     {/* COMPLETED COLUMN */}
                     <div className="space-y-4">
                         <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
                             {t('driversPaidToday')}
                         </h4>
 
@@ -321,7 +321,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             </div>
                                         </div>
                                         {/* Golden Badge JSON attached to the right */}
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10">
                                             <Lottie animationData={badgeAnimation} loop={false} />
                                         </div>
                                     </div>
@@ -337,7 +337,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     {/* PENDING COLUMN */}
                     <div className="space-y-4">
                         <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                             {t('pendingPaymentsLabel')}
                         </h4>
 

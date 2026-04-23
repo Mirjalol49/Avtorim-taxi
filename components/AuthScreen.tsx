@@ -190,7 +190,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                 : locked
                   ? isDark ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : canSubmit
-                    ? 'bg-gradient-to-r from-teal-600 to-teal-500 text-white hover:shadow-teal-500/25 hover:scale-[1.02] active:scale-[0.98]'
+                    ? 'bg-teal-600 text-white hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98]'
                     : isDark ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >

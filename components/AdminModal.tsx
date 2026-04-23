@@ -268,7 +268,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     ? 'bg-green-500 text-white'
                     : !hasChanges || !!nameError
                       ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                      : 'bg-teal-500 hover:bg-teal-600 text-white shadow-lg shadow-teal-500/20 active:scale-95'
+                      : 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm active:scale-95'
                     }`}
                 >
                   {saveSuccess ? (

@@ -539,7 +539,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                     disabled={isSending || !isValid}
                     className={`w-full py-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-3 ${isSending || !isValid
                         ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] shadow-lg shadow-teal-500/25'
+                        : 'bg-teal-500 hover:bg-teal-600 active:scale-[0.98] shadow-sm'
                         }`}
                 >
                     {isSending ? (

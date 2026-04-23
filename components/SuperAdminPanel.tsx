@@ -479,7 +479,7 @@ const MainPanel: React.FC<{ onClose: () => void; currentUserId: string }> = ({ o
                 </div>
                 <button
                     onClick={() => setCreating(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm transition-colors shadow-lg shadow-teal-500/20"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm transition-colors shadow-sm"
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

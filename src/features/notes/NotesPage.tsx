@@ -471,7 +471,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                     </div>
                     <button
                         onClick={openNew}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-teal-900/20 transition-all active:scale-95"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-teal-600 text-white rounded-xl font-bold text-sm shadow-sm transition-all active:scale-95"
                     >
                         <span className="text-lg leading-none">+</span> {t('newNote')}
                     </button>

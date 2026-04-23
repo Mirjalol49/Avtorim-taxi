@@ -125,8 +125,8 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                 className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
                                     selectedDriverId === 'all'
                                         ? isDark
-                                            ? 'border-teal-500 bg-teal-500/10 shadow-lg shadow-teal-500/10'
-                                            : 'border-teal-500 bg-teal-50 shadow-lg shadow-teal-500/10'
+                                            ? 'border-teal-500 bg-teal-500/10 shadow-sm'
+                                            : 'border-teal-500 bg-teal-50 shadow-sm'
                                         : isDark
                                             ? 'border-gray-700/60 bg-gray-800/40 hover:border-gray-600 hover:bg-gray-800'
                                             : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50'
@@ -166,8 +166,8 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                     className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
                                         isSelected
                                             ? isDark
-                                                ? 'border-teal-500 bg-teal-500/10 shadow-lg shadow-teal-500/10'
-                                                : 'border-teal-500 bg-teal-50 shadow-lg shadow-teal-500/10'
+                                                ? 'border-teal-500 bg-teal-500/10 shadow-sm'
+                                                : 'border-teal-500 bg-teal-50 shadow-sm'
                                             : isDark
                                                 ? 'border-gray-700/60 bg-gray-800/40 hover:border-gray-600 hover:bg-gray-800'
                                                 : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50'

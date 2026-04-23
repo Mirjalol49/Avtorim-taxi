@@ -113,7 +113,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                         disabled={loading || lockoutTime > 0 || !password} // Updated disabled condition
                         className={`w-full py-3 rounded-lg font-bold uppercase tracking-wider transition-all ${loading || lockoutTime > 0
                             ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-600/20'
+                            : 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
                             }`}
                     >
                         {loading ? (

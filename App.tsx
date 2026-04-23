@@ -372,7 +372,7 @@ const AppContent: React.FC = () => {
       <button
         onClick={() => { navigate(path); setIsSidebarOpen(false); }}
         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all mb-2 ${isActive
-          ? 'bg-[#0f766e] text-white shadow-lg shadow-teal-900/20'
+          ? 'bg-[#0f766e] text-white shadow-sm'
           : theme === 'dark'
             ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
             : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
@@ -730,8 +730,8 @@ const AppContent: React.FC = () => {
 
           {userRole === 'admin' && (
             <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
-              ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-teal-900/20'
-              : 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-teal-500/30'
+              ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-sm'
+              : 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-sm'
               }`}>
               <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
             </button>

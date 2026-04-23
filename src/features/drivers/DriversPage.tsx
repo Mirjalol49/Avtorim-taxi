@@ -87,8 +87,8 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         <button
                             onClick={onAddDriver}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg ${theme === 'dark'
-                                ? 'bg-gradient-to-r from-[#0f766e] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
-                                : 'bg-gradient-to-r from-[#0f766e] to-[#0f766e] hover:from-[#0f766e] hover:to-[#1a4048] text-white shadow-sm'
+                                ? 'bg-[#0f766e] hover:bg-teal-700 text-white shadow-sm'
+                                : 'bg-[#0f766e] hover:bg-teal-700 text-white shadow-sm'
                                 }`}
                         >
                             <PlusIcon className="w-5 h-5" />
@@ -194,7 +194,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
                                         className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                            ? 'bg-[#0f766e] text-white shadow-lg shadow-[#0f766e]/30'
+                                            ? 'bg-[#0f766e] text-white shadow-sm'
                                             : theme === 'dark'
                                                 ? 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'

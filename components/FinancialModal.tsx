@@ -218,9 +218,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const labelClass = `block text-[11px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
 
   const typeConfig = {
-    [TransactionType.INCOME]:  { label: 'Kirim',     color: 'bg-teal-500',  shadow: 'shadow-teal-500/30'  },
-    [TransactionType.EXPENSE]: { label: 'Chiqim',    color: 'bg-red-500',   shadow: 'shadow-red-500/30'   },
-    [TransactionType.DAY_OFF]: { label: 'Dam olish', color: 'bg-blue-500',  shadow: 'shadow-blue-500/30'  },
+    [TransactionType.INCOME]:  { label: 'Kirim',     color: 'bg-teal-500',  shadow: 'shadow-sm'  },
+    [TransactionType.EXPENSE]: { label: 'Chiqim',    color: 'bg-red-500',   shadow: 'shadow-sm'   },
+    [TransactionType.DAY_OFF]: { label: 'Dam olish', color: 'bg-blue-500',  shadow: 'shadow-sm'  },
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -270,9 +270,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   onClick={() => { setType(item.v); if (item.v !== TransactionType.EXPENSE) setExpenseTarget('driver'); }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                     type === item.v
-                      ? item.v === TransactionType.INCOME  ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                      : item.v === TransactionType.EXPENSE ? 'bg-red-500 text-white shadow-lg shadow-red-500/25'
-                      : 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                      ? item.v === TransactionType.INCOME  ? 'bg-teal-500 text-white shadow-sm'
+                      : item.v === TransactionType.EXPENSE ? 'bg-red-500 text-white shadow-sm'
+                      : 'bg-blue-500 text-white shadow-sm'
                       : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-700'
                   }`}
                 >
@@ -521,7 +521,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       onClick={() => { setPaymentMethod(pm.id); setChequeImage(null); setChequeError(null); }}
                       className={`flex flex-col items-center justify-center gap-2.5 h-[88px] rounded-2xl border text-sm font-bold transition-all active:scale-95 ${
                         paymentMethod === pm.id
-                          ? isDark ? 'bg-teal-500/15 border-teal-500/60 text-teal-400 shadow-lg shadow-teal-500/10' : 'bg-teal-50 border-teal-400 text-teal-700 shadow-sm'
+                          ? isDark ? 'bg-teal-500/15 border-teal-500/60 text-teal-400 shadow-sm' : 'bg-teal-50 border-teal-400 text-teal-700 shadow-sm'
                           : isDark ? 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-600' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 shadow-sm'
                       }`}
                     >
@@ -605,10 +605,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               {t('cancel')}
             </button>
             <button type="submit"
-              className={`px-10 py-3 text-white rounded-xl text-sm font-black shadow-xl transition-all transform active:scale-95 ${
-                type === TransactionType.INCOME  ? 'bg-teal-500 hover:bg-teal-600 shadow-teal-500/25'
-                : type === TransactionType.DAY_OFF ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/25'
-                : 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
+              className={`px-10 py-3 text-white rounded-xl text-sm font-black shadow-sm transition-all transform active:scale-95 ${
+                type === TransactionType.INCOME  ? 'bg-teal-500 hover:bg-teal-600'
+                : type === TransactionType.DAY_OFF ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-red-500 hover:bg-red-600'
               }`}>
               {t('save')}
             </button>
