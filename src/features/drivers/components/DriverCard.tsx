@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
-import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { XIcon } from '../../../../components/Icons';
+import { EditIcon, TrashIcon, CameraIcon, CarIcon, XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
 
 interface DriverCardProps {
@@ -95,44 +94,39 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
             {/* Attached car */}
             {car ? (
-                <div className={`group relative mx-4 mb-3 rounded-2xl overflow-hidden transition-all duration-300 ${theme === 'dark'
-                    ? 'bg-[#1a222e] border border-gray-800 hover:border-gray-700 hover:shadow-lg hover:shadow-black/40'
-                    : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-md hover:shadow-gray-200/50'}`}>
+                <div className={`mx-4 mb-3 rounded-2xl border p-2.5 flex items-center gap-3 transition-all duration-200 ${theme === 'dark'
+                    ? 'bg-[#1a222e]/60 border-gray-700/60 hover:bg-[#1a222e] hover:border-gray-600'
+                    : 'bg-gray-50/50 border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)]'}`}>
                     
-                    {/* Image Container */}
-                    <div className={`relative h-24 sm:h-28 overflow-hidden ${theme === 'dark' ? 'bg-[#111827]' : 'bg-gray-100'}`}>
+                    {/* Thumbnail Image */}
+                    <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200/60 bg-gray-100'}`}>
                         {car.avatar ? (
-                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                                <CameraIcon className={`w-8 h-8 ${theme === 'dark' ? 'text-gray-700' : 'text-gray-300'}`} />
+                                <CarIcon className={`w-6 h-6 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
                             </div>
                         )}
-                        
-                        {/* Overlay Gradient for readability */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/5 pointer-events-none transition-opacity duration-300 group-hover:opacity-90" />
-
-                        {/* Bottom Info (Overlaid on image) */}
-                        <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between">
-                            <div className="min-w-0 flex-1">
-                                <h3 className="text-white font-extrabold text-lg tracking-tight truncate drop-shadow-md mb-1.5">
-                                    {car.name}
-                                </h3>
-                                <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/5 backdrop-blur-lg border border-white/10 shadow-sm">
-                                    <span className="text-[10px] font-mono font-bold text-white tracking-widest drop-shadow-sm">
-                                        {car.licensePlate}
-                                    </span>
-                                </div>
-                            </div>
+                    </div>
+                    
+                    {/* Info */}
+                    <div className="min-w-0 flex-1 py-0.5">
+                        <h3 className={`font-bold text-[13px] sm:text-sm truncate mb-1.5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {car.name}
+                        </h3>
+                        <div className={`inline-flex items-center px-2 py-0.5 rounded-md border ${theme === 'dark' ? 'bg-gray-900/80 border-gray-700/80 text-gray-300' : 'bg-white border-gray-200/80 text-gray-700 shadow-sm'}`}>
+                            <span className="text-[10px] font-mono font-bold tracking-wider">
+                                {car.licensePlate}
+                            </span>
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className={`mx-4 mb-3 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                    <div className={`flex items-center gap-2 p-2.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>
-                        <CameraIcon className="w-4 h-4" />
-                        <span className="text-xs">Avtomobil biriktirilmagan</span>
+                <div className={`mx-4 mb-3 rounded-2xl border p-2.5 flex items-center gap-3 ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700/50 text-gray-500' : 'bg-gray-50/30 border-gray-100 text-gray-400'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                        <CarIcon className="w-5 h-5 opacity-50" />
                     </div>
+                    <span className="text-xs font-medium">Avtomobil biriktirilmagan</span>
                 </div>
             )}
 
