@@ -64,7 +64,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         return filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
     }, [filteredTransactions, currentPage, itemsPerPage]);
 
-    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+    const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / itemsPerPage));
 
     // Finance Tab Stats (Cards) - Exclude DELETED transactions
     const financeStats = useMemo(() => {
@@ -123,7 +123,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         });
 
         return Object.values(monthlyData);
-    }, [transactions, filteredTransactions, language, analyticsYear]);
+    }, [filteredTransactions, language, analyticsYear]);
 
     // Yearly Analytics Totals (Cards above Chart)
     const yearlyAnalyticsTotals = useMemo(() => {
@@ -149,7 +149,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
             expense: yearlyExpense,
             netProfit: yearlyIncome - yearlyExpense
         };
-    }, [transactions, filteredTransactions, analyticsYear]);
+    }, [filteredTransactions, analyticsYear]);
 
     return {
         filters, setFilters,

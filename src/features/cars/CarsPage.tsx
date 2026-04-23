@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Car, CarDocument } from '../../core/types';
-import { Driver } from '../../../types';
+import { Driver } from '../../core/types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon } from '../../../components/Icons';
 
 interface CarsPageProps {

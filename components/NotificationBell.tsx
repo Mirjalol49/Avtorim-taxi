@@ -156,6 +156,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 .slice(0, 10)
                                 .map((notification) => {
                                     const isRead = readIds.has(notification.id);
+                                    const avatarUrl = notification.deliveryTracking?.driverAvatar;
                                     return (
                                         <div
                                             key={notification.id}
@@ -170,7 +171,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                                 }`}
                                         >
                                             <div className="flex items-start gap-3">
-                                                <span className={`text-xl ${isRead ? 'opacity-50' : ''}`}>{getTypeIcon(notification.type)}</span>
+                                                {avatarUrl ? (
+                                                    <img
+                                                        src={avatarUrl}
+                                                        alt=""
+                                                        className={`w-8 h-8 rounded-full object-cover flex-shrink-0 ${isRead ? 'opacity-50' : ''}`}
+                                                        onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                                    />
+                                                ) : (
+                                                    <span className={`text-xl flex-shrink-0 ${isRead ? 'opacity-50' : ''}`}>{getTypeIcon(notification.type)}</span>
+                                                )}
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <h4 className={`font-medium text-sm truncate ${isRead
