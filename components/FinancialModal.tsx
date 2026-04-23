@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon } from './Icons';
+import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon, CarIcon } from './Icons';
 import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
@@ -287,7 +287,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-gray-900 border-gray-700/60' : 'bg-gray-100 border-gray-200'}`}>
                 {([
                   { v: 'driver', label: 'Haydovchi', icon: '👤' },
-                  { v: 'car',    label: 'Mashina',   icon: '🚗' },
+                  { v: 'car',    label: 'Mashina',   icon: '🚙' },
                   { v: 'other',  label: 'Boshqa',    icon: '📦' },
                 ] as { v: ExpenseTarget; label: string; icon: string }[]).map(tab => (
                   <button key={tab.v} type="button"
@@ -373,14 +373,14 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {type === TransactionType.EXPENSE && expenseTarget === 'car' && (
               <div className="relative">
-                <label className={labelClass}>🚗 Mashina</label>
+                <label className={`${labelClass} flex items-center gap-1.5`}><CarIcon className="w-3.5 h-3.5" /> Mashina</label>
                 {!isCarOpen && selectedCar ? (
                   <div onClick={() => setIsCarOpen(true)}
                     className={`cursor-pointer p-4 rounded-2xl border transition-all group ${isDark ? 'bg-gray-800/60 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
                       {selectedCar.avatar
                         ? <img src={selectedCar.avatar} alt={selectedCar.name} className="w-11 h-11 rounded-xl object-cover" />
-                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>🚗</div>
+                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}><CarIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>
                       }
                       <div className="flex-1">
                         <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name}</p>
@@ -403,7 +403,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       {filteredCars.map(c => (
                         <div key={c.id} onClick={() => { setCarId(c.id); setIsCarOpen(false); setCarSearch(''); }}
                           className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-gray-700/40' : 'hover:bg-gray-50'}`}>
-                          {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>🚗</div>}
+                          {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}><CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>}
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name}</p>
                             <p className={`text-[11px] font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{c.licensePlate}</p>

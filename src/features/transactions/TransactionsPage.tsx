@@ -11,7 +11,8 @@ import {
     TrashIcon,
     UsersIcon,
     FilterIcon,
-    EditIcon
+    EditIcon,
+    CarIcon,
 } from '../../../components/Icons';
 import { useToast } from '../../../components/ToastNotification';
 import FinancialModal from '../../../components/FinancialModal';
@@ -314,8 +315,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 <div className="flex items-center gap-3">
                                                     {car ? (
                                                         <>
-                                                            <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center text-lg ${theme === 'dark' ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-100'}`}>
-                                                                🚗
+                                                            <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-100'}`}>
+                                                                <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                                                             </div>
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">

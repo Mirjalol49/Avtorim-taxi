@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Notification, NotificationType, markNotificationAsRead } from '../services/notificationService';
-import { TrashIcon } from './Icons';
+import { TrashIcon, BellIcon, TrendingUpIcon, TrendingDownIcon, ZapIcon, SettingsIcon, ArrowUpRightIcon, ArrowDownRightIcon } from './Icons';
 
 interface NotificationBellProps {
     notifications: Notification[];
@@ -54,12 +54,13 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     const fmtAmount = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
     const getTypeIcon = (type: NotificationType) => {
+        const cls = 'w-5 h-5';
         switch (type) {
-            case 'payment_reminder': return '💰';
-            case 'feature_update':  return '✨';
-            case 'announcement':    return '📢';
-            case 'system':          return '⚙️';
-            default:                return '🔔';
+            case 'payment_reminder': return <TrendingUpIcon className={cls} />;
+            case 'feature_update':   return <ZapIcon        className={cls} />;
+            case 'announcement':     return <BellIcon       className={cls} />;
+            case 'system':           return <SettingsIcon   className={cls} />;
+            default:                 return <BellIcon       className={cls} />;
         }
     };
 
@@ -119,7 +120,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                     className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${isDark ? 'bg-gray-700/80' : 'bg-gray-100'}`}
                                     style={{ display: avatarUrl ? 'none' : 'flex' }}
                                 >
-                                    {isIncome ? '💰' : '💸'}
+                                    {isIncome
+                                        ? <TrendingUpIcon   className={`w-5 h-5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
+                                        : <TrendingDownIcon className={`w-5 h-5 ${isDark ? 'text-red-400'  : 'text-red-500'}`}  />
+                                    }
                                 </div>
                                 {!isRead && (
                                     <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#111827]' : 'border-white'}`} />
