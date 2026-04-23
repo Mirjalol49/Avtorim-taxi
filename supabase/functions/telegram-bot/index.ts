@@ -358,14 +358,14 @@ async function notifyAdmin(
     let message: string
 
     if (txType === 'income') {
-        const methodUz = method === 'cash' ? 'naqd' : 'karta orqali'
+        const methodUz = method === 'cash' ? 'Naqd' : 'Karta'
         const methodIcon = method === 'cash' ? '💵' : '💳'
-        title = `${methodIcon} ${session.driver_name} — ${amountStr} UZS`
-        message = `${session.driver_name} ${dateStr} soat ${timeStr} da ${methodUz} ${amountStr} UZS kirim qildi`
+        title = `${methodIcon} Kirim: ${session.driver_name} — ${amountStr} UZS`
+        message = `👤 Haydovchi: ${session.driver_name}\n💰 Summa: ${amountStr} UZS\n${methodIcon} To'lov: ${methodUz}\n📅 Sana: ${dateStr}, ${timeStr}`
     } else {
         const who = session.driver_name ?? 'Noma\'lum'
-        title = `💸 Chiqim — ${amountStr} UZS`
-        message = `${who} ${dateStr} soat ${timeStr} da ${amountStr} UZS chiqim qildi${note ? `\n📝 ${note}` : ''}`
+        title = `💸 Chiqim: ${who} — ${amountStr} UZS`
+        message = `👤 Haydovchi: ${who}\n💸 Summa: ${amountStr} UZS\n📅 Sana: ${dateStr}, ${timeStr}${note ? `\n📝 Izoh: ${note}` : ''}`
     }
 
     await supabase.from('notifications').insert({
@@ -373,7 +373,7 @@ async function notifyAdmin(
         message,
         type: 'payment_reminder',
         category: 'payment_reminder',
-        priority: 'medium',
+        priority: 'high',
         target_users: 'role:admin',
         created_by: null,
         created_by_name: 'Telegram Bot',
@@ -381,5 +381,6 @@ async function notifyAdmin(
         expires_at: timestamp + 7 * 24 * 60 * 60 * 1000,
         delivery_tracking: deliveryTracking,
         min_account_age: null,
+        fleet_id: session.fleet_id,
     })
 }
