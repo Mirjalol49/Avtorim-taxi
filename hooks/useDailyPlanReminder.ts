@@ -1,13 +1,12 @@
 /**
  * useDailyPlanReminder
  *
- * Fires once every day at exactly 22:00 (local time).
- * Checks each active driver's today income versus their daily plan.
- * For every driver who hasn't hit today's plan, sends a high-priority
- * notification through the existing notification service.
+ * Fires once per day at 22:00 (local time).
+ * For every active driver who hasn't hit today's daily plan,
+ * sends an individual high-priority notification with their avatar.
  *
- * Deduplication: We store "YYYY-MM-DD" in localStorage so the reminder
- * only fires once per calendar day even if the page is reloaded.
+ * Dedup: localStorage key `daily_plan_reminder_YYYY-MM-DD` stores a
+ * JSON array of driver IDs already notified today.
  */
 
 import { useEffect, useRef } from 'react';
@@ -18,30 +17,20 @@ import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/t
 import { NotificationCategory, NotificationPriority } from '../src/core/types/notification.types';
 import { sendNotification } from '../services/notificationService';
 
-
-
-const STORAGE_KEY = 'daily_plan_reminder_sent';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const fmtUZS = (n: number) =>
-    new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+const STORAGE_KEY_PREFIX = 'daily_plan_reminder_';
 
 const todayDateKey = () => {
     const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-/** Check if it's currently past 10 PM (22:00) */
-const isPastTenPM = (): boolean => {
-    const now = new Date();
-    return now.getHours() >= 22;
+const todayDisplayStr = () => {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 };
 
-/** Returns today's income for a driver */
+const isPastTenPM = (): boolean => new Date().getHours() >= 22;
+
 const getTodayIncome = (driverId: string, transactions: Transaction[]): number => {
     const todayKey = todayDateKey();
     return transactions
@@ -53,13 +42,25 @@ const getTodayIncome = (driverId: string, transactions: Transaction[]): number =
         )
         .filter(tx => {
             const d = new Date(tx.timestamp);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            return key === todayKey;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayKey;
         })
         .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 };
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+const getSentDriverIds = (dateKey: string): Set<string> => {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY_PREFIX + dateKey);
+        return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch {
+        return new Set<string>();
+    }
+};
+
+const markDriverSent = (dateKey: string, driverId: string) => {
+    const ids = getSentDriverIds(dateKey);
+    ids.add(driverId);
+    localStorage.setItem(STORAGE_KEY_PREFIX + dateKey, JSON.stringify([...ids]));
+};
 
 interface UseDailyPlanReminderOptions {
     drivers: Driver[];
@@ -67,7 +68,7 @@ interface UseDailyPlanReminderOptions {
     transactions: Transaction[];
     adminUserId: string;
     adminUserName: string;
-    enabled: boolean; // only run when the user is admin
+    enabled: boolean;
 }
 
 export const useDailyPlanReminder = ({
@@ -85,84 +86,55 @@ export const useDailyPlanReminder = ({
 
     const fire = async () => {
         if (!enabled || !adminUserId) return;
+        if (!isPastTenPM()) return;
 
         const { drivers, cars, transactions, adminUserId: aId, adminUserName: aName } = dataRef.current;
-
         const today = todayDateKey();
-        const lastSent = localStorage.getItem(STORAGE_KEY);
-        
-        // Only run if it's past 10 PM and we haven't sent it today
-        if (!isPastTenPM() || lastSent === today) {
-            return;
-        }
+        const dateDisplay = todayDisplayStr();
+        const alreadySent = getSentDriverIds(today);
 
-        // ── Analyze drivers ──────────────────
         const activeDrivers = drivers.filter(d => !d.isDeleted && d.status === 'ACTIVE');
-        
-        const behindDrivers: any[] = [];
-        const completedDrivers: any[] = [];
 
-        activeDrivers.forEach(d => {
-            const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
+        for (const driver of activeDrivers) {
+            if (alreadySent.has(driver.id)) continue;
+
+            const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
             const dailyPlan = (car?.dailyPlan ?? 0) > 0
                 ? (car!.dailyPlan as number)
-                : ((d as any).dailyPlan ?? 0) as number;
+                : ((driver as any).dailyPlan ?? 0) as number;
 
-            if (dailyPlan <= 0) return; // no plan set
+            if (dailyPlan <= 0) continue;
 
-            const todayIncome = getTodayIncome(d.id, transactions);
-            const missing = dailyPlan - todayIncome;
-            
-            if (missing <= 0) {
-                completedDrivers.push({ driver: d, dailyPlan, todayIncome });
-            } else {
-                behindDrivers.push({ driver: d, dailyPlan, todayIncome, missing });
+            const todayIncome = getTodayIncome(driver.id, transactions);
+            if (todayIncome >= dailyPlan) continue;
+
+            try {
+                await sendNotification(
+                    {
+                        title: `🌙 ${driver.name} — ${dateDisplay}`,
+                        message: `${driver.name} did not fulfill ${dateDisplay} daily plan`,
+                        type: 'payment_reminder',
+                        category: NotificationCategory.PAYMENT_REMINDER,
+                        priority: NotificationPriority.HIGH,
+                        targetUsers: 'role:admin',
+                        expiresIn: 12 * 60 * 60 * 1000,
+                        driverAvatar: driver.avatar || undefined,
+                        driverId: driver.id,
+                    },
+                    aId,
+                    aName
+                );
+                markDriverSent(today, driver.id);
+            } catch (err) {
+                console.error('[DailyPlanReminder] Failed to send notification for driver:', driver.name, err);
             }
-        });
-
-        // ── Send Notification ──────────────────
-        const MONTHS_UZ = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-        const now = new Date();
-        const dateStr = `${now.getDate()} ${MONTHS_UZ[now.getMonth()]} ${now.getFullYear()}`;
-
-        try {
-            const behindCount = behindDrivers.length;
-            
-            if (behindCount === 0) {
-                localStorage.setItem(STORAGE_KEY, today);
-                return;
-            }
-
-            const driverLines = behindDrivers
-                .map((bd, i) => `${i + 1}. ${bd.driver.name} — ${fmtUZS(bd.missing)} UZS qoldi`)
-                .join('\n');
-            const message = `Bugun ${behindCount} ta haydovchi kunlik rejani bajarmadi:\n\n${driverLines}`;
-
-            await sendNotification(
-                {
-                    title: `🌙 Kechki reja hisoboti — ${dateStr}`,
-                    message,
-                    type: 'payment_reminder',
-                    category: NotificationCategory.PAYMENT_REMINDER,
-                    priority: behindCount > 0 ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-                    targetUsers: 'role:admin',
-                    expiresIn: 12 * 60 * 60 * 1000, // expires in 12 hours
-                },
-                aId,
-                aName
-            );
-
-            localStorage.setItem(STORAGE_KEY, today);
-        } catch (err) {
-            console.error('[DailyPlanReminder] Failed to send notification:', err);
         }
     };
 
-    // Run interval every 1 minute
     useInterval(fire, 60 * 1000);
 
-    // Also run once on mount in case it's already past 10 PM
     useEffect(() => {
         fire();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, adminUserId]);
 };

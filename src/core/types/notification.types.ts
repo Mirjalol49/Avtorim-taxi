@@ -30,7 +30,9 @@ export type NotificationTargetType =
 export interface NotificationDeliveryTracking {
     sent: number;           // Timestamp when notification was created
     delivered: string[];    // User IDs who received the notification
-    read: string[];        // User IDs who read the notification
+    read: string[];         // User IDs who read the notification
+    driverAvatar?: string;  // Driver profile image URL (for plan reminder notifications)
+    driverId?: string;      // Driver ID reference
 }
 
 export interface Notification {

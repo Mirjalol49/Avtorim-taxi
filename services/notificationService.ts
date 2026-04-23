@@ -39,12 +39,18 @@ export const sendNotification = async (
         targetUsers: NotificationTargetType;
         expiresIn?: number;
         minAccountAge?: number;
+        driverAvatar?: string;
+        driverId?: string;
     },
     createdBy: string,
     createdByName: string
 ): Promise<string> => {
     const now = Date.now();
     const expiresAt = now + (notificationData.expiresIn || 24 * 60 * 60 * 1000);
+
+    const deliveryTracking: Record<string, unknown> = { sent: now, delivered: [], read: [] };
+    if (notificationData.driverAvatar) deliveryTracking.driverAvatar = notificationData.driverAvatar;
+    if (notificationData.driverId) deliveryTracking.driverId = notificationData.driverId;
 
     const { data, error } = await supabase
         .from('notifications')
@@ -59,7 +65,7 @@ export const sendNotification = async (
             created_by_name: createdByName,
             created_ms: now,
             expires_at: expiresAt,
-            delivery_tracking: { sent: now, delivered: [], read: [] },
+            delivery_tracking: deliveryTracking,
             min_account_age: notificationData.minAccountAge ?? null
         })
         .select('id')
