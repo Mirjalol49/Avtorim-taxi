@@ -27,13 +27,25 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
-    const [viewingDoc, setViewingDoc] = useState<string | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
     // Keep daily plan resolution
     const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
     const docs = driver.documents ?? [];
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
+
+    const getFriendlyDocName = (filename: string) => {
+        const lower = filename.toLowerCase();
+        if (lower.includes('id') || lower.includes('pasport') || lower.includes('passport')) return 'ID / Pasport';
+        if (lower.includes('prava') || lower.includes('license') || lower.includes('guvohnoma')) return 'Haydovchilik guvohnomasi';
+        if (lower.includes('tex') || lower.includes('tech')) return 'Texnik pasport';
+        if (lower.includes('sug') || lower.includes('insur')) return 'Sug\'urta';
+        if (lower.includes('rxsat') || lower.includes('licence') || lower.includes('lits')) return 'Litsenziya';
+        
+        const nameWithoutExt = filename.split('.').slice(0, -1).join('.') || filename;
+        return nameWithoutExt.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
 
     return (<>
         <div className={`rounded-2xl flex flex-col transition-all group relative border overflow-hidden ${theme === 'dark'
@@ -116,25 +128,40 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
             {/* Documents */}
             {docs.length > 0 && (
-                <div className={`mx-4 mb-3 rounded-xl border p-2.5 space-y-1 ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hujjatlar</p>
-                    {docs.map((doc, i) => {
-                        const isImage = doc.type && doc.type.startsWith('image/');
-                        return (
-                            <button key={i} type="button"
-                                onClick={() => {
-                                    if (isImage) {
-                                        setViewingDoc(doc.data);
-                                    } else {
-                                        window.open(doc.data, '_blank');
-                                    }
-                                }}
-                                className="w-full flex items-center gap-2 text-xs text-[#0f766e] hover:underline truncate">
-                                <span>{isImage ? '🖼️' : '📄'}</span>
-                                <span className="truncate">{doc.name}</span>
-                            </button>
-                        );
-                    })}
+                <div className={`mx-4 mb-3 rounded-xl border p-3 space-y-2 ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hujjatlar</p>
+                    <div className="flex flex-col gap-2">
+                        {docs.map((doc, i) => {
+                            const isImage = doc.type && doc.type.startsWith('image/');
+                            const fileExt = doc.name.split('.').pop()?.toUpperCase() || 'FILE';
+                            return (
+                                <button key={i} type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isImage) {
+                                            setViewingDoc({ name: doc.name, data: doc.data });
+                                        } else {
+                                            window.open(doc.data, '_blank');
+                                        }
+                                    }}
+                                    className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#0f766e] ${
+                                        theme === 'dark' 
+                                            ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700/50 hover:border-gray-600' 
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-md'
+                                    }`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
+                                        <span className="text-sm">{isImage ? '🖼️' : '📄'}</span>
+                                    </div>
+                                    <span className="flex-1 text-left text-sm font-medium truncate">
+                                        {getFriendlyDocName(doc.name)}
+                                    </span>
+                                    <div className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        {fileExt.substring(0, 4)}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
@@ -159,24 +186,46 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
         {/* ImageViewer Modal Portal */}
         {viewingDoc && createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+                className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-300"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Document viewer"
+            >
+                {/* Backdrop: frosted glass */}
                 <div 
-                    className={`absolute inset-0 transition-opacity duration-300 bg-black/80 backdrop-blur-md`} 
-                    onClick={() => setViewingDoc(null)}
+                    className="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity"
+                    onClick={(e) => { e.stopPropagation(); setViewingDoc(null); }}
                 />
                 
-                <div className="relative z-10 w-full max-w-4xl h-full max-h-[85vh] flex flex-col items-center justify-center animate-in zoom-in-95 duration-300 pointer-events-none">
-                    <img 
-                        src={viewingDoc} 
-                        alt="Document Viewer" 
-                        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto"
-                    />
+                {/* Content Container */}
+                <div className="relative z-10 w-full max-w-5xl h-full flex flex-col items-center justify-center animate-in zoom-in-95 duration-300 pointer-events-none">
+                    {/* The Image */}
+                    <div className="relative p-2 bg-white/5 backdrop-blur-md rounded-2xl shadow-2xl pointer-events-auto max-h-[80vh] flex items-center justify-center overflow-hidden border border-white/10 ring-1 ring-black/5">
+                        <img 
+                            src={viewingDoc.data} 
+                            alt={getFriendlyDocName(viewingDoc.name)} 
+                            className="max-w-full max-h-full object-contain rounded-xl"
+                        />
+                    </div>
                     
-                    <button 
-                        onClick={() => setViewingDoc(null)} 
-                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-gray-800 text-white hover:bg-gray-700 pointer-events-auto`}>
-                        <XIcon className="w-6 h-6" />
-                    </button>
+                    {/* Floating Toolbar */}
+                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-gray-900/80 hover:bg-gray-900 backdrop-blur-2xl border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl transition-all duration-300">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white">{getFriendlyDocName(viewingDoc.name)}</span>
+                        </div>
+                        <div className="w-px h-4 bg-white/20 mx-1" />
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setViewingDoc(null); }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                            aria-label="Close viewer"
+                        >
+                            <span className="text-sm font-medium">Yopish</span>
+                            <div className="bg-white/10 rounded-full p-1 group-hover:bg-white/20 transition-colors">
+                                <XIcon className="w-3.5 h-3.5" />
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>,
             document.body
