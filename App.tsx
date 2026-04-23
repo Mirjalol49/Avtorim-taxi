@@ -53,6 +53,7 @@ import { playLockSound } from './services/soundService';
 import logo from './Images/logo_winter.png';
 
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
+import SuperAdminPanel from './components/SuperAdminPanel';
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
@@ -112,6 +113,7 @@ const AppContent: React.FC = () => {
   const [txInitialDate, setTxInitialDate] = useState<Date | undefined>(undefined);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isSuperAdminOpen, setIsSuperAdminOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
 
   // Cars state
@@ -479,6 +481,23 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/notes', t.notes, NotesIcon)}
+
+          {/* Super Admin — only visible to the super admin account */}
+          {(adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && (
+            <button
+              onClick={() => setIsSuperAdminOpen(true)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all mt-2 border ${
+                theme === 'dark'
+                  ? 'border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40'
+                  : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
+              }`}
+            >
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              Super Admin
+            </button>
+          )}
         </nav>
 
         {/* Sidebar Bottom Section */}
@@ -887,6 +906,13 @@ const AppContent: React.FC = () => {
         onCancel={closeConfirmModal}
         isDanger={confirmModal.isDanger}
         theme={theme}
+      />
+
+      {/* SUPER ADMIN PANEL */}
+      <SuperAdminPanel
+        isOpen={isSuperAdminOpen}
+        onClose={() => setIsSuperAdminOpen(false)}
+        currentUserId={adminUser?.id || ''}
       />
 
       {/* TOAST NOTIFICATIONS */}
