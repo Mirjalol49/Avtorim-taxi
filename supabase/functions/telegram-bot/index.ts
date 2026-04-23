@@ -120,6 +120,26 @@ const mainMenuKeyboard = (lang: 'uz' | 'ru') => ({
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+    // GET ?setup=1  → register this function as Telegram webhook (run once)
+    // GET ?info=1   → show current webhook status
+    if (req.method === 'GET') {
+        const p = new URL(req.url).searchParams
+        if (p.get('setup') === '1') {
+            const webhookUrl = `${SUPABASE_URL}/functions/v1/telegram-bot`
+            const r = await fetch(`${TG}/setWebhook`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: webhookUrl, drop_pending_updates: true, allowed_updates: ['message', 'callback_query'] }),
+            })
+            return new Response(JSON.stringify(await r.json(), null, 2), { headers: { 'Content-Type': 'application/json' } })
+        }
+        if (p.get('info') === '1') {
+            const r = await fetch(`${TG}/getWebhookInfo`)
+            return new Response(JSON.stringify(await r.json(), null, 2), { headers: { 'Content-Type': 'application/json' } })
+        }
+        return new Response('Telegram Bot — running 24/7 on Supabase Edge')
+    }
+
     if (req.method !== 'POST') return new Response('OK')
 
     let body: Record<string, unknown>
@@ -343,29 +363,34 @@ async function notifyAdmin(
     note: string | null,
     timestamp: number,
 ) {
-    const d = new Date(timestamp)
+    // UTC+5 Tashkent — add offset then use UTC getters so no env/locale needed
     const pad = (n: number) => String(n).padStart(2, '0')
-    const dateStr = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
-    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+    const local = new Date(timestamp + 5 * 60 * 60 * 1000)
+    const dateStr = `${pad(local.getUTCDate())}.${pad(local.getUTCMonth() + 1)}.${local.getUTCFullYear()}`
+    const timeStr = `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`
     const amountStr = fmt(amount)
 
-    const deliveryTracking: Record<string, unknown> = { sent: timestamp, delivered: [], read: [] }
+    const deliveryTracking: Record<string, unknown> = {
+        sent: timestamp, delivered: [], read: [],
+        txType, amount, method, note, dateStr, timeStr,
+    }
     if (session.driver_avatar) deliveryTracking.driverAvatar = session.driver_avatar
-    if (session.driver_id) deliveryTracking.driverId = session.driver_id
-    if (chequeUrl) deliveryTracking.chequeImage = chequeUrl
+    if (session.driver_id)     deliveryTracking.driverId     = session.driver_id
+    if (session.driver_name)   deliveryTracking.driverName   = session.driver_name
+    if (chequeUrl)             deliveryTracking.chequeImage  = chequeUrl
 
     let title: string
     let message: string
 
     if (txType === 'income') {
-        const methodUz = method === 'cash' ? 'Naqd' : 'Karta'
-        const methodIcon = method === 'cash' ? '💵' : '💳'
-        title = `${methodIcon} Kirim: ${session.driver_name} — ${amountStr} UZS`
-        message = `👤 Haydovchi: ${session.driver_name}\n💰 Summa: ${amountStr} UZS\n${methodIcon} To'lov: ${methodUz}\n📅 Sana: ${dateStr}, ${timeStr}`
+        const methodUz   = method === 'cash' ? 'Naqd' : 'Karta'
+        const methodIcon = method === 'cash' ? '💵'   : '💳'
+        title   = `${methodIcon} Kirim: ${session.driver_name} — ${amountStr} UZS`
+        message = `${session.driver_name} · ${methodUz} · ${dateStr} ${timeStr}`
     } else {
         const who = session.driver_name ?? 'Noma\'lum'
-        title = `💸 Chiqim: ${who} — ${amountStr} UZS`
-        message = `👤 Haydovchi: ${who}\n💸 Summa: ${amountStr} UZS\n📅 Sana: ${dateStr}, ${timeStr}${note ? `\n📝 Izoh: ${note}` : ''}`
+        title   = `💸 Chiqim: ${who} — ${amountStr} UZS`
+        message = `${who} · Chiqim${note ? ` · ${note}` : ''} · ${dateStr} ${timeStr}`
     }
 
     await supabase.from('notifications').insert({
