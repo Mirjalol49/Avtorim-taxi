@@ -66,7 +66,8 @@ export const sendNotification = async (
             created_ms: now,
             expires_at: expiresAt,
             delivery_tracking: deliveryTracking,
-            min_account_age: notificationData.minAccountAge ?? null
+            min_account_age: notificationData.minAccountAge ?? null,
+            fleet_id: createdBy || null,
         })
         .select('id')
         .single();
@@ -87,6 +88,7 @@ export const subscribeToNotifications = (
         const { data: rows } = await supabase
             .from('notifications')
             .select('*')
+            .eq('fleet_id', userId)
             .gt('expires_at', now)
             .order('expires_at', { ascending: false });
 
@@ -129,7 +131,7 @@ export const subscribeToNotifications = (
 
     const channel = supabase
         .channel(`notifications_${userId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchAndNotify)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `fleet_id=eq.${userId}` }, fetchAndNotify)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${userId}` }, fetchAndNotify)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_deletes', filter: `user_id=eq.${userId}` }, fetchAndNotify)
         .subscribe();
