@@ -167,29 +167,8 @@ Deno.serve(async (req) => {
             return new Response('OK')
         }
 
-        // Kirim
+        // Kirim → card only (cash is handled in person)
         if (data === 'kirim') {
-            await saveSession({ chat_id: chatId, state: 'awaiting_payment_type' })
-            await sendMessage(chatId, T.chooseType[lang], {
-                reply_markup: {
-                    inline_keyboard: [[
-                        { text: T.cash[lang], callback_data: 'pay_cash' },
-                        { text: T.card[lang], callback_data: 'pay_card' },
-                    ]],
-                },
-            })
-            return new Response('OK')
-        }
-
-        // Cash income
-        if (data === 'pay_cash') {
-            await saveSession({ chat_id: chatId, state: 'awaiting_amount_cash' })
-            await sendMessage(chatId, T.enterAmount[lang])
-            return new Response('OK')
-        }
-
-        // Card income
-        if (data === 'pay_card') {
             await saveSession({ chat_id: chatId, state: 'awaiting_amount_card' })
             await sendMessage(chatId, T.enterAmount[lang])
             return new Response('OK')
@@ -238,35 +217,6 @@ Deno.serve(async (req) => {
             parse_mode: 'HTML',
             reply_markup: { remove_keyboard: true },
         })
-        await sendMessage(chatId, T.mainMenu[lang], mainMenuKeyboard(lang))
-        return new Response('OK')
-    }
-
-    // ── Amount for cash income ────────────────────────────────────────────────
-    if (msg?.text && session.state === 'awaiting_amount_cash') {
-        const amount = parseFloat((msg.text as string).replace(/\s/g, '').replace(',', '.'))
-        if (!amount || amount <= 0) {
-            await sendMessage(chatId, T.badAmount[lang])
-            return new Response('OK')
-        }
-
-        const now = Date.now()
-        await supabase.from('transactions').insert({
-            driver_id: session.driver_id,
-            driver_name: session.driver_name,
-            amount,
-            type: 'INCOME',
-            status: 'COMPLETED',
-            description: 'Telegram orqali naqd kirim',
-            payment_method: 'cash',
-            timestamp_ms: now,
-            created_ms: now,
-            fleet_id: session.fleet_id,
-        })
-
-        await notifyAdmin(session, amount, 'income', 'cash', null, null, now)
-        await saveSession({ chat_id: chatId, state: 'main_menu', pending_amount: null })
-        await sendMessage(chatId, T.successIncome[lang](amount, T.methodLabel[lang].cash), { parse_mode: 'HTML' })
         await sendMessage(chatId, T.mainMenu[lang], mainMenuKeyboard(lang))
         return new Response('OK')
     }
