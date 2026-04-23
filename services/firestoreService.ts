@@ -227,6 +227,18 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).documents !== undefined) payload.documents = (driver as any).documents;
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;
+
+    if (payload.name !== undefined) {
+        await supabase.from('transactions').update({ driver_name: payload.name }).eq('driver_id', id).neq('status', 'DELETED');
+        await supabase.from('telegram_sessions').update({ driver_name: payload.name }).eq('driver_id', id);
+    }
+
+    if (payload.car !== undefined || payload.car_number !== undefined) {
+        const carUpdate: Record<string, unknown> = {};
+        if (payload.car !== undefined) carUpdate.name = payload.car;
+        if (payload.car_number !== undefined) carUpdate.license_plate = payload.car_number;
+        await supabase.from('cars').update(carUpdate).eq('assigned_driver_id', id);
+    }
 };
 
 export const deleteDriver = async (id: string, auditInfo?: { adminName: string; reason?: string }, fleetId?: string) => {
