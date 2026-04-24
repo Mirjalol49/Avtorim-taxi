@@ -213,7 +213,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
   // ── Styles ───────────────────────────────────────────────────────────────────
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${isDark
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500 placeholder-gray-500'
+    ? 'bg-[#1C1D23] border-white/[0.08] text-white focus:border-teal-500 placeholder-gray-500'
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500 placeholder-gray-400'}`;
   const labelClass = `block text-[11px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
 
@@ -229,18 +229,18 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       <form
         onSubmit={handleSubmit}
         className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[92vh] rounded-[2rem] shadow-2xl overflow-hidden border ${
-          isDark ? 'bg-[#1F2937] border-gray-700/60' : 'bg-white border-gray-200'
+          isDark ? 'bg-[#13141A] border-white/[0.06]' : 'bg-white border-gray-200'
         }`}
         style={{ animation: 'modalPop 0.2s ease-out' }}
       >
 
         {/* ══ LEFT PANEL ══════════════════════════════════════════════════════ */}
-        <div className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-gray-700/60 bg-[#1F2937]' : 'border-gray-100 bg-white'}`}>
+        <div className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-white/[0.06] bg-[#13141A]' : 'border-gray-100 bg-white'}`}>
 
           {/* Header */}
-          <div className={`sticky top-0 z-10 px-7 py-5 border-b flex items-center justify-between ${isDark ? 'border-gray-700/60 bg-[#1F2937]/95 backdrop-blur-md' : 'border-gray-100 bg-white/95 backdrop-blur-md'}`}>
+          <div className={`sticky top-0 z-10 px-7 py-5 border-b flex items-center justify-between ${isDark ? 'border-white/[0.06] bg-[#13141A]/95 backdrop-blur-md' : 'border-gray-100 bg-white/95 backdrop-blur-md'}`}>
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
                 {type === TransactionType.INCOME ? '💰' : type === TransactionType.DAY_OFF ? '🏖' : '💸'}
               </div>
               <div>
@@ -252,7 +252,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 </p>
               </div>
             </div>
-            <button type="button" onClick={resetAndClose} className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+            <button type="button" onClick={resetAndClose} className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
               <XIcon className="w-5 h-5" />
             </button>
           </div>
@@ -260,7 +260,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           <div className="p-7 space-y-6">
 
             {/* Type toggle */}
-            <div className={`flex gap-1.5 p-1.5 rounded-2xl border ${isDark ? 'bg-gray-900 border-gray-700/80' : 'bg-gray-100 border-gray-200'}`}>
+            <div className={`flex gap-1.5 p-1.5 rounded-2xl border ${isDark ? 'bg-[#0D0E12] border-white/[0.08]' : 'bg-gray-100 border-gray-200'}`}>
               {[
                 { v: TransactionType.INCOME,  label: 'Kirim',     emoji: '💰' },
                 { v: TransactionType.EXPENSE, label: 'Chiqim',    emoji: '💸' },
@@ -284,7 +284,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {/* Expense target tabs — driver | car | other */}
             {type === TransactionType.EXPENSE && (
-              <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-gray-900 border-gray-700/60' : 'bg-gray-100 border-gray-200'}`}>
+              <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-[#0D0E12] border-white/[0.06]' : 'bg-gray-100 border-gray-200'}`}>
                 {([
                   { v: 'driver', label: 'Haydovchi', icon: '👤' },
                   { v: 'car',    label: 'Mashina',   icon: '🚙' },
@@ -298,7 +298,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     }}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
                       expenseTarget === tab.v
-                        ? isDark ? 'bg-gray-700 text-white shadow' : 'bg-white text-gray-900 shadow'
+                        ? isDark ? 'bg-[#1C1D23] text-white shadow' : 'bg-white text-gray-900 shadow'
                         : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
@@ -318,11 +318,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
                 {!isDriverOpen && selectedDriver ? (
                   <div onClick={() => setIsDriverOpen(true)}
-                    className={`cursor-pointer p-4 rounded-2xl border transition-all group active:scale-[0.99] ${isDark ? 'bg-gray-800/60 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
+                    className={`cursor-pointer p-4 rounded-2xl border transition-all group active:scale-[0.99] ${isDark ? 'bg-[#1C1D23]/60 border-white/[0.08] hover:border-white/[0.12]' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
                       {selectedDriver.avatar
                         ? <img src={selectedDriver.avatar} alt={selectedDriver.name} className={`w-11 h-11 rounded-xl object-cover border-2 ${isDark ? 'border-gray-600' : 'border-white shadow'}`} />
-                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base ${isDark ? 'bg-[#1C1D23] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
                       }
                       <div className="flex-1 min-w-0">
                         <p className={`font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</p>
@@ -334,22 +334,22 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-                    <div className={`p-3 border-b ${isDark ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1D23] border-white/[0.08] shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-[#0D0E12]/50' : 'border-gray-100 bg-gray-50'}`}>
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={driverSearch} onChange={e => setDriverSearch(e.target.value)}
                           placeholder="Qidirish..." autoFocus
-                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
+                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-[#1C1D23] text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
                       </div>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto divide-y divide-gray-700/30">
+                    <div className="max-h-[220px] overflow-y-auto divide-y divide-white/[0.05]">
                       {filteredDrivers.map(d => (
                         <div key={d.id} onClick={() => { setDriverId(d.id); setIsDriverOpen(false); setDriverSearch(''); }}
-                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${driverId === d.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-gray-700/40' : 'hover:bg-gray-50'}`}>
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${driverId === d.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-gray-50'}`}>
                           {d.avatar
                             ? <img src={d.avatar} alt={d.name} className="w-9 h-9 rounded-lg object-cover" />
-                            : <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{d.name.charAt(0)}</div>
+                            : <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#1C1D23] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{d.name.charAt(0)}</div>
                           }
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{d.name}</p>
@@ -362,7 +362,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                     {selectedDriver && (
                       <div onClick={() => setIsDriverOpen(false)}
-                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-gray-700 text-gray-500 hover:text-gray-300 hover:bg-gray-700/40' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
+                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-white/[0.08] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
                         Yopish
                       </div>
                     )}
@@ -376,11 +376,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 <label className={`${labelClass} flex items-center gap-1.5`}><CarIcon className="w-3.5 h-3.5" /> Mashina</label>
                 {!isCarOpen && selectedCar ? (
                   <div onClick={() => setIsCarOpen(true)}
-                    className={`cursor-pointer p-4 rounded-2xl border transition-all group ${isDark ? 'bg-gray-800/60 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
+                    className={`cursor-pointer p-4 rounded-2xl border transition-all group ${isDark ? 'bg-[#1C1D23]/60 border-white/[0.08] hover:border-white/[0.12]' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
                       {selectedCar.avatar
                         ? <img src={selectedCar.avatar} alt={selectedCar.name} className="w-11 h-11 rounded-xl object-cover" />
-                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}><CarIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>
+                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-200'}`}><CarIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>
                       }
                       <div className="flex-1">
                         <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name}</p>
@@ -390,20 +390,20 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-                    <div className={`p-3 border-b ${isDark ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1D23] border-white/[0.08] shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-[#0D0E12]/50' : 'border-gray-100 bg-gray-50'}`}>
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={carSearch} onChange={e => setCarSearch(e.target.value)}
                           placeholder="Mashinani qidirish..." autoFocus
-                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
+                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-[#1C1D23] text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
                       </div>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto divide-y divide-gray-700/30">
+                    <div className="max-h-[220px] overflow-y-auto divide-y divide-white/[0.05]">
                       {filteredCars.map(c => (
                         <div key={c.id} onClick={() => { setCarId(c.id); setIsCarOpen(false); setCarSearch(''); }}
-                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-gray-700/40' : 'hover:bg-gray-50'}`}>
-                          {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}><CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>}
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-gray-50'}`}>
+                          {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}><CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>}
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name}</p>
                             <p className={`text-[11px] font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{c.licensePlate}</p>
@@ -415,7 +415,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                     {selectedCar && (
                       <div onClick={() => setIsCarOpen(false)}
-                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-gray-700 text-gray-500 hover:text-gray-300 hover:bg-gray-700/40' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
+                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-white/[0.08] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
                         Yopish
                       </div>
                     )}
@@ -435,7 +435,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
                         description === cat.label
                           ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
-                          : isDark ? 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                          : isDark ? 'bg-[#1C1D23] border-white/[0.08] text-gray-400 hover:border-white/[0.12] hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
                       }`}
                     >
                       <span className="text-xl">{cat.icon}</span>
@@ -493,7 +493,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           {/* Desktop close */}
           <div className="flex justify-end px-6 py-5 flex-shrink-0">
             <button type="button" onClick={resetAndClose}
-              className={`hidden md:flex items-center justify-center w-8 h-8 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+              className={`hidden md:flex items-center justify-center w-8 h-8 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
               <XIcon className="w-5 h-5" />
             </button>
           </div>
@@ -522,7 +522,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       className={`flex flex-col items-center justify-center gap-2.5 h-[88px] rounded-2xl border text-sm font-bold transition-all active:scale-95 ${
                         paymentMethod === pm.id
                           ? isDark ? 'bg-teal-500/15 border-teal-500/60 text-teal-400 shadow-sm' : 'bg-teal-50 border-teal-400 text-teal-700 shadow-sm'
-                          : isDark ? 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-600' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 shadow-sm'
+                          : isDark ? 'bg-[#1C1D23]/60 border-white/[0.08] text-gray-400 hover:border-white/[0.12]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 shadow-sm'
                       }`}
                     >
                       <span className="text-3xl">{pm.icon}</span>
@@ -540,7 +540,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   Karta cheki <span className="text-red-400 ml-1 normal-case text-xs font-normal">(majburiy)</span>
                 </label>
                 {chequeImage ? (
-                  <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-gray-900' : 'border-teal-300 bg-gray-50'}`}>
+                  <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-[#0D0E12]' : 'border-teal-300 bg-gray-50'}`}>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>✓ Chek qo'shildi</span>
                       <button type="button" onClick={() => { setChequeImage(null); setChequeError(null); }}
@@ -548,7 +548,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                         Olib tashlash
                       </button>
                     </div>
-                    <div className={`mx-4 border-t border-dashed mb-3 ${isDark ? 'border-gray-700' : 'border-gray-300'}`} />
+                    <div className={`mx-4 border-t border-dashed mb-3 ${isDark ? 'border-white/[0.08]' : 'border-gray-300'}`} />
                     <div className="px-4 pb-4">
                       <img src={chequeImage} alt="Cheque" className="w-full rounded-xl object-contain max-h-44 shadow" />
                     </div>
@@ -558,14 +558,14 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) processImageFile(f); }}
                     onDragOver={e => e.preventDefault()}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all py-8 px-4 group ${
-                      isDark ? 'border-gray-700 hover:border-teal-500/50 bg-gray-800/40 hover:bg-teal-500/5' : 'border-gray-300 hover:border-teal-400 bg-white hover:bg-teal-50/50 shadow-sm'
+                      isDark ? 'border-white/[0.08] hover:border-teal-500/50 bg-[#1C1D23]/40 hover:bg-teal-500/5' : 'border-gray-300 hover:border-teal-400 bg-white hover:bg-teal-50/50 shadow-sm'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:-translate-y-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>🧾</div>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:-translate-y-1 ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>🧾</div>
                     <div className="text-center">
                       <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Karta chekini yuklang</p>
                       <p className={`text-xs mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                        Drag & drop · <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${isDark ? 'bg-gray-700 border border-gray-600' : 'bg-gray-100 border border-gray-200'}`}>Ctrl+V</kbd> · yoki bosing
+                        Drag & drop · <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${isDark ? 'bg-[#1C1D23] border border-white/[0.08]' : 'bg-gray-100 border border-gray-200'}`}>Ctrl+V</kbd> · yoki bosing
                       </p>
                     </div>
                   </div>
@@ -599,9 +599,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           {/* Action footer */}
-          <div className={`mt-auto px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-transparent border-gray-700/60' : 'bg-gray-50 border-gray-100'}`}>
+          <div className={`mt-auto px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-transparent border-white/[0.06]' : 'bg-gray-50 border-gray-100'}`}>
             <button type="button" onClick={resetAndClose}
-              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}>
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${isDark ? 'bg-[#1C1D23] text-gray-300 hover:bg-white/[0.06] border border-white/[0.08]' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}>
               {t('cancel')}
             </button>
             <button type="submit"

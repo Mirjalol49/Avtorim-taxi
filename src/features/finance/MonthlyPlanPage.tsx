@@ -41,7 +41,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Header Filters */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#13141A]/95 border-gray-700'}`}>
                 <MonthPicker
                     label={t('selectMonth') || 'Oyni tanlang'}
                     value={selectedDate}

@@ -83,7 +83,7 @@ const HiddenDashboard: React.FC = () => {
     }
 
     const getTabColor = (tabId: TabType, isActive: boolean) => {
-        if (!isActive) return 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white';
+        if (!isActive) return 'bg-[#1C1D23] text-gray-400 hover:bg-white/[0.06] hover:text-white';
         switch (tabId) {
             case 'users': return 'bg-blue-600 text-white shadow-sm';
             case 'audit': return 'bg-purple-600 text-white shadow-sm';
@@ -93,9 +93,9 @@ const HiddenDashboard: React.FC = () => {
     };
 
     return (
-        <div className="h-screen overflow-y-auto bg-gray-900 text-white font-sans custom-scrollbar">
+        <div className="h-screen overflow-y-auto bg-[#0D0E12] text-white font-sans custom-scrollbar">
             {/* Header */}
-            <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-40">
+            <header className="bg-[#13141A] border-b border-white/[0.08] sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">
@@ -115,7 +115,7 @@ const HiddenDashboard: React.FC = () => {
 
                         <div className="flex items-center gap-4">
                             {/* Session Info */}
-                            <div className="hidden sm:flex items-center gap-3 bg-gray-900/50 px-4 py-2 rounded-xl border border-gray-700">
+                            <div className="hidden sm:flex items-center gap-3 bg-[#0D0E12]/50 px-4 py-2 rounded-xl border border-white/[0.08]">
                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                 <div>
                                     <span className="text-sm font-medium text-gray-200">

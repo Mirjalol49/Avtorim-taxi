@@ -188,7 +188,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0f766e] placeholder-gray-500'
+    ? 'bg-[#1C1D23] border-white/[0.08] text-white focus:border-[#0f766e] placeholder-gray-500'
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`;
@@ -200,7 +200,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     const doc = getDoc(category);
     const inputId = `doc-${category}`;
     return (
-      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-[#1C1D23] border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
         <div className="flex-1 min-w-0">
           <p className={`text-xs font-semibold mb-0.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
           {doc
@@ -233,8 +233,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'}`}>
+      <div className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-white/[0.08] bg-[#1C1D23]/50' : 'border-gray-100 bg-gray-50/50'}`}>
           <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {editingDriver ? t('editDriver') : t('addDriver')}
           </h3>
@@ -250,11 +250,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           <div className="flex items-center gap-5">
             <div className="flex-shrink-0">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Foto</label>
-              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
+              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-[#1C1D23] border-white/[0.08] hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
                 {avatar ? (
                   <img src={avatar} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-[#1C1D23]/50' : 'bg-gray-100'}`}>
                     <CameraIcon className={`w-7 h-7 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                   </div>
                 )}
@@ -287,7 +287,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
 
           {/* Car assignment picker */}
-          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
               <CarIcon className="w-4 h-4" /> Biriktirilgan avtomobil
             </p>
@@ -298,7 +298,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="button"
                 onClick={() => setCarPickerOpen(o => !o)}
                 className={`w-full rounded-xl border p-3 flex items-center gap-3 transition-colors text-left ${theme === 'dark'
-                  ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e]'
+                  ? 'bg-[#1C1D23] border-white/[0.08] hover:border-[#0f766e]'
                   : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}
               >
                 {selectedCar ? (
@@ -306,7 +306,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                     {selectedCar.avatar ? (
                       <img src={selectedCar.avatar} alt={selectedCar.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                     ) : (
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-200'}`}>
                         <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                       </div>
                     )}
@@ -324,7 +324,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   </>
                 ) : (
                   <>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-200'}`}>
                       <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                     </div>
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -336,9 +336,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
               {/* Dropdown list */}
               {carPickerOpen && (
-                <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                   {/* Search input */}
-                  <div className={`p-2 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <div className={`p-2 border-b ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100'}`}>
                     <input
                       ref={carSearchRef}
                       type="text"
@@ -346,7 +346,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                       onChange={e => setCarSearch(e.target.value)}
                       placeholder="Nomi yoki raqami bo'yicha qidiring..."
                       className={`w-full px-3 py-2 rounded-lg text-sm outline-none border ${theme === 'dark'
-                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-[#0f766e]'
+                        ? 'bg-[#1C1D23] border-white/[0.08] text-white placeholder-gray-500 focus:border-[#0f766e]'
                         : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-[#0f766e]'}`}
                     />
                   </div>
@@ -358,9 +358,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                         onClick={() => { setSelectedCarId(''); setCarPickerOpen(false); }}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${!selectedCarId
                           ? 'bg-[#0f766e] text-white'
-                          : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}
+                          : theme === 'dark' ? 'text-gray-400 hover:bg-white/[0.04]' : 'text-gray-500 hover:bg-gray-50'}`}
                       >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
                           <XIcon className="w-4 h-4" />
                         </div>
                         <span>Avtomobil biriktirmaslik</span>
@@ -376,12 +376,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                           onClick={() => { setSelectedCarId(car.id); setCarPickerOpen(false); setCarSearch(''); }}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${selectedCarId === car.id
                             ? 'bg-[#0f766e] text-white'
-                            : theme === 'dark' ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-800 hover:bg-gray-50'}`}
+                            : theme === 'dark' ? 'text-gray-200 hover:bg-white/[0.04]' : 'text-gray-800 hover:bg-gray-50'}`}
                         >
                           {car.avatar ? (
                             <img src={car.avatar} alt={car.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                           ) : (
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
                               <CarIcon className="w-4 h-4" />
                             </div>
                           )}
@@ -399,7 +399,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
 
           {/* Driver documents */}
-          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
               <span>👤</span> Haydovchi hujjatlari
             </p>
@@ -412,7 +412,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           <div className="pt-2 flex justify-end gap-3">
             <button type="button" onClick={onClose}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}>
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-white/[0.04]' : 'text-gray-600 hover:bg-gray-100'}`}>
               {t('cancel')}
             </button>
             <button type="submit" disabled={isSubmitting}

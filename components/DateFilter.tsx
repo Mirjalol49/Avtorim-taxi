@@ -68,7 +68,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
     const filters: TimeFilter[] = ['today', 'week', 'month', 'year', 'all'];
 
     return (
-        <div className={`flex items-center p-1 rounded-xl w-full overflow-x-auto border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
+        <div className={`flex items-center p-1 rounded-xl w-full overflow-x-auto border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'
             }`}>
             {filters.map((f) => (
                 <button
@@ -77,7 +77,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                     className={`flex flex-col items-center justify-center px-2.5 sm:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0 ${currentFilter === f
                         ? 'bg-[#0f766e] text-white shadow-md transform scale-[1.02]'
                         : theme === 'dark'
-                            ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                            ? 'text-gray-400 hover:text-white hover:bg-white/[0.06]/50'
                             : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                         }`}
                 >

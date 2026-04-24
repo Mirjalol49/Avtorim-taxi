@@ -100,7 +100,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   return (
     <header
       className={`h-24 flex items-center justify-between px-8 z-10 border-b flex-shrink-0 transition-colors duration-200 ${theme === 'dark'
-        ? 'bg-[#1F2937] border-gray-800'
+        ? 'bg-[#13141A] border-white/[0.05]'
         : 'bg-white border-gray-200'
         }`}
     >
@@ -122,7 +122,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           onClick={onThemeToggle}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           className={`p-2 rounded-lg border transition-all ${theme === 'dark'
-            ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400 hover:text-gray-200'
+            ? 'bg-[#1C1D23] hover:bg-white/[0.06] border-white/[0.08] text-gray-400 hover:text-gray-200'
             : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-500 hover:text-gray-700'
             }`}
         >
@@ -162,7 +162,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           <button
             onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${theme === 'dark'
-              ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300 hover:text-white'
+              ? 'bg-[#1C1D23] hover:bg-white/[0.06] border-white/[0.08] text-gray-300 hover:text-white'
               : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600 hover:text-gray-900'
               }`}
           >
@@ -178,7 +178,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           {isLangMenuOpen && (
             <div
               className={`absolute top-full right-0 mt-2 w-40 rounded-lg shadow-xl overflow-hidden z-50 border transition-all duration-200 ${theme === 'dark'
-                ? 'bg-[#1F2937] border-gray-700'
+                ? 'bg-[#13141A] border-white/[0.08]'
                 : 'bg-white border-gray-200'
                 }`}
             >
@@ -188,10 +188,10 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                   onClick={() => handleLanguageChange(lang)}
                   className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${i18n.language === lang
                     ? theme === 'dark'
-                      ? 'bg-gray-700 text-[#0f766e]'
+                      ? 'bg-[#1C1D23] text-[#0f766e]'
                       : 'bg-gray-100 text-[#0f766e]'
                     : theme === 'dark'
-                      ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      ? 'text-gray-300 hover:bg-white/[0.04] hover:text-white'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                 >

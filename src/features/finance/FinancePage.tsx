@@ -48,7 +48,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Analytics Header Filters */}
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#13141A]/95 border-gray-700'}`}>
                 <DatePicker
                     label={t('fromDate') || 'Boshlanish sanasi'}
                     value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
@@ -104,13 +104,13 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                 </div>
 
                 {/* Yearly Expense */}
-                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
+                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-100'}`}>
                     <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
                         <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                     </div>
                     <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'}`}>
+                            <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-[#1C1D23] text-red-400 border-white/[0.08]' : 'bg-red-50 text-red-500 border-red-100'}`}>
                                 <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                             </div>
                             <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{analyticsYear} {t('totalExpense')}</p>
@@ -127,13 +127,13 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                 </div>
 
                 {/* Yearly Net Profit */}
-                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
+                <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-100'}`}>
                     <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
                         <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
                     </div>
                     <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#0f766e] border-gray-700' : 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/20'}`}>
+                            <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-[#1C1D23] text-[#0f766e] border-white/[0.08]' : 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/20'}`}>
                                 <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
                             </div>
                             <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{analyticsYear} {t('netProfit')}</p>
@@ -156,7 +156,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
             </div>
 
             {/* Monthly Analytics Chart */}
-            <div className={`w-full h-[300px] sm:h-[400px] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`w-full h-[300px] sm:h-[400px] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         <BanknoteIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -206,10 +206,10 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                             />
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: theme === 'dark' ? '#1F2937' : '#FFFFFF',
-                                    border: `1px solid ${theme === 'dark' ? '#374151' : '#E5E7EB'}`,
+                                    backgroundColor: theme === 'dark' ? '#13141A' : '#FFFFFF',
+                                    border: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}`,
                                     borderRadius: '12px',
-                                    color: theme === 'dark' ? '#FFFFFF' : '#111827',
+                                    color: theme === 'dark' ? '#FFFFFF' : '#0D0E12',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                     fontSize: '12px'
                                 }}

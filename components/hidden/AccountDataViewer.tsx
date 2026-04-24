@@ -62,9 +62,9 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-[#1C1D23] rounded-2xl border border-white/[0.08] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900/50">
+                <div className="flex items-center justify-between p-6 border-b border-white/[0.08] bg-[#0D0E12]/50">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-xl">
                             {user.username.charAt(0).toUpperCase()}
@@ -76,21 +76,21 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors"
                     >
                         <XIcon className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-2 p-4 border-b border-gray-700">
+                <div className="flex gap-2 p-4 border-b border-white/[0.08]">
                     {(['overview', 'drivers', 'transactions'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
                                 ? 'bg-cyan-600 text-white'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                : 'text-gray-400 hover:text-white hover:bg-white/[0.06]'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -108,21 +108,21 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                         <>
                             {activeTab === 'overview' && (
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                                    <div className="bg-[#0D0E12]/50 rounded-xl p-4 border border-white/[0.08]">
                                         <div className="flex items-center gap-2 text-gray-400 mb-2">
                                             <UsersIcon className="w-4 h-4" />
                                             <span className="text-xs uppercase">Drivers</span>
                                         </div>
                                         <div className="text-2xl font-bold text-white">{stats.driverCount}</div>
                                     </div>
-                                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                                    <div className="bg-[#0D0E12]/50 rounded-xl p-4 border border-white/[0.08]">
                                         <div className="flex items-center gap-2 text-gray-400 mb-2">
                                             <CalendarIcon className="w-4 h-4" />
                                             <span className="text-xs uppercase">Transactions</span>
                                         </div>
                                         <div className="text-2xl font-bold text-white">{stats.transactionCount}</div>
                                     </div>
-                                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                                    <div className="bg-[#0D0E12]/50 rounded-xl p-4 border border-white/[0.08]">
                                         <div className="flex items-center gap-2 text-green-400 mb-2">
                                             <TrendingUpIcon className="w-4 h-4" />
                                             <span className="text-xs uppercase">Income</span>
@@ -131,7 +131,7 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                                             {formatNumberSmart(stats.totalIncome, false, 'uz')}
                                         </div>
                                     </div>
-                                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                                    <div className="bg-[#0D0E12]/50 rounded-xl p-4 border border-white/[0.08]">
                                         <div className="flex items-center gap-2 text-red-400 mb-2">
                                             <WalletIcon className="w-4 h-4" />
                                             <span className="text-xs uppercase">Expense</span>
@@ -149,8 +149,8 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                                         <div className="text-center text-gray-500 py-12">No drivers found</div>
                                     ) : (
                                         drivers.map(driver => (
-                                            <div key={driver.id} className="flex items-center gap-4 bg-gray-900/50 rounded-xl p-4 border border-gray-700">
-                                                <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
+                                            <div key={driver.id} className="flex items-center gap-4 bg-[#0D0E12]/50 rounded-xl p-4 border border-white/[0.08]">
+                                                <div className="w-10 h-10 rounded-full bg-[#1C1D23] overflow-hidden">
                                                     {driver.avatar ? (
                                                         <img src={driver.avatar} alt="" className="w-full h-full object-cover" />
                                                     ) : (
@@ -178,7 +178,7 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                                         <div className="text-center text-gray-500 py-12">No transactions found</div>
                                     ) : (
                                         transactions.slice(0, 20).map(tx => (
-                                            <div key={tx.id} className="flex items-center justify-between bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                                            <div key={tx.id} className="flex items-center justify-between bg-[#0D0E12]/50 rounded-lg p-3 border border-white/[0.08]">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-2 h-2 rounded-full ${tx.type === 'income' ? 'bg-green-500' : 'bg-red-500'}`} />
                                                     <div>

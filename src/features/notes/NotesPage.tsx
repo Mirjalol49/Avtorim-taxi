@@ -135,10 +135,10 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
     const colorCfg = COLOR_MAP[color];
     const cardBg = isDark
-        ? color === 'default' ? 'bg-[#1F2937]' : colorCfg.bg
+        ? color === 'default' ? 'bg-[#13141A]' : colorCfg.bg
         : color === 'default' ? 'bg-white' : colorCfg.bg;
     const cardBorder = isDark
-        ? color === 'default' ? 'border-gray-700' : colorCfg.border
+        ? color === 'default' ? 'border-white/[0.08]' : colorCfg.border
         : color === 'default' ? 'border-gray-200' : colorCfg.border;
 
     return (
@@ -194,7 +194,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                 )}
 
                 {/* Footer */}
-                <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
                     <div className="flex gap-2">
                         {onDelete && !confirmDel && (
                             <button
@@ -206,7 +206,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                         )}
                         {confirmDel && (
                             <>
-                                <button onClick={() => setConfirmDel(false)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}>
+                                <button onClick={() => setConfirmDel(false)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'text-gray-400 hover:bg-white/[0.06]' : 'text-gray-500 hover:bg-gray-100'}`}>
                                     {labels.cancel}
                                 </button>
                                 <button onClick={onDelete} disabled={isSaving} className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50">
@@ -218,7 +218,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                     <div className="flex gap-2">
                         <button
                             onClick={onClose}
-                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-400 hover:bg-white/[0.06]' : 'text-gray-500 hover:bg-gray-100'}`}
                         >
                             {labels.cancel}
                         </button>
@@ -257,10 +257,10 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
     const isDark = theme === 'dark';
     const colorCfg = COLOR_MAP[note.color];
     const bg = isDark
-        ? note.color === 'default' ? 'bg-[#1F2937] hover:bg-[#263244]' : `${colorCfg.bg} hover:brightness-110`
+        ? note.color === 'default' ? 'bg-[#13141A] hover:bg-[#263244]' : `${colorCfg.bg} hover:brightness-110`
         : note.color === 'default' ? 'bg-white hover:bg-gray-50' : `${colorCfg.bg} hover:brightness-105`;
     const border = isDark
-        ? note.color === 'default' ? 'border-gray-700/60' : colorCfg.border
+        ? note.color === 'default' ? 'border-white/[0.06]' : colorCfg.border
         : note.color === 'default' ? 'border-gray-200' : colorCfg.border;
 
     return (
@@ -290,7 +290,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
             )}
 
             {/* Footer */}
-            <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
+            <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
                 <span className={`text-[10px] font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                     {timeAgo(note.updatedMs)}
                 </span>
@@ -313,11 +313,11 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
-    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700/60' : 'bg-white border-gray-200'}`}>
-        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`} />
-        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-gray-700/70' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-gray-700/70' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-gray-700/70' : 'bg-gray-100'}`} />
+    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
+        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-200'}`} />
+        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]/70' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]/70' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]/70' : 'bg-gray-100'}`} />
     </div>
 );
 
@@ -454,7 +454,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     }, [notes]);
 
     return (
-        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#111827]' : 'bg-[#F3F4F6]'}`}>
+        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#0D0E12]' : 'bg-[#F3F4F6]'}`}>
             <div className="max-w-7xl mx-auto space-y-6">
 
                 {/* Header */}
@@ -491,7 +491,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                             placeholder={t('searchNotes')}
                             className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/40 transition-all ${
                                 isDark
-                                    ? 'bg-[#1F2937] border-gray-700 text-white placeholder-gray-600'
+                                    ? 'bg-[#13141A] border-white/[0.08] text-white placeholder-gray-600'
                                     : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                             }`}
                         />
@@ -512,7 +512,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                                 className={`text-xs px-3 py-2 rounded-xl font-semibold border transition-all ${
                                     filterColor === 'all'
                                         ? 'bg-[#0f766e] text-white border-transparent'
-                                        : isDark ? 'bg-[#1F2937] border-gray-700 text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
+                                        : isDark ? 'bg-[#13141A] border-white/[0.08] text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
                                 }`}
                             >
                                 {t('all') || 'All'}
@@ -525,7 +525,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                                     className={`w-8 h-8 rounded-xl border transition-all ${
                                         filterColor === c
                                             ? `${COLOR_MAP[c].dot} border-transparent ring-2 ring-white/30 scale-110`
-                                            : `${COLOR_MAP[c].dot} opacity-50 hover:opacity-90 ${isDark ? 'border-gray-700' : 'border-gray-200'}`
+                                            : `${COLOR_MAP[c].dot} opacity-50 hover:opacity-90 ${isDark ? 'border-white/[0.08]' : 'border-gray-200'}`
                                     }`}
                                 />
                             ))}
@@ -549,8 +549,8 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Empty state */}
                 {!loading && notes.length === 0 && !tableError && (
-                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-200'}`}>
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#13141A]/50 border-white/[0.05]' : 'bg-white border-gray-200'}`}>
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
                             <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
@@ -569,7 +569,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* No search results */}
                 {!loading && notes.length > 0 && filtered.length === 0 && (
-                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-200'}`}>
+                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#13141A]/50 border-white/[0.05]' : 'bg-white border-gray-200'}`}>
                         <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noRecordsFound')}</p>
                     </div>
                 )}

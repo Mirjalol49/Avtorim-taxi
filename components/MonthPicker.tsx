@@ -60,7 +60,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${theme === 'dark'
-                    ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
+                    ? 'bg-[#1C1D23]/50 border-white/[0.08] hover:border-white/[0.12] text-white'
                     : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                     }`}
             >
@@ -78,7 +78,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
 
                     {/* Month Grid */}
                     <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark'
-                        ? 'bg-[#1F2937] border-gray-700'
+                        ? 'bg-[#13141A] border-white/[0.08]'
                         : 'bg-white border-gray-200'
                         }`}>
                         {/* Year Header */}
@@ -87,7 +87,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
                                 type="button"
                                 onClick={handlePrevYear}
                                 className={`p-1 rounded-lg transition-colors ${theme === 'dark'
-                                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
+                                    ? 'hover:bg-white/[0.06] text-gray-400 hover:text-white'
                                     : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
                                     }`}
                             >
@@ -100,7 +100,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
                                 type="button"
                                 onClick={handleNextYear}
                                 className={`p-1 rounded-lg transition-colors ${theme === 'dark'
-                                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
+                                    ? 'hover:bg-white/[0.06] text-gray-400 hover:text-white'
                                     : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
                                     }`}
                             >
@@ -122,7 +122,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
                                                 ? 'bg-blue-500/20 text-blue-400 font-bold'
                                                 : 'bg-blue-50 text-blue-600 font-bold'
                                             : theme === 'dark'
-                                                ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                                ? 'text-gray-300 hover:bg-white/[0.06] hover:text-white'
                                                 : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                         }`}
                                 >

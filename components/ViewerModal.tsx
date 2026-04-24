@@ -89,10 +89,10 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
 
     return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className={`w-full max-w-md rounded-2xl shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${theme === 'dark' ? 'bg-[#1F2937] border border-gray-700' : 'bg-white'
+            <div className={`w-full max-w-md rounded-2xl shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${theme === 'dark' ? 'bg-[#13141A] border border-white/[0.08]' : 'bg-white'
                 }`}>
                 {/* Header */}
-                <div className={`flex items-center justify-between p-6 border-b shrink-0 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
+                <div className={`flex items-center justify-between p-6 border-b shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100'
                     }`}>
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-xl ${theme === 'dark' ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-600'
@@ -106,7 +106,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     <button
                         onClick={onClose}
                         className={`p-2 rounded-xl transition-colors ${theme === 'dark'
-                            ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'
+                            ? 'hover:bg-white/[0.06] text-gray-400 hover:text-gray-200'
                             : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
                             }`}
                     >
@@ -119,7 +119,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     {/* Avatar Upload */}
                     <div className="flex justify-center mb-2">
                         <div className="relative group">
-                            <div className={`w-24 h-24 rounded-full overflow-hidden border-4 transition-colors ${theme === 'dark' ? 'border-gray-700 group-hover:border-teal-500' : 'border-gray-200 group-hover:border-teal-500'
+                            <div className={`w-24 h-24 rounded-full overflow-hidden border-4 transition-colors ${theme === 'dark' ? 'border-white/[0.08] group-hover:border-teal-500' : 'border-gray-200 group-hover:border-teal-500'
                                 }`}>
                                 <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                             </div>
@@ -142,7 +142,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
-                                ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500'
+                                ? 'bg-[#1C1D23] border-white/[0.08] text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
                                 } ${errors.name ? 'border-red-500' : ''}`}
                             placeholder="John Doe"
@@ -163,7 +163,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
-                                ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500'
+                                ? 'bg-[#1C1D23] border-white/[0.08] text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
                                 } ${errors.phoneNumber ? 'border-red-500' : ''}`}
                             placeholder="+998 90 123 45 67"
@@ -184,7 +184,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
-                                ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500'
+                                ? 'bg-[#1C1D23] border-white/[0.08] text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
                                 } ${errors.password ? 'border-red-500' : ''}`}
                             placeholder="Secret Password"
@@ -195,7 +195,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     </div>
 
                     {/* Active Status */}
-                    <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'
+                    <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-[#1C1D23]/50 border-white/[0.08]' : 'bg-gray-50 border-gray-200'
                         }`}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -234,7 +234,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             type="button"
                             onClick={onClose}
                             className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark'
-                                ? 'text-gray-300 hover:bg-gray-800'
+                                ? 'text-gray-300 hover:bg-white/[0.04]'
                                 : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
