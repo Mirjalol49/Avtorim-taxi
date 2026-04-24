@@ -151,7 +151,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
     const colorCfg = COLOR_MAP[color];
     const cardBg = isDark
-        ? color === 'default' ? 'bg-[#13141A]' : colorCfg.bg
+        ? color === 'default' ? 'bg-[#11131B]' : colorCfg.bg
         : color === 'default' ? 'bg-white' : colorCfg.bg;
     const cardBorder = isDark
         ? color === 'default' ? 'border-white/[0.08]' : colorCfg.border
@@ -203,7 +203,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                 />
 
                 {/* Reminder */}
-                <div className={`mx-4 mb-3 rounded-xl border transition-colors ${isDark ? 'border-white/[0.06] bg-[#1C1D23]' : 'border-gray-100 bg-gray-50'}`}>
+                <div className={`mx-4 mb-3 rounded-xl border transition-colors ${isDark ? 'border-white/[0.06] bg-[#181A24]' : 'border-gray-100 bg-gray-50'}`}>
                     <button
                         type="button"
                         onClick={() => setShowReminder(r => !r)}
@@ -223,7 +223,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                     value={toInputValue(reminderAt)}
                                     min={toInputValue(Date.now())}
                                     onChange={e => setReminderAt(e.target.value ? new Date(e.target.value).getTime() : null)}
-                                    className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border outline-none focus:ring-1 focus:ring-[#0f766e] transition-all ${isDark ? 'bg-[#0D0E12] border-white/[0.08] text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                                    className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border outline-none focus:ring-1 focus:ring-[#0f766e] transition-all ${isDark ? 'bg-[#0B0C13] border-white/[0.08] text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                                 />
                                 {reminderAt && (
                                     <button
@@ -310,7 +310,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
     const isDark = theme === 'dark';
     const colorCfg = COLOR_MAP[note.color];
     const bg = isDark
-        ? note.color === 'default' ? 'bg-[#13141A] hover:bg-[#263244]' : `${colorCfg.bg} hover:brightness-110`
+        ? note.color === 'default' ? 'bg-[#11131B] hover:bg-[#263244]' : `${colorCfg.bg} hover:brightness-110`
         : note.color === 'default' ? 'bg-white hover:bg-gray-50' : `${colorCfg.bg} hover:brightness-105`;
     const border = isDark
         ? note.color === 'default' ? 'border-white/[0.06]' : colorCfg.border
@@ -373,11 +373,11 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
-    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
-        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-200'}`} />
-        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`} />
+    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
+        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-200'}`} />
+        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-100'}`} />
     </div>
 );
 
@@ -525,7 +525,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     }, [notes]);
 
     return (
-        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#0D0E12]' : 'bg-[#F3F4F6]'}`}>
+        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#0B0C13]' : 'bg-[#EEF2F8]'}`}>
             <div className="max-w-7xl mx-auto space-y-6">
 
                 {/* Header */}
@@ -562,7 +562,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                             placeholder={t('searchNotes')}
                             className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/40 transition-all ${
                                 isDark
-                                    ? 'bg-[#13141A] border-white/[0.08] text-white placeholder-gray-600'
+                                    ? 'bg-[#11131B] border-white/[0.08] text-white placeholder-gray-600'
                                     : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                             }`}
                         />
@@ -583,7 +583,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                                 className={`text-xs px-3 py-2 rounded-xl font-semibold border transition-all ${
                                     filterColor === 'all'
                                         ? 'bg-[#0f766e] text-white border-transparent'
-                                        : isDark ? 'bg-[#13141A] border-white/[0.08] text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
+                                        : isDark ? 'bg-[#11131B] border-white/[0.08] text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
                                 }`}
                             >
                                 {t('all') || 'All'}
@@ -620,8 +620,8 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Empty state */}
                 {!loading && notes.length === 0 && !tableError && (
-                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#13141A] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
+                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#11131B] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#181A24]' : 'bg-gray-100'}`}>
                             <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
@@ -640,7 +640,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* No search results */}
                 {!loading && notes.length > 0 && filtered.length === 0 && (
-                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#13141A] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
+                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#11131B] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
                         <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noRecordsFound')}</p>
                     </div>
                 )}

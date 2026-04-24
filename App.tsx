@@ -414,7 +414,7 @@ const AppContent: React.FC = () => {
   // Block rendering until strict auth check completes for admins
   if (isAuthChecking) {
     return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0D0E12]' : 'bg-gray-50'
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0B0C13]' : 'bg-[#EEF2F8]'
         }`}>
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
@@ -458,14 +458,14 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-200 ${theme === 'dark'
-      ? 'bg-[#0D0E12] text-gray-50'
-      : 'bg-[#F3F4F6] text-gray-900'
+      ? 'bg-[#0B0C13] text-gray-50'
+      : 'bg-[#EEF2F8] text-gray-900'
       }`}>
       {/* SIDEBAR */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${theme === 'dark'
-          ? 'bg-[#13141A] border-white/[0.08]'
-          : 'bg-white border-gray-200'
+          ? 'bg-[#11131B] border-white/[0.07]'
+          : 'bg-white border-gray-200 shadow-[1px_0_0_0_#DFE7F2]'
         }`}>
         <div className="absolute top-4 right-4 md:hidden">
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
@@ -551,7 +551,7 @@ const AppContent: React.FC = () => {
               {isDataLoading || (!adminProfile && !adminUser) ? ( // Using driversLoading as a proxy for general data loading
                 // Skeleton loading state
                 <div className={`rounded-xl p-3 border flex items-center gap-3 ${theme === 'dark'
-                  ? 'bg-[#0D0E12] border-white/[0.08]'
+                  ? 'bg-[#0B0C13] border-white/[0.07]'
                   : 'bg-gray-50 border-gray-200'
                   }`}>
                   <Skeleton variant="circular" width={36} height={36} theme="dark" />
@@ -563,7 +563,7 @@ const AppContent: React.FC = () => {
               ) : (
                 // Actual admin profile - use adminUser if available, otherwise adminProfile
                 <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 border flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark'
-                  ? 'bg-[#0D0E12] border-white/[0.08] hover:bg-white/[0.04]'
+                  ? 'bg-[#0B0C13] border-white/[0.07] hover:bg-white/[0.04]'
                   : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}>
                   {adminUser ? (

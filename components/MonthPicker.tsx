@@ -60,7 +60,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${theme === 'dark'
-                    ? 'bg-[#1C1D23]/50 border-white/[0.08] hover:border-white/[0.12] text-white'
+                    ? 'bg-[#181A24]/50 border-white/[0.08] hover:border-white/[0.12] text-white'
                     : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                     }`}
             >
@@ -78,7 +78,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
 
                     {/* Month Grid */}
                     <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark'
-                        ? 'bg-[#13141A] border-white/[0.08]'
+                        ? 'bg-[#11131B] border-white/[0.08]'
                         : 'bg-white border-gray-200'
                         }`}>
                         {/* Year Header */}

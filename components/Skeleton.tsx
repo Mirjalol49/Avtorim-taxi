@@ -15,7 +15,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
     height,
     theme = 'dark'
 }) => {
-    const baseClass = `animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-200'}`;
+    const baseClass = `animate-pulse ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-200'}`;
 
     const variantClass = {
         text: 'rounded',

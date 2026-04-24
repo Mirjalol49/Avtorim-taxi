@@ -121,7 +121,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const roleLabel = adminData.role === 'super_admin' ? 'Super Admin' : adminData.role === 'admin' ? 'Admin' : adminData.role;
   const roleColor = adminData.role === 'super_admin' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
     : adminData.role === 'admin' ? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
-    : 'bg-[#1C1D23] text-gray-400 border-white/[0.08]';
+    : 'bg-[#181A24] text-gray-400 border-white/[0.08]';
 
   return createPortal(
     <div
@@ -130,7 +130,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
       style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
       <div
-        className="w-full max-w-sm bg-[#13141A] border border-white/[0.06] rounded-[2rem] shadow-2xl overflow-hidden"
+        className="w-full max-w-sm bg-[#11131B] border border-white/[0.06] rounded-[2rem] shadow-2xl overflow-hidden"
         style={{ animation: 'modalPop 0.2s ease-out' }}
       >
         {view === 'profile' ? (
@@ -149,7 +149,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
             {/* Avatar */}
             <div className="flex flex-col items-center px-6 pb-5">
               <div className="relative group mb-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-[#1C1D23] relative">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-[#181A24] relative">
                   {(isSaving || imageLoading) && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
                       <Spinner />
@@ -176,11 +176,11 @@ const AdminModal: React.FC<AdminModalProps> = ({
                 <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
                 {/* Online dot */}
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-[#13141A] rounded-full" />
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-[#11131B] rounded-full" />
               </div>
 
               {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="w-full h-0.5 bg-[#1C1D23] rounded-full overflow-hidden mb-3">
+                <div className="w-full h-0.5 bg-[#181A24] rounded-full overflow-hidden mb-3">
                   <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                 </div>
               )}
@@ -206,7 +206,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                   value={name}
                   onChange={e => { setName(e.target.value); setNameError(''); }}
                   disabled={isReadOnly || isSaving}
-                  className="w-full bg-[#0D0E12]/40 border border-white/[0.06] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder-gray-500 disabled:opacity-50"
+                  className="w-full bg-[#0B0C13]/40 border border-white/[0.06] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder-gray-500 disabled:opacity-50"
                 />
                 {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
               </div>
@@ -219,7 +219,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     type={showCurrentPw ? 'text' : 'password'}
                     value={adminData.password || '••••••••'}
                     disabled
-                    className="w-full bg-[#0D0E12]/20 border border-white/[0.05] rounded-xl px-4 py-2.5 text-gray-400 text-sm font-mono pr-10 opacity-70"
+                    className="w-full bg-[#0B0C13]/20 border border-white/[0.05] rounded-xl px-4 py-2.5 text-gray-400 text-sm font-mono pr-10 opacity-70"
                   />
                   <button
                     type="button"
@@ -242,7 +242,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                       onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
                       disabled={isSaving}
                       placeholder="(ixtiyoriy - faqat o'zgartirish uchun)"
-                      className={`w-full bg-[#0D0E12]/40 border rounded-xl px-4 py-2.5 text-white text-sm pr-10 focus:outline-none transition-colors placeholder-gray-500 disabled:opacity-50 ${pwError ? 'border-red-500' : 'border-white/[0.06] focus:border-teal-500'}`}
+                      className={`w-full bg-[#0B0C13]/40 border rounded-xl px-4 py-2.5 text-white text-sm pr-10 focus:outline-none transition-colors placeholder-gray-500 disabled:opacity-50 ${pwError ? 'border-red-500' : 'border-white/[0.06] focus:border-teal-500'}`}
                     />
                     <button
                       type="button"
@@ -267,7 +267,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                   className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${saveSuccess
                     ? 'bg-green-500 text-white'
                     : !hasChanges || !!nameError
-                      ? 'bg-[#1C1D23] text-gray-600 cursor-not-allowed'
+                      ? 'bg-[#181A24] text-gray-600 cursor-not-allowed'
                       : 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm active:scale-95'
                     }`}
                 >
@@ -287,7 +287,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
               {onLock && (
                 <button
                   onClick={onLock}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#1C1D23] border border-white/[0.08] text-gray-300 hover:text-white hover:border-white/[0.08] transition-all text-sm font-semibold group shadow-sm"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#181A24] border border-white/[0.08] text-gray-300 hover:text-white hover:border-white/[0.08] transition-all text-sm font-semibold group shadow-sm"
                 >
                   <LockIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   Qulflash
@@ -318,7 +318,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
             <div className="flex gap-3 w-full">
               <button
                 onClick={() => setView('profile')}
-                className="flex-1 py-3 rounded-xl bg-[#1C1D23] border border-white/[0.08] text-gray-200 hover:text-white hover:bg-white/[0.06] transition-all font-semibold text-sm shadow-sm"
+                className="flex-1 py-3 rounded-xl bg-[#181A24] border border-white/[0.08] text-gray-200 hover:text-white hover:bg-white/[0.06] transition-all font-semibold text-sm shadow-sm"
               >
                 Bekor qilish
               </button>
