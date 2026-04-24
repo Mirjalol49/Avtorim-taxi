@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, Driver, TransactionType, PaymentStatus, UserRole, AdminUser, Language, Car } from '../../core/types';
 import { useFinanceStats } from '../finance/hooks/useFinanceStats';
@@ -18,6 +18,27 @@ import {
 import { useToast } from '../../../components/ToastNotification';
 import FinancialModal from '../../../components/FinancialModal';
 import { exportTransactionsToExcel } from '../../../utils/exportToExcel';
+
+const EXPENSE_CATEGORIES = [
+    { icon: '⛽', label: 'Benzin' },
+    { icon: '🔧', label: 'Ehtiyot qism' },
+    { icon: '🔩', label: 'Ta\'mirlash' },
+    { icon: '🚨', label: 'Jarima' },
+    { icon: '💡', label: 'Kommunal' },
+    { icon: '🏢', label: 'Ijara' },
+    { icon: '🛒', label: 'Xarid' },
+    { icon: '📝', label: 'Boshqa' },
+];
+
+const detectCategory = (desc: string | undefined) => {
+    if (!desc) return null;
+    return EXPENSE_CATEGORIES.find(cat =>
+        desc === cat.label ||
+        desc.startsWith(cat.label + ' ') ||
+        desc.startsWith(cat.label + ',') ||
+        desc.startsWith(cat.label + ':')
+    ) ?? null;
+};
 
 interface TransactionsPageProps {
     transactions: Transaction[];
@@ -363,7 +384,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className={`text-sm font-bold ${driver?.isDeleted ? (theme === 'dark' ? 'text-red-400' : 'text-red-600') : (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>
-                                                                        {driver?.name || tx.driverName || 'Deleted'}
+                                                                        {driver?.name || tx.driverName || 'Noma\'lum'}
                                                                     </span>
                                                                     {driver?.isDeleted && (
                                                                         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
@@ -384,30 +405,45 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="font-medium">
-                                                        {tx.description === 'Salary Refund: Manual Action'
-                                                            ? t('salaryRefundDescription')
-                                                            : tx.description || '—'}
-                                                    </span>
-                                                    {tx.type !== TransactionType.DAY_OFF && (tx.paymentMethod || tx.chequeImage) && (
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            {tx.paymentMethod && (
-                                                                <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-[#1C1D23] border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
-                                                                    {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
-                                                                </span>
+                                                {(() => {
+                                                    const cat = tx.type === TransactionType.EXPENSE ? detectCategory(tx.description) : null;
+                                                    const descText = tx.description === 'Salary Refund: Manual Action'
+                                                        ? t('salaryRefundDescription')
+                                                        : tx.description || '—';
+                                                    return (
+                                                        <div className="flex flex-col gap-1">
+                                                            {cat ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg border font-bold w-fit ${theme === 'dark' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                                                                        <span>{cat.icon}</span> {cat.label}
+                                                                    </span>
+                                                                    {descText !== cat.label && (
+                                                                        <span className="font-medium text-xs opacity-70">{descText}</span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="font-medium">{descText}</span>
                                                             )}
-                                                            {tx.chequeImage && (
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setSelectedImage(tx.chequeImage!); }}
-                                                                    className={`flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full border shadow-sm transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400 hover:bg-blue-800/50 hover:border-blue-600 focus:ring-blue-500 font-medium' : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 font-medium'}`}
-                                                                >
-                                                                    📄 {t('viewReceipt')}
-                                                                </button>
+                                                            {tx.type !== TransactionType.DAY_OFF && (tx.paymentMethod || tx.chequeImage) && (
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    {tx.paymentMethod && (
+                                                                        <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-[#1C1D23] border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                                                                            {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
+                                                                        </span>
+                                                                    )}
+                                                                    {tx.chequeImage && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); setSelectedImage(tx.chequeImage!); }}
+                                                                            className={`flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full border shadow-sm transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400 hover:bg-blue-800/50 hover:border-blue-600 focus:ring-blue-500 font-medium' : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 font-medium'}`}
+                                                                        >
+                                                                            📄 {t('viewReceipt')}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </div>
-                                                    )}
-                                                </div>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${
                                                 tx.type === TransactionType.INCOME ? 'text-[#0f766e]'

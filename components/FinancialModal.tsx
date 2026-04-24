@@ -25,6 +25,17 @@ const OTHER_CATEGORIES = [
   { icon: '📝', label: 'Boshqa'       },
 ];
 
+const ALL_CATEGORY_LABELS = OTHER_CATEGORIES.map(c => c.label);
+
+const isCategoryActive = (description: string, catLabel: string) =>
+    description === catLabel ||
+    description.startsWith(catLabel + ' ') ||
+    description.startsWith(catLabel + ',') ||
+    description.startsWith(catLabel + ':');
+
+const getActiveCategory = (description: string) =>
+    OTHER_CATEGORIES.find(c => isCategoryActive(description, c.label)) ?? null;
+
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -429,19 +440,32 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               <div>
                 <label className={labelClass}>📦 Kategoriya</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {OTHER_CATEGORIES.map(cat => (
-                    <button key={cat.label} type="button"
-                      onClick={() => setDescription(cat.label)}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
-                        description === cat.label
-                          ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
-                          : isDark ? 'bg-[#1C1D23] border-white/[0.08] text-gray-400 hover:border-white/[0.12] hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
-                    >
-                      <span className="text-xl">{cat.icon}</span>
-                      <span className="leading-tight text-center">{cat.label}</span>
-                    </button>
-                  ))}
+                  {OTHER_CATEGORIES.map(cat => {
+                    const active = isCategoryActive(description, cat.label);
+                    return (
+                      <button key={cat.label} type="button"
+                        onClick={() => {
+                          const current = getActiveCategory(description);
+                          if (current) {
+                            // Replace old category prefix with new one
+                            const rest = description.slice(current.label.length).trimStart();
+                            setDescription(rest ? `${cat.label} ${rest}` : cat.label);
+                          } else {
+                            // Prepend category to existing text
+                            setDescription(description.trim() ? `${cat.label} ${description.trim()}` : cat.label);
+                          }
+                        }}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
+                          active
+                            ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
+                            : isDark ? 'bg-[#1C1D23] border-white/[0.08] text-gray-400 hover:border-white/[0.12] hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }`}
+                      >
+                        <span className="text-xl">{cat.icon}</span>
+                        <span className="leading-tight text-center">{cat.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
