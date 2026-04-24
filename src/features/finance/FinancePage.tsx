@@ -13,8 +13,10 @@ import {
     TrendingUpIcon,
     TrendingDownIcon,
     WalletIcon,
-    BanknoteIcon
+    BanknoteIcon,
+    DownloadIcon,
 } from '../../../components/Icons';
+import { exportFinanceSummaryToExcel } from '../../../utils/exportToExcel';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -48,34 +50,56 @@ export const FinancePage: React.FC<FinancePageProps> = ({
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Analytics Header Filters */}
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#13141A]/95 border-gray-700'}`}>
-                <DatePicker
-                    label={t('fromDate') || 'Boshlanish sanasi'}
-                    value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
-                    onChange={(date) => setFilters(prev => ({ ...prev, startDate: date.toISOString() }))}
-                    theme={theme}
-                    labelClassName="text-white"
-                />
-                <DatePicker
-                    label={t('toDate') || 'Tugash sanasi'}
-                    value={filters.endDate ? new Date(filters.endDate) : new Date()}
-                    onChange={(date) => setFilters(prev => ({ ...prev, endDate: date.toISOString() }))}
-                    theme={theme}
-                    labelClassName="text-white"
-                />
-                <CustomSelect
-                    label={t('driver') || 'Haydovchi'}
-                    value={filters.driverId}
-                    onChange={(val) => setFilters(prev => ({ ...prev, driverId: val }))}
-                    options={[
-                        { id: 'all', name: t('allDrivers') || 'Barcha Haydovchilar' },
-                        ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))
-                    ]}
-                    theme={theme}
-                    showSearch={true}
-                    icon={UsersIcon}
-                    labelClassName="text-white"
-                />
+            <div className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <DatePicker
+                        label={t('fromDate') || 'Boshlanish sanasi'}
+                        value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
+                        onChange={(date) => setFilters(prev => ({ ...prev, startDate: date.toISOString() }))}
+                        theme={theme}
+                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
+                    />
+                    <DatePicker
+                        label={t('toDate') || 'Tugash sanasi'}
+                        value={filters.endDate ? new Date(filters.endDate) : new Date()}
+                        onChange={(date) => setFilters(prev => ({ ...prev, endDate: date.toISOString() }))}
+                        theme={theme}
+                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
+                    />
+                    <CustomSelect
+                        label={t('driver') || 'Haydovchi'}
+                        value={filters.driverId}
+                        onChange={(val) => setFilters(prev => ({ ...prev, driverId: val }))}
+                        options={[
+                            { id: 'all', name: t('allDrivers') || 'Barcha Haydovchilar' },
+                            ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))
+                        ]}
+                        theme={theme}
+                        showSearch={true}
+                        icon={UsersIcon}
+                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
+                    />
+                </div>
+                {/* Export button */}
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => exportFinanceSummaryToExcel(
+                            nonDeletedDrivers,
+                            allTransactions,
+                            filters.startDate,
+                            filters.endDate,
+                            `Moliyaviy_hisobot_${filters.startDate?.slice(0,10) || 'barcha'}`
+                        )}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+                            theme === 'dark'
+                                ? 'bg-[#1C1D23] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
+                        }`}
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        Excel hisoboti
+                    </button>
+                </div>
             </div>
 
             {/* Yearly Stats Summary */}

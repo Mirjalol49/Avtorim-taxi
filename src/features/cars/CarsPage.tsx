@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Car, CarDocument } from '../../core/types';
 import { Driver } from '../../core/types';
-import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon } from '../../../components/Icons';
+import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon } from '../../../components/Icons';
+import { exportCarsToExcel } from '../../../utils/exportToExcel';
 
 interface CarsPageProps {
     cars: Car[];
@@ -57,6 +58,19 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                         />
                     </div>
                 </div>
+                {/* Export button */}
+                <button
+                    onClick={() => exportCarsToExcel(filtered, drivers, 'Avtomobillar')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+                        theme === 'dark'
+                            ? 'bg-[#13141A] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
+                    }`}
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Excel</span>
+                </button>
+
                 {userRole === 'admin' && (
                     <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                         <button onClick={onAddCar}

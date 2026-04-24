@@ -4,7 +4,8 @@ import { Driver, DriverStatus } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { Transaction } from '../../core/types/transaction.types';
 import { useDriversList } from './hooks/useDriversList';
-import { SearchIcon, PlusIcon, GridIcon, ListIcon } from '../../../components/Icons';
+import { SearchIcon, PlusIcon, GridIcon, ListIcon, DownloadIcon } from '../../../components/Icons';
+import { exportDriversToExcel } from '../../../utils/exportToExcel';
 import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { useAuth } from '../auth/hooks/useAuth';
@@ -96,6 +97,19 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         </button>
                     </div>
                 )}
+
+                {/* Export Button */}
+                <button
+                    onClick={() => exportDriversToExcel(filteredDrivers, 'Haydovchilar')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+                        theme === 'dark'
+                            ? 'bg-[#13141A] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
+                    }`}
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Excel</span>
+                </button>
 
                 {/* View Toggle */}
                 <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>

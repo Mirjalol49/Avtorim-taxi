@@ -13,9 +13,11 @@ import {
     FilterIcon,
     EditIcon,
     CarIcon,
+    DownloadIcon,
 } from '../../../components/Icons';
 import { useToast } from '../../../components/ToastNotification';
 import FinancialModal from '../../../components/FinancialModal';
+import { exportTransactionsToExcel } from '../../../utils/exportToExcel';
 
 interface TransactionsPageProps {
     transactions: Transaction[];
@@ -228,18 +230,39 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 </div>
             </div>
 
-            {/* Bulk Delete Button */}
-            {userRole === 'admin' && selectedTransactions.length > 0 && (
-                <div className="animate-fadeSlideUp">
+            {/* Toolbar: Bulk Delete + Export */}
+            <div className="flex items-center justify-between gap-3">
+                {userRole === 'admin' && selectedTransactions.length > 0 ? (
                     <button
                         onClick={handleBulkDelete}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all shadow-md"
                     >
-                        <TrashIcon className="w-5 h-5" />
+                        <TrashIcon className="w-4 h-4" />
                         {t('delete')} {selectedTransactions.length} {t('selected')}
                     </button>
-                </div>
-            )}
+                ) : (
+                    <div />
+                )}
+                <button
+                    onClick={() => {
+                        const dateTag = filters.startDate
+                            ? `_${filters.startDate.slice(0, 10)}`
+                            : '';
+                        exportTransactionsToExcel(
+                            filteredTransactions,
+                            `O'tkazmalar${dateTag}`
+                        );
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+                        theme === 'dark'
+                            ? 'bg-[#13141A] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
+                    }`}
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                    Excel ({filteredTransactionsCount})
+                </button>
+            </div>
 
             {/* Transactions Table */}
             <div className={`rounded-3xl border overflow-hidden shadow-xl ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
