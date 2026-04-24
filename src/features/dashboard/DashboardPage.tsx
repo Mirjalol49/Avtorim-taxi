@@ -276,126 +276,176 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* DAILY PAYMENT STATUS */}
-            <div className={`p-6 sm:p-8 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
+            <div className={`rounded-3xl border shadow-xl overflow-hidden ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700/60' : 'bg-white border-gray-200'}`}>
+
+                {/* ── Header ─────────────────────────────────────────────── */}
+                <div className={`px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b ${theme === 'dark' ? 'border-gray-700/60' : 'border-gray-100'}`}>
                     <div>
-                        <h3 className={`text-xl sm:text-2xl font-black flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            <span className="text-3xl">📅</span>
+                        <p className={`text-[11px] font-semibold uppercase tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {new Date().getDate()} {months[new Date().getMonth()]}, {weekdays[new Date().getDay()]}
+                        </p>
+                        <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {t('todayStatus')}
                         </h3>
-                        <p className={`mt-2 font-medium capitalize ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {new Date().getDate()} {months[new Date().getMonth()]},{' '}
-                            {weekdays[new Date().getDay()]}
-                        </p>
                     </div>
-                    <div className="mt-4 sm:mt-0 flex flex-wrap gap-3">
-                        <div className={`px-4 py-2 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-[#0f766e]/20 text-teal-400 border-[#0f766e]/40' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                            ✓ {todayStats.completed.length} {t('paid')}
-                        </div>
-                        <div className={`px-4 py-2 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
-                            ⏳ {todayStats.pending.length} {t('statusPending')}
-                        </div>
+                    {/* Summary pills */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                            {todayStats.completed.length} {t('paid')}
+                        </span>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-600'}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
+                            {todayStats.pending.length} {t('statusPending')}
+                        </span>
                         {todayStats.dayOff.length > 0 && (
-                            <div className={`px-4 py-2 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                                🏖️ {todayStats.dayOff.length} {t('dayOffLabel')}
-                            </div>
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+                                {todayStats.dayOff.length} Dam olish
+                            </span>
                         )}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* COMPLETED COLUMN */}
-                    <div className="space-y-4">
-                        <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
-                            {t('driversPaidToday')}
-                        </h4>
+                {/* ── Two columns ────────────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-700/40">
+
+                    {/* COMPLETED */}
+                    <div className="p-6 space-y-1">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                {t('driversPaidToday')}
+                            </span>
+                        </div>
 
                         {todayStats.completed.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {todayStats.completed.map(driver => (
-                                    <div key={driver.id} className={`relative flex items-center gap-3 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-gray-800/50 border-teal-500/20 hover:border-teal-500/40' : 'bg-white border-teal-200 hover:border-teal-300 shadow-sm'}`}>
-                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-teal-400 flex-shrink-0">
-                                            <img src={driver.avatar} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="min-w-0 pr-8">
-                                            <div className={`text-sm font-bold truncate pr-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
-                                            <div className={`text-[11px] mt-0.5 truncate font-medium ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                                                {driver.isDayOff ? `🏖️ ${t('dayOffLabel')}` : `${t('todayPaidLabel')}: +${(driver.todayIncome || 0).toLocaleString()} UZS`}
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-gray-700/50 bg-gray-800/40' : 'divide-gray-100 bg-gray-50'}`}>
+                                {todayStats.completed.map((driver, i) => {
+                                    const plan = driver.dailyPlan || 1;
+                                    const pct = Math.min(100, Math.round((driver.todayIncome / plan) * 100));
+                                    return (
+                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                            {/* Avatar */}
+                                            <div className="relative flex-shrink-0">
+                                                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-emerald-500/60">
+                                                    {driver.avatar
+                                                        ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                        : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                    }
+                                                </div>
+                                                {/* Rank badge */}
+                                                {i < 3 && (
+                                                    <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black border ${
+                                                        i === 0 ? 'bg-yellow-400 text-yellow-900 border-yellow-300'
+                                                        : i === 1 ? 'bg-gray-300 text-gray-700 border-gray-200'
+                                                        : 'bg-amber-600 text-white border-amber-500'
+                                                    }`}>{i + 1}</span>
+                                                )}
+                                            </div>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                    <span className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
+                                                    <span className={`text-xs font-bold tabular-nums flex-shrink-0 text-emerald-500`}>
+                                                        +{(driver.todayIncome || 0).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                {/* Progress bar */}
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                                                    <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </div>
+                                            {/* Lottie trophy */}
+                                            <div className="w-8 h-8 flex-shrink-0">
+                                                <Lottie animationData={badgeAnimation} loop={false} />
                                             </div>
                                         </div>
-                                        {/* Golden Badge JSON attached to the right */}
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10">
-                                            <Lottie animationData={badgeAnimation} loop={false} />
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
-                            <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                {t('noPaymentsYet')}
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-gray-800/30' : 'bg-gray-50'}`}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-gray-700/60' : 'bg-gray-100'}`}>
+                                    <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
+                                </div>
+                                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('noPaymentsYet')}</p>
                             </div>
                         )}
                     </div>
 
-                    {/* PENDING COLUMN */}
-                    <div className="space-y-4">
-                        <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                            {t('pendingPaymentsLabel')}
-                        </h4>
+                    {/* PENDING */}
+                    <div className="p-6 space-y-1">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="w-2 h-2 rounded-full bg-orange-500" />
+                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
+                                {t('pendingPaymentsLabel')}
+                            </span>
+                        </div>
 
                         {todayStats.pending.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {todayStats.pending.map(driver => (
-                                    <div key={driver.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-gray-800/50 border-orange-500/20 hover:border-orange-500/40' : 'bg-white border-orange-200 hover:border-orange-300 shadow-sm'}`}>
-                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-400/50 flex-shrink-0 grayscale-[0.3]">
-                                            <img src={driver.avatar} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
-                                            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                                                <div className="flex items-center justify-between opacity-80">
-                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-teal-500' : 'text-teal-600'}`}>{t('todayPaidLabel')}:</span>
-                                                    <span className="text-xs font-bold text-teal-500/80 font-mono">+{(driver.todayIncome || 0).toLocaleString()} UZS</span>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-gray-700/50 bg-gray-800/40' : 'divide-gray-100 bg-gray-50'}`}>
+                                {todayStats.pending.map(driver => {
+                                    const plan = driver.dailyPlan || 750000;
+                                    const paid = driver.todayIncome || 0;
+                                    const remaining = Math.max(0, plan - paid);
+                                    const pct = Math.min(100, Math.round((paid / plan) * 100));
+                                    const barColor = pct >= 70 ? 'bg-amber-400' : pct >= 30 ? 'bg-orange-500' : 'bg-red-500';
+                                    return (
+                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                            {/* Avatar */}
+                                            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-orange-500/30 flex-shrink-0 grayscale-[0.2]">
+                                                {driver.avatar
+                                                    ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                }
+                                            </div>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                    <span className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
+                                                    <span className={`text-xs font-bold tabular-nums flex-shrink-0 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}>
+                                                        −{remaining.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                {/* Progress bar */}
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                                                    <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
-                            <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                {t('allPaidToday')}
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-gray-800/30' : 'bg-gray-50'}`}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+                                    <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-500' : 'text-emerald-400'}`} />
+                                </div>
+                                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('allPaidToday')}</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* DAY OFF SECTION */}
+                {/* ── Day-off strip ──────────────────────────────────────── */}
                 {todayStats.dayOff.length > 0 && (
-                    <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <h4 className={`text-base font-bold flex items-center gap-2 mb-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-                            🏖️ {t('dayOffLabel')} — {todayStats.dayOff.length} ta haydovchi
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    <div className={`px-6 py-4 border-t flex items-center gap-4 flex-wrap ${theme === 'dark' ? 'border-gray-700/60 bg-gray-800/20' : 'border-gray-100 bg-gray-50/60'}`}>
+                        <span className={`text-[11px] font-bold uppercase tracking-widest flex-shrink-0 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`}>
+                            🌙 Dam olish
+                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
                             {todayStats.dayOff.map(driver => (
-                                <div key={driver.id} className={`flex flex-col items-center gap-2 p-3 rounded-2xl border text-center ${theme === 'dark' ? 'bg-blue-500/5 border-blue-500/15' : 'bg-blue-50/60 border-blue-100'}`}>
+                                <div key={driver.id} className="flex items-center gap-2 group">
                                     <div className="relative">
-                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-400/40 flex-shrink-0 grayscale-[0.5]">
+                                        <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.5]">
                                             {driver.avatar
                                                 ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{driver.name?.charAt(0)}</div>
+                                                : <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{driver.name?.charAt(0)}</div>
                                             }
                                         </div>
-                                        <span className="absolute -bottom-1 -right-1 text-base leading-none">🏖️</span>
                                     </div>
-                                    <div className={`text-xs font-bold truncate w-full ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>{driver.name}</div>
-                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${theme === 'dark' ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                                        Dam olish
-                                    </div>
+                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.name.split(' ')[0]}</span>
                                 </div>
                             ))}
                         </div>
