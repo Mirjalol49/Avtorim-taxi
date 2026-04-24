@@ -33,7 +33,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
     return (<>
-        <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-[#1C1D23]/50' : 'hover:bg-gray-50'}`}>
+        <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-[#1C1D23]' : 'hover:bg-gray-50'}`}>
 
             {/* Driver */}
             <td className="p-4">

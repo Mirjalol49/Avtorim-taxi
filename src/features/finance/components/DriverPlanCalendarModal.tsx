@@ -118,7 +118,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             }`}>
                 
                 {/* Header */}
-                <div className={`flex items-center justify-between p-5 sm:p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#0D0E12]/50' : 'border-gray-100 bg-gray-50'}`}>
+                <div className={`flex items-center justify-between p-5 sm:p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#0D0E12]' : 'border-gray-100 bg-gray-50'}`}>
                     <div className="flex items-center gap-4">
                         {monthData.driver.avatar ? (
                             <img src={monthData.driver.avatar} alt="Avatar" className="w-12 h-12 rounded-full border-2 border-gray-600 object-cover" />

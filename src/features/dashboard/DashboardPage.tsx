@@ -320,7 +320,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {todayStats.completed.length > 0 ? (
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.05] bg-[#1C1D23]/40' : 'divide-gray-100 bg-gray-50'}`}>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.05] bg-[#1C1D23]' : 'divide-gray-100 bg-gray-50'}`}>
                                 {todayStats.completed.map((driver, i) => {
                                     const plan = driver.dailyPlan || 1;
                                     const pct = Math.min(100, Math.round((driver.todayIncome / plan) * 100));
@@ -365,7 +365,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 })}
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#1C1D23]/30' : 'bg-gray-50'}`}>
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-50'}`}>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
                                     <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
                                 </div>
@@ -384,7 +384,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {todayStats.pending.length > 0 ? (
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.05] bg-[#1C1D23]/40' : 'divide-gray-100 bg-gray-50'}`}>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.05] bg-[#1C1D23]' : 'divide-gray-100 bg-gray-50'}`}>
                                 {todayStats.pending.map(driver => {
                                     const plan = driver.dailyPlan || 750000;
                                     const paid = driver.todayIncome || 0;
@@ -418,7 +418,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 })}
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#1C1D23]/30' : 'bg-gray-50'}`}>
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-50'}`}>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
                                     <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-500' : 'text-emerald-400'}`} />
                                 </div>
@@ -430,7 +430,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
                 {/* ── Day-off strip ──────────────────────────────────────── */}
                 {todayStats.dayOff.length > 0 && (
-                    <div className={`px-6 py-4 border-t flex items-center gap-4 flex-wrap ${theme === 'dark' ? 'border-white/[0.06] bg-[#1C1D23]/20' : 'border-gray-100 bg-gray-50/60'}`}>
+                    <div className={`px-6 py-4 border-t flex items-center gap-4 flex-wrap ${theme === 'dark' ? 'border-white/[0.06] bg-[#1C1D23]' : 'border-gray-100 bg-gray-50/60'}`}>
                         <span className={`text-[11px] font-bold uppercase tracking-widest flex-shrink-0 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`}>
                             🌙 Dam olish
                         </span>

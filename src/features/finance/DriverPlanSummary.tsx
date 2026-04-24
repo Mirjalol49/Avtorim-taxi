@@ -128,8 +128,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     const currentMonthKey = months[0] || toMonthKey(new Date());
 
     return (
-        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#13141A]/50 border-white/[0.05]' : 'bg-white border-gray-100'}`}>
-            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#1C1D23]/50' : 'border-gray-100 bg-gray-50'}`}>
+        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#13141A] border-white/[0.05]' : 'bg-white border-gray-100'}`}>
+            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#1C1D23]' : 'border-gray-100 bg-gray-50'}`}>
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">📅</span>
                     <div>

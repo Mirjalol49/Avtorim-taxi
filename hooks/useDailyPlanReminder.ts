@@ -124,7 +124,7 @@ export const useDailyPlanReminder = ({
         const alreadySent = getSentDriverIds(today, slot);
         const isFinal = slot === '22';
 
-        const activeDrivers = drivers.filter(d => !d.isDeleted && d.status === 'ACTIVE');
+        const activeDrivers = drivers.filter(d => !d.isDeleted);
 
         for (const driver of activeDrivers) {
             if (alreadySent.has(driver.id)) continue;

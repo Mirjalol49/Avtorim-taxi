@@ -10,6 +10,7 @@ const toNote = (r: any): Note => ({
     isPinned: r.is_pinned ?? false,
     createdMs: r.created_ms,
     updatedMs: r.updated_ms,
+    reminderAt: r.reminder_at ?? null,
 });
 
 export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => void, fleetId?: string) => {
@@ -49,6 +50,7 @@ export const addNote = async (note: Omit<Note, 'id'>) => {
             is_pinned: note.isPinned,
             created_ms: note.createdMs,
             updated_ms: note.updatedMs,
+            reminder_at: note.reminderAt ?? null,
         })
         .select('id')
         .single();
@@ -63,6 +65,7 @@ export const updateNote = async (id: string, updates: Partial<Omit<Note, 'id' | 
     if (updates.color !== undefined) row.color = updates.color;
     if (updates.isPinned !== undefined) row.is_pinned = updates.isPinned;
     if (updates.updatedMs !== undefined) row.updated_ms = updates.updatedMs;
+    if ('reminderAt' in updates) row.reminder_at = updates.reminderAt ?? null;
 
     const { error } = await supabase.from('notes').update(row).eq('id', id);
     if (error) throw new Error(error.message);

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Note, NoteColor } from '../../core/types/note.types';
 import { addNote, updateNote, deleteNote } from '../../../services/notesService';
 import { useNotes } from './hooks/useNotes';
+import { useAuth } from '../auth/hooks/useAuth';
+import { useNoteReminders } from '../../../hooks/useNoteReminders';
 
 interface NotesPageProps {
     theme: 'light' | 'dark';
@@ -14,20 +16,24 @@ interface NotesPageProps {
 const SQL = `-- Run this in Supabase SQL Editor to create the notes table
 
 CREATE TABLE IF NOT EXISTS notes (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  fleet_id   UUID REFERENCES admin_users(id) ON DELETE CASCADE,
-  title      TEXT NOT NULL DEFAULT '',
-  content    TEXT NOT NULL DEFAULT '',
-  color      TEXT NOT NULL DEFAULT 'default',
-  is_pinned  BOOLEAN NOT NULL DEFAULT FALSE,
-  created_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
-  updated_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  fleet_id    UUID REFERENCES admin_users(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL DEFAULT '',
+  content     TEXT NOT NULL DEFAULT '',
+  color       TEXT NOT NULL DEFAULT 'default',
+  is_pinned   BOOLEAN NOT NULL DEFAULT FALSE,
+  reminder_at BIGINT,
+  created_ms  BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+  updated_ms  BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_notes_fleet ON notes(fleet_id);
 ALTER TABLE notes DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON notes TO anon, authenticated;
-ALTER PUBLICATION supabase_realtime ADD TABLE notes;`;
+ALTER PUBLICATION supabase_realtime ADD TABLE notes;
+
+-- If table already exists, add the reminder_at column:
+-- ALTER TABLE notes ADD COLUMN IF NOT EXISTS reminder_at BIGINT;`;
 
 const SqlSetupBanner: React.FC<{ isDark: boolean }> = ({ isDark }) => {
     const [copied, setCopied] = useState(false);
@@ -106,16 +112,26 @@ interface EditorProps {
     saveError?: string | null;
     isSaving?: boolean;
     labels: { title: string; takNote: string; delete: string; confirmDelete: string; cancel: string; save: string; };
-    onSave: (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => void;
+    onSave: (data: { title: string; content: string; color: NoteColor; isPinned: boolean; reminderAt?: number | null }) => void;
     onDelete?: () => void;
     onClose: () => void;
 }
 
+// Format epoch ms as "YYYY-MM-DDTHH:mm" for datetime-local input
+const toInputValue = (ms: number | null | undefined): string => {
+    if (!ms) return '';
+    const d = new Date(ms);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, labels, onSave, onDelete, onClose }) => {
-    const [title, setTitle]       = useState(note?.title ?? '');
-    const [content, setContent]   = useState(note?.content ?? '');
-    const [color, setColor]       = useState<NoteColor>(note?.color ?? 'default');
-    const [isPinned, setIsPinned] = useState(note?.isPinned ?? false);
+    const [title, setTitle]           = useState(note?.title ?? '');
+    const [content, setContent]       = useState(note?.content ?? '');
+    const [color, setColor]           = useState<NoteColor>(note?.color ?? 'default');
+    const [isPinned, setIsPinned]     = useState(note?.isPinned ?? false);
+    const [reminderAt, setReminderAt] = useState<number | null>(note?.reminderAt ?? null);
+    const [showReminder, setShowReminder] = useState(false);
     const [confirmDel, setConfirmDel] = useState(false);
     const contentRef = useRef<HTMLTextAreaElement>(null);
     const isDark = theme === 'dark';
@@ -186,6 +202,43 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                     className={`w-full px-4 py-2 pb-4 text-sm bg-transparent border-none outline-none resize-none min-h-[120px] max-h-[60vh] overflow-y-auto placeholder-opacity-30 ${isDark ? 'text-gray-200 placeholder-gray-600' : 'text-gray-700 placeholder-gray-300'}`}
                 />
 
+                {/* Reminder */}
+                <div className={`mx-4 mb-3 rounded-xl border transition-colors ${isDark ? 'border-white/[0.06] bg-[#1C1D23]' : 'border-gray-100 bg-gray-50'}`}>
+                    <button
+                        type="button"
+                        onClick={() => setShowReminder(r => !r)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                        <span className="flex items-center gap-2">
+                            <span>🔔</span>
+                            <span>{reminderAt ? `Eslatma: ${new Date(reminderAt).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Eslatma qo\'shish'}</span>
+                        </span>
+                        <span className={`transition-transform ${showReminder ? 'rotate-180' : ''}`}>▾</span>
+                    </button>
+                    {showReminder && (
+                        <div className={`px-3 pb-3 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+                            <div className="flex items-center gap-2 mt-2">
+                                <input
+                                    type="datetime-local"
+                                    value={toInputValue(reminderAt)}
+                                    min={toInputValue(Date.now())}
+                                    onChange={e => setReminderAt(e.target.value ? new Date(e.target.value).getTime() : null)}
+                                    className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border outline-none focus:ring-1 focus:ring-[#0f766e] transition-all ${isDark ? 'bg-[#0D0E12] border-white/[0.08] text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                                />
+                                {reminderAt && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setReminderAt(null)}
+                                        className={`text-xs px-2 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}
+                                    >
+                                        O'chirish
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Save error */}
                 {saveError && (
                     <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
@@ -223,7 +276,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                             {labels.cancel}
                         </button>
                         <button
-                            onClick={() => { if (hasContent) onSave({ title, content, color, isPinned }); else onClose(); }}
+                            onClick={() => { if (hasContent) onSave({ title, content, color, isPinned, reminderAt }); else onClose(); }}
                             disabled={isSaving}
                             className="text-xs px-4 py-1.5 rounded-lg font-bold bg-[#0f766e] text-white hover:bg-teal-600 transition-all active:scale-95 disabled:opacity-50 min-w-[50px]"
                         >
@@ -291,9 +344,16 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 
             {/* Footer */}
             <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
-                <span className={`text-[10px] font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                    {timeAgo(note.updatedMs)}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {timeAgo(note.updatedMs)}
+                    </span>
+                    {note.reminderAt && note.reminderAt > Date.now() && (
+                        <span className={`text-[10px] font-semibold flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} title={`Eslatma: ${new Date(note.reminderAt).toLocaleString()}`}>
+                            🔔 {new Date(note.reminderAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
+                </div>
                 <button
                     onClick={e => { e.stopPropagation(); onTogglePin(); }}
                     className={`w-6 h-6 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
@@ -315,9 +375,9 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
     <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
         <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-200'}`} />
-        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]/70' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]/70' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]/70' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`} />
     </div>
 );
 
@@ -325,6 +385,7 @@ const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
 
 const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     const { t } = useTranslation();
+    const { adminUser } = useAuth();
     const { notes: remoteNotes, loading, tableError } = useNotes(fleetId);
 
     // Optimistic local state — UI updates instantly, syncs with DB in background
@@ -343,6 +404,16 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     }, [remoteNotes]);
 
     const notes = localNotes;
+
+    useNoteReminders({
+        notes,
+        adminUserId: adminUser?.id || '',
+        adminUserName: adminUser?.name || '',
+        enabled: !!adminUser?.id,
+        onNoteUpdated: (noteId, updates) => {
+            setLocalNotes(prev => prev.map(n => n.id === noteId ? { ...n, ...updates } : n));
+        },
+    });
 
     const filtered = useMemo(() => {
         let list = notes;
@@ -369,7 +440,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
         setShowEditor(true);
     };
 
-    const handleSave = async (data: { title: string; content: string; color: NoteColor; isPinned: boolean }) => {
+    const handleSave = async (data: { title: string; content: string; color: NoteColor; isPinned: boolean; reminderAt?: number | null }) => {
         if (!fleetId) return;
         setSaveError(null);
         setIsSaving(true);
@@ -549,7 +620,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Empty state */}
                 {!loading && notes.length === 0 && !tableError && (
-                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#13141A]/50 border-white/[0.05]' : 'bg-white border-gray-200'}`}>
+                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#13141A] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
                             <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -569,7 +640,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* No search results */}
                 {!loading && notes.length > 0 && filtered.length === 0 && (
-                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#13141A]/50 border-white/[0.05]' : 'bg-white border-gray-200'}`}>
+                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#13141A] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
                         <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noRecordsFound')}</p>
                     </div>
                 )}

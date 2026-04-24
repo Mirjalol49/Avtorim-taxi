@@ -168,7 +168,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     ? 'bg-[#1C1D23] border-teal-500 ring-1 ring-teal-500/40'
                                                     : 'bg-white border-teal-500 ring-1 ring-teal-500/20'
                                                 : theme === 'dark'
-                                                    ? 'bg-[#1C1D23]/50 border-white/[0.08] hover:border-white/[0.12]'
+                                                    ? 'bg-[#1C1D23] border-white/[0.08] hover:border-white/[0.12]'
                                                     : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                                         }`}
                                     >
@@ -268,8 +268,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <div className={`rounded-3xl border overflow-hidden shadow-xl ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[800px]">
-                        <thead className={`border-b ${theme === 'dark' ? 'bg-[#1C1D23]/50 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
-                            <tr className={`${theme === 'dark' ? 'bg-[#1C1D23]/50' : 'bg-gray-50'}`}>
+                        <thead className={`border-b ${theme === 'dark' ? 'bg-[#1C1D23] border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+                            <tr className={`${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-50'}`}>
                                 {userRole === 'admin' && (
                                     <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                         <input
@@ -309,7 +309,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
                                     return (
-                                        <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-[#1C1D23]/50' : 'hover:bg-gray-50'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                                        <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-[#1C1D23]' : 'hover:bg-gray-50'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
                                             {userRole === 'admin' && (
                                                 <td className="px-6 py-4">
                                                     <input
@@ -444,7 +444,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
                 {/* Pagination */}
                 {filteredTransactionsCount > itemsPerPage && (
-                    <div className={`flex items-center justify-center gap-2 p-4 border-t ${theme === 'dark' ? 'border-white/[0.08] bg-[#1C1D23]/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                    <div className={`flex items-center justify-center gap-2 p-4 border-t ${theme === 'dark' ? 'border-white/[0.08] bg-[#1C1D23]' : 'border-gray-100 bg-gray-50/50'}`}>
                         <button
                             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
@@ -511,7 +511,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         style={{ animation: 'modalPop 0.2s ease-out' }}
                     >
                         {/* Modal Header */}
-                        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-[#1C1D23]/60' : 'border-gray-100 bg-gray-50'}`}>
+                        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-[#1C1D23]' : 'border-gray-100 bg-gray-50'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
                                     <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
