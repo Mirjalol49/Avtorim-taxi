@@ -340,6 +340,7 @@ const AppContent: React.FC = () => {
     } else {
       await addCar(data as Omit<Car, 'id'>, adminUser.id);
     }
+    triggerRefresh();
   };
 
   const handleDeleteCar = (id: string) => {
@@ -351,6 +352,7 @@ const AppContent: React.FC = () => {
       action: async () => {
         closeConfirmModal();
         await deleteCar(id);
+        triggerRefresh();
       }
     });
   };
