@@ -289,13 +289,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             {weekdays[new Date().getDay()]}
                         </p>
                     </div>
-                    <div className="mt-4 sm:mt-0 flex gap-4">
-                        <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-[#0f766e]/20 text-teal-400 border-[#0f766e]/40' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                    <div className="mt-4 sm:mt-0 flex flex-wrap gap-3">
+                        <div className={`px-4 py-2 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-[#0f766e]/20 text-teal-400 border-[#0f766e]/40' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
                             ✓ {todayStats.completed.length} {t('paid')}
                         </div>
-                        <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
+                        <div className={`px-4 py-2 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
                             ⏳ {todayStats.pending.length} {t('statusPending')}
                         </div>
+                        {todayStats.dayOff.length > 0 && (
+                            <div className={`px-4 py-2 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                                🏖️ {todayStats.dayOff.length} {t('dayOffLabel')}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -367,6 +372,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         )}
                     </div>
                 </div>
+
+                {/* DAY OFF SECTION */}
+                {todayStats.dayOff.length > 0 && (
+                    <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className={`text-base font-bold flex items-center gap-2 mb-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+                            🏖️ {t('dayOffLabel')} — {todayStats.dayOff.length} ta haydovchi
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            {todayStats.dayOff.map(driver => (
+                                <div key={driver.id} className={`flex flex-col items-center gap-2 p-3 rounded-2xl border text-center ${theme === 'dark' ? 'bg-blue-500/5 border-blue-500/15' : 'bg-blue-50/60 border-blue-100'}`}>
+                                    <div className="relative">
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-400/40 flex-shrink-0 grayscale-[0.5]">
+                                            {driver.avatar
+                                                ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{driver.name?.charAt(0)}</div>
+                                            }
+                                        </div>
+                                        <span className="absolute -bottom-1 -right-1 text-base leading-none">🏖️</span>
+                                    </div>
+                                    <div className={`text-xs font-bold truncate w-full ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>{driver.name}</div>
+                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${theme === 'dark' ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                        Dam olish
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

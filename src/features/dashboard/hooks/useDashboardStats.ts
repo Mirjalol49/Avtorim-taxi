@@ -65,24 +65,37 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
     // Daily Plan Status
     const todayStats = useMemo(() => {
-        const todayDateKey = toDateKey(new Date());
-        
+        const todayKey = toDateKey(new Date());
+
+        // Build a set of driver IDs who have an active DAY_OFF transaction today
+        const dayOffDriverIds = new Set<string>(
+            transactions
+                .filter(tx => {
+                    if ((tx.type as string) !== 'DAY_OFF') return false;
+                    if (tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return false;
+                    return toDateKey(new Date(tx.timestamp)) === todayKey;
+                })
+                .map(tx => tx.driverId)
+                .filter(Boolean) as string[]
+        );
+
         const completed: any[] = [];
         const pending: any[] = [];
+        const dayOff: any[] = [];
 
         nonDeletedDrivers.forEach(driver => {
-            const driverCars = cars.filter(c => c.assignedDriverId === driver.id && !c.isDeleted);
-            let dailyPlan = (driver as any).dailyPlan ?? 0;
-            if (driverCars.length > 0 && (driverCars[0].dailyPlan ?? 0) > 0) {
-                dailyPlan = driverCars[0].dailyPlan;
+            // Exclude drivers who are on day off today
+            if (dayOffDriverIds.has(driver.id)) {
+                dayOff.push({ ...driver, isDayOff: true, todayIncome: 0, todayDebt: 0, totalDebt: 0 });
+                return;
             }
+
+            const driverCars = cars.filter(c => c.assignedDriverId === driver.id && !c.isDeleted);
 
             // Reusing debt utility logic
             const driverCar = driverCars[0] || null;
             const info = calcDriverDebt(driver, driverCar, transactions);
 
-            // Dashboard leverages the newly unified `netDebt` architecture 
-            // which automatically evaluates missing days dynamically from origin.
             const adjustedTotalDebt = info.netDebt;
 
             const stat = {
@@ -95,10 +108,8 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             };
 
             if (info.todayIncome >= (info.dailyPlan > 0 ? info.dailyPlan : 1)) {
-                // If they met their daily plan (or paid something when plan is missing), they are completed
                 completed.push(stat);
             } else {
-                // Anyone else (no payment, or partial payment) is pending
                 pending.push(stat);
             }
         });
@@ -108,7 +119,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         // Sort pending by remaining amount ascending
         pending.sort((a, b) => a.todayDebt - b.todayDebt);
 
-        return { completed, pending };
+        return { completed, pending, dayOff };
     }, [nonDeletedDrivers, cars, transactions]);
 
     return {
