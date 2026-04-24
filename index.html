@@ -25,13 +25,33 @@
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
+  <!-- Blocking theme init: apply dark class before first paint to prevent FOUC -->
+  <script>
+    (function() {
+      var saved = localStorage.getItem('avtorim_theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark) || (!saved && true)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
   <style>
+    :root {
+      --color-bg-init: #EEF2F8;
+      --color-text-init: #0D1526;
+    }
+    html.dark {
+      --color-bg-init: #0B0C13;
+      --color-text-init: #EEF0F8;
+    }
+
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Roboto',
         'Helvetica Neue', Arial, sans-serif;
-      background-color: #111827;
-      color: #f1f5f9;
+      background-color: var(--color-bg-init);
+      color: var(--color-text-init);
       user-select: none;
       -webkit-user-select: none;
     }

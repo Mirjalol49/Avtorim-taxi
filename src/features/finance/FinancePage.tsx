@@ -233,7 +233,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                     backgroundColor: theme === 'dark' ? '#11131B' : '#FFFFFF',
                                     border: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}`,
                                     borderRadius: '12px',
-                                    color: theme === 'dark' ? '#FFFFFF' : '#0D0E12',
+                                    color: theme === 'dark' ? '#FFFFFF' : '#0B0C13',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                     fontSize: '12px'
                                 }}

@@ -391,7 +391,7 @@ const AppContent: React.FC = () => {
 
   // --- COMPONENTS FOR FILTERS ---
   const FilterControl = ({ icon: Icon, label, children }: any) => (
-    <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.08]' : 'bg-white border-gray-200'
+    <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-200'
       }`}>
       <div className="flex items-center gap-2 mb-3">
         <Icon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -447,7 +447,7 @@ const AppContent: React.FC = () => {
   if (location.pathname.startsWith('/mirjalol49')) {
     return (
       <React.Suspense fallback={
-        <div className="min-h-screen bg-[#0D0E12] flex items-center justify-center">
+        <div className="min-h-screen bg-[#0B0C13] flex items-center justify-center">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
         </div>
       }>
@@ -508,7 +508,7 @@ const AppContent: React.FC = () => {
           <button
             onClick={toggleTheme}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${theme === 'dark'
-              ? 'bg-[#1C1D23] hover:bg-white/[0.06] border-white/[0.08] text-gray-300'
+              ? 'bg-[#181A24] hover:bg-white/[0.06] border-white/[0.08] text-gray-300'
               : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'
               }`}
           >
@@ -528,7 +528,7 @@ const AppContent: React.FC = () => {
           <button
             onClick={() => setIsSidebarOpen(false)}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
-              ? 'bg-[#1C1D23] hover:bg-white/[0.06] text-gray-300'
+              ? 'bg-[#181A24] hover:bg-white/[0.06] text-gray-300'
               : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
               }`}
           >
@@ -538,7 +538,7 @@ const AppContent: React.FC = () => {
             </div>
             <span className="text-xs font-bold uppercase">{language}</span>
           </button>
-          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-[#1C1D23]' : 'bg-gray-100'}`}>
+          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-100'}`}>
             <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-white/[0.06] text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
             <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-white/[0.06] text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
             <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-white/[0.06] text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
@@ -686,7 +686,7 @@ const AppContent: React.FC = () => {
         />
 
         {/* Mobile Header - Hidden on Desktop */}
-        <header className={`h-20 flex items-center justify-between px-6 md:px-8 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'bg-[#13141A] border-white/[0.05]' : 'bg-white border-gray-200'
+        <header className={`h-20 flex items-center justify-between px-6 md:px-8 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.05]' : 'bg-white border-gray-200'
           }`}>
           <div className="flex items-center gap-4">
             <button onClick={() => setIsSidebarOpen(true)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
@@ -717,7 +717,7 @@ const AppContent: React.FC = () => {
         </header>
 
         {/* ACTION BUTTONS ROW - Mobile Only */}
-        <div className={`flex items-center justify-between px-6 md:px-8 py-3 md:py-4 border-b sticky top-20 z-10 md:hidden ${theme === 'dark' ? 'bg-[#0D0E12] border-white/[0.05]' : 'bg-[#F3F4F6] border-gray-200'
+        <div className={`flex items-center justify-between px-6 md:px-8 py-3 md:py-4 border-b sticky top-20 z-10 md:hidden ${theme === 'dark' ? 'bg-[#0B0C13] border-white/[0.05]' : 'bg-[#EEF2F8] border-gray-200'
           }`}>
           {location.pathname === '/drivers' && userRole === 'admin' && (
             <>
