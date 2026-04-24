@@ -624,7 +624,7 @@ const AppContent: React.FC = () => {
 
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />}
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative" style={{ backgroundImage: theme === 'dark' ? 'radial-gradient(ellipse 70% 40% at 90% 0%, rgba(15,118,110,0.07) 0%, transparent 100%), radial-gradient(ellipse 50% 30% at 10% 100%, rgba(99,102,241,0.04) 0%, transparent 100%)' : 'radial-gradient(ellipse 70% 40% at 90% 0%, rgba(15,118,110,0.08) 0%, transparent 100%), radial-gradient(ellipse 50% 30% at 10% 100%, rgba(99,102,241,0.04) 0%, transparent 100%)' }}>
         {/* Desktop Header - Hidden on Mobile */}
         <DesktopHeader
           theme={theme}

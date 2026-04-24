@@ -48,6 +48,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         chartData, todayStats
     } = useDashboardStats(transactions, drivers, cars);
 
+    const isDark = theme === 'dark';
+
     return (
         <div className="space-y-6">
             {/* Time Filters */}
@@ -68,21 +70,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {isDataLoading ? (
                     <>
-                        <div className="bg-[#0f766e] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-md">
+                        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-6" style={{ background: 'linear-gradient(135deg,#0a6b62,#0f766e)' }}>
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme="dark" />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme="dark" />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme="dark" />
                             </div>
                         </div>
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-100'}`}>
+                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-[#11131B] border-white/[0.07]' : 'bg-white border-gray-100'}`}>
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                             </div>
                         </div>
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-100'}`}>
+                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border sm:col-span-2 lg:col-span-1 ${isDark ? 'bg-[#11131B] border-white/[0.07]' : 'bg-white border-gray-100'}`}>
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
@@ -93,70 +95,102 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 ) : (
                     <>
                         {/* Income */}
-                        <div className="bg-[#0f766e] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-md relative overflow-hidden group transition-all hover:shadow-lg">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
-                            </div>
-                            <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
-                                        <TrendingUpIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 hover:-translate-y-0.5"
+                            style={{
+                                background: 'linear-gradient(135deg, #0a6b62 0%, #0f766e 40%, #0e8a80 100%)',
+                                boxShadow: '0 8px 32px rgba(15,118,110,0.35), 0 2px 8px rgba(15,118,110,0.20)',
+                            }}
+                        >
+                            {/* Radial shine */}
+                            <div className="absolute -top-6 -right-6 w-40 h-40 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.6) 0%, transparent 70%)' }} />
+                            {/* Grid pattern overlay */}
+                            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 24px,rgba(255,255,255,1) 24px,rgba(255,255,255,1) 25px),repeating-linear-gradient(90deg,transparent,transparent 24px,rgba(255,255,255,1) 24px,rgba(255,255,255,1) 25px)' }} />
+                            <div className="relative z-10 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-white/15 rounded-xl border border-white/20 backdrop-blur-sm">
+                                            <TrendingUpIcon className="w-4 h-4 text-white" />
+                                        </div>
+                                        <p className="text-[11px] text-white/70 font-bold uppercase tracking-widest">{t('totalIncome')}</p>
                                     </div>
-                                    <p className="text-[10px] sm:text-[10px] md:text-[11px] text-teal-100/80 font-bold uppercase tracking-wide">{t('totalIncome')}</p>
+                                    <TrendingUpIcon className="w-10 h-10 text-white/10 group-hover:text-white/20 transition-colors" />
                                 </div>
                                 <div>
                                     <NumberTooltip value={totalIncome} label={t('totalIncome')} theme={theme}>
-                                        <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
+                                        <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help">
                                             {formatNumberSmart(totalIncome, isMobile, currentLanguage)}
                                         </h3>
                                     </NumberTooltip>
-                                    <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
+                                    <p className="text-[11px] text-white/50 font-semibold mt-2 tracking-wider">UZS</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Expense */}
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-100'}`}>
-                            <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                                <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-                            </div>
-                            <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-[#181A24] text-red-400 border-white/[0.08]' : 'bg-red-50 text-red-500 border-red-100'}`}>
-                                        <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 hover:-translate-y-0.5 border ${
+                            isDark
+                                ? 'bg-[#11131B] border-white/[0.07]'
+                                : 'bg-white border-gray-100'
+                        }`} style={{
+                            boxShadow: isDark
+                                ? '0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3)'
+                                : '0 4px 24px rgba(13,21,38,0.07), 0 1px 4px rgba(13,21,38,0.04)',
+                        }}>
+                            {/* Top accent line */}
+                            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
+                            {/* Subtle bg glow */}
+                            <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-10 bg-red-500 pointer-events-none" />
+                            <div className="relative z-10 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`p-2 rounded-xl border ${isDark ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-100 text-red-500'}`}>
+                                            <TrendingDownIcon className="w-4 h-4" />
+                                        </div>
+                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalExpense')}</p>
                                     </div>
-                                    <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{t('totalExpense')}</p>
+                                    <TrendingDownIcon className={`w-10 h-10 opacity-5 group-hover:opacity-10 transition-opacity ${isDark ? 'text-white' : 'text-gray-800'}`} />
                                 </div>
                                 <div>
                                     <NumberTooltip value={totalExpense} label={t('totalExpense')} theme={theme}>
-                                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        <h3 className={`text-3xl sm:text-4xl font-black tracking-tight leading-none font-mono cursor-help ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                             {formatNumberSmart(totalExpense, isMobile, currentLanguage)}
                                         </h3>
                                     </NumberTooltip>
-                                    <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
+                                    <p className={`text-[11px] font-semibold mt-2 tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Net Profit */}
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-100'}`}>
-                            <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                                <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-                            </div>
-                            <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-[#181A24] text-[#0f766e] border-white/[0.08]' : 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/20'}`}>
-                                        <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
+                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 hover:-translate-y-0.5 border sm:col-span-2 lg:col-span-1 ${
+                            isDark
+                                ? 'bg-[#11131B] border-white/[0.07]'
+                                : 'bg-white border-gray-100'
+                        }`} style={{
+                            boxShadow: isDark
+                                ? '0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3)'
+                                : '0 4px 24px rgba(13,21,38,0.07), 0 1px 4px rgba(13,21,38,0.04)',
+                        }}>
+                            {/* Top accent line */}
+                            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#0f766e]/60 to-transparent" />
+                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-10 pointer-events-none ${netProfit >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                            <div className="relative z-10 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`p-2 rounded-xl border ${isDark ? 'bg-[#0f766e]/10 border-[#0f766e]/20 text-[#0f766e]' : 'bg-[#0f766e]/10 border-[#0f766e]/20 text-[#0f766e]'}`}>
+                                            <WalletIcon className="w-4 h-4" />
+                                        </div>
+                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('netProfit')}</p>
                                     </div>
-                                    <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{t('netProfit')}</p>
+                                    <WalletIcon className={`w-10 h-10 opacity-5 group-hover:opacity-10 transition-opacity ${isDark ? 'text-white' : 'text-gray-800'}`} />
                                 </div>
                                 <div>
                                     <NumberTooltip value={netProfit} label={t('netProfit')} theme={theme}>
-                                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${netProfit >= 0 ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600' : theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                                        <h3 className={`text-3xl sm:text-4xl font-black tracking-tight leading-none font-mono cursor-help ${netProfit >= 0 ? isDark ? 'text-emerald-400' : 'text-emerald-600' : isDark ? 'text-red-400' : 'text-red-600'}`}>
                                             {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, currentLanguage)}
                                         </h3>
                                     </NumberTooltip>
-                                    <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
+                                    <p className={`text-[11px] font-semibold mt-2 tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
                                 </div>
                             </div>
                         </div>
@@ -165,13 +199,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* CHART ROW */}
-            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col relative overflow-hidden ${isDark ? 'bg-[#11131B] border-white/[0.07]' : 'bg-white border-gray-100'}`}
+                style={{ boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.4)' : '0 4px 24px rgba(13,21,38,0.07)' }}
+            >
+                {/* Subtle top accent */}
+                <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#0f766e]/30 to-transparent" />
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
-                    <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        <LayoutDashboardIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                    <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`p-1.5 rounded-lg ${isDark ? 'bg-[#181A24] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                            <LayoutDashboardIcon className="w-4 sm:w-5 h-4 sm:h-5" />
+                        </div>
                         {t('incomeVsExpense')}
                     </h3>
-                    <div className={`flex items-center p-1.5 rounded-xl border shadow-sm ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                    <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-[#181A24] border-white/[0.07]' : 'bg-gray-100 border-gray-200'}`}>
                         <button onClick={() => setDashboardViewMode('chart')} className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'chart' ? 'bg-[#0f766e] text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
                             <LayoutDashboardIcon className="w-4 h-4" />
                         </button>
@@ -229,7 +269,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 const driver = drivers.find(d => d.id === data.id);
                                                 const profit = data.Income - data.Expense;
                                                 return (
-                                                    <div key={idx} className={`p-5 rounded-xl border transition-all hover:shadow-md h-fit ${theme === 'dark' ? 'bg-[#181A24]/50 border-white/[0.08] hover:border-white/[0.12]' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                                                    <div key={idx} className={`p-5 rounded-xl border transition-all hover:shadow-md h-fit ${isDark ? 'bg-[#181A24]/50 border-white/[0.08] hover:border-white/[0.12]' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
                                                         <div className="flex items-center gap-3 mb-4">
                                                             {driver && (
                                                                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex-shrink-0">
@@ -276,7 +316,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* DAILY PAYMENT STATUS */}
-            <div className={`rounded-3xl border shadow-xl overflow-hidden ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
+            <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden relative ${isDark ? 'bg-[#11131B] border-white/[0.07]' : 'bg-white border-gray-100'}`}
+                style={{ boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.4)' : '0 4px 24px rgba(13,21,38,0.07)' }}
+            >
+                <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#0f766e]/25 to-transparent" />
 
                 {/* ── Header ─────────────────────────────────────────────── */}
                 <div className={`px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b ${theme === 'dark' ? 'border-white/[0.06]' : 'border-gray-100'}`}>
