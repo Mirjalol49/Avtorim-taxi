@@ -367,7 +367,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             ? t('salaryRefundDescription')
                                                             : tx.description || '—'}
                                                     </span>
-                                                    {(tx.paymentMethod || tx.chequeImage) && (
+                                                    {tx.type !== TransactionType.DAY_OFF && (tx.paymentMethod || tx.chequeImage) && (
                                                         <div className="flex items-center gap-2 mt-1">
                                                             {tx.paymentMethod && (
                                                                 <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-gray-800 border-gray-600 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
