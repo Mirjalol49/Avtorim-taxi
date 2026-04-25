@@ -211,7 +211,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                     onClick={goToday}
                     className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         isDark
-                            ? 'bg-[#232425] text-gray-400 hover:bg-white/[0.06] hover:text-white'
+                            ? 'bg-[#111111] text-gray-400 hover:bg-white/[0.06] hover:text-white'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
                     }`}
                 >
@@ -237,10 +237,10 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                 className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${
                     isOpen
                         ? isDark
-                            ? 'bg-[#232425] border-[#0f766e] ring-1 ring-[#0f766e]/40 text-white'
+                            ? 'bg-[#111111] border-[#0f766e] ring-1 ring-[#0f766e]/40 text-white'
                             : 'bg-white border-[#0f766e] ring-1 ring-[#0f766e]/20 text-gray-900'
                         : isDark
-                            ? 'bg-[#232425]/50 border-white/[0.08] hover:border-white/[0.12] text-white'
+                            ? 'bg-[#111111]/50 border-white/[0.08] hover:border-white/[0.12] text-white'
                             : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                 }`}
             >

@@ -13,8 +13,6 @@ interface AdminModalProps {
   onLock?: () => void;
 }
 
-type View = 'profile' | 'logout-confirm';
-
 const Spinner = () => (
   <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -26,8 +24,9 @@ const AdminModal: React.FC<AdminModalProps> = ({
   isOpen, onClose, adminData, onUpdate, userRole, theme, onLogout, onLock,
 }) => {
   const isReadOnly = userRole === 'viewer';
+  const isDark = theme === 'dark';
 
-  const [view, setView]                       = useState<View>('profile');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [name, setName]                       = useState(adminData.name);
   const [avatar, setAvatar]                   = useState(adminData.avatar);
   const [newPassword, setNewPassword]         = useState('');
@@ -45,7 +44,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setView('profile');
+      setShowLogoutConfirm(false);
       setName(adminData.name);
       setAvatar(adminData.avatar);
       setNewPassword('');
@@ -73,11 +72,11 @@ const AdminModal: React.FC<AdminModalProps> = ({
     if (!file) return;
     setImageError('');
     if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-      setImageError('JPG, PNG, GIF yoki WEBP formatida bo\'lishi kerak');
+      setImageError("JPG, PNG, GIF yoki WEBP formatida bo'lishi kerak");
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setImageError('Rasm 2MB dan kichik bo\'lishi kerak');
+      setImageError("Rasm 2MB dan kichik bo'lishi kerak");
       return;
     }
     setImageLoading(true);
@@ -118,223 +117,312 @@ const AdminModal: React.FC<AdminModalProps> = ({
 
   if (!isOpen) return null;
 
-  const roleLabel = adminData.role === 'super_admin' ? 'Super Admin' : adminData.role === 'admin' ? 'Admin' : adminData.role;
-  const roleColor = adminData.role === 'super_admin' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-    : adminData.role === 'admin' ? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
-    : 'bg-[#232425] text-gray-400 border-white/[0.08]';
+  const roleLabel = adminData.role === 'super_admin' ? 'Super Admin'
+    : adminData.role === 'admin' ? 'Admin'
+    : adminData.role;
+
+  const roleColor = adminData.role === 'super_admin'
+    ? isDark
+      ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+      : 'bg-amber-50 text-amber-700 border-amber-200'
+    : adminData.role === 'admin'
+    ? isDark
+      ? 'bg-teal-500/15 text-teal-400 border-teal-500/25'
+      : 'bg-teal-50 text-teal-700 border-teal-200'
+    : isDark
+    ? 'bg-white/[0.05] text-gray-400 border-white/[0.08]'
+    : 'bg-gray-100 text-gray-600 border-gray-200';
+
+  const inputCls = `w-full rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all border-2 ${
+    isDark
+      ? 'bg-[#111111] border-white/10 text-white placeholder-gray-600 focus:border-teal-500/70 focus:bg-[#161616]'
+      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10'
+  }`;
+
+  const sectionCls = `rounded-2xl border p-5 ${
+    isDark ? 'bg-[#111111] border-white/[0.06]' : 'bg-gray-50/80 border-gray-200/60'
+  }`;
+
+  const labelCls = `text-[11px] font-bold uppercase tracking-widest mb-1.5 block ${
+    isDark ? 'text-gray-500' : 'text-gray-400'
+  }`;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget && !isSaving) onClose(); }}
       style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
       <div
-        className="w-full max-w-sm bg-[#2d2e30] border border-white/[0.06] rounded-[2rem] shadow-2xl overflow-hidden"
+        className={`w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+          isDark ? 'bg-[#181818] border border-white/[0.06]' : 'bg-white border border-gray-200/80'
+        }`}
         style={{ animation: 'modalPop 0.2s ease-out' }}
       >
-        {view === 'profile' ? (
-          <>
-            {/* Header */}
-            <div className="relative px-6 pt-6 pb-0 flex justify-end">
-              <button
-                onClick={onClose}
-                disabled={isSaving}
-                className="p-1.5 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-white/[0.04] transition-colors"
-              >
-                <XIcon className="w-4 h-4" />
-              </button>
-            </div>
+        {/* Header */}
+        <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${
+          isDark ? 'border-white/[0.05]' : 'border-gray-100'
+        }`}>
+          <h2 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Profil sozlamalari
+          </h2>
+          <button
+            onClick={onClose}
+            disabled={isSaving}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isDark
+                ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
 
-            {/* Avatar */}
-            <div className="flex flex-col items-center px-6 pb-5">
-              <div className="relative group mb-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-[#232425] relative">
-                  {(isSaving || imageLoading) && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                      <Spinner />
-                    </div>
-                  )}
-                  <img
-                    src={avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`}
-                    alt={name}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`;
-                    }}
-                  />
-                  {!isReadOnly && !isSaving && !imageLoading && (
-                    <label
-                      htmlFor="admin-avatar-upload"
-                      className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl"
-                    >
-                      <CameraIcon className="text-white w-6 h-6" />
-                      <span className="text-white text-[10px] mt-1 font-medium">Rasm</span>
-                    </label>
-                  )}
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1">
+          {/* Banner + Avatar */}
+          <div className="relative">
+            <div className="h-24 bg-gradient-to-r from-teal-800 via-teal-700 to-teal-600" />
+            <div className="px-6 pb-4">
+              <div className="flex items-end gap-4 -mt-10 mb-3">
+                <div className="relative group flex-shrink-0">
+                  <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 relative ${
+                    isDark ? 'border-[#181818] bg-[#111111]' : 'border-white bg-gray-100'
+                  }`}>
+                    {(isSaving || imageLoading) && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                        <Spinner />
+                      </div>
+                    )}
+                    <img
+                      src={avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`}
+                      alt={name}
+                      className="w-full h-full object-cover"
+                      onError={e => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`;
+                      }}
+                    />
+                    {!isReadOnly && !isSaving && !imageLoading && (
+                      <label
+                        htmlFor="admin-avatar-upload"
+                        className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <CameraIcon className="text-white w-5 h-5" />
+                        <span className="text-white text-[9px] mt-0.5 font-semibold">Rasm</span>
+                      </label>
+                    )}
+                  </div>
+                  <span className={`absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 rounded-full border-2 ${
+                    isDark ? 'border-[#181818]' : 'border-white'
+                  }`} />
+                  <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </div>
-                <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-
-                {/* Online dot */}
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-[#2d2e30] rounded-full" />
+                <div className="pb-1">
+                  <p className={`font-bold text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {adminData.name}
+                  </p>
+                  <span className={`mt-1 inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border ${roleColor}`}>
+                    {roleLabel}
+                  </span>
+                </div>
               </div>
 
               {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="w-full h-0.5 bg-[#232425] rounded-full overflow-hidden mb-3">
+                <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${isDark ? 'bg-[#111111]' : 'bg-gray-100'}`}>
                   <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                 </div>
               )}
-
-              <p className="text-white font-bold text-lg leading-none">{adminData.name}</p>
-              <span className={`mt-2 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${roleColor}`}>
-                {roleLabel}
-              </span>
-              {imageError && (
-                <p className="mt-2 text-xs text-red-400 text-center">{imageError}</p>
-              )}
+              {imageError && <p className="text-xs text-red-500 mt-1">{imageError}</p>}
             </div>
+          </div>
 
-            <div className="h-px border-white/[0.05] mx-6" />
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              {/* Name */}
+          <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
+            {/* Personal info section */}
+            <div className={sectionCls}>
+              <p className={`text-[11px] font-bold uppercase tracking-widest mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                Shaxsiy ma'lumotlar
+              </p>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">F.I.SH</label>
+                <label className={labelCls}>F.I.SH</label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => { setName(e.target.value); setNameError(''); }}
                   disabled={isReadOnly || isSaving}
-                  className="w-full bg-[#171818]/40 border border-white/[0.06] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder-gray-500 disabled:opacity-50"
+                  placeholder="To'liq ismingiz"
+                  className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed ${nameError ? (isDark ? '!border-red-500/60' : '!border-red-400') : ''}`}
                 />
-                {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
+                {nameError && <p className="text-xs text-red-500 mt-1.5">{nameError}</p>}
               </div>
+            </div>
 
-              {/* Current Password (display only) */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Joriy parol</label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPw ? 'text' : 'password'}
-                    value={adminData.password || '••••••••'}
-                    disabled
-                    className="w-full bg-[#171818]/20 border border-white/[0.05] rounded-xl px-4 py-2.5 text-gray-400 text-sm font-mono pr-10 opacity-70"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPw(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors"
-                  >
-                    {showCurrentPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* New Password */}
-              {!isReadOnly && (
+            {/* Security section */}
+            <div className={sectionCls}>
+              <p className={`text-[11px] font-bold uppercase tracking-widest mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                Xavfsizlik
+              </p>
+              <div className="space-y-3">
+                {/* Current password */}
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Yangi parol</label>
+                  <label className={labelCls}>Joriy parol</label>
                   <div className="relative">
                     <input
-                      type={showNewPw ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
-                      disabled={isSaving}
-                      placeholder="(ixtiyoriy - faqat o'zgartirish uchun)"
-                      className={`w-full bg-[#171818]/40 border rounded-xl px-4 py-2.5 text-white text-sm pr-10 focus:outline-none transition-colors placeholder-gray-500 disabled:opacity-50 ${pwError ? 'border-red-500' : 'border-white/[0.06] focus:border-teal-500'}`}
+                      type={showCurrentPw ? 'text' : 'password'}
+                      value={adminData.password || '••••••••'}
+                      disabled
+                      className={`w-full rounded-xl px-4 py-3 text-sm font-mono pr-10 border-2 outline-none opacity-60 ${
+                        isDark
+                          ? 'bg-[#0d0d0d] border-white/[0.06] text-gray-400'
+                          : 'bg-gray-100 border-gray-200 text-gray-600'
+                      }`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowNewPw(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors"
+                      onClick={() => setShowCurrentPw(v => !v)}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                        isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
+                      }`}
                     >
-                      {showNewPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                      {showCurrentPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                     </button>
                   </div>
-                  {pwError
-                    ? <p className="text-xs text-red-400 mt-1">{pwError}</p>
-                    : <p className="text-xs text-gray-600 mt-1">💡 Kuchli parol ishlating (kamida 6 ta belgi)</p>
-                  }
+                </div>
+
+                {/* New password */}
+                {!isReadOnly && (
+                  <div>
+                    <label className={labelCls}>Yangi parol</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
+                        disabled={isSaving}
+                        placeholder="(ixtiyoriy — faqat o'zgartirish uchun)"
+                        className={`${inputCls} pr-10 disabled:opacity-50 ${pwError ? (isDark ? '!border-red-500/60' : '!border-red-400') : ''}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPw(v => !v)}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                          isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {showNewPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {pwError
+                      ? <p className="text-xs text-red-500 mt-1.5">{pwError}</p>
+                      : <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                          Kamida 6 ta belgi
+                        </p>
+                    }
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Save button */}
+            {!isReadOnly && (
+              <button
+                type="submit"
+                disabled={isSaving || saveSuccess || !hasChanges || !!nameError}
+                className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                  saveSuccess
+                    ? 'bg-emerald-500 text-white'
+                    : !hasChanges || !!nameError
+                    ? isDark
+                      ? 'bg-[#111111] text-gray-600 cursor-not-allowed'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-teal-600 hover:bg-teal-500 text-white shadow-sm active:scale-[0.98]'
+                }`}
+              >
+                {saveSuccess ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Saqlandi
+                  </>
+                ) : isSaving ? (
+                  <><Spinner /> Saqlanmoqda...</>
+                ) : 'Saqlash'}
+              </button>
+            )}
+
+            {/* Account actions section */}
+            <div className={sectionCls}>
+              <p className={`text-[11px] font-bold uppercase tracking-widest mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                Hisob amallar
+              </p>
+
+              {showLogoutConfirm ? (
+                <div className={`rounded-xl p-4 border ${isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
+                  <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                    Chiqishni tasdiqlang
+                  </p>
+                  <p className={`text-xs mb-3 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                    Hisobdan chiqmoqchimisiz? Barcha ma'lumotlar saqlanadi.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoutConfirm(false)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        isDark
+                          ? 'bg-white/[0.05] text-gray-300 hover:bg-white/[0.08]'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                      }`}
+                    >
+                      Bekor
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { onClose(); onLogout?.(); }}
+                      className="flex-1 py-2 rounded-lg text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-colors active:scale-95"
+                    >
+                      Ha, chiqish
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  {onLock && (
+                    <button
+                      type="button"
+                      onClick={onLock}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all group ${
+                        isDark
+                          ? 'bg-[#181818] border-white/[0.08] text-gray-400 hover:text-white hover:border-white/[0.15]'
+                          : 'bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                      }`}
+                    >
+                      <LockIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      Qulflash
+                    </button>
+                  )}
+                  {onLogout && (
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoutConfirm(true)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-red-500/25 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-all group"
+                    >
+                      <LogOutIcon className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      Chiqish
+                    </button>
+                  )}
                 </div>
               )}
-
-              {/* Save button */}
-              {!isReadOnly && (
-                <button
-                  type="submit"
-                  disabled={isSaving || saveSuccess || !hasChanges || !!nameError}
-                  className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${saveSuccess
-                    ? 'bg-green-500 text-white'
-                    : !hasChanges || !!nameError
-                      ? 'bg-[#232425] text-gray-600 cursor-not-allowed'
-                      : 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm active:scale-95'
-                    }`}
-                >
-                  {saveSuccess ? (
-                    <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Saqlandi</>
-                  ) : isSaving ? (
-                    <><Spinner /> Saqlanmoqda...</>
-                  ) : 'Saqlash'}
-                </button>
-              )}
-            </form>
-
-            <div className="h-px border-white/[0.05] mx-6" />
-
-            {/* Lock & Logout */}
-            <div className="px-6 py-4 flex gap-3">
-              {onLock && (
-                <button
-                  onClick={onLock}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#232425] border border-white/[0.08] text-gray-300 hover:text-white hover:border-white/[0.08] transition-all text-sm font-semibold group shadow-sm"
-                >
-                  <LockIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  Qulflash
-                </button>
-              )}
-              {onLogout && (
-                <button
-                  onClick={() => setView('logout-confirm')}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all text-sm font-semibold group"
-                >
-                  <LogOutIcon className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  Chiqish
-                </button>
-              )}
             </div>
-          </>
-        ) : (
-          /* Logout confirmation */
-          <div className="p-8 flex flex-col items-center text-center" style={{ animation: 'modalPop 0.18s ease-out' }}>
-            <div className="w-16 h-16 rounded-2xl bg-red-500/15 flex items-center justify-center mb-5">
-              <LogOutIcon className="w-8 h-8 text-red-400" />
-            </div>
-            <h3 className="text-white font-bold text-xl mb-2">Chiqishni tasdiqlang</h3>
-            <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-              Hisobdan chiqmoqchimisiz?<br />
-              Barcha saqlangan ma'lumotlar saqlanadi.
-            </p>
-            <div className="flex gap-3 w-full">
-              <button
-                onClick={() => setView('profile')}
-                className="flex-1 py-3 rounded-xl bg-[#232425] border border-white/[0.08] text-gray-200 hover:text-white hover:bg-white/[0.06] transition-all font-semibold text-sm shadow-sm"
-              >
-                Bekor qilish
-              </button>
-              <button
-                onClick={() => { onClose(); onLogout?.(); }}
-                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-all text-sm active:scale-95"
-              >
-                Ha, chiqish
-              </button>
-            </div>
-          </div>
-        )}
+          </form>
+        </div>
       </div>
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
       `}</style>
     </div>,
     document.body

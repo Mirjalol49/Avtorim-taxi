@@ -19,12 +19,12 @@ const SoundTestPanel: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
     };
 
     const buttonClass = `px-4 py-2 rounded-lg font-medium transition-all ${theme === 'dark'
-            ? 'bg-[#232425] hover:bg-white/[0.06] text-white'
+            ? 'bg-[#111111] hover:bg-white/[0.06] text-white'
             : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
         }`;
 
     return (
-        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-[#232425] border-white/[0.08]' : 'bg-white border-gray-200'
+        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-[#111111] border-white/[0.08]' : 'bg-white border-gray-200'
             }`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
@@ -86,7 +86,7 @@ const SoundTestPanel: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
                 onClick={handleToggleSound}
                 className={`w-full py-2 rounded-lg font-medium transition-all ${enabled
                         ? 'bg-teal-600 hover:bg-teal-700 text-white'
-                        : 'bg-[#232425] hover:bg-white/[0.06] text-gray-300'
+                        : 'bg-[#111111] hover:bg-white/[0.06] text-gray-300'
                     }`}
             >
                 {enabled ? '🔊 Sound Enabled' : '🔇 Sound Disabled'}

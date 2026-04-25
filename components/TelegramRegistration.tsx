@@ -79,7 +79,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className={`max-w-2xl w-full rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto ${theme === 'dark' ? 'bg-[#2d2e30]' : 'bg-white'
+            <div className={`max-w-2xl w-full rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto ${theme === 'dark' ? 'bg-[#181818]' : 'bg-white'
                 }`}>
                 {/* Header */}
                 <div className={`p-6 border-b ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
@@ -128,7 +128,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                                 value={selectedDriverId}
                                 onChange={(e) => setSelectedDriverId(e.target.value)}
                                 className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] ${theme === 'dark'
-                                    ? 'bg-[#232425] border-white/[0.08] text-white'
+                                    ? 'bg-[#111111] border-white/[0.08] text-white'
                                     : 'bg-white border-gray-300 text-gray-900'
                                     }`}
                             >
@@ -151,7 +151,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                                 onChange={(e) => setTelegramId(e.target.value)}
                                 placeholder="e.g., 123456789"
                                 className={`w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e] ${theme === 'dark'
-                                    ? 'bg-[#232425] border-white/[0.08] text-white placeholder-gray-500'
+                                    ? 'bg-[#111111] border-white/[0.08] text-white placeholder-gray-500'
                                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                                     }`}
                             />
@@ -188,7 +188,7 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                                 {registeredDrivers.map(rd => (
                                     <div
                                         key={rd.driver_id}
-                                        className={`p-3 rounded-xl border flex justify-between items-center ${theme === 'dark' ? 'bg-[#232425] border-white/[0.08]' : 'bg-gray-50 border-gray-200'
+                                        className={`p-3 rounded-xl border flex justify-between items-center ${theme === 'dark' ? 'bg-[#111111] border-white/[0.08]' : 'bg-gray-50 border-gray-200'
                                             }`}
                                     >
                                         <div>

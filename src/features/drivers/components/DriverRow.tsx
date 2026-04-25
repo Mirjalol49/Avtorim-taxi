@@ -33,7 +33,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
     return (<>
-        <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-[#232425]' : 'hover:bg-gray-50'}`}>
+        <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-[#111111]' : 'hover:bg-gray-50'}`}>
 
             {/* Driver */}
             <td className="p-4">
@@ -42,7 +42,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                         {driver.avatar ? (
                             <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
                         ) : (
-                            <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#232425] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                            <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#111111] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
                                 {driver.name.charAt(0).toUpperCase()}
                             </div>
                         )}
@@ -58,7 +58,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
             <td className="p-4">
                 {car ? (
                     <div className="flex items-center gap-2">
-                        <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'bg-[#232425]' : 'bg-gray-100'}`}>
+                        <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-100'}`}>
                             {car.avatar ? (
                                 <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
                             ) : (
@@ -151,7 +151,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     
                     <button 
                         onClick={() => setViewingDoc(null)} 
-                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-[#232425] text-white hover:bg-white/[0.06] pointer-events-auto`}>
+                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-[#111111] text-white hover:bg-white/[0.06] pointer-events-auto`}>
                         <XIcon className="w-6 h-6" />
                     </button>
                 </div>

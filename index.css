@@ -4,40 +4,40 @@
 
 /* ===== CSS CUSTOM PROPERTIES ===== */
 :root {
-    --color-bg:              #d0e3e9;
-    --color-surface:         #FFFFFF;
-    --color-surface-2:       #e8f2f6;
-    --color-border:          #b8d4dc;
-    --color-border-subtle:   #ccdde4;
-    --color-text:            #0D1A20;
-    --color-text-body:       #2E4650;
-    --color-text-muted:      #5A7A85;
+    --color-bg:              #ebf4f4;
+    --color-surface:         #ffffff;
+    --color-surface-2:       #f4fafa;
+    --color-border:          #c8e0e0;
+    --color-border-subtle:   #daeaea;
+    --color-text:            #0D1A1A;
+    --color-text-body:       #2E4848;
+    --color-text-muted:      #5A7878;
     --color-accent:          #0f766e;
     --color-accent-light:    #CCFBF1;
-    --color-scrollbar-track: #c0d8e0;
-    --color-scrollbar-thumb: #8ab0bc;
-    --color-scrollbar-hover: #5A7A85;
+    --color-scrollbar-track: #c8e0e0;
+    --color-scrollbar-thumb: #8ab4b4;
+    --color-scrollbar-hover: #5A7878;
 }
 
 .dark {
-    --color-bg:              #171818;
-    --color-surface:         #2d2e30;
-    --color-surface-2:       #232425;
-    --color-border:          rgba(255, 255, 255, 0.07);
+    --color-bg:              #080808;
+    --color-surface:         #181818;
+    --color-surface-2:       #111111;
+    --color-border:          rgba(255, 255, 255, 0.08);
     --color-border-subtle:   rgba(255, 255, 255, 0.04);
-    --color-text:            #F0F0F0;
-    --color-text-body:       #ABABAB;
-    --color-text-muted:      #6B6C6E;
+    --color-text:            #F2F2F2;
+    --color-text-body:       #AAAAAA;
+    --color-text-muted:      #666666;
     --color-accent:          #0f766e;
     --color-accent-light:    rgba(15, 118, 110, 0.15);
-    --color-scrollbar-track: #1e1f1f;
-    --color-scrollbar-thumb: #3a3b3d;
-    --color-scrollbar-hover: #4a4b4d;
+    --color-scrollbar-track: #111111;
+    --color-scrollbar-thumb: #2a2a2a;
+    --color-scrollbar-hover: #383838;
 }
 
 /* ===== ANIMATIONS ===== */
 @keyframes modalPop {
-    from { opacity: 0; transform: scale(0.96) translateY(4px); }
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
     to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
 
@@ -46,9 +46,13 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fadeIn {
-    animation: fadeIn 0.25s ease-out both;
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
 }
+
+.animate-fadeIn  { animation: fadeIn  0.25s ease-out both; }
+.animate-slideIn { animation: slideInRight 0.2s ease-out both; }
 
 /* ===== GLOBAL STYLES ===== */
 body {
@@ -61,9 +65,7 @@ body {
     color: var(--color-text);
 }
 
-code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
+code { font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace; }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar        { width: 5px; height: 5px; }
@@ -74,16 +76,29 @@ code {
 /* ===== SMOOTH THEME TRANSITION ===== */
 *, *::before, *::after {
     transition-property: background-color, border-color, color, box-shadow;
-    transition-duration: 200ms;
-    transition-timing-function: ease;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button, a, input, select, textarea {
     transition-property: background-color, border-color, color, opacity, transform, box-shadow;
-    transition-duration: 200ms;
+    transition-duration: 150ms;
 }
 
-/* Disable transition on theme switch for scroll-based elements */
-.no-transition, .no-transition * {
-    transition: none !important;
+/* ===== INPUTS — HIGH CONTRAST FOR ALL USERS ===== */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+textarea,
+select {
+    /* light mode baseline — overridden by component classes */
+    background-color: #ffffff;
+    color: #0D1A1A;
+    border-color: #b0cccc;
+}
+
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+.dark textarea,
+.dark select {
+    background-color: #111111;
+    color: #F2F2F2;
+    border-color: rgba(255,255,255,0.14);
 }

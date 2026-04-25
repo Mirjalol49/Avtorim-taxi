@@ -76,7 +76,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
         >
             <div
                 className={`w-full max-w-md rounded-2xl border shadow-2xl flex flex-col overflow-hidden ${
-                    isDark ? 'bg-[#2d2e30] border-white/[0.08]' : 'bg-white border-gray-200'
+                    isDark ? 'bg-[#181818] border-white/[0.08]' : 'bg-white border-gray-200'
                 }`}
                 onClick={e => e.stopPropagation()}
             >
@@ -127,7 +127,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
 
                 {/* Add day off form */}
                 {!limitReached && (
-                    <div className={`mx-5 mt-3 rounded-xl p-3 ${isDark ? 'bg-[#232425]' : 'bg-gray-50'}`}>
+                    <div className={`mx-5 mt-3 rounded-xl p-3 ${isDark ? 'bg-[#111111]' : 'bg-gray-50'}`}>
                         <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             {t('addDayOff')}
                         </p>
@@ -138,7 +138,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                 onChange={e => setSelectedDate(e.target.value)}
                                 className={`flex-1 px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/40 transition-all ${
                                     isDark
-                                        ? 'bg-[#232425] border-white/[0.08] text-white'
+                                        ? 'bg-[#111111] border-white/[0.08] text-white'
                                         : 'bg-white border-gray-200 text-gray-900'
                                 }`}
                             />
@@ -181,7 +181,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                         <div
                                             key={d.id}
                                             className={`flex items-center justify-between rounded-lg px-3 py-2 ${
-                                                isDark ? 'bg-[#232425]' : 'bg-gray-50'
+                                                isDark ? 'bg-[#111111]' : 'bg-gray-50'
                                             }`}
                                         >
                                             <div className="flex items-center gap-2">

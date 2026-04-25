@@ -89,7 +89,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
 
     return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className={`w-full max-w-md rounded-2xl shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${theme === 'dark' ? 'bg-[#2d2e30] border border-white/[0.08]' : 'bg-white'
+            <div className={`w-full max-w-md rounded-2xl shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${theme === 'dark' ? 'bg-[#181818] border border-white/[0.08]' : 'bg-white'
                 }`}>
                 {/* Header */}
                 <div className={`flex items-center justify-between p-6 border-b shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100'
@@ -142,7 +142,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
-                                ? 'bg-[#232425] border-white/[0.08] text-white focus:border-teal-500'
+                                ? 'bg-[#111111] border-white/[0.08] text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
                                 } ${errors.name ? 'border-red-500' : ''}`}
                             placeholder="John Doe"
@@ -163,7 +163,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
-                                ? 'bg-[#232425] border-white/[0.08] text-white focus:border-teal-500'
+                                ? 'bg-[#111111] border-white/[0.08] text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
                                 } ${errors.phoneNumber ? 'border-red-500' : ''}`}
                             placeholder="+998 90 123 45 67"
@@ -184,7 +184,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border transition-all outline-none ${theme === 'dark'
-                                ? 'bg-[#232425] border-white/[0.08] text-white focus:border-teal-500'
+                                ? 'bg-[#111111] border-white/[0.08] text-white focus:border-teal-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500'
                                 } ${errors.password ? 'border-red-500' : ''}`}
                             placeholder="Secret Password"
@@ -195,7 +195,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
                     </div>
 
                     {/* Active Status */}
-                    <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-[#232425]/50 border-white/[0.08]' : 'bg-gray-50 border-gray-200'
+                    <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-[#111111]/50 border-white/[0.08]' : 'bg-gray-50 border-gray-200'
                         }`}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
