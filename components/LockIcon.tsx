@@ -100,7 +100,7 @@ export const LockIcon: React.FC<LockIconProps> = ({
             </button>
 
             {/* Custom Tooltip */}
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#11131B] text-white text-[10px] rounded opacity-0 group-hover/lock:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 font-medium tracking-wide">
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#2d2e30] text-white text-[10px] rounded opacity-0 group-hover/lock:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 font-medium tracking-wide">
                 {tooltipText}
                 {/* Arrow */}
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>

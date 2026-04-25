@@ -4,37 +4,35 @@
 
 /* ===== CSS CUSTOM PROPERTIES ===== */
 :root {
-    /* Light mode — inspired by clean analytics/medical dashboards */
-    --color-bg:              #EEF2F8;   /* cool blue-gray base like solar dashboard */
+    --color-bg:              #d0e3e9;
     --color-surface:         #FFFFFF;
-    --color-surface-2:       #F5F8FD;   /* slightly off-white for nested sections */
-    --color-border:          #DFE7F2;   /* cool gray border */
-    --color-border-subtle:   #EBF0F8;
-    --color-text:            #0D1526;   /* near-black with blue tint */
-    --color-text-body:       #3D4E67;
-    --color-text-muted:      #64748B;
+    --color-surface-2:       #e8f2f6;
+    --color-border:          #b8d4dc;
+    --color-border-subtle:   #ccdde4;
+    --color-text:            #0D1A20;
+    --color-text-body:       #2E4650;
+    --color-text-muted:      #5A7A85;
     --color-accent:          #0f766e;
     --color-accent-light:    #CCFBF1;
-    --color-scrollbar-track: #DFE7F2;
-    --color-scrollbar-thumb: #94A3B8;
-    --color-scrollbar-hover: #64748B;
+    --color-scrollbar-track: #c0d8e0;
+    --color-scrollbar-thumb: #8ab0bc;
+    --color-scrollbar-hover: #5A7A85;
 }
 
 .dark {
-    /* Dark mode — inspired by Yandex Pay: deep navy-black surfaces */
-    --color-bg:              #0B0C13;   /* deep near-black with blue tint */
-    --color-surface:         #11131B;   /* card surface */
-    --color-surface-2:       #181A24;   /* nested/elevated */
+    --color-bg:              #171818;
+    --color-surface:         #2d2e30;
+    --color-surface-2:       #232425;
     --color-border:          rgba(255, 255, 255, 0.07);
     --color-border-subtle:   rgba(255, 255, 255, 0.04);
-    --color-text:            #EEF0F8;   /* slightly blue-white */
-    --color-text-body:       #B0B8D0;
-    --color-text-muted:      #6B7694;
+    --color-text:            #F0F0F0;
+    --color-text-body:       #ABABAB;
+    --color-text-muted:      #6B6C6E;
     --color-accent:          #0f766e;
     --color-accent-light:    rgba(15, 118, 110, 0.15);
-    --color-scrollbar-track: #11131B;
-    --color-scrollbar-thumb: #2A2D3E;
-    --color-scrollbar-hover: #3E4258;
+    --color-scrollbar-track: #1e1f1f;
+    --color-scrollbar-thumb: #3a3b3d;
+    --color-scrollbar-hover: #4a4b4d;
 }
 
 /* ===== ANIMATIONS ===== */
@@ -61,7 +59,6 @@ body {
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--color-bg);
     color: var(--color-text);
-    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 code {
@@ -76,18 +73,17 @@ code {
 
 /* ===== SMOOTH THEME TRANSITION ===== */
 *, *::before, *::after {
-    transition-property: background-color, border-color, color;
-    transition-duration: 150ms;
+    transition-property: background-color, border-color, color, box-shadow;
+    transition-duration: 200ms;
     transition-timing-function: ease;
 }
 
 button, a, input, select, textarea {
     transition-property: background-color, border-color, color, opacity, transform, box-shadow;
-    transition-duration: 150ms;
+    transition-duration: 200ms;
 }
 
-/* ===== LIGHT MODE CARD SHADOWS ===== */
-/* Give cards a clean elevation feel in light mode */
-:root .card-shadow {
-    box-shadow: 0 1px 3px rgba(13, 21, 38, 0.06), 0 1px 2px rgba(13, 21, 38, 0.04);
+/* Disable transition on theme switch for scroll-based elements */
+.no-transition, .no-transition * {
+    transition: none !important;
 }

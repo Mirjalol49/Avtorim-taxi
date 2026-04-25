@@ -143,7 +143,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             {/* Header Removed - Managed by DesktopHeader */}
 
             {/* Filters */}
-            <div className={`p-4 rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+            <div className={`p-4 rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#2d2e30] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
                     {/* Start Date */}
                     <div className="w-full">
@@ -186,10 +186,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                         className={`w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
                                             driverModalOpen
                                                 ? theme === 'dark'
-                                                    ? 'bg-[#181A24] border-teal-500 ring-1 ring-teal-500/40'
+                                                    ? 'bg-[#232425] border-teal-500 ring-1 ring-teal-500/40'
                                                     : 'bg-white border-teal-500 ring-1 ring-teal-500/20'
                                                 : theme === 'dark'
-                                                    ? 'bg-[#181A24] border-white/[0.08] hover:border-white/[0.12]'
+                                                    ? 'bg-[#232425] border-white/[0.08] hover:border-white/[0.12]'
                                                     : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                                         }`}
                                     >
@@ -198,7 +198,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600">
                                                     {selectedDriver.avatar
                                                         ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
-                                                        : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-[#181A24] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                                                        : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-[#232425] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
                                                     }
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -276,7 +276,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     }}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
                         theme === 'dark'
-                            ? 'bg-[#11131B] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                            ? 'bg-[#2d2e30] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
                             : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
                     }`}
                 >
@@ -286,11 +286,11 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             </div>
 
             {/* Transactions Table */}
-            <div className={`rounded-3xl border overflow-hidden shadow-xl ${theme === 'dark' ? 'bg-[#11131B] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+            <div className={`rounded-3xl border overflow-hidden shadow-xl ${theme === 'dark' ? 'bg-[#2d2e30] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[800px]">
-                        <thead className={`border-b ${theme === 'dark' ? 'bg-[#181A24] border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
-                            <tr className={`${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-50'}`}>
+                        <thead className={`border-b ${theme === 'dark' ? 'bg-[#232425] border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+                            <tr className={`${theme === 'dark' ? 'bg-[#232425]' : 'bg-gray-50'}`}>
                                 {userRole === 'admin' && (
                                     <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                         <input
@@ -304,7 +304,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 }
                                             }}
                                             className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                                ? 'bg-[#181A24] border-white/[0.08] checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0 focus:ring-offset-[#181A24]'
+                                                ? 'bg-[#232425] border-white/[0.08] checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0 focus:ring-offset-[#232425]'
                                                 : 'bg-white border-gray-300 checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0'
                                                 }`}
                                         />
@@ -330,7 +330,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
                                     return (
-                                        <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-[#181A24]' : 'hover:bg-gray-50'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                                        <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-[#232425]' : 'hover:bg-gray-50'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
                                             {userRole === 'admin' && (
                                                 <td className="px-6 py-4">
                                                     <input
@@ -345,7 +345,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                         }}
                                                         onClick={(e) => e.stopPropagation()}
                                                         className={`w-5 h-5 rounded-md transition-all duration-200 cursor-pointer ${theme === 'dark'
-                                                            ? 'bg-[#181A24] border-white/[0.08] checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0 focus:ring-offset-[#181A24]'
+                                                            ? 'bg-[#232425] border-white/[0.08] checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0 focus:ring-offset-[#232425]'
                                                             : 'bg-white border-gray-300 checked:bg-[#0f766e] checked:border-[#0f766e] hover:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e] focus:ring-offset-0'
                                                             }`}
                                                     />
@@ -359,7 +359,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 <div className="flex items-center gap-3">
                                                     {car ? (
                                                         <>
-                                                            <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'border-white/[0.08] bg-[#181A24]' : 'border-gray-200 bg-gray-100'}`}>
+                                                            <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'border-white/[0.08] bg-[#232425]' : 'border-gray-200 bg-gray-100'}`}>
                                                                 <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                                                             </div>
                                                             <div className="flex flex-col">
@@ -367,7 +367,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                     <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                                                         {car.name}
                                                                     </span>
-                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase ${theme === 'dark' ? 'border-white/[0.08] bg-[#181A24] text-gray-400' : 'border-gray-200 bg-gray-100 text-gray-500'}`}>
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase ${theme === 'dark' ? 'border-white/[0.08] bg-[#232425] text-gray-400' : 'border-gray-200 bg-gray-100 text-gray-500'}`}>
                                                                         {t('vehicleLabel')}
                                                                     </span>
                                                                 </div>
@@ -379,7 +379,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     ) : (
                                                         <>
                                                             <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
-                                                                {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-[#181A24] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
+                                                                {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-[#232425] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
                                                             </div>
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
@@ -427,7 +427,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             {tx.type !== TransactionType.DAY_OFF && (tx.paymentMethod || tx.chequeImage) && (
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     {tx.paymentMethod && (
-                                                                        <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-[#181A24] border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                                                                        <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-[#232425] border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
                                                                             {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
                                                                         </span>
                                                                     )}
@@ -480,7 +480,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
                 {/* Pagination */}
                 {filteredTransactionsCount > itemsPerPage && (
-                    <div className={`flex items-center justify-center gap-2 p-4 border-t ${theme === 'dark' ? 'border-white/[0.08] bg-[#181A24]' : 'border-gray-100 bg-gray-50/50'}`}>
+                    <div className={`flex items-center justify-center gap-2 p-4 border-t ${theme === 'dark' ? 'border-white/[0.08] bg-[#232425]' : 'border-gray-100 bg-gray-50/50'}`}>
                         <button
                             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
@@ -508,7 +508,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === page
                                         ? 'bg-teal-500 text-white'
                                         : theme === 'dark'
-                                            ? 'bg-[#181A24] text-gray-400 hover:bg-white/[0.06]'
+                                            ? 'bg-[#232425] text-gray-400 hover:bg-white/[0.06]'
                                             : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                                         }`}
                                 >
@@ -542,12 +542,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     onClick={() => setSelectedImage(null)}
                 >
                     <div
-                        className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-[#0B0C13] border border-white/[0.08]' : 'bg-white border border-gray-200'}`}
+                        className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-[#171818] border border-white/[0.08]' : 'bg-white border border-gray-200'}`}
                         onClick={e => e.stopPropagation()}
                         style={{ animation: 'modalPop 0.2s ease-out' }}
                     >
                         {/* Modal Header */}
-                        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-[#181A24]' : 'border-gray-100 bg-gray-50'}`}>
+                        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-[#232425]' : 'border-gray-100 bg-gray-50'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
                                     <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

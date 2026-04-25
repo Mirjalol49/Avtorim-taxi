@@ -121,7 +121,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
 
 
     return (
-        <div className="bg-[#181A24] rounded-xl border border-white/[0.08] overflow-hidden">
+        <div className="bg-[#232425] rounded-xl border border-white/[0.08] overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-white/[0.08]">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -152,13 +152,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                             placeholder="Search by username or role..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-[#0B0C13] border border-white/[0.08] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            className="w-full pl-10 pr-4 py-2 bg-[#171818] border border-white/[0.08] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                         />
                     </div>
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value as any)}
-                        className="px-4 py-2 bg-[#0B0C13] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="px-4 py-2 bg-[#171818] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-blue-500"
                     >
                         <option value="all">All Status</option>
                         <option value="active">Active Only</option>
@@ -170,7 +170,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
             {/* Table */}
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                    <thead className="bg-[#0B0C13]/50 text-gray-400 text-xs uppercase tracking-wider">
+                    <thead className="bg-[#171818]/50 text-gray-400 text-xs uppercase tracking-wider">
                         <tr>
                             <th className="px-6 py-4">User</th>
                             <th className="px-6 py-4">Role</th>
@@ -187,18 +187,18 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                 <tr key={i} className="animate-pulse">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#181A24]" />
+                                            <div className="w-8 h-8 rounded-full bg-[#232425]" />
                                             <div className="space-y-1">
-                                                <div className="h-4 w-24 bg-[#181A24] rounded" />
-                                                <div className="h-3 w-16 bg-[#181A24] rounded" />
+                                                <div className="h-4 w-24 bg-[#232425] rounded" />
+                                                <div className="h-3 w-16 bg-[#232425] rounded" />
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4"><div className="h-5 w-16 bg-[#181A24] rounded" /></td>
-                                    <td className="px-6 py-4"><div className="h-5 w-14 bg-[#181A24] rounded" /></td>
+                                    <td className="px-6 py-4"><div className="h-5 w-16 bg-[#232425] rounded" /></td>
+                                    <td className="px-6 py-4"><div className="h-5 w-14 bg-[#232425] rounded" /></td>
 
-                                    <td className="px-6 py-4"><div className="h-4 w-20 bg-[#181A24] rounded" /></td>
-                                    <td className="px-6 py-4 text-right"><div className="h-8 w-24 bg-[#181A24] rounded ml-auto" /></td>
+                                    <td className="px-6 py-4"><div className="h-4 w-20 bg-[#232425] rounded" /></td>
+                                    <td className="px-6 py-4 text-right"><div className="h-8 w-24 bg-[#232425] rounded ml-auto" /></td>
                                 </tr>
                             ))
                         ) : paginatedUsers.length === 0 ? (
@@ -212,7 +212,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                 <tr key={user.id} className="hover:bg-white/[0.06]/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#181A24] flex items-center justify-center text-white font-bold">
+                                            <div className="w-8 h-8 rounded-full bg-[#232425] flex items-center justify-center text-white font-bold">
                                                 {user.username.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
@@ -338,7 +338,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
             {/* Edit/Create Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#181A24] rounded-xl border border-white/[0.08] shadow-2xl w-full max-w-md p-6">
+                    <div className="bg-[#232425] rounded-xl border border-white/[0.08] shadow-2xl w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-bold text-white">
                                 {editingUser ? 'Edit User' : 'Add New User'}
@@ -354,7 +354,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     type="text"
                                     value={formData.username}
                                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                    className="w-full bg-[#0B0C13] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-[#171818] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     required
                                 />
                             </div>
@@ -364,7 +364,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     type="text"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full bg-[#0B0C13] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-[#171818] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     required
                                 />
                             </div>
@@ -374,7 +374,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     <select
                                         value={formData.role}
                                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                        className="w-full bg-[#0B0C13] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                        className="w-full bg-[#171818] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="admin">Admin</option>
                                         <option value="super_admin">Super Admin</option>
@@ -385,7 +385,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     <select
                                         value={formData.active ? 'active' : 'inactive'}
                                         onChange={(e) => setFormData({ ...formData, active: e.target.value === 'active' })}
-                                        className="w-full bg-[#0B0C13] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                        className="w-full bg-[#171818] border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="active">Active</option>
                                         <option value="inactive">Disabled</option>

@@ -58,7 +58,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
     return (<>
         <div className={`rounded-2xl flex flex-col transition-all group relative border overflow-hidden ${theme === 'dark'
-            ? 'bg-[#11131B] border-white/[0.08] hover:border-white/[0.12]'
+            ? 'bg-[#2d2e30] border-white/[0.08] hover:border-white/[0.12]'
             : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
         }`}>
 
@@ -68,7 +68,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     {driver.avatar ? (
                         <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
                     ) : (
-                        <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${theme === 'dark' ? 'bg-[#181A24] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                        <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${theme === 'dark' ? 'bg-[#232425] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
                             {driver.name.charAt(0).toUpperCase()}
                         </div>
                     )}
@@ -86,7 +86,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
             {/* Daily plan stats */}
             {explicitDailyPlan > 0 && (
-                <div className={`mx-4 mb-3 rounded-xl p-3 flex justify-between items-center ${theme === 'dark' ? 'bg-[#181A24] border border-white/[0.08]' : 'bg-gray-50 border border-gray-200'}`}>
+                <div className={`mx-4 mb-3 rounded-xl p-3 flex justify-between items-center ${theme === 'dark' ? 'bg-[#232425] border border-white/[0.08]' : 'bg-gray-50 border border-gray-200'}`}>
                     <p className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('dailyPlan')}</p>
                     <p className={`text-sm font-bold font-mono ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{fmt(explicitDailyPlan)} UZS</p>
                 </div>
@@ -95,11 +95,11 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             {/* Attached car */}
             {car ? (
                 <div className={`mx-4 mb-3 rounded-2xl border p-2.5 flex items-center gap-3 transition-all duration-200 ${theme === 'dark'
-                    ? 'bg-[#11131B] border-white/[0.06] hover:bg-[#11131B] hover:border-white/[0.08]'
+                    ? 'bg-[#2d2e30] border-white/[0.06] hover:bg-[#2d2e30] hover:border-white/[0.08]'
                     : 'bg-gray-50/50 border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)]'}`}>
                     
                     {/* Thumbnail Image */}
-                    <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm ${theme === 'dark' ? 'border-white/[0.08] bg-[#181A24]' : 'border-gray-200/60 bg-gray-100'}`}>
+                    <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm ${theme === 'dark' ? 'border-white/[0.08] bg-[#232425]' : 'border-gray-200/60 bg-gray-100'}`}>
                         {car.avatar ? (
                             <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
                         ) : (
@@ -114,7 +114,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         <h3 className={`font-bold text-[13px] sm:text-sm truncate mb-1.5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {car.name}
                         </h3>
-                        <div className={`inline-flex items-center px-2 py-0.5 rounded-md border ${theme === 'dark' ? 'bg-[#0B0C13] border-white/[0.08] text-gray-300' : 'bg-white border-gray-200/80 text-gray-700 shadow-sm'}`}>
+                        <div className={`inline-flex items-center px-2 py-0.5 rounded-md border ${theme === 'dark' ? 'bg-[#171818] border-white/[0.08] text-gray-300' : 'bg-white border-gray-200/80 text-gray-700 shadow-sm'}`}>
                             <span className="text-[10px] font-mono font-bold tracking-wider">
                                 {car.licensePlate}
                             </span>
@@ -122,8 +122,8 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     </div>
                 </div>
             ) : (
-                <div className={`mx-4 mb-3 rounded-2xl border p-2.5 flex items-center gap-3 ${theme === 'dark' ? 'bg-[#181A24] border-white/[0.06] text-gray-500' : 'bg-gray-50/30 border-gray-100 text-gray-400'}`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-[#181A24]' : 'bg-gray-100'}`}>
+                <div className={`mx-4 mb-3 rounded-2xl border p-2.5 flex items-center gap-3 ${theme === 'dark' ? 'bg-[#232425] border-white/[0.06] text-gray-500' : 'bg-gray-50/30 border-gray-100 text-gray-400'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-[#232425]' : 'bg-gray-100'}`}>
                         <CarIcon className="w-5 h-5 opacity-50" />
                     </div>
                     <span className="text-xs font-medium">Avtomobil biriktirilmagan</span>
@@ -132,7 +132,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
             {/* Documents */}
             {docs.length > 0 && (
-                <div className={`mx-4 mb-3 rounded-xl border p-3 space-y-2 ${theme === 'dark' ? 'border-white/[0.08] bg-[#181A24]' : 'border-gray-100 bg-gray-50'}`}>
+                <div className={`mx-4 mb-3 rounded-xl border p-3 space-y-2 ${theme === 'dark' ? 'border-white/[0.08] bg-[#232425]' : 'border-gray-100 bg-gray-50'}`}>
                     <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hujjatlar</p>
                     <div className="flex flex-col gap-2">
                         {docs.map((doc, i) => {
@@ -150,10 +150,10 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                     }}
                                     className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#0f766e] ${
                                         theme === 'dark' 
-                                            ? 'bg-[#181A24] hover:bg-white/[0.06] text-gray-200 border border-white/[0.06] hover:border-white/[0.08]' 
+                                            ? 'bg-[#232425] hover:bg-white/[0.06] text-gray-200 border border-white/[0.06] hover:border-white/[0.08]' 
                                             : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-md'
                                     }`}>
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-[#181A24] text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-[#232425] text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
                                         <span className="text-sm">{isImage ? '🖼️' : '📄'}</span>
                                     </div>
                                     <span className="flex-1 text-left text-sm font-medium truncate">
@@ -214,7 +214,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     </div>
                     
                     {/* Floating Toolbar */}
-                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-[#0B0C13] hover:bg-[#0B0C13] backdrop-blur-2xl border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl transition-all duration-300">
+                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-[#171818] hover:bg-[#171818] backdrop-blur-2xl border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl transition-all duration-300">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-white">{getFriendlyDocName(viewingDoc)}</span>
                         </div>

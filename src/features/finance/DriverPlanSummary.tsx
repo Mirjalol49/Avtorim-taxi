@@ -128,8 +128,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     const currentMonthKey = months[0] || toMonthKey(new Date());
 
     return (
-        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#11131B] border-white/[0.05]' : 'bg-white border-gray-100'}`}>
-            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#181A24]' : 'border-gray-100 bg-gray-50'}`}>
+        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#2d2e30] border-white/[0.05]' : 'bg-white border-gray-100'}`}>
+            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#232425]' : 'border-gray-100 bg-gray-50'}`}>
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">📅</span>
                     <div>
@@ -178,7 +178,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                                     className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-white/[0.06]' : 'border-gray-200/50 shadow-sm'}`}
                                                 />
                                             ) : (
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-[#181A24] text-gray-300 border-white/[0.08]' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-[#232425] text-gray-300 border-white/[0.08]' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                                                     {row.driver.name.charAt(0)}
                                                 </div>
                                             )}
@@ -234,7 +234,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                                     : `+${fmt(-row.remaining)}`}
                                             </span>
                                         </div>
-                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#181A24]' : 'bg-gray-200/80'}`}>
+                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#232425]' : 'bg-gray-200/80'}`}>
                                             <div
                                                 className={`h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
                                                     row.paidPercent >= 100 ? 'bg-green-500' :

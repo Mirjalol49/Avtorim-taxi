@@ -77,8 +77,8 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
     };
 
     return (
-        <div className="min-h-screen bg-[#0B0C13] flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-[#181A24] rounded-2xl shadow-2xl p-8 border border-white/[0.08]">
+        <div className="min-h-screen bg-[#171818] flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-[#232425] rounded-2xl shadow-2xl p-8 border border-white/[0.08]">
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
                         <LockIcon className="w-8 h-8 text-red-500" />
@@ -95,7 +95,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-[#0B0C13] border border-white/[0.08] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
+                            className="w-full bg-[#171818] border border-white/[0.08] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
                             placeholder="••••••••"
                             disabled={lockoutTime > 0}
                             autoFocus // Added autoFocus
@@ -112,7 +112,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                         type="submit"
                         disabled={loading || lockoutTime > 0 || !password} // Updated disabled condition
                         className={`w-full py-3 rounded-lg font-bold uppercase tracking-wider transition-all ${loading || lockoutTime > 0
-                            ? 'bg-[#181A24] text-gray-500 cursor-not-allowed'
+                            ? 'bg-[#232425] text-gray-500 cursor-not-allowed'
                             : 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
                             }`}
                     >

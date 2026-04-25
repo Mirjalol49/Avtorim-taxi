@@ -35,7 +35,7 @@ const AdminAuditLog: React.FC = () => {
     const uniqueActions = Array.from(new Set(logs.map(log => log.action)));
 
     return (
-        <div className="bg-[#181A24] rounded-xl border border-white/[0.08] overflow-hidden flex flex-col h-[600px]">
+        <div className="bg-[#232425] rounded-xl border border-white/[0.08] overflow-hidden flex flex-col h-[600px]">
             <div className="p-6 border-b border-white/[0.08] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <ShieldIcon className="w-5 h-5 text-purple-400" />
@@ -50,7 +50,7 @@ const AdminAuditLog: React.FC = () => {
                             placeholder="Search logs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#0B0C13] border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                            className="w-full bg-[#171818] border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
                         />
                     </div>
                     <div className="relative">
@@ -58,7 +58,7 @@ const AdminAuditLog: React.FC = () => {
                         <select
                             value={filterAction}
                             onChange={(e) => setFilterAction(e.target.value)}
-                            className="bg-[#0B0C13] border border-white/[0.08] rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:outline-none focus:border-purple-500 appearance-none"
+                            className="bg-[#171818] border border-white/[0.08] rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:outline-none focus:border-purple-500 appearance-none"
                         >
                             <option value="all">All Actions</option>
                             {uniqueActions.map(action => (
@@ -71,7 +71,7 @@ const AdminAuditLog: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto">
                 <table className="w-full text-left">
-                    <thead className="bg-[#0B0C13]/50 text-gray-400 text-xs uppercase tracking-wider sticky top-0 backdrop-blur-sm">
+                    <thead className="bg-[#171818]/50 text-gray-400 text-xs uppercase tracking-wider sticky top-0 backdrop-blur-sm">
                         <tr>
                             <th className="px-6 py-4">Timestamp</th>
                             <th className="px-6 py-4">Action</th>
