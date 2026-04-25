@@ -356,17 +356,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 {todayStats.completed.map((driver, i) => {
                                     const plan = driver.dailyPlan || 1;
                                     const pct = Math.min(100, Math.round((driver.todayIncome / plan) * 100));
+                                    const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
                                             {/* Avatar */}
                                             <div className="relative flex-shrink-0">
-                                                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-emerald-500/60">
+                                                <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-emerald-500/50">
                                                     {driver.avatar
                                                         ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
                                                         : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#111111] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
                                                     }
                                                 </div>
-                                                {/* Rank badge */}
                                                 {i < 3 && (
                                                     <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black border ${
                                                         i === 0 ? 'bg-yellow-400 text-yellow-900 border-yellow-300'
@@ -377,19 +377,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             </div>
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                <div className="flex items-center justify-between gap-2">
                                                     <span className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
-                                                    <span className={`text-xs font-bold tabular-nums flex-shrink-0 text-emerald-500`}>
+                                                    <span className="text-xs font-bold tabular-nums flex-shrink-0 text-emerald-500">
                                                         +{(driver.todayIncome || 0).toLocaleString()}
                                                     </span>
                                                 </div>
-                                                {/* Progress bar */}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-200'}`}>
+                                                {driverCar && (
+                                                    <div className="flex items-center gap-1.5 mt-0.5 mb-1">
+                                                        <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{driverCar.name}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                    </div>
+                                                )}
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#181818]' : 'bg-gray-200'}`}>
                                                     <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
-                                            {/* Lottie trophy */}
-                                            <div className="w-8 h-8 flex-shrink-0">
+                                            <div className="w-7 h-7 flex-shrink-0">
                                                 <Lottie animationData={badgeAnimation} loop={false} />
                                             </div>
                                         </div>
@@ -423,10 +427,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     const remaining = Math.max(0, plan - paid);
                                     const pct = Math.min(100, Math.round((paid / plan) * 100));
                                     const barColor = pct >= 70 ? 'bg-amber-400' : pct >= 30 ? 'bg-orange-500' : 'bg-red-500';
+                                    const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
                                             {/* Avatar */}
-                                            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-orange-500/30 flex-shrink-0 grayscale-[0.2]">
+                                            <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-orange-500/25 flex-shrink-0">
                                                 {driver.avatar
                                                     ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
                                                     : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#111111] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
@@ -434,14 +439,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             </div>
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                <div className="flex items-center justify-between gap-2">
                                                     <span className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
                                                     <span className={`text-xs font-bold tabular-nums flex-shrink-0 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}>
                                                         −{remaining.toLocaleString()}
                                                     </span>
                                                 </div>
-                                                {/* Progress bar */}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-200'}`}>
+                                                {driverCar && (
+                                                    <div className="flex items-center gap-1.5 mt-0.5 mb-1">
+                                                        <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{driverCar.name}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                    </div>
+                                                )}
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#181818]' : 'bg-gray-200'}`}>
                                                     <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>

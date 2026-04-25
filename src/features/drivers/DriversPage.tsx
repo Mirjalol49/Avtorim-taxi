@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../core/types';
 import { Car } from '../../core/types/car.types';
@@ -10,6 +10,8 @@ import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { useAuth } from '../auth/hooks/useAuth';
 import { calcDriverDebt } from './utils/debtUtils';
+
+type CarFilter = 'all' | 'with-car' | 'no-car';
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -34,6 +36,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
     const { t } = useTranslation();
     const { adminUser } = useAuth();
     const currentUserId = adminUser?.id || 'unknown';
+    const [carFilter, setCarFilter] = useState<CarFilter>('all');
 
     const fleetStats = useMemo(() => {
         let totalDebt = 0, totalIncome = 0, todayIncome = 0;
@@ -53,10 +56,24 @@ const DriversPage: React.FC<DriversPageProps> = ({
         searchQuery, setSearchQuery,
         viewMode, setViewMode,
         currentPage, setCurrentPage,
-        paginatedDrivers,
-        totalPages,
-        filteredDrivers
+        paginatedDrivers: rawPaginated,
+        totalPages: rawTotalPages,
+        filteredDrivers: rawFiltered
     } = useDriversList(drivers);
+
+    const filteredDrivers = useMemo(() => {
+        if (carFilter === 'all') return rawFiltered;
+        if (carFilter === 'with-car') return rawFiltered.filter(d => cars.some(c => c.assignedDriverId === d.id));
+        return rawFiltered.filter(d => !cars.some(c => c.assignedDriverId === d.id));
+    }, [rawFiltered, carFilter, cars]);
+
+    const ITEMS_PER_PAGE = 12;
+    const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedDrivers = filteredDrivers.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
+    const withCarCount = rawFiltered.filter(d => cars.some(c => c.assignedDriverId === d.id)).length;
+    const noCarCount = rawFiltered.filter(d => !cars.some(c => c.assignedDriverId === d.id)).length;
 
     return (
         <div className="space-y-6">
@@ -132,6 +149,36 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         <ListIcon className="w-5 h-5" />
                     </button>
                 </div>
+            </div>
+
+            {/* Filter chips */}
+            <div className="flex items-center gap-2 flex-wrap">
+                {([
+                    { key: 'all', label: 'Barchasi', count: rawFiltered.length },
+                    { key: 'with-car', label: 'Mashina bor', count: withCarCount },
+                    { key: 'no-car', label: "Mashina yo'q", count: noCarCount },
+                ] as { key: CarFilter; label: string; count: number }[]).map(f => (
+                    <button
+                        key={f.key}
+                        onClick={() => { setCarFilter(f.key); }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold border transition-all ${
+                            carFilter === f.key
+                                ? theme === 'dark'
+                                    ? 'bg-teal-500/15 text-teal-400 border-teal-500/30'
+                                    : 'bg-teal-600 text-white border-teal-600'
+                                : theme === 'dark'
+                                    ? 'bg-[#181818] text-gray-400 border-white/[0.08] hover:border-white/[0.14] hover:text-gray-200'
+                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-800'
+                        }`}
+                    >
+                        {f.label}
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                            carFilter === f.key
+                                ? theme === 'dark' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/20 text-white'
+                                : theme === 'dark' ? 'bg-white/[0.05] text-gray-500' : 'bg-gray-100 text-gray-500'
+                        }`}>{f.count}</span>
+                    </button>
+                ))}
             </div>
 
             {filteredDrivers.length > 0 ? (
