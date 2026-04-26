@@ -97,10 +97,10 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
                 {/* Dropdown Menu */}
                 {isOpen && (
-                    <div className={`absolute z-50 w-full mt-2 rounded-lg shadow-xl border overflow-hidden ${theme === 'dark'
-                        ? 'bg-surface border-white/[0.08]'
-                        : 'bg-white border-gray-200'
-                        }`}>
+                    <div
+                        className={`absolute z-50 w-full mt-2 rounded-lg shadow-xl border overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
+                        style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+                    >
 
                         {/* Search Input */}
                         {showSearch && (
@@ -112,9 +112,10 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={t('searchPlaceholder') || 'Search...'}
                                     className={`w-full px-3 py-2 text-sm rounded-md outline-none transition-colors ${theme === 'dark'
-                                        ? 'bg-surface-2 text-white placeholder-gray-500 focus:bg-surface-2'
+                                        ? 'text-white placeholder-gray-500'
                                         : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:bg-gray-100'
                                         }`}
+                                    style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}
                                     onClick={(e) => e.stopPropagation()}
                                 />
                             </div>
