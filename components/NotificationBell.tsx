@@ -530,8 +530,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
             <div
                 className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
                     visible ? 'translate-x-0' : 'translate-x-full'
-                } ${isDark ? 'bg-surface' : 'bg-white'}`}
-                style={{ zIndex: 9999 }}
+                }`}
+                style={{
+                    zIndex: 9999,
+                    background: isDark ? 'hsl(222, 44%, 6%)' : '#ffffff',
+                }}
             >
                 {/* Header */}
                 <div className={`flex-shrink-0 px-5 pt-4 pb-0 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.07]'}`}>
