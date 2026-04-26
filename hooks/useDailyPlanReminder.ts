@@ -163,6 +163,8 @@ export const useDailyPlanReminder = ({
                             paidPct,
                             dateDisplay,
                             isFinal: true,
+                            carName: car?.name ?? null,
+                            carPlate: car?.licensePlate ?? null,
                         },
                     },
                     aId,

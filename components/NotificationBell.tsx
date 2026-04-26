@@ -17,6 +17,7 @@ import {
     BanknoteIcon,
     AlertTriangleIcon,
     ReceiptIcon,
+    CarIcon,
 } from './Icons';
 
 type Tab = 'warnings' | 'transactions';
@@ -138,6 +139,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         const paidPct     = dailyPlan > 0 ? Math.min(100, Math.round((todayIncome / dailyPlan) * 100)) : 0;
         const dateDisplay = (dt.dateDisplay as string)  ?? '';
         const avatarUrl   = (dt.driverAvatar as string | undefined);
+        const carName     = (dt.carName  as string | null) ?? null;
+        const carPlate    = (dt.carPlate as string | null) ?? null;
 
         const barColor = paidPct >= 80 ? 'bg-teal-500' : paidPct >= 50 ? 'bg-amber-500' : 'bg-red-500';
 
@@ -187,6 +190,17 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 <p className={`text-[11px] flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                                     <CalendarIcon className="w-3 h-3" />
                                     {dateDisplay}
+                                </p>
+                            )}
+                            {carName && (
+                                <p className={`text-[11px] flex items-center gap-1.5 mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    <CarIcon className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{carName}</span>
+                                    {carPlate && (
+                                        <span className={`px-1 py-0.5 rounded text-[10px] font-mono flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                                            {carPlate}
+                                        </span>
+                                    )}
                                 </p>
                             )}
                         </div>
