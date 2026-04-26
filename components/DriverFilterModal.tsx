@@ -95,7 +95,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                 {/* Search */}
                 <div className={`px-6 py-4 border-b flex-shrink-0 ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
                     <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${
-                        isDark ? 'bg-[#2C2C2E]/60 border-white/[0.08] focus-within:border-teal-500' : 'bg-gray-50 border-gray-200 focus-within:border-teal-500'
+                        isDark ? 'bg-surface-2/60 border-white/[0.08] focus-within:border-teal-500' : 'bg-gray-50 border-gray-200 focus-within:border-teal-500'
                     } transition-colors`}>
                         <svg className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -128,7 +128,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                             ? 'border-teal-500 bg-teal-500/10 shadow-sm'
                                             : 'border-teal-500 bg-teal-50 shadow-sm'
                                         : isDark
-                                            ? 'border-white/[0.06] bg-[#2C2C2E]/40 hover:border-white/[0.08] hover:bg-white/[0.04]'
+                                            ? 'border-white/[0.06] bg-surface-2/40 hover:border-white/[0.08] hover:bg-white/[0.04]'
                                             : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-black/[0.03]'
                                 }`}
                             >
@@ -140,7 +140,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                     </span>
                                 )}
                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${
-                                    isDark ? 'bg-[#2C2C2E]' : 'bg-gray-200'
+                                    isDark ? 'bg-surface-2' : 'bg-gray-200'
                                 }`}>
                                     👥
                                 </div>
@@ -169,7 +169,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                                 ? 'border-teal-500 bg-teal-500/10 shadow-sm'
                                                 : 'border-teal-500 bg-teal-50 shadow-sm'
                                             : isDark
-                                                ? 'border-white/[0.06] bg-[#2C2C2E]/40 hover:border-white/[0.08] hover:bg-white/[0.04]'
+                                                ? 'border-white/[0.06] bg-surface-2/40 hover:border-white/[0.08] hover:bg-white/[0.04]'
                                                 : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-black/[0.03]'
                                     }`}
                                 >
@@ -192,7 +192,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                             {driver.avatar ? (
                                                 <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
                                             ) : (
-                                                <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${isDark ? 'bg-[#2C2C2E] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                                                <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
                                                     {driver.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -217,7 +217,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                                     {car.name}
                                                 </div>
                                                 <div className={`inline-block mt-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
-                                                    isDark ? 'bg-[#2C2C2E] text-gray-300' : 'bg-gray-200 text-gray-600'
+                                                    isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-200 text-gray-600'
                                                 }`}>
                                                     {car.licensePlate}
                                                 </div>

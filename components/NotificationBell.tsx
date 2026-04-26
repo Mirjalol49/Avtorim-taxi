@@ -175,7 +175,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 <AlertTriangleIcon className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border-2 ${isDark ? 'border-[#1C1C1E]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border-2 ${isDark ? 'border-surface' : 'border-white'}`} />
                             )}
                         </div>
 
@@ -200,7 +200,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     </div>
 
                     {/* Progress bar */}
-                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2.5 ${isDark ? 'bg-[#3A3A3C]' : 'bg-[#E5E5EA]'}`}>
+                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2.5 ${isDark ? 'bg-surface-2' : 'bg-[#E5E5EA]'}`}>
                         <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${paidPct}%` }} />
                     </div>
 
@@ -294,7 +294,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 }
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#1C1C1E]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-teal-500 border-2 ${isDark ? 'border-surface' : 'border-white'}`} />
                             )}
                         </div>
 
@@ -329,7 +329,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 {chequeUrl && (
                                     <a href={chequeUrl} target="_blank" rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
-                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-[#2C2C2E] text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}
+                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-surface-2 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}
                                     >
                                         <ReceiptIcon className="w-2.5 h-2.5" /> Chek
                                     </a>
@@ -429,7 +429,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
         if (all.length === 0) return (
             <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
                     <AlertTriangleIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
                 </div>
                 <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -487,7 +487,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
         if (transactions.length === 0) return (
             <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
                     <TrendingUpIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
                 </div>
                 <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -530,14 +530,14 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
             <div
                 className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
                     visible ? 'translate-x-0' : 'translate-x-full'
-                } ${isDark ? 'bg-[#1C1C1E]' : 'bg-white'}`}
+                } ${isDark ? 'bg-surface' : 'bg-white'}`}
                 style={{ zIndex: 9999 }}
             >
                 {/* Header */}
                 <div className={`flex-shrink-0 px-5 pt-4 pb-0 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.07]'}`}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-[#F2F2F7]'}`}>
                                 <BellIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                             </div>
                             <h2 className={`text-[15px] font-semibold ${isDark ? 'text-white' : 'text-black'}`}>

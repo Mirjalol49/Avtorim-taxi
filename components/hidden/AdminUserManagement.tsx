@@ -121,7 +121,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
 
 
     return (
-        <div className="bg-[#2C2C2E] rounded-xl border border-white/[0.08] overflow-hidden">
+        <div className="bg-surface-2 rounded-xl border border-white/[0.08] overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-white/[0.08]">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -187,18 +187,18 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                 <tr key={i} className="animate-pulse">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#2C2C2E]" />
+                                            <div className="w-8 h-8 rounded-full bg-surface-2" />
                                             <div className="space-y-1">
-                                                <div className="h-4 w-24 bg-[#2C2C2E] rounded" />
-                                                <div className="h-3 w-16 bg-[#2C2C2E] rounded" />
+                                                <div className="h-4 w-24 bg-surface-2 rounded" />
+                                                <div className="h-3 w-16 bg-surface-2 rounded" />
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4"><div className="h-5 w-16 bg-[#2C2C2E] rounded" /></td>
-                                    <td className="px-6 py-4"><div className="h-5 w-14 bg-[#2C2C2E] rounded" /></td>
+                                    <td className="px-6 py-4"><div className="h-5 w-16 bg-surface-2 rounded" /></td>
+                                    <td className="px-6 py-4"><div className="h-5 w-14 bg-surface-2 rounded" /></td>
 
-                                    <td className="px-6 py-4"><div className="h-4 w-20 bg-[#2C2C2E] rounded" /></td>
-                                    <td className="px-6 py-4 text-right"><div className="h-8 w-24 bg-[#2C2C2E] rounded ml-auto" /></td>
+                                    <td className="px-6 py-4"><div className="h-4 w-20 bg-surface-2 rounded" /></td>
+                                    <td className="px-6 py-4 text-right"><div className="h-8 w-24 bg-surface-2 rounded ml-auto" /></td>
                                 </tr>
                             ))
                         ) : paginatedUsers.length === 0 ? (
@@ -212,7 +212,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                 <tr key={user.id} className="hover:bg-white/[0.06]/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#2C2C2E] flex items-center justify-center text-white font-bold">
+                                            <div className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center text-white font-bold">
                                                 {user.username.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
@@ -338,7 +338,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
             {/* Edit/Create Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#2C2C2E] rounded-xl border border-white/[0.08] shadow-2xl w-full max-w-md p-6">
+                    <div className="bg-surface-2 rounded-xl border border-white/[0.08] shadow-2xl w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-bold text-white">
                                 {editingUser ? 'Edit User' : 'Add New User'}

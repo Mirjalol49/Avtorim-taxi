@@ -35,7 +35,7 @@ const AdminAuditLog: React.FC = () => {
     const uniqueActions = Array.from(new Set(logs.map(log => log.action)));
 
     return (
-        <div className="bg-[#2C2C2E] rounded-xl border border-white/[0.08] overflow-hidden flex flex-col h-[600px]">
+        <div className="bg-surface-2 rounded-xl border border-white/[0.08] overflow-hidden flex flex-col h-[600px]">
             <div className="p-6 border-b border-white/[0.08] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <ShieldIcon className="w-5 h-5 text-purple-400" />
