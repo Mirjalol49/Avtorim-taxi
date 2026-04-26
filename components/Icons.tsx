@@ -88,6 +88,16 @@ export {
     Share2            as ShareIcon,
     Printer           as PrinterIcon,
     FileDown          as FileDownIcon,
+    FolderOpen        as FolderOpenIcon,
+    File              as FileIcon,
+    FileImage         as FileImageIcon,
+    FileText          as FilePdfIcon,
+    UploadCloud       as UploadCloudIcon,
+    FolderPlus        as FolderPlusIcon,
+    Paperclip         as PaperclipIcon,
+    Eye               as PreviewIcon,
+    FileVideo         as FileVideoIcon,
+    FileArchive       as FileArchiveIcon,
 } from 'lucide-react';
 
 // Telegram brand icon — not in Lucide, kept as custom SVG
