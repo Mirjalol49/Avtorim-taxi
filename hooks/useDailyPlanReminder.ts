@@ -1,8 +1,8 @@
 /**
  * useDailyPlanReminder
  *
- * Checks every minute. Fires reminders at 18:00 (early warning) and 22:00
- * (final warning) for drivers who haven't met their daily plan.
+ * Checks every minute. Fires ONE reminder at 22:00 for drivers who
+ * haven't met their daily plan.
  *
  * Rules:
  *  - Driver has a day-off transaction today → skipped
@@ -10,7 +10,7 @@
  *  - Driver paid 0 → shows full plan remaining
  *  - Driver paid partial → shows exact remaining amount
  *
- * Dedup: localStorage `daily_plan_reminder_YYYY-MM-DD_HH` per driver per hour-slot.
+ * Dedup: localStorage `daily_plan_reminder_YYYY-MM-DD_22` per driver.
  */
 
 import { useEffect, useRef } from 'react';
@@ -35,10 +35,9 @@ const todayDisplayStr = () => {
     return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 };
 
-// Fire at 18:00 (early warning) and 22:00 (final reminder)
+// Fire only at 22:00 — single end-of-day warning
 const getReminderSlot = (): string | null => {
     const h = new Date().getHours();
-    if (h >= 18 && h < 19) return '18';
     if (h >= 22 && h < 23) return '22';
     return null;
 };
@@ -122,8 +121,6 @@ export const useDailyPlanReminder = ({
         const today = todayDateKey();
         const dateDisplay = todayDisplayStr();
         const alreadySent = getSentDriverIds(today, slot);
-        const isFinal = slot === '22';
-
         const activeDrivers = drivers.filter(d => !d.isDeleted);
 
         for (const driver of activeDrivers) {
@@ -144,18 +141,17 @@ export const useDailyPlanReminder = ({
 
             const remaining = dailyPlan - todayIncome;
             const paidPct = Math.round((todayIncome / dailyPlan) * 100);
-            const slotLabel = isFinal ? '🔴 Yakuniy eslatma' : '🟡 Ogohlantirish';
 
             try {
                 await sendNotification(
                     {
                         title: `${driver.name} — ${fmt(remaining)} UZS qoldi`,
-                        message: `${dateDisplay} · Reja: ${fmt(dailyPlan)} UZS · To'langan: ${fmt(todayIncome)} UZS · Qoldi: ${fmt(remaining)} UZS`,
+                        message: `${dateDisplay} · Reja: ${fmt(dailyPlan)} · To'langan: ${fmt(todayIncome)} · Qoldi: ${fmt(remaining)} UZS`,
                         type: 'payment_reminder',
                         category: NotificationCategory.PAYMENT_REMINDER,
-                        priority: isFinal ? NotificationPriority.HIGH : NotificationPriority.MEDIUM,
+                        priority: NotificationPriority.HIGH,
                         targetUsers: 'role:admin',
-                        expiresIn: 14 * 60 * 60 * 1000, // 14 h
+                        expiresIn: 14 * 60 * 60 * 1000,
                         driverAvatar: driver.avatar || undefined,
                         driverId: driver.id,
                         extraTracking: {
@@ -166,8 +162,7 @@ export const useDailyPlanReminder = ({
                             remaining,
                             paidPct,
                             dateDisplay,
-                            slot: slotLabel,
-                            isFinal,
+                            isFinal: true,
                         },
                     },
                     aId,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Notification, NotificationType, markNotificationAsRead } from '../services/notificationService';
@@ -19,6 +19,8 @@ import {
     ReceiptIcon,
 } from './Icons';
 
+type Tab = 'warnings' | 'transactions';
+
 interface NotificationBellProps {
     notifications: Notification[];
     unreadCount: number;
@@ -29,6 +31,18 @@ interface NotificationBellProps {
     onMarkAllAsRead: () => void;
     onDeleteNotification: (id: string) => void;
     onClearAllRead: () => void;
+}
+
+const PAGE_SIZE = 20;
+
+const fmtAmount = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+
+function isPlanReminder(n: Notification) {
+    return ((n as any).deliveryTracking?.reminderType === 'daily_plan');
+}
+
+function isTransaction(n: Notification) {
+    return n.type === 'payment_reminder' && !isPlanReminder(n);
 }
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -43,15 +57,17 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     onClearAllRead,
 }) => {
     const { t } = useTranslation();
-    const [isOpen, setIsOpen] = useState(false);
-    const [visible, setVisible] = useState(false);
+    const [isOpen, setIsOpen]       = useState(false);
+    const [visible, setVisible]     = useState(false);
+    const [activeTab, setActiveTab] = useState<Tab>('warnings');
+    const [warnPage, setWarnPage]   = useState(1);
+    const [txPage, setTxPage]       = useState(1);
 
     const isDark = theme === 'dark';
 
     // Animate open/close
     useEffect(() => {
         if (isOpen) {
-            // Mount first, then trigger animation
             requestAnimationFrame(() => setVisible(true));
         } else {
             setVisible(false);
@@ -60,22 +76,19 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
     // Close on Escape
     useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') closeSidebar();
-        };
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeSidebar(); };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, []);
 
     // Prevent body scroll while open
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        document.body.style.overflow = isOpen ? 'hidden' : '';
         return () => { document.body.style.overflow = ''; };
     }, [isOpen]);
+
+    // Reset pagination when switching tabs
+    useEffect(() => { setWarnPage(1); setTxPage(1); }, [activeTab]);
 
     const openSidebar = () => {
         setIsOpen(true);
@@ -98,58 +111,57 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         return `${d} ${t('daysAgo') || 'kun oldin'}`;
     };
 
-    const fmtAmount = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+    // Split notifications into two buckets
+    const warnings     = useMemo(() => notifications.filter(n => isPlanReminder(n) || (!isTransaction(n) && !isPlanReminder(n) && n.type !== 'payment_reminder')), [notifications]);
+    const transactions = useMemo(() => notifications.filter(isTransaction), [notifications]);
 
-    const getTypeIcon = (type: NotificationType) => {
-        const cls = 'w-5 h-5';
-        switch (type) {
-            case 'payment_reminder': return <TrendingUpIcon className={cls} />;
-            case 'feature_update':   return <ZapIcon        className={cls} />;
-            case 'announcement':     return <BellIcon       className={cls} />;
-            case 'system':           return <SettingsIcon   className={cls} />;
-            default:                 return <BellIcon       className={cls} />;
-        }
-    };
+    const unreadWarnings     = warnings.filter(n => !readIds.has(n.id)).length;
+    const unreadTransactions = transactions.filter(n => !readIds.has(n.id)).length;
 
-    // ─── Daily Plan Reminder Card ─────────────────────────────────────────────
+    // Summary stats for warnings tab
+    const warnStats = useMemo(() => {
+        const planItems = warnings.filter(isPlanReminder);
+        const totalRemaining = planItems.reduce((sum, n) => {
+            const dt = (n as any).deliveryTracking ?? {};
+            return sum + ((dt.remaining as number) ?? 0);
+        }, 0);
+        return { count: planItems.length, totalRemaining };
+    }, [warnings]);
+
+    // ─── Daily Plan Reminder Card ───────────────────────────────────────────
     const renderPlanReminder = (notification: Notification, isRead: boolean) => {
-        const dt           = (notification as any).deliveryTracking ?? {};
-        const driverName   = (dt.driverName   as string)  ?? notification.title.split(' — ')[0] ?? 'Haydovchi';
-        const dailyPlan    = (dt.dailyPlan    as number)  ?? 0;
-        const todayIncome  = (dt.todayIncome  as number)  ?? 0;
-        const remaining    = (dt.remaining    as number)  ?? (dailyPlan - todayIncome);
-        const paidPct      = dailyPlan > 0 ? Math.min(100, Math.round((todayIncome / dailyPlan) * 100)) : 0;
-        const isFinal      = (dt.isFinal      as boolean) ?? false;
-        const dateDisplay  = (dt.dateDisplay  as string)  ?? '';
-        const avatarUrl    = (dt.driverAvatar as string | undefined);
+        const dt          = (notification as any).deliveryTracking ?? {};
+        const driverName  = (dt.driverName  as string)  ?? notification.title.split(' — ')[0] ?? 'Haydovchi';
+        const dailyPlan   = (dt.dailyPlan   as number)  ?? 0;
+        const todayIncome = (dt.todayIncome as number)  ?? 0;
+        const remaining   = (dt.remaining   as number)  ?? (dailyPlan - todayIncome);
+        const paidPct     = dailyPlan > 0 ? Math.min(100, Math.round((todayIncome / dailyPlan) * 100)) : 0;
+        const dateDisplay = (dt.dateDisplay as string)  ?? '';
+        const avatarUrl   = (dt.driverAvatar as string | undefined);
 
-        const barColor     = paidPct >= 80 ? 'bg-teal-500' : paidPct >= 50 ? 'bg-amber-500' : 'bg-red-500';
-        const badgeBg      = isFinal
-            ? (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600')
-            : (isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700');
+        const barColor = paidPct >= 80 ? 'bg-teal-500' : paidPct >= 50 ? 'bg-amber-500' : 'bg-red-500';
 
         return (
             <div
                 key={notification.id}
                 onClick={() => !isRead && onMarkAsRead(notification.id)}
                 className={`group relative transition-colors ${
-                    !isRead ? 'border-l-[3px] border-orange-400' : 'border-l-[3px] border-transparent'
+                    !isRead ? 'border-l-[3px] border-red-500' : 'border-l-[3px] border-transparent'
                 } ${
                     isRead
-                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.03]'
-                        : isDark ? 'bg-orange-500/[0.06] hover:bg-orange-500/10 cursor-pointer'
-                               : 'bg-orange-50/50 hover:bg-orange-50 cursor-pointer'
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-red-500/[0.06] hover:bg-red-500/[0.09] cursor-pointer'
+                               : 'bg-red-50/60 hover:bg-red-50 cursor-pointer'
                 }`}
             >
-                <div className="px-4 py-4 pr-10">
-                    {/* Header row: avatar + name + badge */}
+                <div className="px-4 py-3.5 pr-10">
+                    {/* Avatar + name */}
                     <div className="flex items-center gap-3 mb-3">
                         <div className="relative flex-shrink-0">
                             {avatarUrl ? (
                                 <img
-                                    src={avatarUrl}
-                                    alt=""
-                                    className={`w-10 h-10 rounded-xl object-cover ${isRead ? 'opacity-40' : ''}`}
+                                    src={avatarUrl} alt=""
+                                    className={`w-9 h-9 rounded-xl object-cover ${isRead ? 'opacity-40' : ''}`}
                                     onError={e => {
                                         (e.currentTarget as HTMLImageElement).style.display = 'none';
                                         (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('style');
@@ -157,76 +169,65 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 />
                             ) : null}
                             <div
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-orange-500/15' : 'bg-orange-100'}`}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-500/15' : 'bg-red-50'}`}
                                 style={{ display: avatarUrl ? 'none' : 'flex' }}
                             >
-                                <AlertTriangleIcon className={`w-5 h-5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+                                <AlertTriangleIcon className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-orange-400 border-2 ${isDark ? 'border-[#080808]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border-2 ${isDark ? 'border-[#1C1C1E]' : 'border-white'}`} />
                             )}
                         </div>
 
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-0.5">
-                                <p className={`text-[13px] font-bold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {driverName}
-                                </p>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${badgeBg}`}>
-                                    {isFinal ? '🔴 Yakuniy' : '🟡 Eslatma'}
-                                </span>
-                            </div>
+                            <p className={`text-[13px] font-semibold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {driverName}
+                            </p>
                             {dateDisplay && (
-                                <p className={`text-[11px] flex items-center gap-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <p className={`text-[11px] flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                                     <CalendarIcon className="w-3 h-3" />
                                     {dateDisplay}
                                 </p>
                             )}
                         </div>
+
+                        {/* Percent badge */}
+                        <span className={`text-[12px] font-bold tabular-nums flex-shrink-0 ${
+                            paidPct >= 80 ? 'text-teal-500' : paidPct >= 50 ? 'text-amber-500' : isDark ? 'text-red-400' : 'text-red-500'
+                        }`}>
+                            {paidPct}%
+                        </span>
                     </div>
 
                     {/* Progress bar */}
-                    <div className="mb-2.5">
-                        <div className="flex items-center justify-between mb-1">
-                            <span className={`text-[11px] font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                To'langan: <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{fmtAmount(todayIncome)} UZS</span>
-                            </span>
-                            <span className={`text-[11px] font-bold tabular-nums ${
-                                paidPct >= 80 ? 'text-teal-500' : paidPct >= 50 ? 'text-amber-500' : 'text-red-400'
-                            }`}>
-                                {paidPct}%
-                            </span>
-                        </div>
-                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-200'}`}>
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                                style={{ width: `${paidPct}%` }}
-                            />
-                        </div>
+                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2.5 ${isDark ? 'bg-[#3A3A3C]' : 'bg-[#E5E5EA]'}`}>
+                        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${paidPct}%` }} />
                     </div>
 
-                    {/* Remaining amount + plan */}
-                    <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${isDark ? 'bg-[#2C2C2E]/60' : 'bg-[#F2F2F7]'}`}>
+                    {/* Plan / paid / remaining row */}
+                    <div className={`grid grid-cols-3 gap-1.5 rounded-xl px-3 py-2 text-center ${isDark ? 'bg-white/[0.05]' : 'bg-[#F2F2F7]'}`}>
                         <div>
-                            <p className={`text-[10px] font-medium mb-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Kunlik reja</p>
-                            <p className={`text-xs font-bold tabular-nums ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{fmtAmount(dailyPlan)} UZS</p>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Reja</p>
+                            <p className={`text-[11px] font-semibold tabular-nums ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{fmtAmount(dailyPlan)}</p>
                         </div>
-                        <div className="text-right">
-                            <p className={`text-[10px] font-medium mb-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Qoldi</p>
-                            <p className={`text-sm font-extrabold tabular-nums ${remaining > 0 ? isDark ? 'text-red-400' : 'text-red-500' : 'text-teal-500'}`}>
-                                {remaining > 0 ? `−${fmtAmount(remaining)} UZS` : '✓ Bajarildi'}
+                        <div>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>To'landi</p>
+                            <p className={`text-[11px] font-semibold tabular-nums text-teal-500`}>{fmtAmount(todayIncome)}</p>
+                        </div>
+                        <div>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Qoldi</p>
+                            <p className={`text-[11px] font-bold tabular-nums ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                {remaining > 0 ? `−${fmtAmount(remaining)}` : '✓'}
                             </p>
                         </div>
                     </div>
 
-                    {/* Time */}
-                    <p className={`text-[11px] mt-2 flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    <p className={`text-[10px] mt-2 flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                         <ClockIcon className="w-3 h-3" />
                         {formatRelative(notification.createdAt)}
                     </p>
                 </div>
 
-                {/* Delete button */}
                 <button
                     onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
                     className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
@@ -237,7 +238,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         );
     };
 
-    // ─── Payment Transaction Card ─────────────────────────────────────────────
+    // ─── Payment Transaction Card ───────────────────────────────────────────
     const renderPaymentItem = (notification: Notification, isRead: boolean) => {
         const dt         = (notification as any).deliveryTracking ?? {};
         const txType     = dt.txType    as 'income' | 'expense' | undefined;
@@ -266,20 +267,17 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     !isRead ? 'border-l-[3px] border-teal-500' : 'border-l-[3px] border-transparent'
                 } ${
                     isRead
-                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.03]'
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
                         : isDark ? 'bg-white/[0.05] hover:bg-white/[0.07] cursor-pointer'
                                : 'bg-teal-50/60 hover:bg-teal-50 cursor-pointer'
                 }`}
             >
                 <div className="px-4 py-3.5 pr-10">
                     <div className="flex items-start gap-3">
-                        {/* Avatar */}
                         <div className="relative flex-shrink-0">
                             {avatarUrl ? (
-                                <img
-                                    src={avatarUrl}
-                                    alt=""
-                                    className={`w-10 h-10 rounded-xl object-cover ${isRead ? 'opacity-40' : ''}`}
+                                <img src={avatarUrl} alt=""
+                                    className={`w-9 h-9 rounded-xl object-cover ${isRead ? 'opacity-40' : ''}`}
                                     onError={e => {
                                         (e.currentTarget as HTMLImageElement).style.display = 'none';
                                         (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('style');
@@ -287,23 +285,22 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 />
                             ) : null}
                             <div
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}
                                 style={{ display: avatarUrl ? 'none' : 'flex' }}
                             >
                                 {isIncome
-                                    ? <TrendingUpIcon   className={`w-5 h-5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
-                                    : <TrendingDownIcon className={`w-5 h-5 ${isDark ? 'text-red-400'  : 'text-red-500'}`}  />
+                                    ? <TrendingUpIcon   className={`w-4 h-4 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
+                                    : <TrendingDownIcon className={`w-4 h-4 ${isDark ? 'text-red-400'  : 'text-red-500'}`}  />
                                 }
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#080808]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#1C1C1E]' : 'border-white'}`} />
                             )}
                         </div>
 
-                        {/* Body */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2 mb-1.5">
-                                <p className={`text-[13px] font-bold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                <p className={`text-[13px] font-semibold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
                                     {nameDisplay}
                                 </p>
                                 <span className={`text-[13px] font-bold font-mono flex-shrink-0 tabular-nums ${isRead ? isDark ? 'text-gray-600' : 'text-gray-400' : isIncome ? 'text-teal-500' : 'text-red-400'}`}>
@@ -311,17 +308,14 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 </span>
                             </div>
 
-                            {/* Badges */}
                             <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                                {isIncome ? (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wide ${isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700'}`}>
-                                        ↑ KIRIM
-                                    </span>
-                                ) : (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wide ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'}`}>
-                                        ↓ CHIQIM
-                                    </span>
-                                )}
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wide ${
+                                    isIncome
+                                        ? isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700'
+                                        : isDark ? 'bg-red-500/15 text-red-400'  : 'bg-red-50 text-red-600'
+                                }`}>
+                                    {isIncome ? '↑ KIRIM' : '↓ CHIQIM'}
+                                </span>
                                 {method === 'card' && (
                                     <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
                                         <CreditCardIcon className="w-2.5 h-2.5" /> Karta
@@ -333,12 +327,9 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                     </span>
                                 )}
                                 {chequeUrl && (
-                                    <a
-                                        href={chequeUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <a href={chequeUrl} target="_blank" rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
-                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-[#2C2C2E] text-gray-400 hover:bg-white/[0.06] hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'}`}
+                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-[#2C2C2E] text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}
                                     >
                                         <ReceiptIcon className="w-2.5 h-2.5" /> Chek
                                     </a>
@@ -346,26 +337,18 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             </div>
 
                             {note && (
-                                <p className={`text-[11px] mb-1.5 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    📝 {note}
-                                </p>
+                                <p className={`text-[11px] mb-1.5 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>📝 {note}</p>
                             )}
 
-                            <div className={`flex items-center gap-1.5 text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                            <div className={`flex items-center gap-1.5 text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                                 <ClockIcon className="w-3 h-3" />
                                 <span>{formatRelative(notification.createdAt)}</span>
-                                {dateStr && timeStr && (
-                                    <>
-                                        <span>·</span>
-                                        <span className="font-mono">{dateStr}, {timeStr}</span>
-                                    </>
-                                )}
+                                {dateStr && timeStr && <><span>·</span><span className="font-mono">{dateStr}, {timeStr}</span></>}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Delete button */}
                 <button
                     onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
                     className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
@@ -376,77 +359,174 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         );
     };
 
-    // ─── Generic Card ─────────────────────────────────────────────────────────
-    const renderGenericItem = (notification: Notification, isRead: boolean) => (
-        <div
-            key={notification.id}
-            onClick={() => !isRead && onMarkAsRead(notification.id)}
-            className={`group relative transition-colors border-l-[3px] ${
-                !isRead ? 'border-purple-500' : 'border-transparent'
-            } ${
-                isRead
-                    ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.03]'
-                    : isDark ? 'bg-purple-500/[0.05] hover:bg-purple-500/[0.08] cursor-pointer'
-                           : 'bg-purple-50/40 hover:bg-purple-50 cursor-pointer'
-            }`}
-        >
-            <div className="px-4 py-3.5 pr-10">
-                <div className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
-                        {getTypeIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] font-semibold truncate mb-0.5 ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {notification.title}
-                        </p>
-                        <p className={`text-xs leading-relaxed line-clamp-2 mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {notification.message}
-                        </p>
-                        <p className={`text-[11px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                            <ClockIcon className="w-3 h-3" />
-                            {formatRelative(notification.createdAt)}
-                        </p>
+    // ─── Generic Card ───────────────────────────────────────────────────────
+    const renderGenericItem = (notification: Notification, isRead: boolean) => {
+        const getTypeIcon = (type: NotificationType) => {
+            const cls = 'w-4 h-4';
+            switch (type) {
+                case 'feature_update': return <ZapIcon      className={cls} />;
+                case 'announcement':   return <BellIcon     className={cls} />;
+                case 'system':         return <SettingsIcon className={cls} />;
+                default:               return <BellIcon     className={cls} />;
+            }
+        };
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors border-l-[3px] ${
+                    !isRead ? 'border-violet-500' : 'border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-violet-500/[0.05] hover:bg-violet-500/[0.08] cursor-pointer'
+                               : 'bg-violet-50/40 hover:bg-violet-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 py-3.5 pr-10">
+                    <div className="flex items-start gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
+                            {getTypeIcon(notification.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-semibold truncate mb-0.5 ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {notification.title}
+                            </p>
+                            <p className={`text-[11px] leading-relaxed line-clamp-2 mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {notification.message}
+                            </p>
+                            <p className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                <ClockIcon className="w-3 h-3" />
+                                {formatRelative(notification.createdAt)}
+                            </p>
+                        </div>
                     </div>
                 </div>
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
             </div>
-            <button
-                onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
-                className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
-            >
-                <TrashIcon className="w-3 h-3" />
-            </button>
-        </div>
-    );
+        );
+    };
 
     const renderItem = (notification: Notification) => {
         const isRead = readIds.has(notification.id);
-        const dt = (notification as any).deliveryTracking ?? {};
-
-        // Daily plan reminder — special card with progress bar
-        if (dt.reminderType === 'daily_plan') {
-            return renderPlanReminder(notification, isRead);
-        }
-
-        // Payment transaction
-        if (notification.type === 'payment_reminder') {
-            return renderPaymentItem(notification, isRead);
-        }
-
-        // Everything else
+        if (isPlanReminder(notification))  return renderPlanReminder(notification, isRead);
+        if (isTransaction(notification))   return renderPaymentItem(notification, isRead);
         return renderGenericItem(notification, isRead);
     };
 
-    // ─── Sidebar portal ───────────────────────────────────────────────────────
+    // ─── Warnings tab content ───────────────────────────────────────────────
+    const renderWarningsTab = () => {
+        const planItems = warnings.filter(isPlanReminder);
+        const others    = warnings.filter(n => !isPlanReminder(n));
+        const all       = [...planItems, ...others]; // plan reminders first
+        const visible   = all.slice(0, warnPage * PAGE_SIZE);
+        const hasMore   = visible.length < all.length;
+
+        if (all.length === 0) return (
+            <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
+                    <AlertTriangleIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                </div>
+                <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Ogohlantirishlar yo'q
+                </p>
+                <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Barcha haydovchilar rejani bajardi
+                </p>
+            </div>
+        );
+
+        return (
+            <>
+                {/* Summary banner — only when there are plan reminders */}
+                {planItems.length > 0 && (
+                    <div className={`mx-4 mt-3 mb-1 rounded-2xl px-4 py-3 flex items-center justify-between ${
+                        isDark ? 'bg-red-500/[0.08] border border-red-500/[0.15]' : 'bg-red-50 border border-red-100'
+                    }`}>
+                        <div>
+                            <p className={`text-[12px] font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                {planItems.length} ta haydovchi to'lamagan
+                            </p>
+                            <p className={`text-[11px] mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500'}`}>
+                                Jami qoldi: {fmtAmount(warnStats.totalRemaining)} UZS
+                            </p>
+                        </div>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-500/15' : 'bg-red-100'}`}>
+                            <AlertTriangleIcon className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+                        </div>
+                    </div>
+                )}
+
+                <div className={`divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-black/[0.04]'}`}>
+                    {visible.map(renderItem)}
+                </div>
+
+                {hasMore && (
+                    <button
+                        onClick={() => setWarnPage(p => p + 1)}
+                        className={`w-full py-3 text-[13px] font-medium transition-colors ${
+                            isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.03]'
+                        }`}
+                    >
+                        Ko'proq ko'rsatish ({all.length - visible.length} ta qoldi)
+                    </button>
+                )}
+            </>
+        );
+    };
+
+    // ─── Transactions tab content ───────────────────────────────────────────
+    const renderTransactionsTab = () => {
+        const visible = transactions.slice(0, txPage * PAGE_SIZE);
+        const hasMore = visible.length < transactions.length;
+
+        if (transactions.length === 0) return (
+            <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
+                    <TrendingUpIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                </div>
+                <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    O'tkazmalar yo'q
+                </p>
+                <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Bot orqali yuborilgan o'tkazmalar bu yerda ko'rinadi
+                </p>
+            </div>
+        );
+
+        return (
+            <>
+                <div className={`divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-black/[0.04]'}`}>
+                    {visible.map(n => renderPaymentItem(n, readIds.has(n.id)))}
+                </div>
+                {hasMore && (
+                    <button
+                        onClick={() => setTxPage(p => p + 1)}
+                        className={`w-full py-3 text-[13px] font-medium transition-colors ${
+                            isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.03]'
+                        }`}
+                    >
+                        Ko'proq ko'rsatish ({transactions.length - visible.length} ta qoldi)
+                    </button>
+                )}
+            </>
+        );
+    };
+
+    // ─── Sidebar portal ─────────────────────────────────────────────────────
     const sidebar = isOpen ? createPortal(
         <>
-            {/* Backdrop — sits above sidebar nav (z-[9998]) */}
             <div
                 onClick={closeSidebar}
                 className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
                 style={{ zIndex: 9998 }}
             />
 
-            {/* Drawer panel */}
             <div
                 className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
                     visible ? 'translate-x-0' : 'translate-x-full'
@@ -454,25 +534,15 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 style={{ zIndex: 9999 }}
             >
                 {/* Header */}
-                <div className={`flex-shrink-0 px-5 py-4 border-b ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isDark ? 'bg-teal-500/15' : 'bg-teal-50'}`}>
-                                <BellIcon className={`w-4 h-4 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
+                <div className={`flex-shrink-0 px-5 pt-4 pb-0 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.07]'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
+                                <BellIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                             </div>
-                            <div>
-                                <h2 className={`text-sm font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {t('notifications') || 'Bildirishnomalar'}
-                                </h2>
-                                <p className={`text-[11px] leading-tight ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    {notifications.length > 0 ? `${notifications.length} ta xabar` : "Hamma narsa o'qildi"}
-                                </p>
-                            </div>
-                            {unreadCount > 0 && (
-                                <span className="px-2 py-0.5 rounded-full bg-teal-500 text-white text-[11px] font-bold leading-none">
-                                    {unreadCount}
-                                </span>
-                            )}
+                            <h2 className={`text-[15px] font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
+                                Bildirishnomalar
+                            </h2>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -502,36 +572,52 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             </button>
                         </div>
                     </div>
+
+                    {/* Tabs */}
+                    <div className="flex">
+                        {([
+                            { key: 'warnings' as Tab,     label: 'Ogohlantirishlar', count: unreadWarnings,     total: warnings.length },
+                            { key: 'transactions' as Tab, label: "O'tkazmalar",      count: unreadTransactions, total: transactions.length },
+                        ] as const).map(tab => (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`relative flex items-center gap-1.5 px-1 pb-3 mr-5 text-[13px] font-medium transition-colors ${
+                                    activeTab === tab.key
+                                        ? isDark ? 'text-white' : 'text-black'
+                                        : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                {tab.label}
+                                {tab.total > 0 && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                                        tab.count > 0
+                                            ? 'bg-red-500 text-white'
+                                            : isDark ? 'bg-white/[0.10] text-gray-400' : 'bg-black/[0.07] text-gray-500'
+                                    }`}>
+                                        {tab.total > 99 ? '99+' : tab.total}
+                                    </span>
+                                )}
+                                {/* Active underline */}
+                                {activeTab === tab.key && (
+                                    <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} />
+                                )}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Notification list */}
-                <div className={`flex-1 overflow-y-auto divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-black/[0.05]'}`}>
-                    {notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
-                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
-                                <BellIcon className={`w-7 h-7 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                            </div>
-                            <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {t('noNotifications') || "Bildirishnomalar yo'q"}
-                            </p>
-                            <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                Yangi xabarlar shu yerda ko'rinadi
-                            </p>
-                        </div>
-                    ) : (
-                        notifications.slice(0, 30).map(renderItem)
-                    )}
+                {/* Tab content */}
+                <div className="flex-1 overflow-y-auto">
+                    {activeTab === 'warnings'     ? renderWarningsTab()     : renderTransactionsTab()}
                 </div>
 
                 {/* Footer */}
-                {notifications.length > 0 && (
-                    <div className={`flex-shrink-0 px-5 py-3 border-t ${isDark ? 'border-white/[0.06] bg-[#1C1C1E]' : 'border-gray-100 bg-white'}`}
->
-                        <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                            {notifications.length} ta bildirishnoma · So'nggi 14 soat
-                        </p>
-                    </div>
-                )}
+                <div className={`flex-shrink-0 px-5 py-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
+                    <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {notifications.length} ta bildirishnoma · So'nggi 14 soat
+                    </p>
+                </div>
             </div>
         </>,
         document.body
@@ -539,23 +625,21 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
     return (
         <>
-            {/* Bell button */}
             <button
                 onClick={openSidebar}
                 className={`relative p-2 rounded-xl transition-colors ${isDark
-                    ? 'hover:bg-white/[0.06] text-gray-300 hover:text-white'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`}
+                    ? 'hover:bg-white/[0.08] text-[rgba(235,235,245,0.6)] hover:text-white'
+                    : 'hover:bg-black/[0.06] text-[rgba(60,60,67,0.6)] hover:text-black'}`}
                 aria-label="Bildirishnomalar"
             >
                 <BellIcon className="w-5 h-5" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
-            {/* Full-height sidebar portal */}
             {sidebar}
         </>
     );
