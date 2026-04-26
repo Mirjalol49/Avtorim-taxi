@@ -460,15 +460,17 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-200 ${theme === 'dark'
-      ? 'bg-black text-white'
+      ? 'text-white'
       : 'bg-[#F2F2F7] text-black'
-      }`}>
+      }`}
+      style={{ background: theme === 'dark' ? 'var(--color-bg)' : undefined }}
+    >
       {/* SIDEBAR */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${theme === 'dark'
-          ? 'bg-[#1C1C1E] border-white/[0.10]'
-          : 'bg-white border-black/[0.08]'
-        }`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-black/[0.08]'}`}
+        style={{ background: theme === 'dark' ? 'var(--color-sidebar)' : undefined }}
+      >
         <div className="absolute top-4 right-4 md:hidden">
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
         </div>
@@ -688,8 +690,10 @@ const AppContent: React.FC = () => {
         />
 
         {/* Mobile Header - Hidden on Desktop */}
-        <header className={`h-16 flex items-center justify-between px-5 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.08]'
-          }`}>
+        <header
+          className={`h-16 flex items-center justify-between px-5 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-black/[0.08]'}`}
+          style={{ background: theme === 'dark' ? 'var(--color-sidebar)' : undefined }}
+        >
           <div className="flex items-center gap-4">
             <button onClick={() => setIsSidebarOpen(true)} className={`${theme === 'dark' ? 'text-[rgba(235,235,245,0.6)] hover:text-white' : 'text-[rgba(60,60,67,0.6)] hover:text-black'
               }`}><MenuIcon className="w-6 h-6" /></button>

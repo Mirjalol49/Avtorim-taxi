@@ -13,10 +13,23 @@ export const useFinanceStats = (transactions: Transaction[]) => {
     const { i18n } = useTranslation();
     const language = i18n.language; // Use i18n language
 
+    // Default date range: 1st of current month → today (end of day)
+    const defaultStartDate = (() => {
+        const d = new Date();
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString();
+    })();
+    const defaultEndDate = (() => {
+        const d = new Date();
+        d.setHours(23, 59, 59, 999);
+        return d.toISOString();
+    })();
+
     // State
     const [filters, setFilters] = useState<FinanceFilters>({
-        startDate: '',
-        endDate: '',
+        startDate: defaultStartDate,
+        endDate: defaultEndDate,
         driverId: 'all',
         type: 'all'
     });

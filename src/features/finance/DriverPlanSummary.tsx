@@ -128,8 +128,14 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     const currentMonthKey = months[0] || toMonthKey(new Date());
 
     return (
-        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-white/[0.05]' : 'bg-white border-gray-100'}`}>
-            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#2C2C2E]' : 'border-gray-100 bg-gray-50'}`}>
+        <div
+            className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'border-white/[0.07]' : 'bg-white border-gray-200'}`}
+            style={{ background: isDark ? 'var(--color-surface)' : undefined }}
+        >
+            <div
+                className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-white/[0.06]' : 'border-gray-100 bg-gray-50'}`}
+                style={{ background: isDark ? 'var(--color-surface-2)' : undefined }}
+            >
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">📅</span>
                     <div>
@@ -159,11 +165,12 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                 <div
                                     key={row.driver.id}
                                     onClick={() => setSelectedMonthData(row)}
-                                    className={`relative p-5 rounded-3xl border transition-all duration-400 cursor-pointer active:scale-[0.98] group overflow-hidden isolation-auto ${
-                                        isDark 
-                                        ? 'bg-[#1C1C1E]/40 border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-[#1C1C1E]/60 backdrop-blur-2xl' 
-                                        : 'bg-white/60 border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-white/80 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] backdrop-blur-xl'
+                                    className={`relative p-5 rounded-3xl border transition-all duration-300 cursor-pointer active:scale-[0.98] group overflow-hidden ${
+                                        isDark
+                                        ? 'border-white/[0.07] shadow-[0_4px_20px_rgb(0,0,0,0.35)] hover:border-white/[0.14]'
+                                        : 'bg-white border-gray-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.11)] hover:border-gray-300'
                                     }`}
+                                    style={{ background: isDark ? 'var(--color-surface)' : undefined }}
                                 >
                                     {/* Inner Glow Pseudo-element */}
                                     <div className="absolute inset-0 rounded-3xl border-[0.5px] border-white/10 dark:border-white/5 pointer-events-none" />
@@ -199,8 +206,10 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                             row.remaining <= 0
                                                 ? isDark ? 'bg-green-500/15 text-green-400 border border-green-500/20' : 'bg-green-100/80 text-green-700 border border-green-200'
                                                 : row.paidPercent >= 60
-                                                ? isDark ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' : 'bg-amber-100/80 text-amber-700 border border-amber-200'
-                                                : isDark ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-red-100/80 text-red-700 border border-red-200'
+                                                ? isDark ? 'bg-sky-500/15 text-sky-400 border border-sky-500/20' : 'bg-sky-100/80 text-sky-700 border border-sky-200'
+                                                : row.paidPercent >= 30
+                                                ? isDark ? 'bg-pink-500/15 text-pink-400 border border-pink-500/20' : 'bg-pink-100/80 text-pink-700 border border-pink-200'
+                                                : isDark ? 'bg-pink-600/15 text-pink-400 border border-pink-600/20' : 'bg-pink-100/80 text-pink-700 border border-pink-200'
                                         }`}>
                                             {row.remaining <= 0
                                                 ? `✓ ${t('planCompleted')}`
@@ -228,19 +237,25 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                             <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {row.paidPercent}% {t('completedPercent')}
                                             </span>
-                                            <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-500')}`}>
+                                            <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : ''}`}
+                                                style={{ color: row.remaining > 0 ? (row.paidPercent >= 60 ? 'hsl(208, 100%, 45%)' : 'deeppink') : undefined }}
+                                            >
                                                 {row.remaining > 0
                                                     ? `${t('remainingShort')}: ${fmt(row.remaining)}`
                                                     : `+${fmt(-row.remaining)}`}
                                             </span>
                                         </div>
-                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-200/80'}`}>
+                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
                                             <div
-                                                className={`h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-                                                    row.paidPercent >= 100 ? 'bg-green-500' :
-                                                    row.paidPercent >= 60  ? 'bg-amber-400' : 'bg-red-500'
-                                                }`}
-                                                style={{ width: `${Math.min(100, row.paidPercent)}%` }}
+                                                className="h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                                                style={{
+                                                    width: `${Math.min(100, row.paidPercent)}%`,
+                                                    background: row.paidPercent >= 60
+                                                        ? '#22c55e'
+                                                        : row.paidPercent >= 30
+                                                        ? 'hsl(208, 100%, 45%)'
+                                                        : 'deeppink'
+                                                }}
                                             />
                                         </div>
                                     </div>
