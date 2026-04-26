@@ -107,73 +107,107 @@ export const useDailyPlanReminder = ({
     enabled,
 }: UseDailyPlanReminderOptions) => {
     const dataRef = useRef({ drivers, cars, transactions, adminUserId, adminUserName });
+    const isFiringRef = useRef(false);
+
     useEffect(() => {
         dataRef.current = { drivers, cars, transactions, adminUserId, adminUserName };
     });
 
     const fire = async () => {
         if (!enabled || !adminUserId) return;
+        // Prevent concurrent executions (race condition guard)
+        if (isFiringRef.current) return;
+        isFiringRef.current = true;
 
-        const slot = getReminderSlot();
-        if (!slot) return;
+        try {
+            const slot = getReminderSlot();
+            if (!slot) return;
 
-        const { drivers, cars, transactions, adminUserId: aId, adminUserName: aName } = dataRef.current;
-        const today = todayDateKey();
-        const dateDisplay = todayDisplayStr();
-        const alreadySent = getSentDriverIds(today, slot);
-        const activeDrivers = drivers.filter(d => !d.isDeleted);
+            const { drivers, cars, transactions, adminUserId: aId, adminUserName: aName } = dataRef.current;
+            const today = todayDateKey();
+            const dateDisplay = todayDisplayStr();
+            const alreadySent = getSentDriverIds(today, slot);
+            const activeDrivers = drivers.filter(d => !d.isDeleted);
 
-        for (const driver of activeDrivers) {
-            if (alreadySent.has(driver.id)) continue;
+            // Build the list of drivers that need reminders
+            type Eligible = {
+                driver: Driver;
+                car: Car | null;
+                dailyPlan: number;
+                todayIncome: number;
+                remaining: number;
+                paidPct: number;
+            };
+            const eligible: Eligible[] = [];
 
-            // Skip drivers on day off
-            if (hasDayOffToday(driver.id, transactions)) continue;
+            for (const driver of activeDrivers) {
+                if (alreadySent.has(driver.id)) continue;
+                if (hasDayOffToday(driver.id, transactions)) continue;
 
-            const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
-            const dailyPlan = (car?.dailyPlan ?? 0) > 0
-                ? (car!.dailyPlan as number)
-                : ((driver as any).dailyPlan ?? 0) as number;
+                const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
+                const dailyPlan = (car?.dailyPlan ?? 0) > 0
+                    ? (car!.dailyPlan as number)
+                    : ((driver as any).dailyPlan ?? 0) as number;
 
-            if (dailyPlan <= 0) continue;
+                if (dailyPlan <= 0) continue;
 
-            const todayIncome = getTodayIncome(driver.id, transactions);
-            if (todayIncome >= dailyPlan) continue;
+                const todayIncome = getTodayIncome(driver.id, transactions);
+                if (todayIncome >= dailyPlan) continue;
 
-            const remaining = dailyPlan - todayIncome;
-            const paidPct = Math.round((todayIncome / dailyPlan) * 100);
-
-            try {
-                await sendNotification(
-                    {
-                        title: `${driver.name} — ${fmt(remaining)} UZS qoldi`,
-                        message: `${dateDisplay} · Reja: ${fmt(dailyPlan)} · To'langan: ${fmt(todayIncome)} · Qoldi: ${fmt(remaining)} UZS`,
-                        type: 'payment_reminder',
-                        category: NotificationCategory.PAYMENT_REMINDER,
-                        priority: NotificationPriority.HIGH,
-                        targetUsers: 'role:admin',
-                        expiresIn: 14 * 60 * 60 * 1000,
-                        driverAvatar: driver.avatar || undefined,
-                        driverId: driver.id,
-                        extraTracking: {
-                            reminderType: 'daily_plan',
-                            driverName: driver.name,
-                            dailyPlan,
-                            todayIncome,
-                            remaining,
-                            paidPct,
-                            dateDisplay,
-                            isFinal: true,
-                            carName: car?.name ?? null,
-                            carPlate: car?.licensePlate ?? null,
-                        },
-                    },
-                    aId,
-                    aName
-                );
-                markDriverSent(today, slot, driver.id);
-            } catch (err) {
-                console.error('[DailyPlanReminder] Failed for driver:', driver.name, err);
+                eligible.push({
+                    driver,
+                    car,
+                    dailyPlan,
+                    todayIncome,
+                    remaining: dailyPlan - todayIncome,
+                    paidPct: Math.round((todayIncome / dailyPlan) * 100),
+                });
             }
+
+            if (eligible.length === 0) return;
+
+            // Pre-mark ALL eligible drivers synchronously before any async work.
+            // This prevents a second concurrent fire() from sending duplicates.
+            for (const { driver } of eligible) {
+                markDriverSent(today, slot, driver.id);
+            }
+
+            // Now send notifications (failures won't cause re-sends)
+            for (const { driver, car, dailyPlan, todayIncome, remaining, paidPct } of eligible) {
+                try {
+                    await sendNotification(
+                        {
+                            title: `${driver.name} — ${fmt(remaining)} UZS qoldi`,
+                            message: `${dateDisplay} · Reja: ${fmt(dailyPlan)} · To'langan: ${fmt(todayIncome)} · Qoldi: ${fmt(remaining)} UZS`,
+                            type: 'payment_reminder',
+                            category: NotificationCategory.PAYMENT_REMINDER,
+                            priority: NotificationPriority.HIGH,
+                            targetUsers: 'role:admin',
+                            expiresIn: 14 * 60 * 60 * 1000,
+                            driverAvatar: driver.avatar || undefined,
+                            driverId: driver.id,
+                            extraTracking: {
+                                reminderType: 'daily_plan',
+                                driverName: driver.name,
+                                dailyPlan,
+                                todayIncome,
+                                remaining,
+                                paidPct,
+                                dateDisplay,
+                                isFinal: true,
+                                carName: car?.name ?? null,
+                                carPlate: car?.licensePlate ?? null,
+                            },
+                        },
+                        aId,
+                        aName
+                    );
+                } catch (err) {
+                    console.error('[DailyPlanReminder] Failed for driver:', driver.name, err);
+                }
+            }
+        } finally {
+            isFiringRef.current = false;
         }
     };
 
