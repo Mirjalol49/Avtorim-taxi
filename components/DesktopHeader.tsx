@@ -100,9 +100,10 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   return (
     <header
       className={`h-16 flex items-center justify-between px-6 z-10 border-b flex-shrink-0 transition-colors duration-200 ${theme === 'dark'
-        ? 'bg-[#1C1C1E] border-white/[0.10]'
+        ? 'border-white/[0.08]'
         : 'bg-white border-black/[0.08]'
         }`}
+      style={{ background: theme === 'dark' ? 'var(--color-sidebar)' : undefined }}
     >
       {/* LEFT SECTION - Title */}
       <div className="flex-1">
