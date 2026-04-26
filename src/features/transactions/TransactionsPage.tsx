@@ -149,8 +149,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     <div className="w-full">
                         <DatePicker
                             label={t('fromDate') || 'From Date'}
-                            value={filters.startDate ? new Date(filters.startDate) : new Date()}
-                            onChange={(date) => setFilters(prev => ({ ...prev, startDate: date.toISOString() }))}
+                            value={new Date(filters.startDate)}
+                            onChange={(date) => { date.setHours(0, 0, 0, 0); setFilters(prev => ({ ...prev, startDate: date.toISOString() })); }}
                             theme={theme}
                             labelClassName="text-white"
                         />
@@ -159,8 +159,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     <div className="w-full">
                         <DatePicker
                             label={t('toDate') || 'To Date'}
-                            value={filters.endDate ? new Date(filters.endDate) : new Date()}
-                            onChange={(date) => setFilters(prev => ({ ...prev, endDate: date.toISOString() }))}
+                            value={new Date(filters.endDate)}
+                            onChange={(date) => { date.setHours(23, 59, 59, 999); setFilters(prev => ({ ...prev, endDate: date.toISOString() })); }}
                             theme={theme}
                             labelClassName="text-white"
                         />
