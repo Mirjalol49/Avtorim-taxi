@@ -18,6 +18,12 @@ export default {
                     dark: '#0d9488',
                     light: 'rgba(15, 118, 110, 0.10)',
                 },
+                /* Dark navy palette — synced with CSS custom properties */
+                surface: 'hsl(222 44% 6%)',       // --color-surface  (was #1C1C1E)
+                'surface-2': 'hsl(229 43% 10%)',  // --color-surface-2 (was #2C2C2E / #3A3A3C)
+                'surface-3': 'hsl(229 43% 13%)',  // slightly elevated hover
+                sidebar: 'hsl(229 43% 14%)',      // --color-sidebar
+                'page-dark': 'hsl(210 45% 4%)',   // --color-bg dark
                 /* iOS system colors */
                 ios: {
                     blue:   '#007AFF',

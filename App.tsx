@@ -542,7 +542,7 @@ const AppContent: React.FC = () => {
             </div>
             <span className="text-xs font-semibold uppercase tracking-wide">{language}</span>
           </button>
-          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-black/[0.04]'}`}>
+          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-black/[0.04]'}`}>
             <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>O'zbek</button>
             <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>Русский</button>
             <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>English</button>
@@ -723,8 +723,10 @@ const AppContent: React.FC = () => {
         </header>
 
         {/* ACTION BUTTONS ROW - Mobile Only */}
-        <div className={`flex items-center justify-between px-5 py-3 border-b sticky top-16 z-10 md:hidden ${theme === 'dark' ? 'bg-black border-white/[0.08]' : 'bg-[#F2F2F7] border-black/[0.06]'
-          }`}>
+        <div
+          className={`flex items-center justify-between px-5 py-3 border-b sticky top-16 z-10 md:hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-[#F2F2F7] border-black/[0.06]'}`}
+          style={{ background: theme === 'dark' ? 'var(--color-bg)' : undefined }}
+        >
           {location.pathname === '/drivers' && userRole === 'admin' && (
             <>
               <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all w-full sm:w-auto bg-[#0f766e] hover:bg-[#0a5c56] text-white active:scale-95">

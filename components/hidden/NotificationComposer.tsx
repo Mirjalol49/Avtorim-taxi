@@ -241,14 +241,14 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
     const selectedPriority = priorities.find(p => p.value === priority);
 
     const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all duration-150 border ${isDark
-        ? 'bg-[#2C2C2E] border-white/[0.08] text-white focus:border-teal-500 placeholder-gray-500'
+        ? 'bg-surface-2 border-white/[0.08] text-white focus:border-teal-500 placeholder-gray-500'
         : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-600 placeholder-gray-400'
         }`;
 
     const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
 
     return (
-        <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-[#2C2C2E] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+        <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-white border-gray-200'}`}>
             {/* Header with Recipient Count */}
             <div className={`px-6 py-4 border-b ${isDark ? 'border-white/[0.08] bg-black/50' : 'border-gray-100 bg-gray-50'}`}>
                 <div className="flex items-center justify-between">
@@ -302,7 +302,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                                 className={`px-3 py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-1 border ${targetType === opt.type
                                     ? 'border-teal-500 bg-teal-500/10 text-teal-400'
                                     : isDark
-                                        ? 'border-white/[0.08] bg-[#2C2C2E]/50 text-gray-400 hover:bg-white/[0.06]'
+                                        ? 'border-white/[0.08] bg-surface-2/50 text-gray-400 hover:bg-white/[0.06]'
                                         : 'border-gray-200 bg-white text-gray-600 hover:bg-black/[0.03]'
                                     }`}
                             >
@@ -325,7 +325,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                                     className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-all flex items-center justify-center gap-2 ${targetRole === r.role
                                         ? 'bg-teal-500 text-white'
                                         : isDark
-                                            ? 'bg-[#2C2C2E] text-gray-300 hover:bg-gray-600'
+                                            ? 'bg-surface-2 text-gray-300 hover:bg-gray-600'
                                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                         }`}
                                 >
@@ -351,7 +351,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                                 adminUsers.map((user) => (
                                     <label key={user.id} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedUserIds.includes(user.id)
                                         ? isDark ? 'bg-teal-500/20' : 'bg-teal-100'
-                                        : isDark ? 'hover:bg-[#2C2C2E]' : 'hover:bg-gray-200'
+                                        : isDark ? 'hover:bg-surface-2' : 'hover:bg-gray-200'
                                         }`}>
                                         <input
                                             type="checkbox"
@@ -363,7 +363,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                                             <span className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                                                 {user.username}
                                             </span>
-                                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
                                                 {user.role}
                                             </span>
                                         </div>
@@ -418,7 +418,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                                 className={`px-3 py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 border ${priority === p.value
                                     ? 'border-teal-500 bg-teal-500/10 text-teal-400'
                                     : isDark
-                                        ? 'border-white/[0.08] bg-[#2C2C2E] text-gray-300 hover:bg-white/[0.06]'
+                                        ? 'border-white/[0.08] bg-surface-2 text-gray-300 hover:bg-white/[0.06]'
                                         : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
                                     }`}
                             >
@@ -462,7 +462,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                         rows={4}
                     />
                     {/* Character Progress Bar */}
-                    <div className="mt-2 h-1 rounded-full bg-[#2C2C2E] overflow-hidden">
+                    <div className="mt-2 h-1 rounded-full bg-surface-2 overflow-hidden">
                         <div
                             className={`h-full transition-all duration-300 ${message.length > MAX_MESSAGE_LENGTH * 0.9 ? 'bg-red-500' : message.length > MAX_MESSAGE_LENGTH * 0.7 ? 'bg-yellow-500' : 'bg-teal-500'}`}
                             style={{ width: `${(message.length / MAX_MESSAGE_LENGTH) * 100}%` }}
@@ -476,7 +476,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                     onClick={() => setShowPreview(!showPreview)}
                     className={`w-full py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${showPreview
                         ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                        : isDark ? 'bg-[#2C2C2E] text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        : isDark ? 'bg-surface-2 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                         }`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -490,7 +490,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                 {showPreview && (
                     <div className={`p-4 rounded-xl border-2 border-dashed ${isDark ? 'border-gray-600 bg-black/50' : 'border-gray-300 bg-gray-50'}`}>
                         <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Preview</div>
-                        <div className={`p-4 rounded-lg ${isDark ? 'bg-[#2C2C2E]' : 'bg-white'} shadow-lg`}>
+                        <div className={`p-4 rounded-lg ${isDark ? 'bg-surface-2' : 'bg-white'} shadow-lg`}>
                             <div className="flex items-start gap-3">
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${priority === NotificationPriority.CRITICAL ? 'bg-red-500/20' :
                                     priority === NotificationPriority.HIGH ? 'bg-orange-500/20' :
@@ -506,13 +506,13 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                                         {message || 'Notification message will appear here...'}
                                     </p>
                                     <div className="flex items-center gap-2 mt-3">
-                                        <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                                        <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
                                             {selectedCategory?.label}
                                         </span>
-                                        <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                                        <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
                                             📍 {recipientDescription}
                                         </span>
-                                        <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                                        <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
                                             ⏰ Expires in {getExpirationLabel()}
                                         </span>
                                     </div>

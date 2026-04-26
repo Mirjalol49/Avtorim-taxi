@@ -83,7 +83,7 @@ const HiddenDashboard: React.FC = () => {
     }
 
     const getTabColor = (tabId: TabType, isActive: boolean) => {
-        if (!isActive) return 'bg-[#2C2C2E] text-gray-400 hover:bg-white/[0.06] hover:text-white';
+        if (!isActive) return 'bg-surface-2 text-gray-400 hover:bg-white/[0.06] hover:text-white';
         switch (tabId) {
             case 'users': return 'bg-blue-600 text-white shadow-sm';
             case 'audit': return 'bg-purple-600 text-white shadow-sm';
@@ -95,7 +95,7 @@ const HiddenDashboard: React.FC = () => {
     return (
         <div className="h-screen overflow-y-auto bg-black text-white font-sans custom-scrollbar">
             {/* Header */}
-            <header className="bg-[#1C1C1E] border-b border-white/[0.08] sticky top-0 z-40">
+            <header className="bg-surface border-b border-white/[0.08] sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">

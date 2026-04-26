@@ -35,14 +35,14 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
     const assignedDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId);
 
     const card = `rounded-2xl border overflow-hidden transition-all ${theme === 'dark'
-        ? 'bg-[#1C1C1E] border-white/[0.08] hover:border-white/[0.12]'
+        ? 'bg-surface border-white/[0.08] hover:border-white/[0.12]'
         : 'bg-white border-gray-200 hover:border-gray-300'} shadow-sm`;
 
     return (
         <div className="space-y-6">
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-4">
-                <div className={`flex-1 p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                <div className={`flex-1 p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -50,7 +50,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                         <input
                             type="text"
                             className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] transition-colors ${theme === 'dark'
-                                ? 'bg-[#2C2C2E] border-white/[0.08] text-white placeholder-gray-400'
+                                ? 'bg-surface-2 border-white/[0.08] text-white placeholder-gray-400'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-500'}`}
                             placeholder={t('searchPlaceholder')}
                             value={search}
@@ -63,7 +63,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                     onClick={() => exportCarsToExcel(filtered, drivers, 'Avtomobillar')}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
                         theme === 'dark'
-                            ? 'bg-[#1C1C1E] border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                            ? 'bg-surface border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
                             : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
                     }`}
                 >
@@ -72,7 +72,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                 </button>
 
                 {userRole === 'admin' && (
-                    <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                    <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                         <button onClick={onAddCar}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95">
                             <PlusIcon className="w-5 h-5" />
@@ -86,13 +86,13 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {[...Array(6)].map((_, i) => (
                         <div key={i} className={`${card} h-48 animate-pulse`}>
-                            <div className={`h-full ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`} />
+                            <div className={`h-full ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`} />
                         </div>
                     ))}
                 </div>
             ) : filtered.length === 0 ? (
                 <div className={`text-center py-16 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`}>
                         <SearchIcon className="w-8 h-8 opacity-50" />
                     </div>
                     <p className="text-lg font-medium">Avtomobil topilmadi</p>
@@ -107,7 +107,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {paginated.map(car => (
                             <div key={car.id} className={`group relative rounded-[2rem] overflow-hidden transition-all duration-300 ${theme === 'dark'
-                                ? 'bg-[#1C1C1E] border border-white/[0.05] hover:border-white/[0.08] hover:shadow-2xl hover:shadow-black/50'
+                                ? 'bg-surface border border-white/[0.05] hover:border-white/[0.08] hover:shadow-2xl hover:shadow-black/50'
                                 : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-xl hover:shadow-gray-200/50'}`}>
                                 
                                 {/* Image Container */}
@@ -185,7 +185,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                                                     target={doc.type !== 'application/pdf' ? '_blank' : undefined}
                                                     rel="noreferrer"
                                                     className={`group/doc flex items-center gap-4 p-3 rounded-2xl transition-all ${theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.03]'}`}>
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors shadow-sm ${theme === 'dark' ? 'bg-[#2C2C2E] group-hover/doc:bg-teal-500/20' : 'bg-gray-100 group-hover/doc:bg-teal-50'}`}>
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors shadow-sm ${theme === 'dark' ? 'bg-surface-2 group-hover/doc:bg-teal-500/20' : 'bg-gray-100 group-hover/doc:bg-teal-50'}`}>
                                                         <span className="text-base">{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -209,19 +209,19 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                     {totalPages > 1 && (
                         <div className="flex justify-center gap-2 mt-6">
                             <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-[#2C2C2E] text-white hover:bg-white/[0.06]' : 'bg-white text-gray-700 border border-gray-200 hover:bg-black/[0.03]'}`}>
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-surface-2 text-white hover:bg-white/[0.06]' : 'bg-white text-gray-700 border border-gray-200 hover:bg-black/[0.03]'}`}>
                                 Oldingi
                             </button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                                 <button key={p} onClick={() => setPage(p)}
                                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${p === page
                                         ? 'bg-[#0f766e] text-white'
-                                        : theme === 'dark' ? 'bg-[#2C2C2E] text-gray-400 hover:bg-white/[0.06]' : 'bg-white text-gray-600 border border-gray-200'}`}>
+                                        : theme === 'dark' ? 'bg-surface-2 text-gray-400 hover:bg-white/[0.06]' : 'bg-white text-gray-600 border border-gray-200'}`}>
                                     {p}
                                 </button>
                             ))}
                             <button onClick={() => setPage(p => Math.min(p + 1, totalPages))} disabled={page === totalPages}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-[#2C2C2E] text-white hover:bg-white/[0.06]' : 'bg-white text-gray-700 border border-gray-200 hover:bg-black/[0.03]'}`}>
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-surface-2 text-white hover:bg-white/[0.06]' : 'bg-white text-gray-700 border border-gray-200 hover:bg-black/[0.03]'}`}>
                                 Keyingi
                             </button>
                         </div>

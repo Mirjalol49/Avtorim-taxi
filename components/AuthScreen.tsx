@@ -106,7 +106,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
 
       <div className="z-10 w-full max-w-md p-6 relative">
         <div className={`backdrop-blur-2xl border rounded-[32px] p-8 shadow-2xl relative overflow-hidden transition-all duration-500 ${isDark
-          ? 'bg-[#1C1C1E]/80 border-white/[0.08] shadow-black/20'
+          ? 'bg-surface/80 border-white/[0.08] shadow-black/20'
           : 'bg-white/80 border-gray-200 shadow-xl'
         } ${success ? (isDark ? 'border-emerald-500/50 shadow-emerald-500/20' : 'border-emerald-400 shadow-emerald-400/20') : ''}`}>
 
@@ -188,10 +188,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
               className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transform transition-all duration-150 ${success
                 ? 'bg-green-500 text-white scale-[1.02]'
                 : locked
-                  ? isDark ? 'bg-[#2C2C2E] text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  ? isDark ? 'bg-surface-2 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : canSubmit
                     ? 'bg-teal-600 text-white hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98]'
-                    : isDark ? 'bg-[#2C2C2E] text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : isDark ? 'bg-surface-2 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
               {success ? (

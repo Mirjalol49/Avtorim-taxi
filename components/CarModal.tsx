@@ -108,7 +108,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const getDoc = (cat: CarDocument['category']) => documents.find(d => d.category === cat);
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-    ? 'bg-[#2C2C2E] border-white/[0.08] text-white focus:border-[#0f766e] placeholder-gray-500'
+    ? 'bg-surface-2 border-white/[0.08] text-white focus:border-[#0f766e] placeholder-gray-500'
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`;
@@ -116,7 +116,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const DocBox = ({ category, label }: { category: CarDocument['category']; label: string }) => {
     const doc = getDoc(category);
     return (
-      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-[#2C2C2E] border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
         <div className="flex-1 min-w-0">
           <p className={`text-xs font-semibold mb-0.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
           {doc
@@ -153,9 +153,9 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+      <div className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
         {/* Header */}
-        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-white/[0.08] bg-[#2C2C2E]/50' : 'border-gray-100 bg-gray-50/50'}`}>
+        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2/50' : 'border-gray-100 bg-gray-50/50'}`}>
           <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {editingCar ? "Avtomobilni tahrirlash" : "Avtomobil qo'shish"}
           </h3>
@@ -171,11 +171,11 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
           <div className="flex items-start gap-5">
             <div className="flex-shrink-0">
               <label className={labelClass}>Rasm</label>
-              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-[#2C2C2E] border-white/[0.08] hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
+              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
                 {avatar ? (
                   <img src={avatar} alt="Car" className="w-full h-full object-cover" />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-[#2C2C2E]/50' : 'bg-gray-100'}`}>
+                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-surface-2/50' : 'bg-gray-100'}`}>
                     <CameraIcon className={`w-7 h-7 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                   </div>
                 )}

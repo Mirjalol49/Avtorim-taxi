@@ -25,7 +25,7 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({ value, label, children, t
 
             {isHovered && (
                 <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap z-50 pointer-events-none animate-in fade-in duration-150 ${theme === 'dark'
-                    ? 'bg-[#1C1C1E] text-white border border-white/[0.08]'
+                    ? 'bg-surface text-white border border-white/[0.08]'
                     : 'bg-white text-gray-900 border border-gray-200 shadow-lg'
                     }`}>
                     {label && <div className="text-[10px] uppercase tracking-wide opacity-70 mb-0.5">{label}</div>}

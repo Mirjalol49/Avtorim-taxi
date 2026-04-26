@@ -185,7 +185,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                                     className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-white/[0.06]' : 'border-gray-200/50 shadow-sm'}`}
                                                 />
                                             ) : (
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-[#2C2C2E] text-gray-300 border-white/[0.08]' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-surface-2 text-gray-300 border-white/[0.08]' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                                                     {row.driver.name.charAt(0)}
                                                 </div>
                                             )}

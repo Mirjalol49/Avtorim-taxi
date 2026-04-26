@@ -83,9 +83,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 outline-none ${theme === 'dark'
-                        ? 'bg-[#2C2C2E]/50 border-white/[0.08] hover:border-white/[0.12] text-white'
+                        ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12] text-white'
                         : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
-                        } ${isOpen ? `ring-2 ring-[#0f766e] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-white'}` : ''}`}
+                        } ${isOpen ? `ring-2 ring-[#0f766e] ring-opacity-50 border-transparent ${theme === 'dark' ? 'bg-surface-2' : 'bg-white'}` : ''}`}
                     type="button"
                 >
                     <span className="truncate text-sm">{displayValue}</span>
@@ -98,7 +98,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                 {/* Dropdown Menu */}
                 {isOpen && (
                     <div className={`absolute z-50 w-full mt-2 rounded-lg shadow-xl border overflow-hidden ${theme === 'dark'
-                        ? 'bg-[#1C1C1E] border-white/[0.08]'
+                        ? 'bg-surface border-white/[0.08]'
                         : 'bg-white border-gray-200'
                         }`}>
 
@@ -112,7 +112,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={t('searchPlaceholder') || 'Search...'}
                                     className={`w-full px-3 py-2 text-sm rounded-md outline-none transition-colors ${theme === 'dark'
-                                        ? 'bg-[#2C2C2E] text-white placeholder-gray-500 focus:bg-[#2C2C2E]'
+                                        ? 'bg-surface-2 text-white placeholder-gray-500 focus:bg-surface-2'
                                         : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:bg-gray-100'
                                         }`}
                                     onClick={(e) => e.stopPropagation()}

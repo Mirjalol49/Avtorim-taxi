@@ -62,7 +62,7 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#2C2C2E] rounded-2xl border border-white/[0.08] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-surface-2 rounded-2xl border border-white/[0.08] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/[0.08] bg-black/50">
                     <div className="flex items-center gap-4">
@@ -150,7 +150,7 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                                     ) : (
                                         drivers.map(driver => (
                                             <div key={driver.id} className="flex items-center gap-4 bg-black/50 rounded-xl p-4 border border-white/[0.08]">
-                                                <div className="w-10 h-10 rounded-full bg-[#2C2C2E] overflow-hidden">
+                                                <div className="w-10 h-10 rounded-full bg-surface-2 overflow-hidden">
                                                     {driver.avatar ? (
                                                         <img src={driver.avatar} alt="" className="w-full h-full object-cover" />
                                                     ) : (
