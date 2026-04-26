@@ -2,12 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { Transaction } from '../../../core/types';
 import { subscribeToTransactions } from '../../../../services/firestoreService';
 
-export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
+export const useTransactions = (fleetId?: string, _refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
-    // Track whether the current fleetId has received its first batch of data
-    const initializedFleetId = useRef<string | null>(null);
+    const initializedRef = useRef(false);
 
     useEffect(() => {
         if (!fleetId) {
@@ -15,33 +14,32 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
             return;
         }
 
-        // Show loading spinner only on first load for this fleetId, not on refreshTrigger bumps
-        const isFirstLoad = initializedFleetId.current !== fleetId;
-        if (isFirstLoad) {
+        if (!initializedRef.current) {
             setLoading(true);
         }
 
-        // Bail out of loading after 10 s if callback never fires (network issue / RLS error)
-        const timeout = isFirstLoad
-            ? setTimeout(() => setLoading(false), 10000)
-            : null;
+        // Bail out after 12s if subscription never fires (network / RLS issue)
+        const timeout = setTimeout(() => setLoading(false), 12000);
 
         const unsubscribe = subscribeToTransactions(
             (data) => {
-                if (timeout) clearTimeout(timeout);
-                initializedFleetId.current = fleetId;
+                clearTimeout(timeout);
+                initializedRef.current = true;
                 setTransactions(data);
                 setLoading(false);
                 setError(null);
             },
-            fleetId
+            fleetId,
         );
 
         return () => {
-            if (timeout) clearTimeout(timeout);
+            clearTimeout(timeout);
             unsubscribe();
         };
-    }, [fleetId, refreshTrigger]);
+    // Intentionally exclude _refreshTrigger: subscription handles live updates,
+    // recreating the channel on refresh causes a gap in coverage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fleetId]);
 
     return { transactions, loading, error };
 };

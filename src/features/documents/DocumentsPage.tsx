@@ -63,6 +63,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     const [category, setCategory] = useState<DocumentCategory>('all');
 
     // upload state
+    const refetchRef = useRef<() => Promise<void>>(() => Promise.resolve());
     const [uploading, setUploading] = useState(false);
     const [uploadCurrentFile, setUploadCurrentFile] = useState('');
     const [uploadProgress, setUploadProgress] = useState(0); // 0-100 overall
@@ -88,12 +89,13 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     useEffect(() => {
         if (!fleetId) return;
         setLoading(true);
-        const unsub = subscribeToDocuments(
+        const { unsubscribe, refetch } = subscribeToDocuments(
             fleetId,
             (data) => { setDocs(data); setLoading(false); setSetupNeeded(false); },
             () => { setSetupNeeded(true); setLoading(false); },
         );
-        return () => { unsub.then(fn => fn()); };
+        refetchRef.current = refetch;
+        return unsubscribe;
     }, [fleetId]);
 
     // Filtered docs
@@ -164,11 +166,13 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
             setUploadProgress(next);
         }
         setUploadProgress(100);
+        // Force immediate refetch so newly uploaded files appear without waiting for realtime
+        await refetchRef.current();
         setTimeout(() => {
             setUploading(false);
             setUploadProgress(0);
             setUploadCurrentFile('');
-        }, 800);
+        }, 600);
         setPendingFiles([]);
         setPendingNames([]);
         setPendingDescs([]);

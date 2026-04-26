@@ -29,12 +29,12 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
             })
             .catch(() => callback([], true));
 
-    fetchNotes();
-
     const channel = supabase
         .channel(`notes_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, () => fetchNotes())
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetchNotes();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };
