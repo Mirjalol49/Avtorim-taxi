@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Document as Doc,
     DocumentCategory,
@@ -55,6 +56,15 @@ interface DocumentsPageProps {
 
 export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, userName }) => {
     const isDark = theme === 'dark';
+    const navigate = useNavigate();
+
+    const openDoc = (doc: Doc) => {
+        if (getCategory(doc.file_type) === 'pdf') {
+            navigate(`/pdf-viewer?url=${encodeURIComponent(doc.file_url)}&name=${encodeURIComponent(doc.name)}`);
+        } else {
+            setPreviewDoc(doc);
+        }
+    };
 
     const [docs, setDocs] = useState<Doc[]>([]);
     const [loading, setLoading] = useState(true);
@@ -385,7 +395,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                                     card={card}
                                     mutedText={mutedText}
                                     bodyText={bodyText}
-                                    onPreview={() => setPreviewDoc(doc)}
+                                    onPreview={() => openDoc(doc)}
                                     onEdit={() => { setEditDoc(doc); setEditName(doc.name); setEditDesc(doc.description); }}
                                     onDelete={() => setDeleteConfirm(doc)}
                                 />
@@ -640,13 +650,24 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
                     />
                 </div>
             ) : cat === 'pdf' ? (
-                <div className="flex-1 flex flex-col overflow-hidden p-4">
-                    <iframe
-                        src={doc.file_url}
-                        title={doc.name}
-                        className="flex-1 w-full rounded-xl border-0"
-                        style={{ background: '#fff' }}
-                    />
+                // Should not normally reach here — PDFs open via /pdf-viewer route
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-5 p-10 rounded-2xl border border-white/[0.10]"
+                        style={{ background: 'rgba(255,255,255,0.05)' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <FilePdfIcon className="w-14 h-14 text-red-400" />
+                        <div className="text-center">
+                            <p className="text-white font-semibold text-base mb-1">{doc.name}</p>
+                            <p className="text-white/40 text-sm">{formatBytes(doc.file_size)}</p>
+                        </div>
+                        <a
+                            href={`/pdf-viewer?url=${encodeURIComponent(doc.file_url)}&name=${encodeURIComponent(doc.name)}`}
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+                        >
+                            PDF ochish
+                        </a>
+                    </div>
                 </div>
             ) : (
                 <div className="flex-1 flex items-center justify-center">
