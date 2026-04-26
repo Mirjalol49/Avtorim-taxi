@@ -34,6 +34,7 @@ import DashboardPage from './src/features/dashboard/DashboardPage';
 import DriversPage from './src/features/drivers/DriversPage';
 import NotesPage from './src/features/notes/NotesPage';
 import { DocumentsPage } from './src/features/documents/DocumentsPage';
+import PdfViewerPage from './src/features/documents/PdfViewerPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
@@ -438,7 +439,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/documents', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -857,6 +858,9 @@ const AppContent: React.FC = () => {
                 userName={adminUser?.username ?? 'Admin'}
               />
             } />
+
+            {/* PDF viewer — fixed overlay, no sidebar visible */}
+            <Route path="/pdf-viewer" element={<PdfViewerPage />} />
           </Routes >
         </main >
       </div >
