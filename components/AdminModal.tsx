@@ -135,12 +135,12 @@ const AdminModal: React.FC<AdminModalProps> = ({
 
   const inputCls = `w-full rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all border-2 ${
     isDark
-      ? 'bg-[#111111] border-white/10 text-white placeholder-gray-600 focus:border-teal-500/70 focus:bg-[#161616]'
+      ? 'bg-[#2C2C2E] border-white/10 text-white placeholder-gray-600 focus:border-teal-500/70 focus:bg-[#161616]'
       : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10'
   }`;
 
   const sectionCls = `rounded-2xl border p-5 ${
-    isDark ? 'bg-[#111111] border-white/[0.06]' : 'bg-gray-50/80 border-gray-200/60'
+    isDark ? 'bg-[#2C2C2E] border-white/[0.06]' : 'bg-gray-50/80 border-gray-200/60'
   }`;
 
   const labelCls = `text-[11px] font-bold uppercase tracking-widest mb-1.5 block ${
@@ -155,7 +155,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
     >
       <div
         className={`w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
-          isDark ? 'bg-[#181818] border border-white/[0.06]' : 'bg-white border border-gray-200/80'
+          isDark ? 'bg-[#1C1C1E] border border-white/[0.06]' : 'bg-white border border-gray-200/80'
         }`}
         style={{ animation: 'modalPop 0.2s ease-out' }}
       >
@@ -188,7 +188,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
               <div className="flex items-end gap-4 -mt-10 mb-3">
                 <div className="relative group flex-shrink-0">
                   <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 relative ${
-                    isDark ? 'border-[#181818] bg-[#111111]' : 'border-white bg-gray-100'
+                    isDark ? 'border-[#181818] bg-[#2C2C2E]' : 'border-white bg-gray-100'
                   }`}>
                     {(isSaving || imageLoading) && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
@@ -230,7 +230,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
               </div>
 
               {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${isDark ? 'bg-[#111111]' : 'bg-gray-100'}`}>
+                <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
                   <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                 </div>
               )}
@@ -334,7 +334,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     ? 'bg-emerald-500 text-white'
                     : !hasChanges || !!nameError
                     ? isDark
-                      ? 'bg-[#111111] text-gray-600 cursor-not-allowed'
+                      ? 'bg-[#2C2C2E] text-gray-600 cursor-not-allowed'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-teal-600 hover:bg-teal-500 text-white shadow-sm active:scale-[0.98]'
                 }`}
@@ -373,7 +373,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                       className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
                         isDark
                           ? 'bg-white/[0.05] text-gray-300 hover:bg-white/[0.08]'
-                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                          : 'bg-white text-gray-700 hover:bg-black/[0.03] border border-gray-200'
                       }`}
                     >
                       Bekor
@@ -395,7 +395,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                       onClick={onLock}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all group ${
                         isDark
-                          ? 'bg-[#181818] border-white/[0.08] text-gray-400 hover:text-white hover:border-white/[0.15]'
+                          ? 'bg-[#1C1C1E] border-white/[0.08] text-gray-400 hover:text-white hover:border-white/[0.15]'
                           : 'bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300'
                       }`}
                     >

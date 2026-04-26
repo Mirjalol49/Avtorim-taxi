@@ -59,7 +59,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     return (<>
         <div className={`rounded-2xl flex flex-col transition-all duration-200 border overflow-hidden ${
             isDark
-                ? 'bg-[#181818] border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+                ? 'bg-[#1C1C1E] border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
                 : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-[0_4px_20px_rgba(0,60,80,0.08)]'
         }`}>
 
@@ -73,7 +73,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
                     ) : (
                         <div className={`w-full h-full flex items-center justify-center text-lg font-black ${
-                            isDark ? 'bg-[#111111] text-gray-300' : 'bg-gray-100 text-gray-500'
+                            isDark ? 'bg-[#2C2C2E] text-gray-300' : 'bg-gray-100 text-gray-500'
                         }`}>
                             {driver.name.charAt(0).toUpperCase()}
                         </div>
@@ -107,12 +107,12 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
             {/* ── Car row ── */}
             <div className={`mx-4 mb-3 rounded-xl border flex items-center gap-3 p-2.5 ${
-                isDark ? 'bg-[#111111] border-white/[0.06]' : 'bg-gray-50 border-gray-100'
+                isDark ? 'bg-[#2C2C2E] border-white/[0.06]' : 'bg-gray-50 border-gray-100'
             }`}>
                 {car ? (<>
                     {/* Car thumbnail */}
                     <div className={`w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border ${
-                        isDark ? 'border-white/[0.08] bg-[#181818]' : 'border-gray-200 bg-white'
+                        isDark ? 'border-white/[0.08] bg-[#1C1C1E]' : 'border-gray-200 bg-white'
                     }`}>
                         {car.avatar ? (
                             <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
@@ -128,14 +128,14 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                             {car.name}
                         </p>
                         <span className={`inline-block mt-1 text-[10px] font-mono font-bold tracking-widest px-1.5 py-0.5 rounded border ${
-                            isDark ? 'bg-[#181818] border-white/[0.08] text-gray-400' : 'bg-white border-gray-200 text-gray-600'
+                            isDark ? 'bg-[#1C1C1E] border-white/[0.08] text-gray-400' : 'bg-white border-gray-200 text-gray-600'
                         }`}>
                             {car.licensePlate}
                         </span>
                     </div>
                 </>) : (
                     <>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-[#181818]' : 'bg-gray-100'}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-[#1C1C1E]' : 'bg-gray-100'}`}>
                             <CarIcon className={`w-4 h-4 opacity-30 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                         </div>
                         <span className={`text-[12px] font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
@@ -161,7 +161,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                 }}
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
                                     isDark
-                                        ? 'bg-[#111111] border-white/[0.06] text-gray-400 hover:text-gray-200 hover:border-white/[0.12]'
+                                        ? 'bg-[#2C2C2E] border-white/[0.06] text-gray-400 hover:text-gray-200 hover:border-white/[0.12]'
                                         : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-white'
                                 }`}
                             >
@@ -220,7 +220,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                             className="max-w-full max-h-full object-contain rounded-xl"
                         />
                     </div>
-                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-[#080808] border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl">
+                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-black border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl">
                         <span className="text-sm font-medium text-white">{getFriendlyDocName(viewingDoc)}</span>
                         <div className="w-px h-4 bg-white/20 mx-1" />
                         <button

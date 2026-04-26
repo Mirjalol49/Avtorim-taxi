@@ -136,7 +136,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     !isRead ? 'border-l-[3px] border-orange-400' : 'border-l-[3px] border-transparent'
                 } ${
                     isRead
-                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-gray-50'
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.03]'
                         : isDark ? 'bg-orange-500/[0.06] hover:bg-orange-500/10 cursor-pointer'
                                : 'bg-orange-50/50 hover:bg-orange-50 cursor-pointer'
                 }`}
@@ -197,7 +197,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 {paidPct}%
                             </span>
                         </div>
-                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#111111]' : 'bg-gray-200'}`}>
+                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-200'}`}>
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                                 style={{ width: `${paidPct}%` }}
@@ -206,7 +206,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     </div>
 
                     {/* Remaining amount + plan */}
-                    <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${isDark ? 'bg-[#111111]/60' : 'bg-gray-50'}`}>
+                    <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${isDark ? 'bg-[#2C2C2E]/60' : 'bg-[#F2F2F7]'}`}>
                         <div>
                             <p className={`text-[10px] font-medium mb-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Kunlik reja</p>
                             <p className={`text-xs font-bold tabular-nums ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{fmtAmount(dailyPlan)} UZS</p>
@@ -266,7 +266,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     !isRead ? 'border-l-[3px] border-teal-500' : 'border-l-[3px] border-transparent'
                 } ${
                     isRead
-                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-gray-50'
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.03]'
                         : isDark ? 'bg-white/[0.05] hover:bg-white/[0.07] cursor-pointer'
                                : 'bg-teal-50/60 hover:bg-teal-50 cursor-pointer'
                 }`}
@@ -338,7 +338,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
-                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-[#111111] text-gray-400 hover:bg-white/[0.06] hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'}`}
+                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-[#2C2C2E] text-gray-400 hover:bg-white/[0.06] hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'}`}
                                     >
                                         <ReceiptIcon className="w-2.5 h-2.5" /> Chek
                                     </a>
@@ -385,7 +385,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 !isRead ? 'border-purple-500' : 'border-transparent'
             } ${
                 isRead
-                    ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-gray-50'
+                    ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.03]'
                     : isDark ? 'bg-purple-500/[0.05] hover:bg-purple-500/[0.08] cursor-pointer'
                            : 'bg-purple-50/40 hover:bg-purple-50 cursor-pointer'
             }`}
@@ -450,7 +450,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
             <div
                 className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
                     visible ? 'translate-x-0' : 'translate-x-full'
-                } ${isDark ? 'bg-[#181818]' : 'bg-white'}`}
+                } ${isDark ? 'bg-[#1C1C1E]' : 'bg-white'}`}
                 style={{ zIndex: 9999 }}
             >
                 {/* Header */}
@@ -505,10 +505,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 </div>
 
                 {/* Notification list */}
-                <div className={`flex-1 overflow-y-auto divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-gray-100'}`}>
+                <div className={`flex-1 overflow-y-auto divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-black/[0.05]'}`}>
                     {notifications.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
-                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#111111]' : 'bg-gray-100'}`}>
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`}>
                                 <BellIcon className={`w-7 h-7 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
                             </div>
                             <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -525,7 +525,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
                 {/* Footer */}
                 {notifications.length > 0 && (
-                    <div className={`flex-shrink-0 px-5 py-3 border-t ${isDark ? 'border-white/[0.06] bg-[#181818]' : 'border-gray-100 bg-white'}`}
+                    <div className={`flex-shrink-0 px-5 py-3 border-t ${isDark ? 'border-white/[0.06] bg-[#1C1C1E]' : 'border-gray-100 bg-white'}`}
 >
                         <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                             {notifications.length} ta bildirishnoma · So'nggi 14 soat

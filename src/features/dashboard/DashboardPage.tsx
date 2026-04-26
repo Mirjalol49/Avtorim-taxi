@@ -77,14 +77,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 <Skeleton variant="rectangular" width="30%" height={10} theme="dark" />
                             </div>
                         </div>
-                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-[#181818] border-white/[0.07]' : 'bg-white border-gray-100'}`}>
+                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.07]'}`}>
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                             </div>
                         </div>
-                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border sm:col-span-2 lg:col-span-1 ${isDark ? 'bg-[#181818] border-white/[0.07]' : 'bg-white border-gray-100'}`}>
+                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border sm:col-span-2 lg:col-span-1 ${isDark ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.07]'}`}>
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
@@ -95,14 +95,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 ) : (
                     <>
                         {/* Income */}
-                        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 hover:-translate-y-0.5"
+                        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300"
                             style={{
-                                background: 'linear-gradient(135deg, #0a6b62 0%, #0f766e 40%, #0e8a80 100%)',
-                                boxShadow: '0 8px 32px rgba(15,118,110,0.35), 0 2px 8px rgba(15,118,110,0.20)',
+                                background: 'linear-gradient(145deg, #0a6b62 0%, #0f766e 100%)',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)',
                             }}
                         >
-                            {/* Radial shine */}
-                            <div className="absolute -top-6 -right-6 w-40 h-40 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.6) 0%, transparent 70%)' }} />
 
                             <div className="relative z-10 flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
@@ -126,14 +124,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {/* Expense */}
-                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 hover:-translate-y-0.5 border ${
+                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 border ${
                             isDark
-                                ? 'bg-[#181818] border-white/[0.07]'
-                                : 'bg-white border-gray-200/60'
+                                ? 'bg-[#1C1C1E] border-white/[0.10]'
+                                : 'bg-white border-black/[0.08]'
                         }`} style={{
                             boxShadow: isDark
-                                ? '0 2px 12px rgba(0,0,0,0.6), 0 8px 32px rgba(0,0,0,0.4)'
-                                : '0 1px 4px rgba(0,60,80,0.07), 0 6px 20px rgba(0,60,80,0.06)',
+                                ? '0 1px 3px rgba(0,0,0,0.3)'
+                                : '0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)',
                         }}>
                             <div className="relative z-10 flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
@@ -157,14 +155,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {/* Net Profit */}
-                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 hover:-translate-y-0.5 border sm:col-span-2 lg:col-span-1 ${
+                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 border sm:col-span-2 lg:col-span-1 ${
                             isDark
-                                ? 'bg-[#181818] border-white/[0.07]'
-                                : 'bg-white border-gray-100'
+                                ? 'bg-[#1C1C1E] border-white/[0.10]'
+                                : 'bg-white border-black/[0.08]'
                         }`} style={{
                             boxShadow: isDark
-                                ? '0 2px 12px rgba(0,0,0,0.6), 0 8px 32px rgba(0,0,0,0.4)'
-                                : '0 1px 4px rgba(0,60,80,0.07), 0 6px 20px rgba(0,60,80,0.06)',
+                                ? '0 1px 3px rgba(0,0,0,0.3)'
+                                : '0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)',
                         }}>
                             <div className="relative z-10 flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
@@ -191,18 +189,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* CHART ROW */}
-            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col relative overflow-hidden ${isDark ? 'bg-[#181818] border-white/[0.07]' : 'bg-white border-gray-100'}`}
-                style={{ boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.35)' : '0 1px 4px rgba(0,60,80,0.07), 0 6px 20px rgba(0,60,80,0.06)' }}
+            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col relative overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.08]'}`}
+                style={{ boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.07)' }}
             >
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        <div className={`p-1.5 rounded-lg ${isDark ? 'bg-[#111111] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                        <div className={`p-1.5 rounded-lg ${isDark ? 'bg-[#2C2C2E] text-[rgba(235,235,245,0.5)]' : 'bg-black/[0.05] text-[rgba(60,60,67,0.5)]'}`}>
                             <LayoutDashboardIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         </div>
                         {t('incomeVsExpense')}
                     </h3>
-                    <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-[#111111] border-white/[0.07]' : 'bg-gray-100 border-gray-200'}`}>
-                        <button onClick={() => setDashboardViewMode('chart')} className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'chart' ? 'bg-[#0f766e] text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+                    <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-[#2C2C2E] border-white/[0.10]' : 'bg-black/[0.04] border-black/[0.07]'}`}>
+                        <button onClick={() => setDashboardViewMode('chart')} className={`p-2 rounded-xl transition-all ${dashboardViewMode === 'chart' ? 'bg-[#0f766e] text-white' : theme === 'dark' ? 'text-[rgba(235,235,245,0.5)] hover:text-white' : 'text-[rgba(60,60,67,0.5)] hover:text-black'}`}>
                             <LayoutDashboardIcon className="w-4 h-4" />
                         </button>
                         <button onClick={() => setDashboardViewMode('grid')} className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'grid' ? 'bg-[#0f766e] text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
@@ -226,7 +224,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <Tooltip cursor={{ fill: theme === 'dark' ? 'rgba(55, 65, 81, 0.3)' : 'rgba(229, 231, 235, 0.3)' }} content={({ active, payload, label }) => {
                                         if (active && payload && payload.length) {
                                             return (
-                                                <div className={`p-3 rounded-xl border shadow-lg ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                                                <div className={`p-3 rounded-xl border shadow-lg ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.08]'}`}>
                                                     <p className={`text-sm font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{label}</p>
                                                     {payload.map((entry: any, index: number) => (
                                                         <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
@@ -259,7 +257,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 const driver = drivers.find(d => d.id === data.id);
                                                 const profit = data.Income - data.Expense;
                                                 return (
-                                                    <div key={idx} className={`p-5 rounded-xl border transition-all hover:shadow-md h-fit ${isDark ? 'bg-[#111111]/50 border-white/[0.08] hover:border-white/[0.12]' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                                                    <div key={idx} className={`p-5 rounded-xl border transition-all hover:shadow-md h-fit ${isDark ? 'bg-[#2C2C2E] border-white/[0.10] hover:border-white/[0.16]' : 'bg-white border-black/[0.08] hover:border-gray-300'}`}>
                                                         <div className="flex items-center gap-3 mb-4">
                                                             {driver && (
                                                                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex-shrink-0">
@@ -306,8 +304,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* DAILY PAYMENT STATUS */}
-            <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden relative ${isDark ? 'bg-[#181818] border-white/[0.07]' : 'bg-white border-gray-100'}`}
-                style={{ boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.35)' : '0 1px 4px rgba(0,60,80,0.07), 0 6px 20px rgba(0,60,80,0.06)' }}
+            <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden relative ${isDark ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.07]'}`}
+                style={{ boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.07)' }}
             >
 
                 {/* ── Header ─────────────────────────────────────────────── */}
@@ -352,7 +350,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {todayStats.completed.length > 0 ? (
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.05] bg-[#111111]' : 'divide-gray-100 bg-gray-50'}`}>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-[#2C2C2E]' : 'divide-black/[0.04] bg-[#F2F2F7]'}`}>
                                 {todayStats.completed.map((driver, i) => {
                                     const plan = driver.dailyPlan || 1;
                                     const pct = Math.min(100, Math.round((driver.todayIncome / plan) * 100));
@@ -364,7 +362,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-emerald-500/50">
                                                     {driver.avatar
                                                         ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                        : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#111111] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                        : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#3A3A3C] text-[rgba(235,235,245,0.6)]' : 'bg-[#E5E5EA] text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
                                                     }
                                                 </div>
                                                 {i < 3 && (
@@ -386,10 +384,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 {driverCar && (
                                                     <div className="flex items-center gap-1.5 mt-0.5 mb-1">
                                                         <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{driverCar.name}</span>
-                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.10] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
                                                     </div>
                                                 )}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#181818]' : 'bg-gray-200'}`}>
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#3A3A3C]' : 'bg-[#E5E5EA]'}`}>
                                                     <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
@@ -401,7 +399,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 })}
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-50'}`}>
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
                                     <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
                                 </div>
@@ -420,7 +418,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {todayStats.pending.length > 0 ? (
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.05] bg-[#111111]' : 'divide-gray-100 bg-gray-50'}`}>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-[#2C2C2E]' : 'divide-black/[0.04] bg-[#F2F2F7]'}`}>
                                 {todayStats.pending.map(driver => {
                                     const plan = driver.dailyPlan || 750000;
                                     const paid = driver.todayIncome || 0;
@@ -434,7 +432,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-orange-500/25 flex-shrink-0">
                                                 {driver.avatar
                                                     ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#111111] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-[#3A3A3C] text-[rgba(235,235,245,0.6)]' : 'bg-[#E5E5EA] text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
                                                 }
                                             </div>
                                             {/* Info */}
@@ -448,10 +446,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 {driverCar && (
                                                     <div className="flex items-center gap-1.5 mt-0.5 mb-1">
                                                         <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{driverCar.name}</span>
-                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.10] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
                                                     </div>
                                                 )}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#181818]' : 'bg-gray-200'}`}>
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-[#3A3A3C]' : 'bg-[#E5E5EA]'}`}>
                                                     <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
@@ -460,7 +458,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 })}
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-50'}`}>
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
                                     <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-500' : 'text-emerald-400'}`} />
                                 </div>
@@ -472,7 +470,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
                 {/* ── Day-off strip ──────────────────────────────────────── */}
                 {todayStats.dayOff.length > 0 && (
-                    <div className={`px-6 py-4 border-t flex items-center gap-4 flex-wrap ${theme === 'dark' ? 'border-white/[0.06] bg-[#111111]' : 'border-gray-100 bg-gray-50/60'}`}>
+                    <div className={`px-6 py-4 border-t flex items-center gap-4 flex-wrap ${theme === 'dark' ? 'border-white/[0.08] bg-[#2C2C2E]' : 'border-black/[0.05] bg-[#F2F2F7]'}`}>
                         <span className={`text-[11px] font-bold uppercase tracking-widest flex-shrink-0 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`}>
                             🌙 Dam olish
                         </span>
@@ -483,7 +481,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.5]">
                                             {driver.avatar
                                                 ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                : <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${theme === 'dark' ? 'bg-[#111111] text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{driver.name?.charAt(0)}</div>
+                                                : <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${theme === 'dark' ? 'bg-[#3A3A3C] text-[rgba(235,235,245,0.45)]' : 'bg-[#E5E5EA] text-[rgba(60,60,67,0.45)]'}`}>{driver.name?.charAt(0)}</div>
                                             }
                                         </div>
                                     </div>

@@ -2,37 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== CSS CUSTOM PROPERTIES ===== */
+/* ===== CSS CUSTOM PROPERTIES — iOS Human Interface Guidelines ===== */
 :root {
-    --color-bg:              #ebf4f4;
-    --color-surface:         #ffffff;
-    --color-surface-2:       #f4fafa;
-    --color-border:          #c8e0e0;
-    --color-border-subtle:   #daeaea;
-    --color-text:            #0D1A1A;
-    --color-text-body:       #2E4848;
-    --color-text-muted:      #5A7878;
+    /* iOS systemGroupedBackground / systemBackground */
+    --color-bg:              #F2F2F7;
+    --color-surface:         #FFFFFF;
+    --color-surface-2:       #F2F2F7;
+    /* iOS separator — rgba(60,60,67,0.18) */
+    --color-border:          rgba(60, 60, 67, 0.18);
+    --color-border-subtle:   rgba(60, 60, 67, 0.09);
+    /* iOS label / secondaryLabel / tertiaryLabel */
+    --color-text:            #000000;
+    --color-text-body:       rgba(60, 60, 67, 0.85);
+    --color-text-muted:      rgba(60, 60, 67, 0.48);
     --color-accent:          #0f766e;
-    --color-accent-light:    #CCFBF1;
-    --color-scrollbar-track: #c8e0e0;
-    --color-scrollbar-thumb: #8ab4b4;
-    --color-scrollbar-hover: #5A7878;
+    --color-accent-light:    rgba(15, 118, 110, 0.10);
+    --color-scrollbar-track: transparent;
+    --color-scrollbar-thumb: rgba(60, 60, 67, 0.22);
+    --color-scrollbar-hover: rgba(60, 60, 67, 0.42);
 }
 
 .dark {
-    --color-bg:              #080808;
-    --color-surface:         #181818;
-    --color-surface-2:       #111111;
-    --color-border:          rgba(255, 255, 255, 0.08);
-    --color-border-subtle:   rgba(255, 255, 255, 0.04);
-    --color-text:            #F2F2F2;
-    --color-text-body:       #AAAAAA;
-    --color-text-muted:      #666666;
-    --color-accent:          #0f766e;
-    --color-accent-light:    rgba(15, 118, 110, 0.15);
-    --color-scrollbar-track: #111111;
-    --color-scrollbar-thumb: #2a2a2a;
-    --color-scrollbar-hover: #383838;
+    /* iOS true-black dark + elevated surfaces */
+    --color-bg:              #000000;
+    --color-surface:         #1C1C1E;
+    --color-surface-2:       #2C2C2E;
+    /* iOS dark separator */
+    --color-border:          rgba(255, 255, 255, 0.12);
+    --color-border-subtle:   rgba(255, 255, 255, 0.06);
+    /* iOS dark label / secondaryLabel / tertiaryLabel */
+    --color-text:            #FFFFFF;
+    --color-text-body:       rgba(235, 235, 245, 0.6);
+    --color-text-muted:      rgba(235, 235, 245, 0.3);
+    --color-accent:          #0d9488;
+    --color-accent-light:    rgba(13, 148, 136, 0.18);
+    --color-scrollbar-track: transparent;
+    --color-scrollbar-thumb: rgba(255, 255, 255, 0.18);
+    --color-scrollbar-hover: rgba(255, 255, 255, 0.32);
 }
 
 /* ===== ANIMATIONS ===== */
@@ -85,20 +91,19 @@ button, a, input, select, textarea {
     transition-duration: 150ms;
 }
 
-/* ===== INPUTS — HIGH CONTRAST FOR ALL USERS ===== */
+/* ===== INPUTS — iOS system style ===== */
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 textarea,
 select {
-    /* light mode baseline — overridden by component classes */
     background-color: #ffffff;
-    color: #0D1A1A;
-    border-color: #b0cccc;
+    color: #000000;
+    border-color: rgba(60, 60, 67, 0.18);
 }
 
 .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 .dark textarea,
 .dark select {
-    background-color: #111111;
-    color: #F2F2F2;
-    border-color: rgba(255,255,255,0.14);
+    background-color: #2C2C2E;
+    color: #FFFFFF;
+    border-color: rgba(255, 255, 255, 0.12);
 }

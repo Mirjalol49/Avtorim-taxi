@@ -92,7 +92,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
   const canSubmit = !success && !locked && phoneDigits.length === 9 && password.trim().length > 0;
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans transition-colors duration-300 ${isDark ? 'bg-[#080808]' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans transition-colors duration-300 ${isDark ? 'bg-black' : 'bg-[#F2F2F7]'}`}>
 
       {/* Cyber grid */}
       <div className="absolute inset-0 z-0 opacity-20" style={{
@@ -106,7 +106,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
 
       <div className="z-10 w-full max-w-md p-6 relative">
         <div className={`backdrop-blur-2xl border rounded-[32px] p-8 shadow-2xl relative overflow-hidden transition-all duration-500 ${isDark
-          ? 'bg-[#181818]/80 border-white/[0.08] shadow-black/20'
+          ? 'bg-[#1C1C1E]/80 border-white/[0.08] shadow-black/20'
           : 'bg-white/80 border-gray-200 shadow-xl'
         } ${success ? (isDark ? 'border-emerald-500/50 shadow-emerald-500/20' : 'border-emerald-400 shadow-emerald-400/20') : ''}`}>
 
@@ -126,9 +126,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
             <div className={`transition-all ${locked ? 'opacity-50 grayscale' : ''}`}>
               <div className={`flex rounded-2xl border overflow-hidden focus-within:ring-2 focus-within:ring-teal-500/40 transition-all ${
                 error ? 'border-red-500'
-                  : isDark ? 'border-white/[0.06] hover:border-teal-500/40 bg-[#080808]/40' : 'border-gray-200 hover:border-teal-500/40 bg-gray-50'
+                  : isDark ? 'border-white/[0.06] hover:border-teal-500/40 bg-black/40' : 'border-gray-200 hover:border-teal-500/40 bg-gray-50'
               }`}>
-                <span className={`flex items-center px-4 text-sm font-mono font-bold border-r select-none ${isDark ? 'text-teal-400 border-white/[0.06] bg-[#080808]/60' : 'text-teal-600 border-gray-200 bg-gray-100'}`}>
+                <span className={`flex items-center px-4 text-sm font-mono font-bold border-r select-none ${isDark ? 'text-teal-400 border-white/[0.06] bg-black/60' : 'text-teal-600 border-gray-200 bg-gray-100'}`}>
                   +998
                 </span>
                 <input
@@ -160,7 +160,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
                 spellCheck={false}
                 disabled={success || locked}
                 className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/40 transition-all duration-150 ${isDark
-                  ? 'bg-[#080808]/40 text-white placeholder-gray-500'
+                  ? 'bg-black/40 text-white placeholder-gray-500'
                   : 'bg-gray-50 text-gray-900 placeholder-gray-400'
                 } ${error
                   ? 'border-red-500 shake-animation'
@@ -188,10 +188,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
               className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transform transition-all duration-150 ${success
                 ? 'bg-green-500 text-white scale-[1.02]'
                 : locked
-                  ? isDark ? 'bg-[#111111] text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  ? isDark ? 'bg-[#2C2C2E] text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : canSubmit
                     ? 'bg-teal-600 text-white hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98]'
-                    : isDark ? 'bg-[#111111] text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : isDark ? 'bg-[#2C2C2E] text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
               {success ? (
