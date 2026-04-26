@@ -34,36 +34,33 @@ const BUCKET = 'documents';
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
-export async function subscribeToDocuments(
+export function subscribeToDocuments(
     fleetId: string,
     onData: (docs: Document[]) => void,
     onError?: (err: Error) => void,
-): Promise<() => void> {
-    const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('fleet_id', fleetId)
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        onError?.(new Error(error.message));
-        return () => {};
-    }
-    onData((data ?? []) as Document[]);
+): { unsubscribe: () => void; refetch: () => Promise<void> } {
+    const fetchDocs = async () => {
+        const { data, error } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('fleet_id', fleetId)
+            .order('created_at', { ascending: false });
+        if (error) { onError?.(new Error(error.message)); return; }
+        onData((data ?? []) as Document[]);
+    };
 
     const channel = supabase
         .channel(`documents:${fleetId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `fleet_id=eq.${fleetId}` }, async () => {
-            const { data: fresh } = await supabase
-                .from('documents')
-                .select('*')
-                .eq('fleet_id', fleetId)
-                .order('created_at', { ascending: false });
-            onData((fresh ?? []) as Document[]);
-        })
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `fleet_id=eq.${fleetId}` }, fetchDocs)
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetchDocs();
+            else if (status === 'CHANNEL_ERROR') onError?.(new Error('Realtime channel error'));
+        });
 
-    return () => { supabase.removeChannel(channel); };
+    return {
+        unsubscribe: () => { supabase.removeChannel(channel); },
+        refetch: fetchDocs,
+    };
 }
 
 export async function uploadDocument(
@@ -154,12 +151,17 @@ CREATE TABLE IF NOT EXISTS documents (
   created_by   TEXT DEFAULT ''
 );
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all" ON documents;
 CREATE POLICY "allow_all" ON documents FOR ALL USING (true);
 
 -- 2. Create storage bucket (run once)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
+DROP POLICY IF EXISTS "allow_all_documents" ON storage.objects;
 CREATE POLICY "allow_all_documents" ON storage.objects
   FOR ALL USING (bucket_id = 'documents')
-  WITH CHECK (bucket_id = 'documents');`;
+  WITH CHECK (bucket_id = 'documents');
+
+-- 3. Enable realtime for documents table
+ALTER PUBLICATION supabase_realtime ADD TABLE documents;`;

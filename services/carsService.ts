@@ -27,12 +27,12 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 } as Car)));
             });
 
-    fetchCars();
-
     const channel = supabase
         .channel(`cars_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cars', filter: `fleet_id=eq.${fleetId}` }, fetchCars)
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetchCars();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };

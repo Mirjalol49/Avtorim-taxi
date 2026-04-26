@@ -15,7 +15,6 @@ import {
     FileIcon,
     FileImageIcon,
     FilePdfIcon,
-    FileVideoIcon,
     FileArchiveIcon,
     DownloadIcon,
     TrashIcon,
@@ -24,23 +23,24 @@ import {
     FolderOpenIcon,
     EditIcon,
     CopyIcon,
+    CheckIcon,
 } from '../../../components/Icons';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
+// No video support — videos filtered at upload time
 function FileTypeIcon({ mimeType, className }: { mimeType: string; className?: string }) {
     const cat = getCategory(mimeType);
-    if (cat === 'image')  return <FileImageIcon className={className} />;
-    if (cat === 'pdf')    return <FilePdfIcon className={className} />;
-    if (cat === 'video')  return <FileVideoIcon className={className} />;
+    if (cat === 'image') return <FileImageIcon className={className} />;
+    if (cat === 'pdf')   return <FilePdfIcon className={className} />;
     return <FileIcon className={className} />;
 }
 
 function categoryLabel(cat: DocumentCategory): string {
-    return { all: 'Barchasi', image: 'Rasmlar', pdf: 'PDF', video: 'Video', other: "Boshqa" }[cat];
+    return { all: 'Barchasi', image: 'Rasmlar', pdf: 'PDF', video: 'Video', other: 'Boshqa' }[cat];
 }
 
-const CATEGORIES: DocumentCategory[] = ['all', 'image', 'pdf', 'video', 'other'];
+const CATEGORIES: DocumentCategory[] = ['all', 'image', 'pdf', 'other'];
 
 const MAX_FILE_MB = 50;
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
@@ -61,9 +61,15 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     const [setupNeeded, setSetupNeeded] = useState(false);
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState<DocumentCategory>('all');
+
+    // upload state
+    const refetchRef = useRef<() => Promise<void>>(() => Promise.resolve());
     const [uploading, setUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadCurrentFile, setUploadCurrentFile] = useState('');
+    const [uploadProgress, setUploadProgress] = useState(0); // 0-100 overall
     const [dragOver, setDragOver] = useState(false);
+
+    // modal state
     const [previewDoc, setPreviewDoc] = useState<Doc | null>(null);
     const [editDoc, setEditDoc] = useState<Doc | null>(null);
     const [editName, setEditName] = useState('');
@@ -72,6 +78,9 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     const [uploadModal, setUploadModal] = useState(false);
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [pendingNames, setPendingNames] = useState<string[]>([]);
+    const [pendingDescs, setPendingDescs] = useState<string[]>([]);
+    const [oversizedFiles, setOversizedFiles] = useState<File[]>([]);
+    const [videoFiles, setVideoFiles] = useState<File[]>([]);
     const [copied, setCopied] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,12 +89,13 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     useEffect(() => {
         if (!fleetId) return;
         setLoading(true);
-        const unsub = subscribeToDocuments(
+        const { unsubscribe, refetch } = subscribeToDocuments(
             fleetId,
             (data) => { setDocs(data); setLoading(false); setSetupNeeded(false); },
             () => { setSetupNeeded(true); setLoading(false); },
         );
-        return () => { unsub.then(fn => fn()); };
+        refetchRef.current = refetch;
+        return unsubscribe;
     }, [fleetId]);
 
     // Filtered docs
@@ -96,12 +106,28 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
         return matchSearch && matchCat;
     });
 
-    // ── upload ──────────────────────────────────────────────────────────────
+    // ── upload ────────────────────────────────────────────────────────────────
+    const resetUploadModal = () => {
+        setPendingFiles([]);
+        setPendingNames([]);
+        setPendingDescs([]);
+        setOversizedFiles([]);
+        setVideoFiles([]);
+        setUploadModal(false);
+    };
+
     const startUpload = (files: FileList | File[]) => {
-        const arr = Array.from(files).filter(f => f.size <= MAX_FILE_BYTES);
-        if (!arr.length) return;
-        setPendingFiles(arr);
-        setPendingNames(arr.map(f => f.name.replace(/\.[^.]+$/, '')));
+        const all = Array.from(files);
+        if (!all.length) return;
+        const videos = all.filter(f => f.type.startsWith('video/'));
+        const nonVideo = all.filter(f => !f.type.startsWith('video/'));
+        const ok  = nonVideo.filter(f => f.size <= MAX_FILE_BYTES);
+        const big = nonVideo.filter(f => f.size > MAX_FILE_BYTES);
+        setVideoFiles(videos);
+        setOversizedFiles(big);
+        setPendingFiles(ok);
+        setPendingNames(ok.map(f => f.name.replace(/\.[^.]+$/, '')));
+        setPendingDescs(ok.map(() => ''));
         setUploadModal(true);
     };
 
@@ -115,20 +141,43 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
         if (!pendingFiles.length) return;
         setUploading(true);
         setUploadModal(false);
-        for (let i = 0; i < pendingFiles.length; i++) {
-            setUploadProgress(Math.round(((i) / pendingFiles.length) * 100));
+        const total = pendingFiles.length;
+        for (let i = 0; i < total; i++) {
+            const file = pendingFiles[i];
+            setUploadCurrentFile(pendingNames[i] || file.name);
+            // Simulate smooth progress per file
+            const base = Math.round((i / total) * 100);
+            const next = Math.round(((i + 1) / total) * 100);
+            setUploadProgress(base);
+            // Animate from base → next over the upload
+            const steps = 8;
+            const stepMs = 120;
+            for (let s = 1; s <= steps; s++) {
+                await new Promise(r => setTimeout(r, stepMs));
+                setUploadProgress(base + Math.round(((next - base) * s) / steps));
+            }
             await uploadDocument(
-                pendingFiles[i],
+                file,
                 fleetId,
-                pendingNames[i] || pendingFiles[i].name,
-                '',
+                pendingNames[i] || file.name,
+                pendingDescs[i] || '',
                 userName,
             );
+            setUploadProgress(next);
         }
         setUploadProgress(100);
-        setTimeout(() => { setUploading(false); setUploadProgress(0); }, 600);
+        // Force immediate refetch so newly uploaded files appear without waiting for realtime
+        await refetchRef.current();
+        setTimeout(() => {
+            setUploading(false);
+            setUploadProgress(0);
+            setUploadCurrentFile('');
+        }, 600);
         setPendingFiles([]);
         setPendingNames([]);
+        setPendingDescs([]);
+        setOversizedFiles([]);
+        setVideoFiles([]);
     };
 
     const handleDeleteConfirmed = async () => {
@@ -150,9 +199,9 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
         setTimeout(() => setCopied(false), 1500);
     };
 
-    // ── styles ──────────────────────────────────────────────────────────────
+    // ── styles ────────────────────────────────────────────────────────────────
     const card = isDark
-        ? 'bg-surface border-white/[0.08] hover:border-white/[0.16]'
+        ? 'bg-surface border-white/[0.08] hover:border-white/[0.18]'
         : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md';
     const inputCls = isDark
         ? 'bg-surface-2 border-white/[0.08] text-white placeholder-white/30 focus:border-[#0d9488]'
@@ -160,7 +209,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     const mutedText = isDark ? 'text-white/40' : 'text-black/40';
     const bodyText  = isDark ? 'text-white/70' : 'text-black/70';
 
-    // ── setup banner ─────────────────────────────────────────────────────────
+    // ── setup banner ──────────────────────────────────────────────────────────
     if (setupNeeded) {
         return (
             <div className="space-y-4 animate-fadeIn">
@@ -187,7 +236,34 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     return (
         <div className="space-y-5 animate-fadeIn">
 
-            {/* ── Header ──────────────────────────────────────────────────── */}
+            {/* ── Upload progress bar (fixed, top of page content) ─────────── */}
+            {uploading && (
+                <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    <div className="px-4 py-3 flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-[#0f766e]/20' : 'bg-[#0f766e]/10'}`}>
+                            <UploadCloudIcon className="w-4 h-4 text-[#0f766e] animate-pulse" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <p className={`text-[12px] font-semibold truncate ${isDark ? 'text-white/80' : 'text-gray-700'}`}>
+                                    {uploadProgress === 100 ? 'Yuklandi ✓' : `Yuklanmoqda: ${uploadCurrentFile}`}
+                                </p>
+                                <span className={`text-[12px] font-bold ml-3 flex-shrink-0 ${uploadProgress === 100 ? 'text-emerald-500' : 'text-[#0f766e]'}`}>
+                                    {uploadProgress}%
+                                </span>
+                            </div>
+                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-100'}`}>
+                                <div
+                                    className={`h-full rounded-full transition-all duration-300 ease-out ${uploadProgress === 100 ? 'bg-emerald-500' : 'bg-[#0f766e]'}`}
+                                    style={{ width: `${uploadProgress}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Header ───────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -208,14 +284,14 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     ref={fileInputRef}
                     type="file"
                     multiple
+                    accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
                     className="hidden"
                     onChange={e => e.target.files && startUpload(e.target.files)}
                 />
             </div>
 
-            {/* ── Search + filter ─────────────────────────────────────────── */}
+            {/* ── Search + filter ──────────────────────────────────────────── */}
             <div className="flex flex-col sm:flex-row gap-3">
-                {/* Search */}
                 <div className="relative flex-1">
                     <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${mutedText}`} />
                     <input
@@ -231,8 +307,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         </button>
                     )}
                 </div>
-                {/* Category chips */}
-                <div className={`flex items-center gap-1.5 p-1 rounded-xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                <div className={`flex items-center gap-1 p-1 rounded-xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat}
@@ -249,20 +324,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                 </div>
             </div>
 
-            {/* ── Upload progress bar ─────────────────────────────────────── */}
-            {uploading && (
-                <div className={`rounded-xl border p-3 flex items-center gap-3 ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                    <UploadCloudIcon className="w-4 h-4 text-[#0f766e] flex-shrink-0 animate-pulse" />
-                    <div className="flex-1 min-w-0">
-                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-100'}`}>
-                            <div className="h-full rounded-full bg-[#0f766e] transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                        </div>
-                    </div>
-                    <span className={`text-[12px] font-semibold flex-shrink-0 ${isDark ? 'text-white/60' : 'text-gray-500'}`}>{uploadProgress}%</span>
-                </div>
-            )}
-
-            {/* ── Drop zone (shown when no docs) OR grid ───────────────────── */}
+            {/* ── Drop zone / grid ─────────────────────────────────────────── */}
             {!loading && docs.length === 0 ? (
                 <div
                     onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -279,160 +341,146 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         <FolderOpenIcon className={`w-8 h-8 ${isDark ? 'text-white/30' : 'text-gray-300'}`} />
                     </div>
                     <div className="text-center">
-                        <p className={`font-semibold text-base ${isDark ? 'text-white/60' : 'text-gray-500'}`}>Fayl yoq</p>
+                        <p className={`font-semibold text-base ${isDark ? 'text-white/60' : 'text-gray-500'}`}>Fayl yo'q</p>
                         <p className={`text-[13px] mt-1 ${mutedText}`}>Bosing yoki fayllarni bu yerga tashlang</p>
-                        <p className={`text-[11px] mt-1 ${mutedText}`}>Maksimal hajm: {MAX_FILE_MB} MB</p>
+                        <p className={`text-[11px] mt-1 ${mutedText}`}>Rasm, PDF, Excel, Word · Maks {MAX_FILE_MB} MB</p>
                     </div>
                 </div>
             ) : (
-                <>
-                    {/* Drop overlay over existing grid */}
-                    <div
-                        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                        onDragLeave={() => setDragOver(false)}
-                        onDrop={handleDrop}
-                        className="relative"
-                    >
-                        {dragOver && (
-                            <div className="absolute inset-0 rounded-2xl border-2 border-dashed border-[#0f766e] bg-[#0f766e]/[0.07] z-10 flex items-center justify-center pointer-events-none">
-                                <p className="text-[#0f766e] font-semibold">Tashlang!</p>
-                            </div>
-                        )}
-
-                        {/* Skeleton loading */}
-                        {loading ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {Array.from({ length: 10 }).map((_, i) => (
-                                    <div key={i} className={`rounded-2xl border h-40 animate-pulse ${isDark ? 'bg-surface border-white/[0.05]' : 'bg-gray-100 border-gray-200'}`} />
-                                ))}
-                            </div>
-                        ) : filtered.length === 0 ? (
-                            <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-surface border-white/[0.06]' : 'bg-white border-gray-100'}`}>
-                                <SearchIcon className={`w-8 h-8 mb-3 ${mutedText}`} />
-                                <p className={`font-medium text-sm ${bodyText}`}>Hech narsa topilmadi</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {filtered.map(doc => (
-                                    <DocumentCard
-                                        key={doc.id}
-                                        doc={doc}
-                                        isDark={isDark}
-                                        card={card}
-                                        mutedText={mutedText}
-                                        bodyText={bodyText}
-                                        onPreview={() => setPreviewDoc(doc)}
-                                        onEdit={() => { setEditDoc(doc); setEditName(doc.name); setEditDesc(doc.description); }}
-                                        onDelete={() => setDeleteConfirm(doc)}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </>
+                <div
+                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    className="relative"
+                >
+                    {dragOver && (
+                        <div className="absolute inset-0 rounded-2xl border-2 border-dashed border-[#0f766e] bg-[#0f766e]/[0.07] z-10 flex items-center justify-center pointer-events-none">
+                            <p className="text-[#0f766e] font-semibold">Tashlang!</p>
+                        </div>
+                    )}
+                    {loading ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                                <div key={i} className={`rounded-2xl border h-40 animate-pulse ${isDark ? 'bg-surface border-white/[0.05]' : 'bg-gray-100 border-gray-200'}`} />
+                            ))}
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-surface border-white/[0.06]' : 'bg-white border-gray-100'}`}>
+                            <SearchIcon className={`w-8 h-8 mb-3 ${mutedText}`} />
+                            <p className={`font-medium text-sm ${bodyText}`}>Hech narsa topilmadi</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            {filtered.map(doc => (
+                                <DocumentCard
+                                    key={doc.id}
+                                    doc={doc}
+                                    isDark={isDark}
+                                    card={card}
+                                    mutedText={mutedText}
+                                    bodyText={bodyText}
+                                    onPreview={() => setPreviewDoc(doc)}
+                                    onEdit={() => { setEditDoc(doc); setEditName(doc.name); setEditDesc(doc.description); }}
+                                    onDelete={() => setDeleteConfirm(doc)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
 
-            {/* ── Upload name modal ────────────────────────────────────────── */}
+            {/* ── Upload modal ─────────────────────────────────────────────── */}
             {uploadModal && (
-                <Modal isDark={isDark} onClose={() => { setUploadModal(false); setPendingFiles([]); }}>
-                    <h3 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {pendingFiles.length} ta fayl yuklash
+                <Modal isDark={isDark} onClose={resetUploadModal}>
+                    <h3 className={`text-base font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Fayl yuklash
                     </h3>
-                    <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                        {pendingFiles.map((f, i) => (
-                            <div key={i}>
-                                <p className={`text-[11px] font-semibold mb-1 ${mutedText}`}>{f.name} · {formatBytes(f.size)}</p>
-                                <input
-                                    type="text"
-                                    value={pendingNames[i]}
-                                    onChange={e => setPendingNames(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
-                                    placeholder="Fayl nomi…"
-                                    className={`w-full px-3 py-2 rounded-xl border text-[13px] outline-none transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08] text-white placeholder-white/30 focus:border-[#0d9488]' : 'bg-gray-50 border-gray-200 text-black focus:border-[#0f766e]'}`}
-                                />
-                            </div>
-                        ))}
-                    </div>
+                    <p className={`text-[12px] mb-4 ${mutedText}`}>
+                        {pendingFiles.length > 0 ? `${pendingFiles.length} ta fayl tayyor` : 'Yuklash uchun fayl yo\'q'}
+                    </p>
+
+                    {/* Video warning */}
+                    {videoFiles.length > 0 && (
+                        <div className={`mb-3 rounded-xl border p-3 ${isDark ? 'bg-orange-500/[0.08] border-orange-500/30' : 'bg-orange-50 border-orange-200'}`}>
+                            <p className="text-[12px] font-bold text-orange-500 mb-1.5">🎬 Video fayllar qo'llab-quvvatlanmaydi</p>
+                            {videoFiles.map((f, i) => (
+                                <p key={i} className={`text-[11px] ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>• {f.name} ({formatBytes(f.size)})</p>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Oversized warning */}
+                    {oversizedFiles.length > 0 && (
+                        <div className={`mb-3 rounded-xl border p-3 ${isDark ? 'bg-red-500/[0.08] border-red-500/30' : 'bg-red-50 border-red-200'}`}>
+                            <p className="text-[12px] font-bold text-red-500 mb-1.5">⚠️ {oversizedFiles.length} ta fayl {MAX_FILE_MB} MB dan oshib ketdi — yuklanmaydi</p>
+                            {oversizedFiles.map((f, i) => (
+                                <p key={i} className={`text-[11px] ${isDark ? 'text-red-400/70' : 'text-red-400'}`}>• {f.name} ({formatBytes(f.size)})</p>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* File list with name + comment */}
+                    {pendingFiles.length > 0 && (
+                        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                            {pendingFiles.map((f, i) => (
+                                <div key={i} className={`rounded-xl border p-3 ${isDark ? 'bg-surface-2 border-white/[0.06]' : 'bg-gray-50 border-gray-100'}`}>
+                                    <div className="flex items-center gap-2 mb-2.5">
+                                        <FileTypeIcon mimeType={f.type} className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-white/40' : 'text-gray-400'}`} />
+                                        <span className={`text-[11px] truncate flex-1 ${mutedText}`}>{f.name}</span>
+                                        <span className={`text-[11px] flex-shrink-0 font-semibold ${isDark ? 'text-white/30' : 'text-gray-400'}`}>{formatBytes(f.size)}</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={pendingNames[i]}
+                                        onChange={e => setPendingNames(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
+                                        placeholder="Fayl nomi…"
+                                        className={`w-full px-3 py-2 rounded-lg border text-[13px] outline-none transition-colors mb-2 ${isDark ? 'bg-surface border-white/[0.08] text-white placeholder-white/25 focus:border-[#0d9488]' : 'bg-white border-gray-200 text-black placeholder-gray-300 focus:border-[#0f766e]'}`}
+                                    />
+                                    <textarea
+                                        value={pendingDescs[i]}
+                                        onChange={e => setPendingDescs(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
+                                        placeholder="Izoh yoki tavsif (ixtiyoriy)…"
+                                        rows={2}
+                                        className={`w-full px-3 py-2 rounded-lg border text-[13px] outline-none transition-colors resize-none ${isDark ? 'bg-surface border-white/[0.08] text-white placeholder-white/25 focus:border-[#0d9488]' : 'bg-white border-gray-200 text-black placeholder-gray-300 focus:border-[#0f766e]'}`}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     <div className="flex gap-2 mt-5">
                         <button
-                            onClick={() => { setUploadModal(false); setPendingFiles([]); }}
+                            onClick={resetUploadModal}
                             className={`flex-1 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-white/70' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
                         >
                             Bekor qilish
                         </button>
-                        <button
-                            onClick={confirmUpload}
-                            className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-colors"
-                        >
-                            Yuklash
-                        </button>
-                    </div>
-                </Modal>
-            )}
-
-            {/* ── Preview modal ────────────────────────────────────────────── */}
-            {previewDoc && (
-                <Modal isDark={isDark} onClose={() => setPreviewDoc(null)} wide>
-                    <div className="flex items-start justify-between mb-4 gap-3">
-                        <div className="min-w-0">
-                            <p className={`font-bold text-base truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{previewDoc.name}</p>
-                            <p className={`text-[12px] mt-0.5 ${mutedText}`}>{previewDoc.original_name} · {formatBytes(previewDoc.file_size)}</p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                            <a
-                                href={previewDoc.file_url}
-                                download={previewDoc.original_name}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-white/[0.08] text-white/60 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}
-                            >
-                                <DownloadIcon className="w-4 h-4" />
-                            </a>
+                        {pendingFiles.length > 0 && (
                             <button
-                                onClick={() => copyUrl(previewDoc.file_url)}
-                                className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-white/[0.08] text-white/60 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}
-                                title="URL nusxalash"
+                                onClick={confirmUpload}
+                                className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-colors"
                             >
-                                <CopyIcon className="w-4 h-4" />
+                                Yuklash
                             </button>
-                            <button
-                                onClick={() => setPreviewDoc(null)}
-                                className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-white/[0.08] text-white/60 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}
-                            >
-                                <XIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Preview content */}
-                    <div className={`rounded-xl overflow-hidden flex items-center justify-center min-h-48 ${isDark ? 'bg-black/40' : 'bg-gray-50'}`}>
-                        {getCategory(previewDoc.file_type) === 'image' ? (
-                            <img src={previewDoc.file_url} alt={previewDoc.name} className="max-w-full max-h-[60vh] object-contain rounded-xl" />
-                        ) : getCategory(previewDoc.file_type) === 'pdf' ? (
-                            <iframe src={previewDoc.file_url} title={previewDoc.name} className="w-full h-[60vh] rounded-xl border-0" />
-                        ) : getCategory(previewDoc.file_type) === 'video' ? (
-                            <video src={previewDoc.file_url} controls className="max-w-full max-h-[60vh] rounded-xl" />
-                        ) : (
-                            <div className="flex flex-col items-center gap-4 py-12">
-                                <FileIcon className={`w-16 h-16 ${mutedText}`} />
-                                <a
-                                    href={previewDoc.file_url}
-                                    download={previewDoc.original_name}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f766e] text-white text-sm font-semibold hover:bg-[#0a5c56] transition-colors"
-                                >
-                                    <DownloadIcon className="w-4 h-4" /> Yuklab olish
-                                </a>
-                            </div>
                         )}
                     </div>
-                    {previewDoc.description && (
-                        <p className={`mt-3 text-[13px] ${bodyText}`}>{previewDoc.description}</p>
-                    )}
                 </Modal>
             )}
 
-            {/* ── Edit name modal ──────────────────────────────────────────── */}
+            {/* ── Preview lightbox ─────────────────────────────────────────── */}
+            {previewDoc && (
+                <PreviewLightbox
+                    doc={previewDoc}
+                    isDark={isDark}
+                    mutedText={mutedText}
+                    bodyText={bodyText}
+                    copied={copied}
+                    onClose={() => setPreviewDoc(null)}
+                    onCopy={() => copyUrl(previewDoc.file_url)}
+                />
+            )}
+
+            {/* ── Edit modal ───────────────────────────────────────────────── */}
             {editDoc && (
                 <Modal isDark={isDark} onClose={() => setEditDoc(null)}>
                     <h3 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Nomni tahrirlash</h3>
@@ -463,7 +511,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                 </Modal>
             )}
 
-            {/* ── Delete confirm modal ─────────────────────────────────────── */}
+            {/* ── Delete confirm ───────────────────────────────────────────── */}
             {deleteConfirm && (
                 <Modal isDark={isDark} onClose={() => setDeleteConfirm(null)}>
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
@@ -487,6 +535,123 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
     );
 };
 
+// ─── Preview Lightbox ──────────────────────────────────────────────────────────
+
+interface LightboxProps {
+    doc: Doc;
+    isDark: boolean;
+    mutedText: string;
+    bodyText: string;
+    copied: boolean;
+    onClose: () => void;
+    onCopy: () => void;
+}
+
+function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, onCopy }: LightboxProps) {
+    const cat = getCategory(doc.file_type);
+
+    // Close on Escape
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    return (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }}>
+            {/* Backdrop click */}
+            <div className="absolute inset-0" onClick={onClose} />
+
+            {/* Header bar */}
+            <div className="relative z-10 flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)' }}>
+                <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white text-[15px] truncate">{doc.name}</p>
+                    <p className="text-[11px] text-white/50 mt-0.5">{doc.original_name} · {formatBytes(doc.file_size)}</p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                        onClick={onCopy}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors text-white/70 hover:text-white hover:bg-white/[0.10]"
+                    >
+                        {copied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-400" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                        {copied ? 'Nusxalandi' : 'URL'}
+                    </button>
+                    <a
+                        href={doc.file_url}
+                        download={doc.original_name}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white/70 hover:text-white hover:bg-white/[0.10] transition-colors"
+                    >
+                        <DownloadIcon className="w-3.5 h-3.5" />
+                        Yuklab olish
+                    </a>
+                    <button
+                        onClick={onClose}
+                        className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/[0.10] transition-colors"
+                    >
+                        <XIcon className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Content area */}
+            <div className="relative z-10 flex-1 flex items-center justify-center overflow-hidden p-4" onClick={onClose}>
+                {cat === 'image' ? (
+                    <img
+                        src={doc.file_url}
+                        alt={doc.name}
+                        onClick={e => e.stopPropagation()}
+                        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                        style={{ maxHeight: 'calc(100vh - 120px)' }}
+                    />
+                ) : cat === 'pdf' ? (
+                    <div
+                        className="w-full flex flex-col rounded-xl overflow-hidden shadow-2xl"
+                        style={{ maxWidth: 900, height: 'calc(100vh - 120px)' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <iframe
+                            src={doc.file_url}
+                            title={doc.name}
+                            className="w-full flex-1 border-0"
+                        />
+                    </div>
+                ) : (
+                    <div
+                        className="flex flex-col items-center gap-5 p-10 rounded-2xl"
+                        style={{ background: isDark ? 'hsl(222,44%,6%)' : '#ffffff' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <FileIcon className="w-16 h-16 text-white/20" />
+                        <div className="text-center">
+                            <p className="text-white font-semibold mb-1">{doc.name}</p>
+                            <p className="text-white/40 text-sm">{formatBytes(doc.file_size)}</p>
+                        </div>
+                        <a
+                            href={doc.file_url}
+                            download={doc.original_name}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0f766e] text-white font-semibold hover:bg-[#0a5c56] transition-colors"
+                        >
+                            <DownloadIcon className="w-4 h-4" /> Yuklab olish
+                        </a>
+                    </div>
+                )}
+            </div>
+
+            {/* Description */}
+            {doc.description && (
+                <div className="relative z-10 flex-shrink-0 px-6 pb-4 text-center">
+                    <p className="text-white/60 text-[13px]">{doc.description}</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── DocumentCard ──────────────────────────────────────────────────────────────
 
 interface CardProps {
@@ -506,7 +671,6 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
 
     return (
         <div className={`group relative rounded-2xl border overflow-hidden cursor-pointer transition-all duration-200 ${card}`}>
-            {/* Thumbnail / icon area */}
             <div
                 onClick={onPreview}
                 className={`relative flex items-center justify-center h-36 overflow-hidden ${isDark ? 'bg-surface-2' : 'bg-gray-50'}`}
@@ -518,11 +682,6 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
                         <FilePdfIcon className="w-10 h-10 text-red-400" />
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-red-400/70' : 'text-red-400'}`}>PDF</span>
                     </div>
-                ) : cat === 'video' ? (
-                    <div className="flex flex-col items-center gap-2">
-                        <FileVideoIcon className="w-10 h-10 text-purple-400" />
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-purple-400/70' : 'text-purple-400'}`}>VIDEO</span>
-                    </div>
                 ) : (
                     <div className="flex flex-col items-center gap-2">
                         <FileIcon className={`w-10 h-10 ${isDark ? 'text-white/25' : 'text-gray-300'}`} />
@@ -532,7 +691,6 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
                     </div>
                 )}
 
-                {/* Hover action overlay */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                     <button
                         onClick={e => { e.stopPropagation(); onEdit(); }}
@@ -562,7 +720,6 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
                 </div>
             </div>
 
-            {/* Info row */}
             <div className="px-3 py-2.5" onClick={onPreview}>
                 <p className={`text-[13px] font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{doc.name}</p>
                 <p className={`text-[11px] mt-0.5 ${mutedText}`}>{formatBytes(doc.file_size)} · {dateStr}</p>
@@ -573,13 +730,16 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
 
 // ─── Reusable Modal ────────────────────────────────────────────────────────────
 
-function Modal({ children, isDark, onClose, wide }: { children: React.ReactNode; isDark: boolean; onClose: () => void; wide?: boolean }) {
+function Modal({ children, isDark, onClose }: { children: React.ReactNode; isDark: boolean; onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <div
-                className={`relative w-full rounded-2xl shadow-2xl p-5 ${wide ? 'max-w-2xl' : 'max-w-md'} ${isDark ? 'border border-white/[0.10]' : 'border border-gray-200'}`}
-                style={{ background: isDark ? 'hsl(222, 44%, 6%)' : '#ffffff' }}
+                className={`relative w-full max-w-md rounded-2xl shadow-2xl p-5 border`}
+                style={{
+                    background: isDark ? 'hsl(222, 44%, 6%)' : '#ffffff',
+                    borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#e5e7eb',
+                }}
             >
                 {children}
             </div>

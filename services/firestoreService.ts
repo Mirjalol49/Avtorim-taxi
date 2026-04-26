@@ -111,24 +111,20 @@ export const deleteAdminUser = async (id: string, username: string, performedBy:
 // ==================== AUDIT LOGS ====================
 
 export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
-    supabase
-        .from('audit_logs')
-        .select('*')
-        .order('timestamp_ms', { ascending: false })
-        .limit(100)
-        .then(({ data }) => { if (data) callback(data); });
+    const fetchLogs = () =>
+        supabase
+            .from('audit_logs')
+            .select('*')
+            .order('timestamp_ms', { ascending: false })
+            .limit(100)
+            .then(({ data }) => { if (data) callback(data); });
 
     const channel = supabase
         .channel('audit_logs_changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, () => {
-            supabase
-                .from('audit_logs')
-                .select('*')
-                .order('timestamp_ms', { ascending: false })
-                .limit(100)
-                .then(({ data }) => { if (data) callback(data); });
-        })
-        .subscribe();
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, fetchLogs)
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetchLogs();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };
@@ -168,12 +164,12 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
                 } as Driver)));
             });
 
-    fetchDrivers();
-
     const channel = supabase
         .channel(`drivers_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, fetchDrivers)
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetchDrivers();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };
@@ -290,12 +286,12 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 } as Transaction)));
             });
 
-    fetchTx();
-
     const channel = supabase
         .channel(`transactions_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, fetchTx)
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetchTx();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };

@@ -164,9 +164,20 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         };
     }, [filteredTransactions, analyticsYear]);
 
+    // Derive available years from ALL transactions (not filtered), always include current year
+    const availableYears = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const yearsFromData = new Set<number>(
+            transactions.map(tx => new Date(tx.timestamp).getFullYear())
+        );
+        yearsFromData.add(currentYear);
+        return Array.from(yearsFromData).sort((a, b) => b - a);
+    }, [transactions]);
+
     return {
         filters, setFilters,
         analyticsYear, setAnalyticsYear,
+        availableYears,
         currentPage, setCurrentPage,
         paginatedTransactions,
         totalPages,
@@ -174,7 +185,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         monthlyAnalyticsData,
         yearlyAnalyticsTotals,
         filteredTransactionsCount: filteredTransactions.length,
-        filteredTransactions, // Expose full list for 'Select All' functionality
+        filteredTransactions,
         itemsPerPage
     };
 };

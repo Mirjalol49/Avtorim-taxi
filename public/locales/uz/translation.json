@@ -294,12 +294,25 @@
     "legendDayOff": "Dam olish",
     "remainingShort": "Qoldi",
     "completedPercent": "bajarildi",
-    "weekdays": ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"],
+    "weekdays": [
+        "Yakshanba",
+        "Dushanba",
+        "Seshanba",
+        "Chorshanba",
+        "Payshanba",
+        "Juma",
+        "Shanba"
+    ],
     "dayOffDays": "Dam olish kunlari",
     "addDayOff": "Dam olish kuni qo'shish",
     "noDaysOffYet": "Hali dam olish kunlari yo'q",
     "dayOffLimitReached": "Bu oy limiti tugadi",
     "documents": "Hujjatlar",
     "used": "ishlatildi",
-    "planDayOff": "Reja / Dam olish"
+    "planDayOff": "Reja / Dam olish",
+    "top": "Top",
+    "collapse": "Yig'ish",
+    "showMore": "Yana {{count}} ta ko'rsatish",
+    "searchDriverStatus": "Haydovchi qidirish…",
+    "dayOffStatus": "Dam olish"
 }

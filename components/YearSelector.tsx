@@ -5,6 +5,7 @@ interface YearSelectorProps {
     selectedYear: number;
     onYearChange: (year: number) => void;
     theme?: 'light' | 'dark';
+    availableYears?: number[];
     startYear?: number;
     endYear?: number;
 }
@@ -13,17 +14,17 @@ const YearSelector: React.FC<YearSelectorProps> = ({
     selectedYear,
     onYearChange,
     theme = 'dark',
+    availableYears,
     startYear = new Date().getFullYear(),
     endYear = new Date().getFullYear() + 10
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Generate array of years
-    const years = Array.from(
-        { length: endYear - startYear + 1 },
-        (_, i) => startYear + i
-    ).reverse(); // Newest first
+    // Use availableYears if provided, otherwise generate from startYear–endYear
+    const years = availableYears && availableYears.length > 0
+        ? [...availableYears].sort((a, b) => b - a)
+        : Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i).reverse();
 
     // Close dropdown when clicking outside
     useEffect(() => {

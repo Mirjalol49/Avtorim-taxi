@@ -294,12 +294,25 @@
     "legendDayOff": "Day off",
     "remainingShort": "Remaining",
     "completedPercent": "completed",
-    "weekdays": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "weekdays": [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+    ],
     "dayOffDays": "Day Off Days",
     "addDayOff": "Add Day Off",
     "noDaysOffYet": "No days off yet",
     "dayOffLimitReached": "Monthly limit reached",
     "documents": "Documents",
     "used": "used",
-    "planDayOff": "Plan / Day Off"
+    "planDayOff": "Plan / Day Off",
+    "top": "Top",
+    "collapse": "Collapse",
+    "showMore": "Show {{count}} more",
+    "searchDriverStatus": "Search driver…",
+    "dayOffStatus": "Day off"
 }
