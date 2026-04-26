@@ -68,23 +68,23 @@ const DateFilter: React.FC<DateFilterProps> = ({
     const filters: TimeFilter[] = ['today', 'week', 'month', 'year', 'all'];
 
     return (
-        <div className={`flex items-center p-1 rounded-xl w-full overflow-x-auto border backdrop-blur-sm ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08]' : 'bg-white border-gray-200'
+        <div className={`flex items-center p-1 rounded-xl w-full overflow-x-auto border ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.08]'
             }`}>
             {filters.map((f) => (
                 <button
                     key={f}
                     onClick={() => onFilterChange(f)}
-                    className={`flex flex-col items-center justify-center px-2.5 sm:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0 ${currentFilter === f
-                        ? 'bg-[#0f766e] text-white shadow-md transform scale-[1.02]'
+                    className={`flex flex-col items-center justify-center px-2.5 sm:px-4 py-2 rounded-xl transition-all duration-200 flex-shrink-0 ${currentFilter === f
+                        ? 'bg-[#0f766e] text-white'
                         : theme === 'dark'
-                            ? 'text-gray-400 hover:text-white hover:bg-white/[0.06]/50'
-                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                            ? 'text-[rgba(235,235,245,0.5)] hover:text-white hover:bg-white/[0.07]'
+                            : 'text-[rgba(60,60,67,0.5)] hover:text-black hover:bg-black/[0.04]'
                         }`}
                 >
-                    <span className={`text-xs sm:text-sm font-bold leading-tight whitespace-nowrap ${currentFilter === f ? 'text-white' : ''}`}>
+                    <span className={`text-[13px] sm:text-[14px] font-semibold leading-tight whitespace-nowrap ${currentFilter === f ? 'text-white' : ''}`}>
                         {labels[f]}
                     </span>
-                    <span className={`text-[9px] sm:text-[10px] font-medium mt-0.5 whitespace-nowrap ${currentFilter === f ? 'text-teal-100/80' : 'opacity-60'
+                    <span className={`text-[10px] font-medium mt-0.5 whitespace-nowrap ${currentFilter === f ? 'text-white/70' : 'opacity-50'
                         }`}>
                         {getDateLabel(f, language)}
                     </span>

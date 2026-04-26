@@ -99,15 +99,15 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
   return (
     <header
-      className={`h-24 flex items-center justify-between px-8 z-10 border-b flex-shrink-0 transition-colors duration-200 ${theme === 'dark'
-        ? 'bg-[#181818] border-white/[0.05]'
-        : 'bg-white border-gray-200'
+      className={`h-16 flex items-center justify-between px-6 z-10 border-b flex-shrink-0 transition-colors duration-200 ${theme === 'dark'
+        ? 'bg-[#1C1C1E] border-white/[0.10]'
+        : 'bg-white border-black/[0.08]'
         }`}
     >
       {/* LEFT SECTION - Title */}
       <div className="flex-1">
         <h2
-          className={`text-2xl font-bold transition-colors duration-200 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+          className={`text-[17px] font-semibold transition-colors duration-200 ${theme === 'dark' ? 'text-white' : 'text-black'
             }`}
         >
           {getTabTitle()}
@@ -115,15 +115,15 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       </div>
 
       {/* RIGHT SECTION - Controls and Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
 
         {/* THEME TOGGLE */}
         <button
           onClick={onThemeToggle}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          className={`p-2 rounded-lg border transition-all ${theme === 'dark'
-            ? 'bg-[#111111] hover:bg-white/[0.06] border-white/[0.08] text-gray-400 hover:text-gray-200'
-            : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-500 hover:text-gray-700'
+          className={`p-2 rounded-xl transition-all ${theme === 'dark'
+            ? 'bg-white/[0.08] hover:bg-white/[0.13] text-[rgba(235,235,245,0.6)] hover:text-white'
+            : 'bg-black/[0.05] hover:bg-black/[0.09] text-[rgba(60,60,67,0.6)] hover:text-black'
             }`}
         >
           {theme === 'dark'
@@ -132,12 +132,11 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           }
         </button>
 
-
         {/* ACTION BUTTON - New Transaction (Global for Admins) */}
         {userRole === 'admin' && (
           <button
             onClick={onNewTransactionClick}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-[#0f766e] hover:bg-[#0a5c56] text-white shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-[15px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95"
           >
             <PlusIcon className="w-4 h-4" />
             <span>{t('newTransfer')}</span>
@@ -161,41 +160,40 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         <div className="relative" ref={langMenuRef}>
           <button
             onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${theme === 'dark'
-              ? 'bg-[#111111] hover:bg-white/[0.06] border-white/[0.08] text-gray-300 hover:text-white'
-              : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600 hover:text-gray-900'
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all duration-200 ${theme === 'dark'
+              ? 'bg-white/[0.08] hover:bg-white/[0.13] text-[rgba(235,235,245,0.7)] hover:text-white'
+              : 'bg-black/[0.05] hover:bg-black/[0.09] text-[rgba(60,60,67,0.7)] hover:text-black'
               }`}
           >
             <GlobeIcon className="w-4 h-4" />
-            <span className="text-sm font-bold uppercase">{i18n.language}</span>
+            <span className="text-[13px] font-semibold uppercase tracking-wide">{i18n.language}</span>
             <ChevronDownIcon
-              className={`w-3 h-3 transition-transform duration-200 ${isLangMenuOpen ? 'rotate-180' : ''
-                }`}
+              className={`w-3 h-3 transition-transform duration-200 ${isLangMenuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
           {/* Language Dropdown Menu */}
           {isLangMenuOpen && (
             <div
-              className={`absolute top-full right-0 mt-2 w-40 rounded-lg shadow-xl overflow-hidden z-50 border transition-all duration-200 ${theme === 'dark'
-                ? 'bg-[#181818] border-white/[0.08]'
-                : 'bg-white border-gray-200'
+              className={`absolute top-full right-0 mt-2 w-40 rounded-xl overflow-hidden z-50 border transition-all duration-200 ${theme === 'dark'
+                ? 'bg-[#2C2C2E] border-white/[0.10] shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
+                : 'bg-white border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.12)]'
                 }`}
             >
               {(['uz', 'ru', 'en'] as const).map((lang) => (
                 <button
                   key={lang}
                   onClick={() => handleLanguageChange(lang)}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center gap-3 ${i18n.language === lang
+                  className={`w-full text-left px-4 py-2.5 text-[15px] font-medium transition-colors duration-150 flex items-center gap-3 ${i18n.language === lang
                     ? theme === 'dark'
-                      ? 'bg-[#111111] text-[#0f766e]'
-                      : 'bg-gray-100 text-[#0f766e]'
+                      ? 'bg-white/[0.08] text-[#0d9488]'
+                      : 'bg-black/[0.04] text-[#0f766e]'
                     : theme === 'dark'
-                      ? 'text-gray-300 hover:bg-white/[0.04] hover:text-white'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'text-[rgba(235,235,245,0.7)] hover:bg-white/[0.06] hover:text-white'
+                      : 'text-[rgba(60,60,67,0.75)] hover:bg-black/[0.03] hover:text-black'
                     }`}
                 >
-                  <span className="text-xl">
+                  <span className="text-lg">
                     {lang === 'uz' && '🇺🇿'}
                     {lang === 'ru' && '🇷🇺'}
                     {lang === 'en' && '🇬🇧'}
@@ -206,7 +204,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                     {lang === 'en' && 'English'}
                   </span>
                   {i18n.language === lang && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0f766e]" />
+                    <div className={`ml-auto w-1.5 h-1.5 rounded-full ${theme === 'dark' ? 'bg-[#0d9488]' : 'bg-[#0f766e]'}`} />
                   )}
                 </button>
               ))}

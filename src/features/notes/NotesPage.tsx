@@ -151,7 +151,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
     const colorCfg = COLOR_MAP[color];
     const cardBg = isDark
-        ? color === 'default' ? 'bg-[#181818]' : colorCfg.bg
+        ? color === 'default' ? 'bg-[#1C1C1E]' : colorCfg.bg
         : color === 'default' ? 'bg-white' : colorCfg.bg;
     const cardBorder = isDark
         ? color === 'default' ? 'border-white/[0.08]' : colorCfg.border
@@ -226,7 +226,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                 : "Eslatma qo'shish"}
                         </button>
                     ) : (
-                        <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#111111] border-white/[0.07]' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#2C2C2E] border-white/[0.07]' : 'bg-gray-50 border-gray-200'}`}>
                             {/* Header */}
                             <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
                                 <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                         onChange={e => setReminderAt(e.target.value ? new Date(e.target.value).getTime() : null)}
                                         className={`flex-1 text-xs px-3 py-2.5 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e]/40 focus:border-[#0f766e] transition-all font-medium ${
                                             isDark
-                                                ? 'bg-[#080808] border-white/[0.08] text-white [color-scheme:dark]'
+                                                ? 'bg-black border-white/[0.08] text-white [color-scheme:dark]'
                                                 : 'bg-white border-gray-200 text-gray-900'
                                         }`}
                                     />
@@ -379,16 +379,16 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
     const isDark = theme === 'dark';
     const colorCfg = COLOR_MAP[note.color];
     const bg = isDark
-        ? note.color === 'default' ? 'bg-[#181818] hover:bg-[#263244]' : `${colorCfg.bg} hover:brightness-110`
-        : note.color === 'default' ? 'bg-white hover:bg-gray-50' : `${colorCfg.bg} hover:brightness-105`;
+        ? note.color === 'default' ? 'bg-[#1C1C1E] hover:bg-[#2C2C2E]' : `${colorCfg.bg} hover:brightness-110`
+        : note.color === 'default' ? 'bg-white hover:bg-[#F9F9F9]' : `${colorCfg.bg} hover:brightness-105`;
     const border = isDark
-        ? note.color === 'default' ? 'border-white/[0.06]' : colorCfg.border
-        : note.color === 'default' ? 'border-gray-200' : colorCfg.border;
+        ? note.color === 'default' ? 'border-white/[0.10]' : colorCfg.border
+        : note.color === 'default' ? 'border-black/[0.08]' : colorCfg.border;
 
     return (
         <div
             onClick={onClick}
-            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-150 hover:shadow-lg hover:-translate-y-0.5 ${bg} ${border}`}
+            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-150 shadow-[0_1px_3px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.10)] ${bg} ${border}`}
         >
             {/* Pin badge */}
             {note.isPinned && (
@@ -399,22 +399,22 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 
             {/* Title */}
             {note.title && (
-                <h3 className={`font-bold text-sm mb-1 pr-5 leading-snug ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`font-semibold text-[15px] mb-1 pr-5 leading-snug ${isDark ? 'text-white' : 'text-black'}`}>
                     {note.title}
                 </h3>
             )}
 
             {/* Content preview */}
             {note.content && (
-                <p className={`text-xs leading-relaxed line-clamp-6 whitespace-pre-wrap ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                <p className={`text-[13px] leading-relaxed line-clamp-6 whitespace-pre-wrap ${isDark ? 'text-[rgba(235,235,245,0.55)]' : 'text-[rgba(60,60,67,0.65)]'}`}>
                     {note.content}
                 </p>
             )}
 
             {/* Footer */}
-            <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+            <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-white/[0.08]' : 'border-black/[0.06]'}`}>
                 <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    <span className={`text-[11px] font-medium ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
                         {timeAgo(note.updatedMs)}
                     </span>
                     {note.reminderAt && note.reminderAt > Date.now() && (
@@ -442,11 +442,11 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
-    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#181818] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
-        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-200'}`} />
-        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-100'}`} />
+    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.06]' : 'bg-white border-gray-200'}`}>
+        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-200'}`} />
+        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'}`} />
     </div>
 );
 
@@ -594,24 +594,24 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     }, [notes]);
 
     return (
-        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#080808]' : 'bg-[#ebf4f4]'}`}>
+        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-black' : 'bg-[#F2F2F7]'}`}>
             <div className="max-w-7xl mx-auto space-y-6">
 
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        <h1 className={`text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>
                             {t('notes')}
                         </h1>
                         {!loading && (
-                            <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                            <p className={`text-[13px] mt-0.5 ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.45)]'}`}>
                                 {notes.length} note{notes.length !== 1 ? 's' : ''}
                             </p>
                         )}
                     </div>
                     <button
                         onClick={openNew}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-teal-600 text-white rounded-xl font-bold text-sm shadow-sm transition-all active:scale-95"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-[#0a5c56] text-white rounded-xl font-semibold text-[15px] transition-all active:scale-95"
                     >
                         <span className="text-lg leading-none">+</span> {t('newNote')}
                     </button>
@@ -619,8 +619,8 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Search + Color filter */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <div className={`relative flex-1 group`}>
-                        <div className={`absolute inset-y-0 left-3 flex items-center pointer-events-none ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <div className={`relative flex-1`}>
+                        <div className={`absolute inset-y-0 left-3.5 flex items-center pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.35)]' : 'text-[rgba(60,60,67,0.35)]'}`}>
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                             </svg>
@@ -629,16 +629,16 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder={t('searchNotes')}
-                            className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/40 transition-all ${
+                            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-[15px] outline-none focus:ring-2 focus:ring-[#0f766e]/30 transition-all ${
                                 isDark
-                                    ? 'bg-[#181818] border-white/[0.08] text-white placeholder-gray-600'
-                                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                                    ? 'bg-[#1C1C1E] border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)]'
+                                    : 'bg-white border-black/[0.08] text-black placeholder-[rgba(60,60,67,0.35)]'
                             }`}
                         />
                         {search && (
                             <button
                                 onClick={() => setSearch('')}
-                                className={`absolute inset-y-0 right-3 flex items-center ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`absolute inset-y-0 right-3 flex items-center ${isDark ? 'text-[rgba(235,235,245,0.4)] hover:text-[rgba(235,235,245,0.7)]' : 'text-[rgba(60,60,67,0.35)] hover:text-[rgba(60,60,67,0.6)]'}`}
                             >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
                             </button>
@@ -649,10 +649,10 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <button
                                 onClick={() => setFilterColor('all')}
-                                className={`text-xs px-3 py-2 rounded-xl font-semibold border transition-all ${
+                                className={`text-[13px] px-3 py-2 rounded-xl font-semibold transition-all ${
                                     filterColor === 'all'
-                                        ? 'bg-[#0f766e] text-white border-transparent'
-                                        : isDark ? 'bg-[#181818] border-white/[0.08] text-gray-400 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900'
+                                        ? 'bg-[#0f766e] text-white'
+                                        : isDark ? 'bg-[#1C1C1E] border border-white/[0.10] text-[rgba(235,235,245,0.55)] hover:text-white' : 'bg-white border border-black/[0.08] text-[rgba(60,60,67,0.55)] hover:text-black'
                                 }`}
                             >
                                 {t('all') || 'All'}
@@ -689,18 +689,18 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Empty state */}
                 {!loading && notes.length === 0 && !tableError && (
-                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl border ${isDark ? 'bg-[#181818] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-[#111111]' : 'bg-gray-100'}`}>
-                            <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <div className={`flex flex-col items-center justify-center py-24 rounded-2xl ${isDark ? 'bg-[#1C1C1E]' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)]'}`}>
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-black/[0.04]'}`}>
+                            <svg className={`w-8 h-8 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.3)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
                             </svg>
                         </div>
-                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noNotesYet')}</p>
-                        <p className={`text-xs mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('noNotesDescription')}</p>
+                        <p className={`text-[15px] font-semibold mb-1 ${isDark ? 'text-[rgba(235,235,245,0.6)]' : 'text-[rgba(60,60,67,0.6)]'}`}>{t('noNotesYet')}</p>
+                        <p className={`text-[13px] mb-5 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>{t('noNotesDescription')}</p>
                         <button
                             onClick={openNew}
-                            className="px-4 py-2 bg-[#0f766e] text-white rounded-xl text-sm font-bold hover:bg-teal-600 transition-all active:scale-95"
+                            className="px-5 py-2.5 bg-[#0f766e] text-white rounded-xl text-[15px] font-semibold hover:bg-[#0a5c56] transition-all active:scale-95"
                         >
                             + {t('newNote')}
                         </button>
@@ -709,15 +709,15 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* No search results */}
                 {!loading && notes.length > 0 && filtered.length === 0 && (
-                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-[#181818] border-white/[0.05]' : 'bg-white border-gray-200'}`}>
-                        <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noRecordsFound')}</p>
+                    <div className={`flex flex-col items-center justify-center py-16 rounded-2xl ${isDark ? 'bg-[#1C1C1E]' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)]'}`}>
+                        <p className={`text-[15px] font-semibold ${isDark ? 'text-[rgba(235,235,245,0.5)]' : 'text-[rgba(60,60,67,0.5)]'}`}>{t('noRecordsFound')}</p>
                     </div>
                 )}
 
                 {/* Pinned section */}
                 {!loading && pinned.length > 0 && (
                     <section>
-                        <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <p className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
                             📌 {t('pinnedSection')}
                         </p>
                         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
@@ -739,7 +739,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 {!loading && unpinned.length > 0 && (
                     <section>
                         {pinned.length > 0 && (
-                            <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
                                 {t('othersSection')}
                             </p>
                         )}

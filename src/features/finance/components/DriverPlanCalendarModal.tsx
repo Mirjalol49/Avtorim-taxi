@@ -114,23 +114,23 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             />
             
             <div className={`relative w-full max-w-6xl h-full max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-300 ${
-                isDark ? 'bg-[#080808] border-white/[0.08]' : 'bg-white border-gray-200'
+                isDark ? 'bg-black border-white/[0.08]' : 'bg-white border-gray-200'
             }`}>
                 
                 {/* Header */}
-                <div className={`flex items-center justify-between p-5 sm:p-6 border-b ${isDark ? 'border-white/[0.05] bg-[#080808]' : 'border-gray-100 bg-gray-50'}`}>
+                <div className={`flex items-center justify-between p-5 sm:p-6 border-b ${isDark ? 'border-white/[0.05] bg-black' : 'border-gray-100 bg-gray-50'}`}>
                     <div className="flex items-center gap-4">
                         {monthData.driver.avatar ? (
                             <img src={monthData.driver.avatar} alt="Avatar" className="w-12 h-12 rounded-full border-2 border-gray-600 object-cover" />
                         ) : (
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${isDark ? 'bg-[#111111] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${isDark ? 'bg-[#2C2C2E] text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
                                 {monthData.driver.name.charAt(0)}
                             </div>
                         )}
                         <div>
                             <div className="flex items-center gap-2 mb-0.5">
                                 <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthData.driver.name}</h2>
-                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isDark ? 'bg-[#111111] text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
                                     {monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}
                                 </span>
                             </div>
@@ -146,7 +146,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
                     {/* Top Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-[#111111]' : 'bg-gray-50 border border-gray-100'}`}>
+                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-50 border border-gray-100'}`}>
                             <p className="text-xs font-bold text-gray-400 uppercase">{t('monthlyPlan')}</p>
                             <p className={`text-lg font-black font-mono mt-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(monthData.monthlyTarget)}</p>
                         </div>
@@ -164,7 +164,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 {monthData.remaining > 0 ? fmt(monthData.remaining) : '+ ' + fmt(-monthData.remaining)}
                             </p>
                         </div>
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-[#111111]' : 'bg-gray-50 border border-gray-100'}`}>
+                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-50 border border-gray-100'}`}>
                             <p className="text-xs font-bold text-gray-400 uppercase">{t('workingDays')}</p>
                             <p className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthData.workingDays} <span className="text-sm font-normal text-gray-500">/ {monthData.totalDays}</span></p>
                         </div>
@@ -176,7 +176,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t('incomeProgress')}</span>
                             <span className={isDark ? 'text-white' : 'text-gray-900'}>{monthData.paidPercent}%</span>
                         </div>
-                        <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-[#111111]' : 'bg-gray-200'}`}>
+                        <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-[#2C2C2E]' : 'bg-gray-200'}`}>
                             <div 
                                 className={`h-full rounded-full transition-all duration-700 ease-out ${monthData.paidPercent >= 100 ? 'bg-green-500' : monthData.paidPercent >= 60 ? 'bg-amber-400' : 'bg-orange-500'}`}
                                 style={{ width: `${monthData.paidPercent}%` }}

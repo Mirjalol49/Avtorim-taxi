@@ -373,16 +373,18 @@ const AppContent: React.FC = () => {
     return (
       <button
         onClick={() => { navigate(path); setIsSidebarOpen(false); }}
-        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all mb-2 ${isActive
-          ? 'bg-[#0f766e] text-white shadow-sm'
+        className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all mb-0.5 text-[15px] font-medium ${isActive
+          ? theme === 'dark'
+            ? 'bg-white/[0.1] text-[#0d9488]'
+            : 'bg-[#0f766e]/[0.10] text-[#0f766e]'
           : theme === 'dark'
-            ? 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200'
-            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+            ? 'text-[rgba(235,235,245,0.55)] hover:bg-white/[0.06] hover:text-[rgba(235,235,245,0.85)]'
+            : 'text-[rgba(60,60,67,0.55)] hover:bg-black/[0.04] hover:text-black'
           }`}
       >
-        <Icon className={`w-5 h-5 ${isActive
-          ? 'text-white'
-          : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+        <Icon className={`w-5 h-5 flex-shrink-0 ${isActive
+          ? theme === 'dark' ? 'text-[#0d9488]' : 'text-[#0f766e]'
+          : theme === 'dark' ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'
           }`} />
         <span className="font-medium text-sm">{label}</span>
       </button>
@@ -458,14 +460,14 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-200 ${theme === 'dark'
-      ? 'bg-[#080808] text-gray-50'
-      : 'bg-[#ebf4f4] text-gray-900'
+      ? 'bg-black text-white'
+      : 'bg-[#F2F2F7] text-black'
       }`}>
       {/* SIDEBAR */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-72 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${theme === 'dark'
-          ? 'bg-[#181818] border-white/[0.07]'
-          : 'bg-white border-gray-200 shadow-[1px_0_0_0_#c8e6e6]'
+          ? 'bg-[#1C1C1E] border-white/[0.10]'
+          : 'bg-white border-black/[0.08]'
         }`}>
         <div className="absolute top-4 right-4 md:hidden">
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
@@ -474,7 +476,7 @@ const AppContent: React.FC = () => {
           <img src={logo} alt="Taksapark" className="h-12 w-auto object-contain" />
         </div>
         <nav className="flex-1 px-4 overflow-y-auto">
-          <div className={`text-xs font-semibold uppercase tracking-wider mb-4 px-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+          <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 px-3 ${theme === 'dark' ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'
             }`}>{t.menu}</div>
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
@@ -488,10 +490,10 @@ const AppContent: React.FC = () => {
           {(adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && (
             <button
               onClick={() => setIsSuperAdminOpen(true)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all mt-2 border ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-medium transition-all mt-1 ${
                 theme === 'dark'
-                  ? 'border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40'
-                  : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
+                  ? 'bg-[rgba(255,159,10,0.12)] text-[#FF9F0A] hover:bg-[rgba(255,159,10,0.18)]'
+                  : 'bg-[rgba(255,149,0,0.10)] text-[#8A6000] hover:bg-[rgba(255,149,0,0.16)]'
               }`}
             >
               <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -503,56 +505,56 @@ const AppContent: React.FC = () => {
         </nav>
 
         {/* Sidebar Bottom Section */}
-        <div className="px-6 pb-4 space-y-3 md:hidden">
-            {/* Theme Toggle - Mobile */}
+        <div className="px-4 pb-4 space-y-2 md:hidden">
+          {/* Theme Toggle - Mobile */}
           <button
             onClick={toggleTheme}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${theme === 'dark'
-              ? 'bg-[#111111] hover:bg-white/[0.06] border-white/[0.08] text-gray-300'
-              : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-white/[0.06] hover:bg-white/[0.1] text-[rgba(235,235,245,0.7)]'
+              : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.7)]'
               }`}
           >
             <div className="flex items-center gap-3">
               {theme === 'dark'
-                ? <SunIcon className="w-5 h-5 text-amber-400" />
-                : <MoonIcon className="w-5 h-5 text-gray-500" />
+                ? <SunIcon className="w-4 h-4 text-[#FF9F0A]" />
+                : <MoonIcon className="w-4 h-4" />
               }
-              <span className="font-medium text-sm">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+              <span className="font-medium text-[15px]">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
             </div>
-            <div className={`w-10 h-5 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-gray-600' : 'bg-[#0f766e]'}`}>
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${theme === 'dark' ? 'left-0.5' : 'left-5'}`} />
+            <div className={`w-10 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-[rgba(60,60,67,0.4)]' : 'bg-[#0f766e]'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${theme === 'dark' ? 'left-0.5' : 'translate-x-[18px]'}`} />
             </div>
           </button>
 
           {/* Language Selector - Mobile Only */}
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${theme === 'dark'
-              ? 'bg-[#111111] hover:bg-white/[0.06] text-gray-300'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-white/[0.06] hover:bg-white/[0.1] text-[rgba(235,235,245,0.7)]'
+              : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.7)]'
               }`}
           >
             <div className="flex items-center gap-3">
-              <GlobeIcon className="w-5 h-5" />
-              <span className="font-medium text-sm">{t.uiLanguage}</span>
+              <GlobeIcon className="w-4 h-4" />
+              <span className="font-medium text-[15px]">{t.uiLanguage}</span>
             </div>
-            <span className="text-xs font-bold uppercase">{language}</span>
+            <span className="text-xs font-semibold uppercase tracking-wide">{language}</span>
           </button>
-          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-[#111111]' : 'bg-gray-100'}`}>
-            <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-white/[0.06] text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>O'zbek</button>
-            <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-white/[0.06] text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>Русский</button>
-            <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'hover:bg-white/[0.06] text-gray-200' : 'hover:bg-gray-200 text-gray-700'}`}>English</button>
+          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-black/[0.04]'}`}>
+            <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>O'zbek</button>
+            <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>Русский</button>
+            <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>English</button>
           </div>
         </div>
-        <div className={`p-6 border-t space-y-3 ${theme === 'dark' ? 'border-white/[0.05]' : 'border-gray-100'
+        <div className={`p-4 border-t space-y-2 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-black/[0.06]'
           }`}>
           {userRole === 'admin' && (
             <>
               {isDataLoading || (!adminProfile && !adminUser) ? ( // Using driversLoading as a proxy for general data loading
                 // Skeleton loading state
-                <div className={`rounded-xl p-3 border flex items-center gap-3 ${theme === 'dark'
-                  ? 'bg-[#080808] border-white/[0.07]'
-                  : 'bg-gray-50 border-gray-200'
+                <div className={`rounded-xl p-3 flex items-center gap-3 ${theme === 'dark'
+                  ? 'bg-white/[0.06]'
+                  : 'bg-black/[0.04]'
                   }`}>
                   <Skeleton variant="circular" width={36} height={36} theme="dark" />
                   <div className="flex-1 space-y-2">
@@ -561,70 +563,70 @@ const AppContent: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                // Actual admin profile - use adminUser if available, otherwise adminProfile
-                <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 border flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark'
-                  ? 'bg-[#080808] border-white/[0.07] hover:bg-white/[0.04]'
-                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                // Actual admin profile
+                <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark'
+                  ? 'bg-white/[0.06] hover:bg-white/[0.1]'
+                  : 'bg-black/[0.04] hover:bg-black/[0.07]'
                   }`}>
                   {adminUser ? (
                     <>
                       {adminUser.avatar && adminUser.avatar.length > 20 ? (
                         <img
                           src={adminUser.avatar}
-                          className={`w-9 h-9 rounded-full border object-cover ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}
+                          className="w-9 h-9 rounded-full object-cover"
                           alt={adminUser.username}
                           onError={(e) => {
                             (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(adminUser.username)}`;
                           }}
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold border border-gray-600">
+                        <div className="w-9 h-9 rounded-full bg-[#0f766e] flex items-center justify-center text-white text-sm font-semibold">
                           {adminUser.username.charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        <p className={`text-[15px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
                           }`}>{adminUser.username}</p>
-                        <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        <p className={`text-[12px] truncate ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
                           }`}>{t[adminUser.role as keyof typeof t] || adminUser.role}</p>
                       </div>
                     </>
                   ) : (
                     <>
                       <img src={adminProfile?.avatar}
-                        className={`w-9 h-9 rounded-full border object-cover ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}
+                        className="w-9 h-9 rounded-full object-cover"
                         alt="Admin"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(adminProfile?.name || 'Admin')}`;
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        <p className={`text-[15px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
                           }`}>{adminProfile?.name}</p>
-                        <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        <p className={`text-[12px] truncate ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
                           }`}>{t[adminProfile?.role as keyof typeof t] || adminProfile?.role}</p>
                       </div>
                     </>
                   )}
-                  <EditIcon className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  <EditIcon className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity ${theme === 'dark' ? 'text-white' : 'text-black'
                     }`} />
                 </div>
               )}
             </>
           )}
-          <button onClick={() => { playLockSound(); handleLogout(); }} className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider group ${theme === 'dark'
-            ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 border-red-500/20'
-            : 'bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 border-red-200'
+          <button onClick={() => { playLockSound(); handleLogout(); }} className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all text-[13px] font-semibold ${theme === 'dark'
+            ? 'bg-[rgba(255,59,48,0.12)] hover:bg-[rgba(255,59,48,0.18)] text-[#FF453A]'
+            : 'bg-[rgba(255,59,48,0.08)] hover:bg-[rgba(255,59,48,0.14)] text-[#FF3B30]'
             }`}>
             <LogOutIcon className="w-4 h-4" />
-            <span className="group-hover:translate-x-0.5 transition-transform">{t.lockSystem}</span>
+            <span>{t.lockSystem}</span>
           </button>
         </div>
       </div>
 
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />}
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative" style={{ backgroundImage: theme === 'dark' ? 'radial-gradient(ellipse 60% 35% at 100% 0%, rgba(15,118,110,0.05) 0%, transparent 100%)' : 'radial-gradient(ellipse 60% 35% at 100% 0%, rgba(15,118,110,0.06) 0%, transparent 100%)' }}>
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Desktop Header - Hidden on Mobile */}
         <DesktopHeader
           theme={theme}
@@ -686,13 +688,13 @@ const AppContent: React.FC = () => {
         />
 
         {/* Mobile Header - Hidden on Desktop */}
-        <header className={`h-20 flex items-center justify-between px-6 md:px-8 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'bg-[#181818] border-white/[0.05]' : 'bg-white border-gray-200'
+        <header className={`h-16 flex items-center justify-between px-5 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/[0.10]' : 'bg-white border-black/[0.08]'
           }`}>
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            <button onClick={() => setIsSidebarOpen(true)} className={`${theme === 'dark' ? 'text-[rgba(235,235,245,0.6)] hover:text-white' : 'text-[rgba(60,60,67,0.6)] hover:text-black'
               }`}><MenuIcon className="w-6 h-6" /></button>
             <div>
-              <h2 className={`text-xl font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+              <h2 className={`text-[17px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
                 }`}>
                 {location.pathname === '/dashboard' && t.overview}
                 {location.pathname === '/drivers' && t.driversList}
@@ -702,7 +704,7 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/transactions' && t.transactions}
                 {location.pathname === '/notes' && t.notes}
               </h2>
-              <p className={`text-xs mt-1 hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              <p className={`text-[13px] mt-0.5 hidden sm:block ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
                 }`}>
                 {location.pathname === '/dashboard' && t.descDashboard}
                 {location.pathname === '/drivers' && t.descDrivers}
@@ -717,24 +719,18 @@ const AppContent: React.FC = () => {
         </header>
 
         {/* ACTION BUTTONS ROW - Mobile Only */}
-        <div className={`flex items-center justify-between px-6 md:px-8 py-3 md:py-4 border-b sticky top-20 z-10 md:hidden ${theme === 'dark' ? 'bg-[#080808] border-white/[0.05]' : 'bg-[#ebf4f4] border-gray-200'
+        <div className={`flex items-center justify-between px-5 py-3 border-b sticky top-16 z-10 md:hidden ${theme === 'dark' ? 'bg-black border-white/[0.08]' : 'bg-[#F2F2F7] border-black/[0.06]'
           }`}>
           {location.pathname === '/drivers' && userRole === 'admin' && (
             <>
-              <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className={`flex items-center justify-center gap-2 border px-3 py-2 rounded-xl font-medium text-xs transition-all w-full sm:w-auto ${theme === 'dark'
-                ? 'bg-[#0f766e] hover:bg-[#0f766e] border-transparent text-white'
-                : 'bg-[#0f766e] hover:bg-[#0f766e] border-transparent text-white shadow-sm'
-                }`}>
+              <button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all w-full sm:w-auto bg-[#0f766e] hover:bg-[#0a5c56] text-white active:scale-95">
                 <PlusIcon className="w-4 h-4" /> <span>{t.add}</span>
               </button>
             </>
           )}
 
           {userRole === 'admin' && (
-            <button onClick={() => setIsTxModalOpen(true)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-medium text-xs transition-all shadow-lg active:scale-95 w-full sm:w-auto ${theme === 'dark'
-              ? 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-sm'
-              : 'bg-[#0f766e] hover:bg-[#0f766e] text-white shadow-sm'
-              }`}>
+            <button onClick={() => setIsTxModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all w-full sm:w-auto bg-[#0f766e] hover:bg-[#0a5c56] text-white active:scale-95">
               <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
             </button>
           )}
