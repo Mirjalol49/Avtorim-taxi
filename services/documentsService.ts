@@ -154,12 +154,14 @@ CREATE TABLE IF NOT EXISTS documents (
   created_by   TEXT DEFAULT ''
 );
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all" ON documents;
 CREATE POLICY "allow_all" ON documents FOR ALL USING (true);
 
 -- 2. Create storage bucket (run once)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
+DROP POLICY IF EXISTS "allow_all_documents" ON storage.objects;
 CREATE POLICY "allow_all_documents" ON storage.objects
   FOR ALL USING (bucket_id = 'documents')
   WITH CHECK (bucket_id = 'documents');`;

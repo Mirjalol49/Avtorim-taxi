@@ -228,7 +228,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         onClick={() => setChartLimit(opt)}
                                         className={`px-2.5 py-1 rounded-lg transition-all ${chartLimit === opt ? 'bg-[#0f766e] text-white' : isDark ? 'text-[rgba(235,235,245,0.5)] hover:text-white' : 'text-[rgba(60,60,67,0.5)] hover:text-black'}`}
                                     >
-                                        {opt === 'all' ? 'All' : `Top ${opt}`}
+                                        {opt === 'all' ? t('allTime') : `${t('top')} ${opt}`}
                                     </button>
                                 ))}
                             </div>
@@ -370,7 +370,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             {todayStats.dayOff.length > 0 && (
                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
                                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
-                                    {todayStats.dayOff.length} Dam olish
+                                    {todayStats.dayOff.length} {t('legendDayOff')}
                                 </span>
                             )}
                         </div>
@@ -389,7 +389,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     setShowAllCompleted(false);
                                     setShowAllPending(false);
                                 }}
-                                placeholder="Haydovchi qidirish…"
+                                placeholder={t('searchDriverStatus')}
                                 className={`w-full pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
                                     ? 'bg-surface-2 border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)] focus:border-[#0d9488]'
                                     : 'bg-[#F2F2F7] border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
@@ -469,7 +469,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     onClick={() => setShowAllCompleted(v => !v)}
                                     className={`mt-2 w-full py-2 rounded-xl text-[12px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.55)]'}`}
                                 >
-                                    {showAllCompleted ? 'Yig\'ish' : `Yana ${filteredCompleted.length - STATUS_VISIBLE} ta ko'rsatish`}
+                                    {showAllCompleted ? t('collapse') : t('showMore', { count: filteredCompleted.length - STATUS_VISIBLE })}
                                 </button>
                             )}
                             </>
@@ -538,7 +538,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     onClick={() => setShowAllPending(v => !v)}
                                     className={`mt-2 w-full py-2 rounded-xl text-[12px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.55)]'}`}
                                 >
-                                    {showAllPending ? 'Yig\'ish' : `Yana ${filteredPending.length - STATUS_VISIBLE} ta ko'rsatish`}
+                                    {showAllPending ? t('collapse') : t('showMore', { count: filteredPending.length - STATUS_VISIBLE })}
                                 </button>
                             )}
                             </>
@@ -553,26 +553,48 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     </div>
                 </div>
 
-                {/* ── Day-off strip ──────────────────────────────────────── */}
+                {/* ── Day-off section ──────────────────────────────────────── */}
                 {todayStats.dayOff.length > 0 && (
-                    <div className={`px-6 py-4 border-t flex items-center gap-4 flex-wrap ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-black/[0.05] bg-[#F2F2F7]'}`}>
-                        <span className={`text-[11px] font-bold uppercase tracking-widest flex-shrink-0 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`}>
-                            🌙 Dam olish
-                        </span>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {todayStats.dayOff.map(driver => (
-                                <div key={driver.id} className="flex items-center gap-2 group">
-                                    <div className="relative">
-                                        <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.5]">
+                    <div className={`border-t ${theme === 'dark' ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
+                        <div className="px-6 pt-4 pb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
+                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`}>
+                                🌙 {t('legendDayOff')}
+                            </span>
+                        </div>
+                        <div className={`mx-6 mb-4 rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.06] bg-surface-2' : 'divide-black/[0.04] bg-[#F2F2F7]'}`}>
+                            {todayStats.dayOff.map(driver => {
+                                const driverCar = cars.find(c => c.assignedDriverId === driver.id);
+                                return (
+                                    <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                        {/* Avatar */}
+                                        <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.4] flex-shrink-0">
                                             {driver.avatar
                                                 ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                : <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.45)]' : 'bg-[#E5E5EA] text-[rgba(60,60,67,0.45)]'}`}>{driver.name?.charAt(0)}</div>
+                                                : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-500'}`}>{driver.name?.charAt(0)}</div>
                                             }
                                         </div>
+                                        {/* Name + Car */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
+                                            {driverCar ? (
+                                                <p className={`text-[11px] font-medium mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {driverCar.name}
+                                                    <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide ${theme === 'dark' ? 'bg-white/[0.06] text-gray-400' : 'bg-black/[0.06] text-gray-500'}`}>
+                                                        {driverCar.licensePlate}
+                                                    </span>
+                                                </p>
+                                            ) : (
+                                                <p className={`text-[11px] mt-0.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>{t('carNotAssigned')}</p>
+                                            )}
+                                        </div>
+                                        {/* Status badge */}
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${theme === 'dark' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
+                                            {t('legendDayOff')}
+                                        </span>
                                     </div>
-                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.name.split(' ')[0]}</span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

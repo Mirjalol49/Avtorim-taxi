@@ -41,6 +41,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
     const {
         filters, setFilters,
         analyticsYear, setAnalyticsYear,
+        availableYears,
         monthlyAnalyticsData,
         yearlyAnalyticsTotals
     } = useFinanceStats(allTransactions);
@@ -192,8 +193,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                         selectedYear={analyticsYear}
                         onYearChange={setAnalyticsYear}
                         theme={theme}
-                        startYear={new Date().getFullYear() - 5}
-                        endYear={new Date().getFullYear()}
+                        availableYears={availableYears}
                     />
                 </div>
                 <div className="flex-1 -mx-2 sm:mx-0">
