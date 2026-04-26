@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon, NotesIcon
+  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon, NotesIcon, FolderOpenIcon
 } from './components/Icons';
 
 import FinancialModal from './components/FinancialModal';
@@ -33,6 +33,7 @@ import Skeleton from './components/Skeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
 import DriversPage from './src/features/drivers/DriversPage';
 import NotesPage from './src/features/notes/NotesPage';
+import { DocumentsPage } from './src/features/documents/DocumentsPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
@@ -437,7 +438,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/documents', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -487,6 +488,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/notes', t.notes, NotesIcon)}
+          {renderSidebarItem('/documents', t.documents || 'Hujjatlar', FolderOpenIcon)}
 
           {/* Super Admin — only visible to the super admin account */}
           {(adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && (
@@ -707,6 +709,7 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/monthly-plan' && t.monthlyPlan}
                 {location.pathname === '/transactions' && t.transactions}
                 {location.pathname === '/notes' && t.notes}
+                {location.pathname === '/documents' && (t.documents || 'Hujjatlar')}
               </h2>
               <p className={`text-[13px] mt-0.5 hidden sm:block ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
                 }`}>
@@ -717,6 +720,7 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/monthly-plan' && t.monthlyPlanDesc}
                 {location.pathname === '/transactions' && t.descTransactions}
                 {location.pathname === '/notes' && t.descNotes}
+                {location.pathname === '/documents' && 'Fayllar va hujjatlarni saqlash'}
               </p>
             </div>
           </div>
@@ -840,6 +844,17 @@ const AppContent: React.FC = () => {
                 fleetId={userRole === 'viewer'
                   ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
                   : adminUser?.id}
+              />
+            } />
+
+            {/* DOCUMENTS */}
+            <Route path="/documents" element={
+              <DocumentsPage
+                theme={theme}
+                fleetId={userRole === 'viewer'
+                  ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+                  : (adminUser?.id ?? '')}
+                userName={adminUser?.username ?? 'Admin'}
               />
             } />
           </Routes >
