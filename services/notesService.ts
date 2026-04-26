@@ -16,18 +16,20 @@ const toNote = (r: any): Note => ({
 export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => void, fleetId?: string) => {
     if (!fleetId) return () => {};
 
-    const fetchNotes = () =>
-        supabase
-            .from('notes')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .order('is_pinned', { ascending: false })
-            .order('updated_ms', { ascending: false })
-            .then(({ data, error }) => {
-                if (error) { callback([], true); return; }
-                callback((data ?? []).map(toNote));
-            })
-            .catch(() => callback([], true));
+    const fetchNotes = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('notes')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .order('is_pinned', { ascending: false })
+                .order('updated_ms', { ascending: false });
+            if (error) { callback([], true); return; }
+            callback((data ?? []).map(toNote));
+        } catch {
+            callback([], true);
+        }
+    };
 
     const channel = supabase
         .channel(`notes_${fleetId}`)

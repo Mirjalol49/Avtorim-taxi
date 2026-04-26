@@ -182,15 +182,21 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
 
     const handleDeleteConfirmed = async () => {
         if (!deleteConfirm) return;
-        await deleteDocument(deleteConfirm);
+        const docToDelete = deleteConfirm;
         setDeleteConfirm(null);
-        if (previewDoc?.id === deleteConfirm.id) setPreviewDoc(null);
+        if (previewDoc?.id === docToDelete.id) setPreviewDoc(null);
+        // Optimistic remove from local state immediately
+        setDocs(prev => prev.filter(d => d.id !== docToDelete.id));
+        await deleteDocument(docToDelete);
+        // Force refetch to confirm server state
+        await refetchRef.current();
     };
 
     const handleEditSave = async () => {
         if (!editDoc) return;
         await updateDocumentMeta(editDoc.id, editName, editDesc);
         setEditDoc(null);
+        await refetchRef.current();
     };
 
     const copyUrl = (url: string) => {
@@ -549,32 +555,40 @@ interface LightboxProps {
 
 function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, onCopy }: LightboxProps) {
     const cat = getCategory(doc.file_type);
+    const [imgLoaded, setImgLoaded] = useState(false);
 
-    // Close on Escape
     useEffect(() => {
         const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            window.removeEventListener('keydown', handler);
+            document.body.style.overflow = '';
+        };
     }, [onClose]);
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }}>
-            {/* Backdrop click */}
-            <div className="absolute inset-0" onClick={onClose} />
+        <div
+            className="fixed inset-0 z-50 flex flex-col"
+            style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.18s ease' }}
+        >
+            <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
-            {/* Header bar */}
-            <div className="relative z-10 flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)' }}>
+            {/* ── Top bar ── */}
+            <div className="relative z-10 flex items-center gap-3 px-5 py-3 flex-shrink-0 border-b border-white/[0.08]"
+                style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(20px)' }}>
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white text-[15px] truncate">{doc.name}</p>
-                    <p className="text-[11px] text-white/50 mt-0.5">{doc.original_name} · {formatBytes(doc.file_size)}</p>
+                    <p className="font-semibold text-white text-[15px] truncate leading-tight">{doc.name}</p>
+                    <p className="text-[11px] text-white/40 mt-0.5 truncate">{doc.original_name} · {formatBytes(doc.file_size)}</p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                         onClick={onCopy}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors text-white/70 hover:text-white hover:bg-white/[0.10]"
+                        title="URL nusxalash"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all text-white/60 hover:text-white hover:bg-white/[0.10]"
                     >
-                        {copied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-400" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                        {copied ? 'Nusxalandi' : 'URL'}
+                        {copied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{copied ? 'Nusxalandi' : 'URL'}</span>
                     </button>
                     <a
                         href={doc.file_url}
@@ -582,70 +596,91 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
                         target="_blank"
                         rel="noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white/70 hover:text-white hover:bg-white/[0.10] transition-colors"
+                        title="Yuklab olish"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
                     >
-                        <DownloadIcon className="w-3.5 h-3.5" />
-                        Yuklab olish
+                        <DownloadIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Yuklab olish</span>
                     </a>
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/[0.10] transition-colors"
+                        title="Yopish (Esc)"
+                        className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.10] transition-all ml-1"
                     >
                         <XIcon className="w-5 h-5" />
                     </button>
                 </div>
             </div>
 
-            {/* Content area */}
-            <div className="relative z-10 flex-1 flex items-center justify-center overflow-hidden p-4" onClick={onClose}>
-                {cat === 'image' ? (
+            {/* ── Content ── */}
+            {cat === 'image' ? (
+                <div
+                    className="flex-1 flex items-center justify-center overflow-auto p-6"
+                    onClick={onClose}
+                >
+                    {!imgLoaded && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        </div>
+                    )}
                     <img
                         src={doc.file_url}
                         alt={doc.name}
+                        onLoad={() => setImgLoaded(true)}
                         onClick={e => e.stopPropagation()}
-                        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
-                        style={{ maxHeight: 'calc(100vh - 120px)' }}
+                        className="max-w-full max-h-full object-contain select-none"
+                        style={{
+                            maxHeight: 'calc(100vh - 130px)',
+                            borderRadius: 12,
+                            boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+                            opacity: imgLoaded ? 1 : 0,
+                            transition: 'opacity 0.25s ease',
+                            animation: imgLoaded ? 'slideUp 0.25s ease' : 'none',
+                        }}
                     />
-                ) : cat === 'pdf' ? (
+                </div>
+            ) : cat === 'pdf' ? (
+                <div className="flex-1 flex flex-col overflow-hidden p-4">
+                    <iframe
+                        src={doc.file_url}
+                        title={doc.name}
+                        className="flex-1 w-full rounded-xl border-0"
+                        style={{ background: '#fff' }}
+                    />
+                </div>
+            ) : (
+                <div className="flex-1 flex items-center justify-center">
                     <div
-                        className="w-full flex flex-col rounded-xl overflow-hidden shadow-2xl"
-                        style={{ maxWidth: 900, height: 'calc(100vh - 120px)' }}
+                        className="flex flex-col items-center gap-5 p-10 rounded-2xl border border-white/[0.10]"
+                        style={{ background: 'rgba(255,255,255,0.05)', animation: 'slideUp 0.2s ease' }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <iframe
-                            src={doc.file_url}
-                            title={doc.name}
-                            className="w-full flex-1 border-0"
-                        />
-                    </div>
-                ) : (
-                    <div
-                        className="flex flex-col items-center gap-5 p-10 rounded-2xl"
-                        style={{ background: isDark ? 'hsl(222,44%,6%)' : '#ffffff' }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <FileIcon className="w-16 h-16 text-white/20" />
+                        <div className="w-20 h-20 rounded-2xl bg-white/[0.06] flex items-center justify-center">
+                            <FileIcon className="w-10 h-10 text-white/30" />
+                        </div>
                         <div className="text-center">
-                            <p className="text-white font-semibold mb-1">{doc.name}</p>
+                            <p className="text-white font-semibold text-base mb-1">{doc.name}</p>
                             <p className="text-white/40 text-sm">{formatBytes(doc.file_size)}</p>
+                            {doc.description && <p className="text-white/50 text-sm mt-2 max-w-xs">{doc.description}</p>}
                         </div>
                         <a
                             href={doc.file_url}
                             download={doc.original_name}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0f766e] text-white font-semibold hover:bg-[#0a5c56] transition-colors"
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0f766e] hover:bg-[#0a5c56] text-white font-semibold transition-colors"
                         >
                             <DownloadIcon className="w-4 h-4" /> Yuklab olish
                         </a>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
-            {/* Description */}
-            {doc.description && (
-                <div className="relative z-10 flex-shrink-0 px-6 pb-4 text-center">
-                    <p className="text-white/60 text-[13px]">{doc.description}</p>
+            {/* Description (image only) */}
+            {cat === 'image' && doc.description && (
+                <div className="relative z-10 flex-shrink-0 px-6 pb-4 text-center border-t border-white/[0.06] pt-3"
+                    style={{ background: 'rgba(0,0,0,0.4)' }}>
+                    <p className="text-white/50 text-[13px]">{doc.description}</p>
                 </div>
             )}
         </div>
