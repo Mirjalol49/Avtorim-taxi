@@ -89,8 +89,10 @@ const ViewerModal: React.FC<ViewerModalProps> = ({
 
     return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className={`w-full max-w-md rounded-2xl shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${theme === 'dark' ? 'bg-surface border border-white/[0.08]' : 'bg-white'
-                }`}>
+            <div
+                className={`w-full max-w-md rounded-2xl shadow-2xl transform transition-all flex flex-col max-h-[90vh] ${theme === 'dark' ? 'border border-white/[0.08]' : 'bg-white'}`}
+                style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+            >
                 {/* Header */}
                 <div className={`flex items-center justify-between p-6 border-b shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100'
                     }`}>

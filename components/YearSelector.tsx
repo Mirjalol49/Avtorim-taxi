@@ -80,14 +80,14 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                         absolute top-full mt-2 right-0
                         w-[320px] max-h-96 overflow-hidden
                         rounded-2xl border-2 shadow-2xl
-                        backdrop-blur-md
                         ${theme === 'dark'
-                            ? 'bg-surface/98 border-white/[0.08]'
-                            : 'bg-white/98 border-gray-300'
+                            ? 'border-white/[0.08]'
+                            : 'bg-white border-gray-300'
                         }
                         animate-dropdown-in
                         z-50
                     `}
+                    style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
                 >
                     <div className="max-h-96 overflow-y-auto custom-scrollbar">
                         <div className="p-3 grid grid-cols-3 gap-2">

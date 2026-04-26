@@ -240,16 +240,22 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       <form
         onSubmit={handleSubmit}
         className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[92vh] rounded-[2rem] shadow-2xl overflow-hidden border ${
-          isDark ? 'bg-surface border-white/[0.06]' : 'bg-white border-gray-200'
+          isDark ? 'border-white/[0.06]' : 'bg-white border-gray-200'
         }`}
-        style={{ animation: 'modalPop 0.2s ease-out' }}
+        style={{ animation: 'modalPop 0.2s ease-out', ...(isDark ? { background: 'hsl(222, 44%, 6%)' } : {}) }}
       >
 
         {/* ══ LEFT PANEL ══════════════════════════════════════════════════════ */}
-        <div className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-white'}`}>
+        <div
+          className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-white/[0.06]' : 'border-gray-100 bg-white'}`}
+          style={isDark ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+        >
 
           {/* Header */}
-          <div className={`sticky top-0 z-10 px-7 py-5 border-b flex items-center justify-between ${isDark ? 'border-white/[0.06] bg-surface/95 backdrop-blur-md' : 'border-gray-100 bg-white/95 backdrop-blur-md'}`}>
+          <div
+            className={`sticky top-0 z-10 px-7 py-5 border-b flex items-center justify-between ${isDark ? 'border-white/[0.06] backdrop-blur-md' : 'border-gray-100 bg-white/95 backdrop-blur-md'}`}
+            style={isDark ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+          >
             <div className="flex items-center gap-3">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
                 {type === TransactionType.INCOME ? '💰' : type === TransactionType.DAY_OFF ? '🏖' : '💸'}

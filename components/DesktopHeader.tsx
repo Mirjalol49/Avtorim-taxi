@@ -177,9 +177,10 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           {isLangMenuOpen && (
             <div
               className={`absolute top-full right-0 mt-2 w-40 rounded-xl overflow-hidden z-50 border transition-all duration-200 ${theme === 'dark'
-                ? 'bg-surface-2 border-white/[0.10] shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
+                ? 'border-white/[0.10] shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
                 : 'bg-white border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.12)]'
                 }`}
+              style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}
             >
               {(['uz', 'ru', 'en'] as const).map((lang) => (
                 <button

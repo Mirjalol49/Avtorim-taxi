@@ -155,9 +155,9 @@ const AdminModal: React.FC<AdminModalProps> = ({
     >
       <div
         className={`w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
-          isDark ? 'bg-surface border border-white/[0.06]' : 'bg-white border border-gray-200/80'
+          isDark ? 'border border-white/[0.06]' : 'bg-white border border-gray-200/80'
         }`}
-        style={{ animation: 'modalPop 0.2s ease-out' }}
+        style={{ animation: 'modalPop 0.2s ease-out', ...(isDark ? { background: 'hsl(222, 44%, 6%)' } : {}) }}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${
