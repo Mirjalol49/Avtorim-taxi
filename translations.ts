@@ -341,7 +341,14 @@ export const TRANSLATIONS = {
     dayOffLimitReached: "Bu oy limiti tugadi",
     documents: "Hujjatlar",
     used: "ishlatildi",
-    planDayOff: "Reja / Dam olish"
+    planDayOff: "Reja / Dam olish",
+    transactionDeleted: "Tranzaksiya o'chirildi",
+    transactionDeleteFailed: "O'chirishda xatolik yuz berdi",
+    transactionUpdated: "Tranzaksiya yangilandi",
+    transactionUpdateFailed: "Yangilashda xatolik yuz berdi",
+    bulkDeleteSuccess: "{n} ta tranzaksiya o'chirildi",
+    bulkDeleteFailed: "Ommaviy o'chirishda xatolik",
+    deleteConfirmBulkTx: "{n} ta tranzaksiyani o'chirmoqchimisiz?\nJami summa: {amount} UZS\n\nBu amalni ortga qaytarib bo'lmaydi."
   },
   ru: {
     dashboard: "Приборная панель",
@@ -684,7 +691,14 @@ export const TRANSLATIONS = {
     dayOffLimitReached: "Лимит этого месяца исчерпан",
     documents: "Документы",
     used: "использовано",
-    planDayOff: "План / Выходной"
+    planDayOff: "План / Выходной",
+    transactionDeleted: "Транзакция удалена",
+    transactionDeleteFailed: "Не удалось удалить транзакцию",
+    transactionUpdated: "Транзакция обновлена",
+    transactionUpdateFailed: "Не удалось обновить транзакцию",
+    bulkDeleteSuccess: "{n} транзакций удалено",
+    bulkDeleteFailed: "Ошибка массового удаления",
+    deleteConfirmBulkTx: "Удалить {n} транзакций?\nОбщая сумма: {amount} UZS\n\nЭто действие нельзя отменить."
   },
   en: {
     dashboard: "Dashboard",
@@ -1023,6 +1037,13 @@ export const TRANSLATIONS = {
     dayOffLimitReached: "Monthly limit reached",
     documents: "Documents",
     used: "used",
-    planDayOff: "Plan / Day Off"
+    planDayOff: "Plan / Day Off",
+    transactionDeleted: "Transaction deleted",
+    transactionDeleteFailed: "Failed to delete transaction",
+    transactionUpdated: "Transaction updated",
+    transactionUpdateFailed: "Failed to update transaction",
+    bulkDeleteSuccess: "{n} transactions deleted",
+    bulkDeleteFailed: "Bulk delete failed",
+    deleteConfirmBulkTx: "Delete {n} transaction(s)?\nTotal amount: {amount} UZS\n\nThis action cannot be undone."
   }
 };

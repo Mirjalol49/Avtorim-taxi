@@ -431,7 +431,6 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                 title={statusConfirm.newStatus ? "Activate User" : "Deactivate User"}
                 message={`Are you sure you want to ${statusConfirm.newStatus ? 'activate' : 'deactivate'} user "${statusConfirm.user?.username}"?${!statusConfirm.newStatus ? ' They will no longer be able to log in.' : ''}`}
                 isDanger={!statusConfirm.newStatus}
-                lang="uz"
                 theme="dark"
             />
         </div>

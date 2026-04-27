@@ -16,6 +16,7 @@ import {
     DownloadIcon,
 } from '../../../components/Icons';
 import { useToast } from '../../../components/ToastNotification';
+import { useConfirm } from '../../../components/ConfirmContext';
 import FinancialModal from '../../../components/FinancialModal';
 import { exportTransactionsToExcel } from '../../../utils/exportToExcel';
 
@@ -61,6 +62,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const { t, i18n } = useTranslation();
     const language = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz') as Language;
     const { addToast } = useToast();
+    const confirm = useConfirm();
 
     // useFinanceStats now manages language internally
     const {
@@ -85,17 +87,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         const tx = allTransactions.find(t => t.id === id);
         if (!tx) return;
 
-        if (window.confirm(`${t('delete')} transaction? (${formatNumberSmart(tx.amount, false, language)} UZS)`)) {
-            try {
-                await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, adminUser?.id);
-                addToast('success', 'Transaction deleted');
-                if (selectedTransactions.includes(id)) {
-                    setSelectedTransactions(prev => prev.filter(tid => tid !== id));
-                }
-            } catch (error) {
-                console.error('Failed to delete transaction:', error);
-                addToast('error', 'Failed to delete transaction');
+        const ok = await confirm({
+            title: t('confirmDeleteTitle'),
+            message: t('deleteConfirmTx'),
+            isDanger: true,
+        });
+        if (!ok) return;
+
+        try {
+            await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, adminUser?.id);
+            addToast('success', t('transactionDeleted'));
+            if (selectedTransactions.includes(id)) {
+                setSelectedTransactions(prev => prev.filter(tid => tid !== id));
             }
+        } catch (error) {
+            console.error('Failed to delete transaction:', error);
+            addToast('error', t('transactionDeleteFailed'));
         }
     };
 
@@ -103,11 +110,11 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         if (!id) return;
         try {
             await firestoreService.updateTransaction(id, data);
-            addToast('success', 'Transaction updated successfully');
+            addToast('success', t('transactionUpdated'));
             setEditingTransaction(null);
         } catch (error) {
             console.error('Failed to update transaction:', error);
-            addToast('error', 'Failed to update transaction');
+            addToast('error', t('transactionUpdateFailed'));
         }
     };
 
@@ -118,23 +125,27 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             .filter(t => selectedTransactions.includes(t.id))
             .reduce((sum, t) => sum + t.amount, 0);
 
-        if (window.confirm(`Are you sure you want to delete ${selectedTransactions.length} transaction(s)?\nTotal Amount: ${formatNumberSmart(totalAmount, false, language)} UZS`)) {
-            try {
-                await firestoreService.deleteTransactionsBatch(
-                    selectedTransactions,
-                    {
-                        adminName: adminUser?.username || 'Admin',
-                        count: selectedTransactions.length,
-                        totalAmount: totalAmount
-                    },
-                    adminUser?.id
-                );
-                addToast('success', `${selectedTransactions.length} transactions deleted`);
-                setSelectedTransactions([]);
-            } catch (error) {
-                console.error('Failed to delete transactions:', error);
-                addToast('error', 'Failed to delete transactions');
-            }
+        const n = selectedTransactions.length;
+        const ok = await confirm({
+            title: t('confirmDeleteTitle'),
+            message: t('deleteConfirmBulkTx')
+                .replace('{n}', String(n))
+                .replace('{amount}', formatNumberSmart(totalAmount, false, language)),
+            isDanger: true,
+        });
+        if (!ok) return;
+
+        try {
+            await firestoreService.deleteTransactionsBatch(
+                selectedTransactions,
+                { adminName: adminUser?.username || 'Admin', count: n, totalAmount },
+                adminUser?.id
+            );
+            addToast('success', t('bulkDeleteSuccess').replace('{n}', String(n)));
+            setSelectedTransactions([]);
+        } catch (error) {
+            console.error('Failed to delete transactions:', error);
+            addToast('error', t('bulkDeleteFailed'));
         }
     };
 
