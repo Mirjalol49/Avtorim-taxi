@@ -11,6 +11,8 @@ export default {
     theme: {
         extend: {
             colors: {
+                surface: 'var(--color-surface)',
+                'surface-2': 'var(--color-surface-2)',
                 // Override default gray with Tailwind slate — cool blue-gray palette
                 // This affects every bg-gray-*, text-gray-*, border-gray-* across the app
                 gray: {

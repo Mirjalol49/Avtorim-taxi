@@ -12,21 +12,20 @@ const toMs = (val: string | number | null | undefined): number => {
 // ==================== ADMIN USERS ====================
 
 export const subscribeToAdminUsers = (callback: (users: any[]) => void) => {
-    supabase
-        .from('admin_users')
-        .select('*')
-        .then(({ data }) => {
+    const fetch = () =>
+        supabase.from('admin_users').select('*').then(({ data }) => {
             if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_ms) })));
         });
 
+    fetch();
+
     const channel = supabase
         .channel('admin_users_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
-            supabase.from('admin_users').select('*').then(({ data }) => {
-                if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_ms) })));
-            });
-        })
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, fetch)
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetch();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetch();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };
@@ -396,20 +395,19 @@ export const deleteTransactionsBatch = async (ids: string[], auditInfo: { adminN
 // ==================== ADMIN PROFILE ====================
 
 export const subscribeToAdminProfile = (callback: (admin: any) => void) => {
-    supabase
-        .from('admin_profile')
-        .select('*')
-        .eq('id', 'profile')
-        .single()
-        .then(({ data }) => { if (data) callback(data); });
+    const fetch = () =>
+        supabase.from('admin_profile').select('*').eq('id', 'profile').single()
+            .then(({ data }) => { if (data) callback(data); });
+
+    fetch();
 
     const channel = supabase
         .channel('admin_profile_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_profile' }, () => {
-            supabase.from('admin_profile').select('*').eq('id', 'profile').single()
-                .then(({ data }) => { if (data) callback(data); });
-        })
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_profile' }, fetch)
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetch();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetch();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };
@@ -442,17 +440,20 @@ export const updateAdminProfile = async (admin: any) => {
 // ==================== VIEWERS ====================
 
 export const subscribeToViewers = (callback: (viewers: Viewer[]) => void) => {
-    supabase
-        .from('viewers')
-        .select('*')
-        .then(({ data }) => { if (data) callback(data as Viewer[]); });
+    const fetch = () =>
+        supabase.from('viewers').select('*').then(({ data }) => {
+            if (data) callback(data as Viewer[]);
+        });
+
+    fetch();
 
     const channel = supabase
         .channel('viewers_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'viewers' }, () => {
-            supabase.from('viewers').select('*').then(({ data }) => { if (data) callback(data as Viewer[]); });
-        })
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'viewers' }, fetch)
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') fetch();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetch();
+        });
 
     return () => { supabase.removeChannel(channel); };
 };

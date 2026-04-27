@@ -127,7 +127,7 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
                     <div>
                         <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Telefon raqam</label>
                         <div className="flex rounded-xl border border-white/[0.08] overflow-hidden focus-within:border-teal-500 transition-colors">
-                            <span className="bg-surface-2 px-3 flex items-center text-gray-400 text-sm font-mono border-r border-white/[0.08] select-none">+998</span>
+                            <span className="px-3 flex items-center text-gray-400 text-sm font-mono border-r border-white/[0.08] select-none" style={{ background: 'hsl(229,43%,10%)' }}>+998</span>
                             <input
                                 type="tel"
                                 value={phoneDigits}
@@ -150,7 +150,8 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
                             />
                             <button
                                 onClick={() => setPassword(generatePassword())}
-                                className="px-3 py-3 rounded-xl bg-surface-2 border border-white/[0.08] text-gray-400 hover:text-teal-400 hover:border-teal-500/50 transition-colors text-xs"
+                                className="px-3 py-3 rounded-xl border border-white/[0.08] text-gray-400 hover:text-teal-400 hover:border-teal-500/50 transition-colors text-xs"
+                                style={{ background: 'hsl(229, 43%, 10%)' }}
                                 title="Yangi parol"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -253,7 +254,8 @@ const AccountCard: React.FC<{
                     onClick={handleToggle}
                     disabled={toggling || isSelf}
                     title={isSelf ? 'O\'z hisobingizni o\'chirib bo\'lmaydi' : (account.active ? 'Bloklash' : 'Faollashtirish')}
-                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${account.active ? 'bg-teal-500' : 'bg-surface-2'} ${isSelf ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${account.active ? 'bg-teal-500' : ''} ${isSelf ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                    style={account.active ? undefined : { background: 'hsl(229, 43%, 10%)' }}
                 >
                     <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${account.active ? 'left-5' : 'left-0.5'}`} />
                 </button>
@@ -261,15 +263,15 @@ const AccountCard: React.FC<{
 
             {/* Stats */}
             <div className="flex gap-3">
-                <div className="flex-1 bg-surface-2 rounded-xl px-3 py-2 text-center">
+                <div className="flex-1 rounded-xl px-3 py-2 text-center" style={{ background: 'hsl(229, 43%, 10%)' }}>
                     <p className="text-teal-400 font-bold text-lg leading-none">{account.driverCount}</p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Haydovchi</p>
                 </div>
-                <div className="flex-1 bg-surface-2 rounded-xl px-3 py-2 text-center">
+                <div className="flex-1 rounded-xl px-3 py-2 text-center" style={{ background: 'hsl(229, 43%, 10%)' }}>
                     <p className="text-blue-400 font-bold text-lg leading-none">{account.transactionCount}</p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Tranzaksiya</p>
                 </div>
-                <div className="flex-1 bg-surface-2 rounded-xl px-3 py-2 text-center">
+                <div className="flex-1 rounded-xl px-3 py-2 text-center" style={{ background: 'hsl(229, 43%, 10%)' }}>
                     <p className="text-gray-400 text-[10px] leading-none mt-1">
                         {new Date(account.created_ms).toLocaleDateString('uz-UZ', { day:'2-digit', month:'2-digit', year:'2-digit' })}
                     </p>
@@ -291,12 +293,13 @@ const AccountCard: React.FC<{
                         value={newPass}
                         onChange={e => setNewPass(e.target.value)}
                         placeholder={generatePassword()}
-                        className="flex-1 bg-surface-2 border border-white/[0.08] rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-teal-500"
+                        className="flex-1 border border-white/[0.08] rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-teal-500"
+                        style={{ background: 'hsl(229, 43%, 10%)' }}
                     />
                     <button onClick={handleReset} disabled={resetting} className="px-3 py-2 rounded-lg bg-teal-500 text-white text-xs font-bold hover:bg-teal-600 transition-colors">
                         {resetting ? '...' : 'OK'}
                     </button>
-                    <button onClick={() => setShowReset(false)} className="px-3 py-2 rounded-lg bg-surface-2 text-gray-400 text-xs hover:bg-white/[0.06] transition-colors">✕</button>
+                    <button onClick={() => setShowReset(false)} className="px-3 py-2 rounded-lg text-gray-400 text-xs hover:bg-white/[0.06] transition-colors" style={{ background: 'hsl(229, 43%, 10%)' }}>✕</button>
                 </div>
             )}
 

@@ -151,7 +151,8 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     
                     <button 
                         onClick={() => setViewingDoc(null)} 
-                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-surface-2 text-white hover:bg-white/[0.06] pointer-events-auto`}>
+                        className="absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors text-white pointer-events-auto"
+                        style={{ background: 'rgba(255,255,255,0.12)' }}>
                         <XIcon className="w-6 h-6" />
                     </button>
                 </div>
