@@ -129,8 +129,8 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!carsFleetId) return;
-    const unsub = subscribeToCars(setCars, carsFleetId);
-    return unsub;
+    const { unsubscribe } = subscribeToCars(setCars, carsFleetId);
+    return unsubscribe;
   }, [carsFleetId]);
 
 

@@ -132,7 +132,7 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
 // ==================== DRIVERS ====================
 
 export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetId?: string) => {
-    if (!fleetId) return () => {};
+    if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
     const fetchDrivers = () =>
         supabase
@@ -164,14 +164,23 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
                 } as Driver)));
             });
 
+    // Fire immediately — data shows before WebSocket channel connects
+    fetchDrivers();
+
     const channel = supabase
         .channel(`drivers_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, fetchDrivers)
         .subscribe((status) => {
+            // Fetch again once subscribed — catches any changes during channel setup
             if (status === 'SUBSCRIBED') fetchDrivers();
+            // On error/timeout, do a best-effort fetch so data isn't stale
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchDrivers();
         });
 
-    return () => { supabase.removeChannel(channel); };
+    return {
+        unsubscribe: () => { supabase.removeChannel(channel); },
+        refetch: fetchDrivers,
+    };
 };
 
 export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) => {
@@ -255,7 +264,7 @@ export const deleteDriver = async (id: string, auditInfo?: { adminName: string; 
 // ==================== TRANSACTIONS ====================
 
 export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void, fleetId?: string) => {
-    if (!fleetId) return () => {};
+    if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
     const fetchTx = () =>
         supabase
@@ -286,14 +295,21 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 } as Transaction)));
             });
 
+    // Fire immediately — data shows before WebSocket channel connects
+    fetchTx();
+
     const channel = supabase
         .channel(`transactions_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, fetchTx)
         .subscribe((status) => {
             if (status === 'SUBSCRIBED') fetchTx();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchTx();
         });
 
-    return () => { supabase.removeChannel(channel); };
+    return {
+        unsubscribe: () => { supabase.removeChannel(channel); },
+        refetch: fetchTx,
+    };
 };
 
 export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleetId?: string) => {

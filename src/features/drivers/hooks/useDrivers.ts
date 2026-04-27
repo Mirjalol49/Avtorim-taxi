@@ -6,7 +6,7 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
-    const initializedRef = useRef(false);
+    const refetchRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
         if (!fleetId) {
@@ -14,17 +14,13 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
             return;
         }
 
-        if (!initializedRef.current) {
-            setLoading(true);
-        }
+        setLoading(true);
 
-        // Bail out after 12s if subscription never fires (network / RLS issue)
-        const timeout = setTimeout(() => setLoading(false), 12000);
+        const timeout = setTimeout(() => setLoading(false), 5000);
 
-        const unsubscribe = subscribeToDrivers(
+        const { unsubscribe, refetch } = subscribeToDrivers(
             (data) => {
                 clearTimeout(timeout);
-                initializedRef.current = true;
                 setDrivers(data);
                 setLoading(false);
                 setError(null);
@@ -32,14 +28,26 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
             fleetId,
         );
 
+        refetchRef.current = refetch;
+
         return () => {
             clearTimeout(timeout);
+            refetchRef.current = null;
             unsubscribe();
         };
-    // Intentionally exclude _refreshTrigger: subscription handles live updates,
-    // recreating the channel on refresh causes a gap in coverage.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fleetId]);
+
+    // Refetch when the app comes back to the foreground (PWA resume, tab switch)
+    useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible' && refetchRef.current) {
+                refetchRef.current();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []);
 
     return { drivers, loading, error };
 };

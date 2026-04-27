@@ -4,7 +4,7 @@ import { Car } from '../src/core/types';
 const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now());
 
 export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: string) => {
-    if (!fleetId) return () => {};
+    if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
     const fetchCars = () =>
         supabase
@@ -27,14 +27,21 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 } as Car)));
             });
 
+    // Fire immediately — data shows before WebSocket channel connects
+    fetchCars();
+
     const channel = supabase
         .channel(`cars_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cars', filter: `fleet_id=eq.${fleetId}` }, fetchCars)
         .subscribe((status) => {
             if (status === 'SUBSCRIBED') fetchCars();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchCars();
         });
 
-    return () => { supabase.removeChannel(channel); };
+    return {
+        unsubscribe: () => { supabase.removeChannel(channel); },
+        refetch: fetchCars,
+    };
 };
 
 export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {

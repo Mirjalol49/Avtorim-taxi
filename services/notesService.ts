@@ -14,7 +14,7 @@ const toNote = (r: any): Note => ({
 });
 
 export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => void, fleetId?: string) => {
-    if (!fleetId) return () => {};
+    if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
     const fetchNotes = async () => {
         try {
@@ -31,14 +31,21 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
         }
     };
 
+    // Fire immediately — data shows before WebSocket channel connects
+    fetchNotes();
+
     const channel = supabase
         .channel(`notes_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, () => fetchNotes())
         .subscribe((status) => {
             if (status === 'SUBSCRIBED') fetchNotes();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchNotes();
         });
 
-    return () => { supabase.removeChannel(channel); };
+    return {
+        unsubscribe: () => { supabase.removeChannel(channel); },
+        refetch: fetchNotes,
+    };
 };
 
 export const addNote = async (note: Omit<Note, 'id'>) => {
