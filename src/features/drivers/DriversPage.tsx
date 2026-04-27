@@ -8,6 +8,7 @@ import { SearchIcon, PlusIcon, GridIcon, ListIcon, DownloadIcon } from '../../..
 import { exportDriversToExcel } from '../../../utils/exportToExcel';
 import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
+import { DriverDetailsSheet } from './components/DriverDetailsSheet';
 import { useAuth } from '../auth/hooks/useAuth';
 import { calcDriverDebt } from './utils/debtUtils';
 
@@ -37,6 +38,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
     const { adminUser } = useAuth();
     const currentUserId = adminUser?.id || 'unknown';
     const [carFilter, setCarFilter] = useState<CarFilter>('all');
+    const [sheetDriver, setSheetDriver] = useState<Driver | null>(null);
 
     const fleetStats = useMemo(() => {
         let totalDebt = 0, totalIncome = 0, todayIncome = 0;
@@ -198,6 +200,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                     onEdit={onEditDriver}
                                     onDelete={onDeleteDriver}
                                     onUpdateStatus={onUpdateStatus}
+                                    onCardClick={setSheetDriver}
                                 />
                             ))}
                         </div>
@@ -287,6 +290,17 @@ const DriversPage: React.FC<DriversPageProps> = ({
                     <p className="text-sm mt-1">Try adjusting your search query</p>
                 </div>
             )}
+        {/* Driver details drawer */}
+        <DriverDetailsSheet
+            driver={sheetDriver}
+            car={sheetDriver ? (cars.find(c => c.assignedDriverId === sheetDriver.id) ?? null) : null}
+            theme={theme}
+            userRole={userRole}
+            isOpen={sheetDriver !== null}
+            onClose={() => setSheetDriver(null)}
+            onEdit={d => { setSheetDriver(null); onEditDriver(d); }}
+            onDelete={id => { setSheetDriver(null); onDeleteDriver(id); }}
+        />
         </div>
     );
 };
