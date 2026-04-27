@@ -180,7 +180,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                 ? 'border-white/[0.10] shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
                 : 'bg-white border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.12)]'
                 }`}
-              style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}
+              style={theme === 'dark' ? { background: '#222a3d' } : undefined}
             >
               {(['uz', 'ru', 'en'] as const).map((lang) => (
                 <button

@@ -235,11 +235,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
-        style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+        style={theme === 'dark' ? { background: '#171f33' } : undefined}
       >
         <div
           className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100 bg-gray-50/50'}`}
-          style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}
+          style={theme === 'dark' ? { background: '#222a3d' } : undefined}
         >
           <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {editingDriver ? t('editDriver') : t('addDriver')}
@@ -344,7 +344,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               {carPickerOpen && (
                 <div
                   className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
-                  style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+                  style={theme === 'dark' ? { background: '#171f33' } : undefined}
                 >
                   {/* Search input */}
                   <div className={`p-2 border-b ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100'}`}>

@@ -178,7 +178,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 <AlertTriangleIcon className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border-2 ${isDark ? 'border-[hsl(222,44%,6%)]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
                             )}
                         </div>
 
@@ -308,7 +308,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 }
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[hsl(222,44%,6%)]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
                             )}
                         </div>
 
@@ -547,7 +547,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 }`}
                 style={{
                     zIndex: 9999,
-                    background: isDark ? 'hsl(222, 44%, 6%)' : '#ffffff',
+                    background: isDark ? '#171f33' : '#faf8ff',
                 }}
             >
                 {/* Header */}

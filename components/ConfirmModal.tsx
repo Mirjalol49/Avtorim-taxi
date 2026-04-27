@@ -38,7 +38,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div
         className={`rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-300 border ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
-        style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+        style={theme === 'dark' ? { background: '#171f33' } : undefined}
       >
         <div className={`p-6 ${align === 'left' ? 'text-left' : 'text-center'}`}>
           {showIcon && (

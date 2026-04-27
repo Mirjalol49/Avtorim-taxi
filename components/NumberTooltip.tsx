@@ -28,7 +28,7 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({ value, label, children, t
                     className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap z-50 pointer-events-none animate-in fade-in duration-150 ${
                         theme === 'dark' ? 'text-white border border-white/[0.08]' : 'bg-white text-gray-900 border border-gray-200 shadow-lg'
                     }`}
-                    style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+                    style={theme === 'dark' ? { background: '#171f33' } : undefined}
                 >
                     {label && <div className="text-[10px] uppercase tracking-wide opacity-70 mb-0.5">{label}</div>}
                     <div className="font-bold font-mono">{formatNumberFull(value)} <span className="ml-1">UZS</span></div>

@@ -552,7 +552,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     >
                         {/* Modal Header */}
                         <div className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100 bg-gray-50'}`}
-                            style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}>
+                            style={theme === 'dark' ? { background: '#222a3d' } : undefined}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
                                     <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

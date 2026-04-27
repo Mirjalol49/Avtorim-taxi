@@ -771,7 +771,7 @@ function Modal({ children, isDark, onClose }: { children: React.ReactNode; isDar
             <div
                 className={`relative w-full max-w-md rounded-2xl shadow-2xl p-5 border`}
                 style={{
-                    background: isDark ? 'hsl(222, 44%, 6%)' : '#ffffff',
+                    background: isDark ? '#171f33' : '#ffffff',
                     borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#e5e7eb',
                 }}
             >

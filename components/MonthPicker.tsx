@@ -79,7 +79,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
                     {/* Month Grid */}
                     <div
                         className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
-                        style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+                        style={theme === 'dark' ? { background: '#171f33' } : undefined}
                     >
                         {/* Year Header */}
                         <div className="flex items-center justify-between mb-4">

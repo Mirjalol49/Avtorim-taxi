@@ -99,7 +99,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                 {isOpen && (
                     <div
                         className={`absolute z-50 w-full mt-2 rounded-lg shadow-xl border overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
-                        style={theme === 'dark' ? { background: 'hsl(222, 44%, 6%)' } : undefined}
+                        style={theme === 'dark' ? { background: '#171f33' } : undefined}
                     >
 
                         {/* Search Input */}
@@ -115,7 +115,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                         ? 'text-white placeholder-gray-500'
                                         : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:bg-gray-100'
                                         }`}
-                                    style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}
+                                    style={theme === 'dark' ? { background: '#222a3d' } : undefined}
                                     onClick={(e) => e.stopPropagation()}
                                 />
                             </div>
