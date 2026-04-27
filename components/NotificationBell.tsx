@@ -599,25 +599,30 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`relative flex items-center gap-1.5 px-1 pb-3 mr-5 text-[13px] font-medium transition-colors ${
+                                className={`relative flex items-center gap-2 px-1 pb-3 mr-5 text-[13px] font-medium transition-colors ${
                                     activeTab === tab.key
-                                        ? isDark ? 'text-white' : 'text-black'
+                                        ? isDark ? 'text-white' : 'text-gray-900'
                                         : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
                                 }`}
                             >
                                 {tab.label}
-                                {tab.total > 0 && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
-                                        tab.count > 0
-                                            ? 'bg-red-500 text-white'
-                                            : isDark ? 'bg-white/[0.10] text-gray-400' : 'bg-black/[0.07] text-gray-500'
-                                    }`}>
-                                        {tab.total > 99 ? '99+' : tab.total}
-                                    </span>
-                                )}
+                                {/* Badge: always show total, pulse red ring when unread */}
+                                <span className={`relative inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold tabular-nums transition-all duration-200 ${
+                                    tab.count > 0
+                                        ? 'bg-red-500 text-white shadow-[0_0_0_2px_rgba(239,68,68,0.25)]'
+                                        : tab.total > 0
+                                            ? isDark ? 'bg-white/[0.10] text-gray-400' : 'bg-black/[0.07] text-gray-500'
+                                            : isDark ? 'bg-white/[0.05] text-gray-600' : 'bg-black/[0.04] text-gray-400'
+                                }`}>
+                                    {tab.count > 0 ? (tab.count > 99 ? '99+' : tab.count) : (tab.total > 99 ? '99+' : tab.total)}
+                                    {/* Pulse ring on unread */}
+                                    {tab.count > 0 && (
+                                        <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
+                                    )}
+                                </span>
                                 {/* Active underline */}
                                 {activeTab === tab.key && (
-                                    <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} />
+                                    <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-white' : 'bg-gray-900'}`} />
                                 )}
                             </button>
                         ))}
