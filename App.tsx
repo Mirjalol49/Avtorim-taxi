@@ -54,7 +54,22 @@ import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, Notification } from './services/notificationService';
 import { playLockSound } from './services/soundService';
-import logo from './Images/logo_winter.png';
+const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
+    <svg viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
+        <text
+            x="50%"
+            y="36"
+            textAnchor="middle"
+            fontFamily="'SF Pro Rounded', 'Nunito', 'Varela Round', system-ui, sans-serif"
+            fontWeight="800"
+            fontSize="40"
+            letterSpacing="-1"
+            fill={theme === 'dark' ? '#6bd8cb' : 'hsl(176,79%,26%)'}
+        >
+            Taksapark
+        </text>
+    </svg>
+);
 
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 import SuperAdminPanel from './components/SuperAdminPanel';
@@ -498,7 +513,7 @@ const AppContent: React.FC = () => {
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
         </div>
         <div className="p-5 flex justify-center relative overflow-hidden">
-          <img src={logo} alt="Taksapark" className="h-12 w-auto object-contain" />
+          <TaksaparkLogo theme={theme} />
         </div>
         <nav className="flex-1 px-4 overflow-y-auto">
           <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 px-3 ${theme === 'dark' ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'
