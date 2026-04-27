@@ -32,12 +32,35 @@ const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math
 
 type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE';
 
-const STATUS_DOT: Record<DayStatus, string> = {
-    PAID:    'bg-emerald-500',
-    PARTIAL: 'bg-amber-400',
-    UNPAID:  'bg-red-500',
-    DAY_OFF: 'bg-blue-500',
-    FUTURE:  'bg-transparent',
+const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
+    if (status === 'PAID') return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-emerald-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M7.5 12.5l3 3 6-6" />
+        </svg>
+    );
+    if (status === 'UNPAID') return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-red-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+    );
+    if (status === 'PARTIAL') return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-amber-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2a10 10 0 0 1 0 20V2z" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="10" />
+        </svg>
+    );
+    if (status === 'DAY_OFF') return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-blue-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+            <line x1="9" y1="9" x2="9.01" y2="9" />
+            <line x1="15" y1="9" x2="15.01" y2="9" />
+        </svg>
+    );
+    return null;
 };
 
 export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick }) => {
@@ -247,14 +270,14 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
 
                     {/* Legend */}
                     <div className={`flex flex-wrap gap-x-5 gap-y-2 pb-4 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                        {[
-                            { dot: 'bg-emerald-500', label: t('legendPaid') },
-                            { dot: 'bg-amber-400',   label: t('legendPartial') },
-                            { dot: 'bg-red-500',     label: t('legendDebt') },
-                            { dot: 'bg-blue-500',    label: `🏝️ ${t('legendDayOff')}` },
-                        ].map(({ dot, label }) => (
-                            <div key={label} className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
+                        {([
+                            { status: 'PAID'    as DayStatus, label: t('legendPaid') },
+                            { status: 'PARTIAL' as DayStatus, label: t('legendPartial') },
+                            { status: 'UNPAID'  as DayStatus, label: t('legendDebt') },
+                            { status: 'DAY_OFF' as DayStatus, label: `🏝️ ${t('legendDayOff')}` },
+                        ]).map(({ status, label }) => (
+                            <div key={status} className="flex items-center gap-1.5">
+                                <StatusIcon status={status} />
                                 <span className={`text-[11px] font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{label}</span>
                             </div>
                         ))}
@@ -313,9 +336,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                     {d.day}
                                                 </span>
                                             )}
-                                            {/* Status dot */}
+                                            {/* Status icon */}
                                             {d.status !== 'FUTURE' && (
-                                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[d.status]}`} />
+                                                <StatusIcon status={d.status} />
                                             )}
                                         </div>
 

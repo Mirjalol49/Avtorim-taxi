@@ -36,4 +36,5 @@ export interface Transaction {
     reversedBy?: string;
     reversalReason?: string;
     originalTransactionId?: string;
+    category?: string;
 }

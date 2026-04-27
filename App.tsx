@@ -15,6 +15,7 @@ import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar }
 import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
+import LockScreen from './components/LockScreen';
 import ConfirmModal from './components/ConfirmModal';
 import NumberTooltip from './components/NumberTooltip';
 import DateFilter from './components/DateFilter';
@@ -39,6 +40,7 @@ import PdfViewerPage from './src/features/documents/PdfViewerPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
+import { PayrollPage } from './src/features/finance/PayrollPage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -53,7 +55,22 @@ import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, Notification } from './services/notificationService';
 import { playLockSound } from './services/soundService';
-import logo from './Images/logo_winter.png';
+const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
+    <svg viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
+        <text
+            x="50%"
+            y="36"
+            textAnchor="middle"
+            fontFamily="'SF Pro Rounded', 'Nunito', 'Varela Round', system-ui, sans-serif"
+            fontWeight="800"
+            fontSize="40"
+            letterSpacing="-1"
+            fill={theme === 'dark' ? '#6bd8cb' : 'hsl(176,79%,26%)'}
+        >
+            Taksapark
+        </text>
+    </svg>
+);
 
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 import SuperAdminPanel from './components/SuperAdminPanel';
@@ -145,6 +162,16 @@ const AppContent: React.FC = () => {
     adminUserName: adminUser?.username ?? 'Admin',
     enabled: isAuthenticated && userRole === 'admin',
   });
+
+  const [isLocked, setIsLocked] = useState(false);
+
+  const handleUnlock = async (password: string): Promise<boolean> => {
+    if (!adminUser?.phone) return false;
+    const { authService } = await import('./services/authService');
+    const result = await authService.authenticateAdminByPhone(adminUser.phone, password);
+    if (result.success) setIsLocked(false);
+    return result.success;
+  };
 
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
 
@@ -290,6 +317,27 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handlePaySalary = async (driver: Driver) => {
+    try {
+      const now = Date.now();
+      await firestoreService.addTransaction({
+        driverId: driver.id,
+        driverName: driver.name,
+        amount: driver.monthlySalary,
+        type: TransactionType.EXPENSE,
+        description: `Ish haqi: ${driver.name}`,
+        timestamp: now,
+        status: undefined,
+        category: 'SALARY',
+      } as any, adminUser?.id);
+      await firestoreService.updateDriver(driver.id, { lastSalaryPaidAt: now } as any, adminUser?.id);
+      triggerRefresh();
+      addToast('success', t.salaryPaid || "Ish haqi to'landi");
+    } catch {
+      addToast('error', t.paySalaryError || "Xatolik yuz berdi");
+    }
+  };
+
   const handleEditDriverClick = (driver: Driver) => {
     setEditingDriver(driver);
     setIsDriverModalOpen(true);
@@ -416,6 +464,14 @@ const AppContent: React.FC = () => {
 
   if (!isAuthenticated) return <AuthScreen onAuthenticated={handleLogin} theme={theme} />;
 
+  if (isAuthenticated && isLocked) return (
+    <LockScreen
+      adminName={adminUser?.username ?? 'Admin'}
+      adminPhone={adminUser?.phone ?? ''}
+      onUnlock={handleUnlock}
+    />
+  );
+
   // Block rendering until strict auth check completes for admins
   if (isAuthChecking) {
     return (
@@ -440,7 +496,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/payroll', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -479,7 +535,7 @@ const AppContent: React.FC = () => {
           <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
         </div>
         <div className="p-5 flex justify-center relative overflow-hidden">
-          <img src={logo} alt="Taksapark" className="h-12 w-auto object-contain" />
+          <TaksaparkLogo theme={theme} />
         </div>
         <nav className="flex-1 px-4 overflow-y-auto">
           <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 px-3 ${theme === 'dark' ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'
@@ -490,6 +546,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/monthly-plan', t.monthlyPlan, CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
+          {renderSidebarItem('/payroll', t.salaryManagement || 'Ish Haqi', WalletIcon)}
           {renderSidebarItem('/notes', t.notes, NotesIcon)}
           {renderSidebarItem('/documents', t.documents || 'Hujjatlar', FolderOpenIcon)}
 
@@ -621,7 +678,7 @@ const AppContent: React.FC = () => {
               )}
             </>
           )}
-          <button onClick={() => { playLockSound(); handleLogout(); }} className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all text-[13px] font-semibold ${theme === 'dark'
+          <button onClick={() => { playLockSound(); setIsLocked(true); }} className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all text-[13px] font-semibold ${theme === 'dark'
             ? 'bg-[rgba(255,59,48,0.12)] hover:bg-[rgba(255,59,48,0.18)] text-[#FF453A]'
             : 'bg-[rgba(255,59,48,0.08)] hover:bg-[rgba(255,59,48,0.14)] text-[#FF3B30]'
             }`}>
@@ -713,6 +770,7 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/transactions' && t.transactions}
                 {location.pathname === '/notes' && t.notes}
                 {location.pathname === '/documents' && (t.documents || 'Hujjatlar')}
+                {location.pathname === '/payroll' && (t.salaryManagement || 'Ish Haqi Boshqaruvi')}
               </h2>
               <p className={`text-[13px] mt-0.5 hidden sm:block ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
                 }`}>
@@ -828,6 +886,17 @@ const AppContent: React.FC = () => {
               />
             } />
 
+            {/* PAYROLL */}
+            <Route path="/payroll" element={
+              <PayrollPage
+                drivers={drivers}
+                cars={cars}
+                theme={theme}
+                userRole={userRole}
+                onPaySalary={handlePaySalary}
+              />
+            } />
+
             {/* TRANSACTIONS COMPONENT */}
             <Route path="/transactions" element={
               <TransactionsPage
@@ -921,7 +990,7 @@ const AppContent: React.FC = () => {
         userRole={userRole}
         theme={theme}
         onLogout={() => { playLockSound(); handleLogout(); }}
-        onLock={() => { playLockSound(); handleLogout(); }}
+        onLock={() => { playLockSound(); setIsLocked(true); }}
       />
 
       {/* CONFIRMATION MODAL */}

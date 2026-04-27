@@ -160,6 +160,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
                     location: r.location ?? { lat: 0, lng: 0, heading: 0 },
                     documents: r.documents ?? [],
                     createdAt: toMs(r.created_ms),
+                    lastSalaryPaidAt: r.last_salary_paid_at ? toMs(r.last_salary_paid_at) : undefined,
                 } as Driver)));
             });
 
@@ -229,6 +230,7 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).isDeleted !== undefined) payload.is_deleted = (driver as any).isDeleted;
     if (driver.location !== undefined) payload.location = driver.location;
     if ((driver as any).documents !== undefined) payload.documents = (driver as any).documents;
+    if ((driver as any).lastSalaryPaidAt !== undefined) payload.last_salary_paid_at = (driver as any).lastSalaryPaidAt;
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;
 
