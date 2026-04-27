@@ -127,7 +127,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
 
                 {/* Add day off form */}
                 {!limitReached && (
-                    <div className={`mx-5 mt-3 rounded-xl p-3 ${isDark ? 'bg-surface-2' : 'bg-[#F2F2F7]'}`}>
+                    <div className={`mx-5 mt-3 rounded-xl p-3 ${isDark ? 'bg-surface-2' : 'bg-surface-2'}`}>
                         <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             {t('addDayOff')}
                         </p>
@@ -181,7 +181,7 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                         <div
                                             key={d.id}
                                             className={`flex items-center justify-between rounded-lg px-3 py-2 ${
-                                                isDark ? 'bg-surface-2' : 'bg-[#F2F2F7]'
+                                                isDark ? 'bg-surface-2' : 'bg-surface-2'
                                             }`}
                                         >
                                             <div className="flex items-center gap-2">

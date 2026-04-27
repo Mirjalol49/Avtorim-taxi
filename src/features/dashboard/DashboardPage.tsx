@@ -392,7 +392,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 placeholder={t('searchDriverStatus')}
                                 className={`w-full pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
                                     ? 'bg-surface-2 border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)] focus:border-[#0d9488]'
-                                    : 'bg-[#F2F2F7] border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
+                                    : 'bg-surface-2 border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
                                 }`}
                             />
                             {statusSearch && (
@@ -416,7 +416,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
                         {filteredCompleted.length > 0 ? (
                             <>
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-[#F2F2F7]'}`}>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
                                 {displayedCompleted.map((driver, i) => {
                                     const plan = driver.dailyPlan || 1;
                                     const pct = Math.min(100, Math.round((driver.todayIncome / plan) * 100));
@@ -428,7 +428,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-emerald-500/50">
                                                     {driver.avatar
                                                         ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                        : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-[#E5E5EA] text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
+                                                        : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-surface-2 text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
                                                     }
                                                 </div>
                                                 {i < 3 && !statusSearch && (
@@ -453,7 +453,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-surface border-white/[0.10] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
                                                     </div>
                                                 )}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-[#E5E5EA]'}`}>
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
                                                     <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
@@ -474,7 +474,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             )}
                             </>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-surface-2' : 'bg-[#F2F2F7]'}`}>
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
                                     <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
                                 </div>
@@ -494,7 +494,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
                         {filteredPending.length > 0 ? (
                             <>
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-[#F2F2F7]'}`}>
+                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
                                 {displayedPending.map(driver => {
                                     const plan = driver.dailyPlan || 750000;
                                     const paid = driver.todayIncome || 0;
@@ -508,7 +508,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-orange-500/25 flex-shrink-0">
                                                 {driver.avatar
                                                     ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-[#E5E5EA] text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-surface-2 text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
                                                 }
                                             </div>
                                             {/* Info */}
@@ -525,7 +525,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-surface border-white/[0.10] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
                                                     </div>
                                                 )}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-[#E5E5EA]'}`}>
+                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
                                                     <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
@@ -543,7 +543,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             )}
                             </>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-surface-2' : 'bg-[#F2F2F7]'}`}>
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
                                     <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-500' : 'text-emerald-400'}`} />
                                 </div>
@@ -562,7 +562,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 🌙 {t('legendDayOff')}
                             </span>
                         </div>
-                        <div className={`mx-6 mb-4 rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.06] bg-surface-2' : 'divide-black/[0.04] bg-[#F2F2F7]'}`}>
+                        <div className={`mx-6 mb-4 rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.06] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
                             {todayStats.dayOff.map(driver => {
                                 const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                 return (

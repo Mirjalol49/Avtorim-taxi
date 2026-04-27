@@ -220,7 +220,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                             className="max-w-full max-h-full object-contain rounded-xl"
                         />
                     </div>
-                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-black border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl">
+                    <div className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-4 bg-surface border border-white/10 rounded-full pl-6 pr-2 py-2 shadow-2xl">
                         <span className="text-sm font-medium text-white">{getFriendlyDocName(viewingDoc)}</span>
                         <div className="w-px h-4 bg-white/20 mx-1" />
                         <button

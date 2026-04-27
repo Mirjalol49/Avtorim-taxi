@@ -344,7 +344,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
 
                     {/* User Selection */}
                     {targetType === 'specific' && (
-                        <div className={`mt-3 max-h-40 overflow-y-auto space-y-1 p-3 rounded-lg ${isDark ? 'bg-black' : 'bg-gray-100'}`}>
+                        <div className={`mt-3 max-h-40 overflow-y-auto space-y-1 p-3 rounded-lg ${isDark ? 'bg-surface-3' : 'bg-gray-100'}`}>
                             {adminUsers.length === 0 ? (
                                 <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No users found</p>
                             ) : (

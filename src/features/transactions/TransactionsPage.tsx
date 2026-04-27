@@ -290,7 +290,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[800px]">
                         <thead className={`border-b ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
-                            <tr className={`${theme === 'dark' ? 'bg-surface-2' : 'bg-[#F2F2F7]'}`}>
+                            <tr className={`${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
                                 {userRole === 'admin' && (
                                     <th className={`px-6 py-4 font-bold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                         <input
@@ -546,7 +546,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     onKeyDown={e => { if (e.key === 'Escape') setSelectedImage(null); }}
                 >
                     <div
-                        className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-black border border-white/[0.08]' : 'bg-white border border-gray-200'}`}
+                        className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-surface border border-white/[0.08]' : 'bg-white border border-gray-200'}`}
                         onClick={e => e.stopPropagation()}
                         style={{ animation: 'modalPop 0.2s ease-out' }}
                     >
@@ -593,7 +593,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         </div>
 
                         {/* Receipt Image */}
-                        <div className={`overflow-y-auto flex-1 p-4 ${theme === 'dark' ? 'bg-[#0d1117]' : 'bg-[#F2F2F7]'}`}>
+                        <div className={`overflow-y-auto flex-1 p-4 ${theme === 'dark' ? 'bg-surface-3' : 'bg-surface-2'}`}>
                             <img
                                 src={selectedImage}
                                 alt="Payment receipt"

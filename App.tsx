@@ -463,7 +463,7 @@ const AppContent: React.FC = () => {
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-200 ${theme === 'dark'
       ? 'text-white'
-      : 'bg-[#F2F2F7] text-black'
+      : 'bg-surface-2 text-black'
       }`}
       style={{ background: theme === 'dark' ? 'var(--color-bg)' : undefined }}
     >
@@ -729,7 +729,7 @@ const AppContent: React.FC = () => {
 
         {/* ACTION BUTTONS ROW - Mobile Only */}
         <div
-          className={`flex items-center justify-between px-5 py-3 border-b sticky top-16 z-10 md:hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-[#F2F2F7] border-black/[0.06]'}`}
+          className={`flex items-center justify-between px-5 py-3 border-b sticky top-16 z-10 md:hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-surface-2 border-black/[0.06]'}`}
           style={{ background: theme === 'dark' ? 'var(--color-bg)' : undefined }}
         >
           {location.pathname === '/drivers' && userRole === 'admin' && (

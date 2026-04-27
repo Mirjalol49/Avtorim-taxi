@@ -93,7 +93,7 @@ const HiddenDashboard: React.FC = () => {
     };
 
     return (
-        <div className="h-screen overflow-y-auto bg-black text-white font-sans custom-scrollbar">
+        <div className="h-screen overflow-y-auto bg-[#0b1326] text-white font-sans custom-scrollbar">
             {/* Header */}
             <header className="bg-surface border-b border-white/[0.08] sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

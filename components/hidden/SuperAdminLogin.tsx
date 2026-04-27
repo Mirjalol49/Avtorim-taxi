@@ -77,7 +77,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="min-h-screen bg-[#0b1326] flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-surface-2 rounded-2xl shadow-2xl p-8 border border-white/[0.08]">
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
@@ -95,7 +95,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
+                            className="w-full bg-surface border border-white/[0.08] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
                             placeholder="••••••••"
                             disabled={lockoutTime > 0}
                             autoFocus // Added autoFocus
