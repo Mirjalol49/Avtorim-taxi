@@ -111,7 +111,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
       setExpenseTarget('driver');
     } else if (isOpen && drivers.length > 0) {
-      if (!driverId || !drivers.find(d => d.id === driverId)) setDriverId(drivers[0].id);
+      if (!driverId || !drivers.find(d => d.id === driverId)) {
+        // Only fall back to first driver when there's no explicit initial driver
+        if (!initialDriverId) setDriverId(drivers[0].id);
+      }
     }
   }, [isOpen, drivers, driverId]);
 
