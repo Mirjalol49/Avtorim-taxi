@@ -1,45 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ===== CSS CUSTOM PROPERTIES — iOS Human Interface Guidelines ===== */
+/* ===== CYANIDE PALETTE — Design System Variables ===== */
 :root {
-    /* iOS systemGroupedBackground / systemBackground */
-    --color-bg:              #F2F2F7;
-    --color-surface:         #FFFFFF;
-    --color-surface-2:       #F2F2F7;
-    /* iOS separator — rgba(60,60,67,0.18) */
-    --color-border:          rgba(60, 60, 67, 0.18);
-    --color-border-subtle:   rgba(60, 60, 67, 0.09);
-    /* iOS label / secondaryLabel / tertiaryLabel */
-    --color-text:            #000000;
-    --color-text-body:       rgba(60, 60, 67, 0.85);
-    --color-text-muted:      rgba(60, 60, 67, 0.48);
-    --color-accent:          #0f766e;
-    --color-accent-light:    rgba(15, 118, 110, 0.10);
+    /* Cyanide Day — surfaces */
+    --color-bg:              #faf8ff;
+    --color-surface:         #ffffff;
+    --color-surface-2:       #eaedff;
+    --color-surface-3:       #e2e7ff;
+    --color-sidebar:         #f2f3ff;
+    /* separators */
+    --color-border:          rgba(19, 27, 46, 0.12);
+    --color-border-subtle:   rgba(19, 27, 46, 0.06);
+    /* text */
+    --color-text:            #131b2e;
+    --color-text-body:       rgba(19, 27, 46, 0.80);
+    --color-text-muted:      rgba(61, 73, 71, 0.55);
+    /* accent — Cyanide Day primary */
+    --color-accent:          #00685f;
+    --color-accent-hover:    #005049;
+    --color-accent-light:    rgba(0, 104, 95, 0.10);
+    /* scrollbar */
     --color-scrollbar-track: transparent;
-    --color-scrollbar-thumb: rgba(60, 60, 67, 0.22);
-    --color-scrollbar-hover: rgba(60, 60, 67, 0.42);
+    --color-scrollbar-thumb: rgba(19, 27, 46, 0.18);
+    --color-scrollbar-hover: rgba(19, 27, 46, 0.35);
 }
 
 .dark {
-    /* Deep navy-dark palette */
-    --color-bg:              hsl(210, 45%, 4%);    /* page background */
-    --color-surface:         hsl(222, 44%, 6%);    /* card / panel bg */
-    --color-surface-2:       hsl(229, 43%, 10%);   /* nested / hover surface */
-    --color-sidebar:         hsl(229, 43%, 14%);   /* sidebar + desktop header */
+    /* Cyanide Night — surfaces */
+    --color-bg:              #0b1326;
+    --color-surface:         #171f33;
+    --color-surface-2:       #222a3d;
+    --color-surface-3:       #2d3449;
+    --color-sidebar:         #131b2e;
     /* separators */
-    --color-border:          rgba(255, 255, 255, 0.10);
-    --color-border-subtle:   rgba(255, 255, 255, 0.05);
+    --color-border:          rgba(218, 226, 253, 0.10);
+    --color-border-subtle:   rgba(218, 226, 253, 0.05);
     /* text */
-    --color-text:            #FFFFFF;
-    --color-text-body:       rgba(220, 225, 240, 0.75);
-    --color-text-muted:      rgba(180, 190, 215, 0.45);
-    --color-accent:          #0d9488;
-    --color-accent-light:    rgba(13, 148, 136, 0.18);
+    --color-text:            #dae2fd;
+    --color-text-body:       rgba(218, 226, 253, 0.80);
+    --color-text-muted:      rgba(188, 201, 198, 0.50);
+    /* accent — Cyanide Night primary */
+    --color-accent:          #6bd8cb;
+    --color-accent-hover:    #89f5e7;
+    --color-accent-light:    rgba(107, 216, 203, 0.15);
+    /* scrollbar */
     --color-scrollbar-track: transparent;
-    --color-scrollbar-thumb: rgba(255, 255, 255, 0.14);
-    --color-scrollbar-hover: rgba(255, 255, 255, 0.28);
+    --color-scrollbar-thumb: rgba(218, 226, 253, 0.15);
+    --color-scrollbar-hover: rgba(218, 226, 253, 0.30);
+}
+
+/* ===== TYPOGRAPHY — Manrope for headings, Inter for body ===== */
+@layer base {
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+        letter-spacing: -0.02em;
+    }
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
 }
 
 /* ===== ANIMATIONS ===== */
@@ -64,8 +86,6 @@
 /* ===== GLOBAL STYLES ===== */
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--color-bg);
@@ -92,19 +112,19 @@ button, a, input, select, textarea {
     transition-duration: 150ms;
 }
 
-/* ===== INPUTS — iOS system style ===== */
+/* ===== INPUTS — theme-aware ===== */
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 textarea,
 select {
-    background-color: #ffffff;
-    color: #000000;
-    border-color: rgba(60, 60, 67, 0.18);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
 }
 
 .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 .dark textarea,
 .dark select {
-    background-color: #2C2C2E;
-    color: #FFFFFF;
-    border-color: rgba(255, 255, 255, 0.12);
+    background-color: #131b2e;
+    color: #dae2fd;
+    border-color: rgba(218, 226, 253, 0.12);
 }

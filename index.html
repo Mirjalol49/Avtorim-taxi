@@ -10,7 +10,11 @@
     content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api-maps.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api-maps.yandex.ru;">
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0f766e" />
+  <meta name="theme-color" content="#0b1326" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#faf8ff" media="(prefers-color-scheme: light)" />
+  <!-- Fonts preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
