@@ -538,8 +538,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             {/* Receipt Viewer Modal */}
             {selectedImage && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={t('viewReceipt')}
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
                     onClick={() => setSelectedImage(null)}
+                    onKeyDown={e => { if (e.key === 'Escape') setSelectedImage(null); }}
                 >
                     <div
                         className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-black border border-white/[0.08]' : 'bg-white border border-gray-200'}`}
@@ -547,7 +551,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         style={{ animation: 'modalPop 0.2s ease-out' }}
                     >
                         {/* Modal Header */}
-                        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}>
+                        <div className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100 bg-gray-50'}`}
+                            style={theme === 'dark' ? { background: 'hsl(229, 43%, 10%)' } : undefined}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
                                     <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -559,26 +564,29 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('paymentCard')}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 <a
                                     href={selectedImage}
                                     download
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={e => e.stopPropagation()}
-                                    className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
-                                    title="Download"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                                    title="Download receipt"
+                                    aria-label="Download receipt"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
                                 </a>
                                 <button
+                                    autoFocus
                                     onClick={() => setSelectedImage(null)}
-                                    className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.06]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+                                    aria-label="Close receipt viewer"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/50 ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.08]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
                                 >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
@@ -588,9 +596,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         <div className={`overflow-y-auto flex-1 p-4 ${theme === 'dark' ? 'bg-[#0d1117]' : 'bg-[#F2F2F7]'}`}>
                             <img
                                 src={selectedImage}
-                                alt="Receipt"
-                                className="w-full rounded-xl object-contain shadow-lg border border-white/5"
+                                alt="Payment receipt"
+                                className="w-full rounded-xl object-contain shadow-lg"
                             />
+                        </div>
+
+                        {/* Footer hint */}
+                        <div className={`px-5 py-3 border-t flex items-center justify-between flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+                            <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                                Press <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono mx-0.5 ${theme === 'dark' ? 'bg-white/[0.06] border border-white/[0.08]' : 'bg-gray-100 border border-gray-200'}`}>Esc</kbd> to close
+                            </span>
+                            <button
+                                onClick={() => setSelectedImage(null)}
+                                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.06]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`}
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>

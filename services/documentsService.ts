@@ -163,5 +163,8 @@ CREATE POLICY "allow_all_documents" ON storage.objects
   FOR ALL USING (bucket_id = 'documents')
   WITH CHECK (bucket_id = 'documents');
 
--- 3. Enable realtime for documents table
-ALTER PUBLICATION supabase_realtime ADD TABLE documents;`;
+-- 3. Enable realtime for documents table (safe — ignores if already added)
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE documents;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;`;
