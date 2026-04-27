@@ -565,7 +565,7 @@ interface LightboxProps {
     onCopy: () => void;
 }
 
-function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, onCopy }: LightboxProps) {
+function PreviewLightbox({ doc, isDark: _isDark, mutedText: _m, bodyText: _b, copied, onClose, onCopy }: LightboxProps) {
     const cat = getCategory(doc.file_type);
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -581,57 +581,64 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
 
     return (
         <div
-            className="fixed inset-0 z-50 flex flex-col"
-            style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.18s ease' }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.92)' }}
+            onClick={onClose}
         >
-            <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
+            <style>{`@keyframes lbFadeIn{from{opacity:0}to{opacity:1}} @keyframes lbSlideUp{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}`}</style>
 
-            {/* ── Top bar ── */}
-            <div className="relative z-10 flex items-center gap-2 px-3 py-3 flex-shrink-0 border-b border-white/[0.08]"
-                style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(20px)' }}>
-                {/* Close button first on mobile so it's always reachable */}
+            {/* ── Floating close button — always visible top-right ── */}
+            <button
+                onClick={e => { e.stopPropagation(); onClose(); }}
+                className="fixed top-4 right-4 z-[10000] flex items-center justify-center w-10 h-10 rounded-full transition-all active:scale-95"
+                style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.18)' }}
+                title="Yopish (Esc)"
+            >
+                <XIcon className="w-5 h-5 text-white" />
+            </button>
+
+            {/* ── Floating action buttons — bottom right ── */}
+            <div
+                className="fixed bottom-6 right-4 z-[10000] flex items-center gap-2"
+                onClick={e => e.stopPropagation()}
+            >
                 <button
-                    onClick={onClose}
-                    title="Yopish (Esc)"
-                    className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/[0.12] transition-all flex-shrink-0"
+                    onClick={onCopy}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-white transition-all active:scale-95"
+                    style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.18)' }}
                 >
-                    <XIcon className="w-5 h-5" />
+                    {copied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    <span>{copied ? 'Nusxalandi' : 'URL'}</span>
                 </button>
-                <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white text-[14px] truncate leading-tight">{doc.name}</p>
-                    <p className="text-[11px] text-white/40 truncate">{formatBytes(doc.file_size)}</p>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                        onClick={onCopy}
-                        title="URL nusxalash"
-                        className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
-                    >
-                        {copied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
-                    </button>
-                    <a
-                        href={doc.file_url}
-                        download={doc.original_name}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        title="Yuklab olish"
-                        className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
-                    >
-                        <DownloadIcon className="w-4 h-4" />
-                    </a>
-                </div>
+                <a
+                    href={doc.file_url}
+                    download={doc.original_name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-white transition-all active:scale-95"
+                    style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.18)' }}
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                    <span>Yuklab olish</span>
+                </a>
+            </div>
+
+            {/* ── File name — bottom left ── */}
+            <div
+                className="fixed bottom-6 left-4 z-[10000] max-w-[55vw]"
+                onClick={e => e.stopPropagation()}
+            >
+                <p className="text-white font-semibold text-[13px] truncate leading-tight"
+                    style={{ textShadow: '0 1px 8px rgba(0,0,0,0.8)' }}>{doc.name}</p>
+                <p className="text-white/50 text-[11px]">{formatBytes(doc.file_size)}</p>
             </div>
 
             {/* ── Content ── */}
             {cat === 'image' ? (
-                <div
-                    className="flex-1 flex items-center justify-center overflow-auto p-6"
-                    onClick={onClose}
-                >
+                <div className="w-full h-full flex items-center justify-center p-16 sm:p-20">
                     {!imgLoaded && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            <div className="w-9 h-9 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                         </div>
                     )}
                     <img
@@ -641,21 +648,19 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
                         onClick={e => e.stopPropagation()}
                         className="max-w-full max-h-full object-contain select-none"
                         style={{
-                            maxHeight: 'calc(100vh - 130px)',
                             borderRadius: 12,
                             boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
                             opacity: imgLoaded ? 1 : 0,
-                            transition: 'opacity 0.25s ease',
-                            animation: imgLoaded ? 'slideUp 0.25s ease' : 'none',
+                            transition: 'opacity 0.2s ease',
+                            animation: imgLoaded ? 'lbSlideUp 0.22s ease' : 'none',
                         }}
                     />
                 </div>
             ) : (
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex items-center justify-center p-20" onClick={e => e.stopPropagation()}>
                     <div
                         className="flex flex-col items-center gap-5 p-10 rounded-2xl border border-white/[0.10]"
-                        style={{ background: 'rgba(255,255,255,0.05)', animation: 'slideUp 0.2s ease' }}
-                        onClick={e => e.stopPropagation()}
+                        style={{ background: 'rgba(255,255,255,0.05)', animation: 'lbSlideUp 0.2s ease' }}
                     >
                         <div className="w-20 h-20 rounded-2xl bg-white/[0.06] flex items-center justify-center">
                             <FileIcon className="w-10 h-10 text-white/30" />
@@ -675,14 +680,6 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
                             <DownloadIcon className="w-4 h-4" /> Yuklab olish
                         </a>
                     </div>
-                </div>
-            )}
-
-            {/* Description (image only) */}
-            {cat === 'image' && doc.description && (
-                <div className="relative z-10 flex-shrink-0 px-6 pb-4 text-center border-t border-white/[0.06] pt-3"
-                    style={{ background: 'rgba(0,0,0,0.4)' }}>
-                    <p className="text-white/50 text-[13px]">{doc.description}</p>
                 </div>
             )}
         </div>
