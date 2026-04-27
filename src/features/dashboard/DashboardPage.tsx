@@ -496,7 +496,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             <>
                             <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
                                 {displayedPending.map(driver => {
-                                    const plan = driver.dailyPlan || 750000;
+                                    const plan = driver.dailyPlan || 0;
                                     const paid = driver.todayIncome || 0;
                                     const remaining = Math.max(0, plan - paid);
                                     const pct = Math.min(100, Math.round((paid / plan) * 100));

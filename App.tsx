@@ -269,7 +269,7 @@ const AppContent: React.FC = () => {
           isDeleted: false,
           balance: 0,
           rating: 5.0,
-          dailyPlan: data.dailyPlan || 750000
+          dailyPlan: data.dailyPlan || 0
         };
         driverId = await firestoreService.addDriver(newDriver, adminUser?.id);
       }
