@@ -317,15 +317,17 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handlePaySalary = async (driver: Driver) => {
+  const handlePaySalary = async (driver: Driver, period: { year: number; month: number }) => {
     try {
       const now = Date.now();
+      const periodKey = `${period.year}-${String(period.month + 1).padStart(2, '0')}`;
       await firestoreService.addTransaction({
         driverId: driver.id,
         driverName: driver.name,
         amount: driver.monthlySalary,
         type: TransactionType.EXPENSE,
         description: `Ish haqi: ${driver.name}`,
+        note: `SALARY|${periodKey}`,
         timestamp: now,
         status: undefined,
         category: 'SALARY',
@@ -891,6 +893,7 @@ const AppContent: React.FC = () => {
               <PayrollPage
                 drivers={drivers}
                 cars={cars}
+                transactions={transactions}
                 theme={theme}
                 userRole={userRole}
                 onPaySalary={handlePaySalary}
