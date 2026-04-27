@@ -28,6 +28,7 @@ import NotFound from './components/NotFound';
 // Lazy load heavy components for code splitting
 const HiddenDashboard = React.lazy(() => import('./components/hidden/HiddenDashboard'));
 import { ToastProvider, ToastContainer, useToast } from './components/ToastNotification';
+import { ConfirmProvider } from './components/ConfirmContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Skeleton from './components/Skeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
@@ -269,7 +270,7 @@ const AppContent: React.FC = () => {
           isDeleted: false,
           balance: 0,
           rating: 5.0,
-          dailyPlan: data.dailyPlan || 750000
+          dailyPlan: data.dailyPlan || 0
         };
         driverId = await firestoreService.addDriver(newDriver, adminUser?.id);
       }
@@ -461,6 +462,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
+    <ConfirmProvider theme={theme}>
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-200 ${theme === 'dark'
       ? 'text-white'
       : 'bg-surface-2 text-black'
@@ -943,6 +945,7 @@ const AppContent: React.FC = () => {
       {/* TOAST NOTIFICATIONS */}
       <ToastContainer theme={theme} />
     </div >
+    </ConfirmProvider>
   );
 };
 

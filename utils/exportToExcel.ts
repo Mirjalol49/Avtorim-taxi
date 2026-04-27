@@ -135,7 +135,7 @@ export const exportDriversToExcel = (drivers: Driver[], filename = 'Haydovchilar
             'Mashina modeli': (d as any).carModel || '—',
             'Mashina raqami': (d as any).licensePlate || '—',
             'Holat': d.status === 'ACTIVE' ? 'Faol' : d.status === 'OFFLINE' ? 'Offline' : d.status,
-            "Kunlik reja (UZS)": (d as any).dailyPlan ?? 750000,
+            "Kunlik reja (UZS)": (d as any).dailyPlan ?? 0,
             'Balans (UZS)': d.balance ?? 0,
             "Qo'shilgan sana": d.createdAt ? fmtDate(d.createdAt) : '—',
         }));
@@ -220,7 +220,7 @@ export const exportFinanceSummaryToExcel = (
                 .filter(tx => tx.type === TransactionType.EXPENSE)
                 .reduce((s, tx) => s + Math.abs(tx.amount), 0);
             const txCount = dTx.filter(tx => tx.type === TransactionType.INCOME).length;
-            const plan = (d as any).dailyPlan ?? 750000;
+            const plan = (d as any).dailyPlan ?? 0;
             return {
                 '#': i + 1,
                 'Haydovchi': d.name,
