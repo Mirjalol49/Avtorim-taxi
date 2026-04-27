@@ -40,6 +40,7 @@ import PdfViewerPage from './src/features/documents/PdfViewerPage';
 import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
+import { PayrollPage } from './src/features/finance/PayrollPage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -316,6 +317,27 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handlePaySalary = async (driver: Driver) => {
+    try {
+      const now = Date.now();
+      await firestoreService.addTransaction({
+        driverId: driver.id,
+        driverName: driver.name,
+        amount: driver.monthlySalary,
+        type: TransactionType.EXPENSE,
+        description: `Ish haqi: ${driver.name}`,
+        timestamp: now,
+        status: undefined,
+        category: 'SALARY',
+      } as any, adminUser?.id);
+      await firestoreService.updateDriver(driver.id, { lastSalaryPaidAt: now } as any, adminUser?.id);
+      triggerRefresh();
+      addToast('success', t.salaryPaid || "Ish haqi to'landi");
+    } catch {
+      addToast('error', t.paySalaryError || "Xatolik yuz berdi");
+    }
+  };
+
   const handleEditDriverClick = (driver: Driver) => {
     setEditingDriver(driver);
     setIsDriverModalOpen(true);
@@ -474,7 +496,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/payroll', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -524,6 +546,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/monthly-plan', t.monthlyPlan, CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
+          {renderSidebarItem('/payroll', t.salaryManagement || 'Ish Haqi', WalletIcon)}
           {renderSidebarItem('/notes', t.notes, NotesIcon)}
           {renderSidebarItem('/documents', t.documents || 'Hujjatlar', FolderOpenIcon)}
 
@@ -747,6 +770,7 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/transactions' && t.transactions}
                 {location.pathname === '/notes' && t.notes}
                 {location.pathname === '/documents' && (t.documents || 'Hujjatlar')}
+                {location.pathname === '/payroll' && (t.salaryManagement || 'Ish Haqi Boshqaruvi')}
               </h2>
               <p className={`text-[13px] mt-0.5 hidden sm:block ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
                 }`}>
@@ -859,6 +883,17 @@ const AppContent: React.FC = () => {
                   setTxInitialDate(date);
                   setIsTxModalOpen(true);
                 }}
+              />
+            } />
+
+            {/* PAYROLL */}
+            <Route path="/payroll" element={
+              <PayrollPage
+                drivers={drivers}
+                cars={cars}
+                theme={theme}
+                userRole={userRole}
+                onPaySalary={handlePaySalary}
               />
             } />
 

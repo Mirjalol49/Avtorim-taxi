@@ -29,6 +29,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [docError, setDocError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [monthlySalary, setMonthlySalary] = useState(0);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -63,6 +64,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setStatus(editingDriver.status);
       setNotes(editingDriver.notes ?? '');
       setDocuments(editingDriver.documents ?? []);
+      setMonthlySalary(editingDriver.monthlySalary ?? 0);
       setSelectedCarId(currentAssignedCar?.id ?? '');
     } else if (isOpen) {
       setName('');
@@ -72,6 +74,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setStatus(DriverStatus.OFFLINE);
       setNotes('');
       setDocuments([]);
+      setMonthlySalary(0);
       setSelectedCarId('');
       setError(null);
       setDocError(null);
@@ -119,7 +122,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         avatar,
         status,
         notes,
-        monthlySalary: 0,
+        monthlySalary,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
@@ -290,6 +293,27 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           <div>
             <label className={labelClass}>Eslatmalar (Ixtiyoriy)</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder="Haydovchi haqida qo'shimcha ma'lumot..."></textarea>
+          </div>
+
+          {/* Monthly salary */}
+          <div>
+            <label className={labelClass}>Oylik maosh (Ixtiyoriy)</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={monthlySalary > 0 ? monthlySalary.toLocaleString('uz-UZ') : ''}
+                onChange={e => {
+                  const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                  setMonthlySalary(isNaN(raw) ? 0 : raw);
+                }}
+                className={inputClass}
+                placeholder="0"
+              />
+              <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+            </div>
+            <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+              Agar ko'rsatilsa, ish haqi bo'limida ko'rinadi
+            </p>
           </div>
 
           {/* Car assignment picker */}

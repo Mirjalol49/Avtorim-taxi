@@ -36,4 +36,5 @@ export interface Driver extends Lockable {
     notes?: string;
     extraPhone?: string;
     createdAt?: number;
+    lastSalaryPaidAt?: number;
 }
