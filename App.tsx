@@ -15,6 +15,7 @@ import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar }
 import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
+import LockScreen from './components/LockScreen';
 import ConfirmModal from './components/ConfirmModal';
 import NumberTooltip from './components/NumberTooltip';
 import DateFilter from './components/DateFilter';
@@ -145,6 +146,16 @@ const AppContent: React.FC = () => {
     adminUserName: adminUser?.username ?? 'Admin',
     enabled: isAuthenticated && userRole === 'admin',
   });
+
+  const [isLocked, setIsLocked] = useState(false);
+
+  const handleUnlock = async (password: string): Promise<boolean> => {
+    if (!adminUser?.phone) return false;
+    const { authService } = await import('./services/authService');
+    const result = await authService.authenticateAdminByPhone(adminUser.phone, password);
+    if (result.success) setIsLocked(false);
+    return result.success;
+  };
 
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
 
@@ -416,6 +427,14 @@ const AppContent: React.FC = () => {
 
   if (!isAuthenticated) return <AuthScreen onAuthenticated={handleLogin} theme={theme} />;
 
+  if (isAuthenticated && isLocked) return (
+    <LockScreen
+      adminName={adminUser?.username ?? 'Admin'}
+      adminPhone={adminUser?.phone ?? ''}
+      onUnlock={handleUnlock}
+    />
+  );
+
   // Block rendering until strict auth check completes for admins
   if (isAuthChecking) {
     return (
@@ -621,7 +640,7 @@ const AppContent: React.FC = () => {
               )}
             </>
           )}
-          <button onClick={() => { playLockSound(); handleLogout(); }} className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all text-[13px] font-semibold ${theme === 'dark'
+          <button onClick={() => { playLockSound(); setIsLocked(true); }} className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all text-[13px] font-semibold ${theme === 'dark'
             ? 'bg-[rgba(255,59,48,0.12)] hover:bg-[rgba(255,59,48,0.18)] text-[#FF453A]'
             : 'bg-[rgba(255,59,48,0.08)] hover:bg-[rgba(255,59,48,0.14)] text-[#FF3B30]'
             }`}>
@@ -921,7 +940,7 @@ const AppContent: React.FC = () => {
         userRole={userRole}
         theme={theme}
         onLogout={() => { playLockSound(); handleLogout(); }}
-        onLock={() => { playLockSound(); handleLogout(); }}
+        onLock={() => { playLockSound(); setIsLocked(true); }}
       />
 
       {/* CONFIRMATION MODAL */}
