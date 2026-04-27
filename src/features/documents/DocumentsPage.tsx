@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     Document as Doc,
     DocumentCategory,
@@ -56,13 +55,16 @@ interface DocumentsPageProps {
 
 export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, userName }) => {
     const isDark = theme === 'dark';
-    const navigate = useNavigate();
 
     const openDoc = (doc: Doc) => {
         if (getCategory(doc.file_type) === 'pdf') {
-            navigate(`/pdf-viewer?url=${encodeURIComponent(doc.file_url)}&name=${encodeURIComponent(doc.name)}`);
-        } else {
+            // Open PDFs directly in a new browser tab — native viewer, no hassle
+            window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+        } else if (getCategory(doc.file_type) === 'image') {
             setPreviewDoc(doc);
+        } else {
+            // For other files (docx, xlsx, etc.) just open/download in new tab
+            window.open(doc.file_url, '_blank', 'noopener,noreferrer');
         }
     };
 
@@ -585,20 +587,27 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
             <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
             {/* ── Top bar ── */}
-            <div className="relative z-10 flex items-center gap-3 px-5 py-3 flex-shrink-0 border-b border-white/[0.08]"
+            <div className="relative z-10 flex items-center gap-2 px-3 py-3 flex-shrink-0 border-b border-white/[0.08]"
                 style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(20px)' }}>
+                {/* Close button first on mobile so it's always reachable */}
+                <button
+                    onClick={onClose}
+                    title="Yopish (Esc)"
+                    className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/[0.12] transition-all flex-shrink-0"
+                >
+                    <XIcon className="w-5 h-5" />
+                </button>
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white text-[15px] truncate leading-tight">{doc.name}</p>
-                    <p className="text-[11px] text-white/40 mt-0.5 truncate">{doc.original_name} · {formatBytes(doc.file_size)}</p>
+                    <p className="font-semibold text-white text-[14px] truncate leading-tight">{doc.name}</p>
+                    <p className="text-[11px] text-white/40 truncate">{formatBytes(doc.file_size)}</p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                         onClick={onCopy}
                         title="URL nusxalash"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all text-white/60 hover:text-white hover:bg-white/[0.10]"
+                        className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
                     >
                         {copied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{copied ? 'Nusxalandi' : 'URL'}</span>
                     </button>
                     <a
                         href={doc.file_url}
@@ -607,18 +616,10 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
                         rel="noreferrer"
                         onClick={e => e.stopPropagation()}
                         title="Yuklab olish"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
+                        className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
                     >
                         <DownloadIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Yuklab olish</span>
                     </a>
-                    <button
-                        onClick={onClose}
-                        title="Yopish (Esc)"
-                        className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.10] transition-all ml-1"
-                    >
-                        <XIcon className="w-5 h-5" />
-                    </button>
                 </div>
             </div>
 
@@ -648,26 +649,6 @@ function PreviewLightbox({ doc, isDark, mutedText, bodyText, copied, onClose, on
                             animation: imgLoaded ? 'slideUp 0.25s ease' : 'none',
                         }}
                     />
-                </div>
-            ) : cat === 'pdf' ? (
-                // Should not normally reach here — PDFs open via /pdf-viewer route
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-5 p-10 rounded-2xl border border-white/[0.10]"
-                        style={{ background: 'rgba(255,255,255,0.05)' }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <FilePdfIcon className="w-14 h-14 text-red-400" />
-                        <div className="text-center">
-                            <p className="text-white font-semibold text-base mb-1">{doc.name}</p>
-                            <p className="text-white/40 text-sm">{formatBytes(doc.file_size)}</p>
-                        </div>
-                        <a
-                            href={`/pdf-viewer?url=${encodeURIComponent(doc.file_url)}&name=${encodeURIComponent(doc.name)}`}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
-                        >
-                            PDF ochish
-                        </a>
-                    </div>
                 </div>
             ) : (
                 <div className="flex-1 flex items-center justify-center">
