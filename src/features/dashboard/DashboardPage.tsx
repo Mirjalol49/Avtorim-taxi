@@ -5,10 +5,7 @@ import DateFilter from '../../../components/DateFilter';
 import NumberTooltip from '../../../components/NumberTooltip';
 import Skeleton from '../../../components/Skeleton';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-import {
-    TrendingUpIcon, TrendingDownIcon, WalletIcon, LayoutDashboardIcon, GridIcon, MedalIcon
+    TrendingUpIcon, TrendingDownIcon, WalletIcon, MedalIcon
 } from '../../../components/Icons';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { Transaction, Driver, Language } from '../../core/types';
@@ -42,26 +39,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
     const {
         timeFilter, setTimeFilter,
-        dashboardViewMode, setDashboardViewMode,
-        dashboardPage, setDashboardPage, dashboardItemsPerPage,
         totalIncome, totalExpense, netProfit,
-        chartData, todayStats
+        todayStats
     } = useDashboardStats(transactions, drivers, cars);
 
     const isDark = theme === 'dark';
 
-    // Chart: top-N toggle + status search
-    const [chartLimit, setChartLimit] = useState<10 | 20 | 'all'>(20);
     const [statusSearch, setStatusSearch] = useState('');
     const [showAllCompleted, setShowAllCompleted] = useState(false);
     const [showAllPending, setShowAllPending] = useState(false);
 
     const STATUS_VISIBLE = 8;
-
-    // Sort chart data by income desc so top earners are always first in the chart
-    const sortedChartData = [...chartData].sort((a, b) => b.Income - a.Income);
-    const visibleChartData = chartLimit === 'all' ? sortedChartData : sortedChartData.slice(0, chartLimit);
-    const chartMinWidth = Math.max(500, visibleChartData.length * 56);
 
     const searchLower = statusSearch.toLowerCase();
     const filteredCompleted = todayStats.completed.filter(d => d.name.toLowerCase().includes(searchLower));
@@ -205,140 +193,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                     </>
                 )}
-            </div>
-
-            {/* CHART ROW */}
-            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col relative overflow-hidden ${isDark ? 'bg-surface border-white/[0.10]' : 'bg-white border-black/[0.08]'}`}
-                style={{ boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.07)' }}
-            >
-                <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3 flex-wrap">
-                    <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        <div className={`p-1.5 rounded-lg ${isDark ? 'bg-surface-2 text-[rgba(235,235,245,0.5)]' : 'bg-black/[0.05] text-[rgba(60,60,67,0.5)]'}`}>
-                            <LayoutDashboardIcon className="w-4 sm:w-5 h-4 sm:h-5" />
-                        </div>
-                        {t('incomeVsExpense')}
-                    </h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {/* Top N selector — only shown in chart mode */}
-                        {dashboardViewMode === 'chart' && (
-                            <div className={`flex items-center p-1 rounded-xl border text-[12px] font-semibold ${isDark ? 'bg-surface-2 border-white/[0.10]' : 'bg-black/[0.04] border-black/[0.07]'}`}>
-                                {([10, 20, 'all'] as const).map(opt => (
-                                    <button
-                                        key={opt}
-                                        onClick={() => setChartLimit(opt)}
-                                        className={`px-2.5 py-1 rounded-lg transition-all ${chartLimit === opt ? 'bg-[#0f766e] text-white' : isDark ? 'text-[rgba(235,235,245,0.5)] hover:text-white' : 'text-[rgba(60,60,67,0.5)] hover:text-black'}`}
-                                    >
-                                        {opt === 'all' ? t('allTime') : `${t('top')} ${opt}`}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        {/* Chart / Grid toggle */}
-                        <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-surface-2 border-white/[0.10]' : 'bg-black/[0.04] border-black/[0.07]'}`}>
-                            <button onClick={() => setDashboardViewMode('chart')} className={`p-2 rounded-xl transition-all ${dashboardViewMode === 'chart' ? 'bg-[#0f766e] text-white' : theme === 'dark' ? 'text-[rgba(235,235,245,0.5)] hover:text-white' : 'text-[rgba(60,60,67,0.5)] hover:text-black'}`}>
-                                <LayoutDashboardIcon className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setDashboardViewMode('grid')} className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'grid' ? 'bg-[#0f766e] text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
-                                <GridIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                    {dashboardViewMode === 'chart' ? (
-                        <div className="h-full overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
-                            <div style={{ minWidth: chartMinWidth, height: '100%' }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={visibleChartData} barSize={18} margin={{ left: 0, right: 10 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
-                                        <XAxis dataKey="name" stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} axisLine={false} tickLine={false} dy={10} fontSize={10} interval={0} angle={-40} textAnchor="end" height={64} />
-                                        <YAxis stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} axisLine={false} tickLine={false} dx={-10} fontSize={10} tickFormatter={(value) => {
-                                            if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}${currentLanguage === 'en' ? 'B' : 'mlrd'}`;
-                                            if (value >= 1000000) return `${(value / 1000000).toFixed(1)}${currentLanguage === 'en' ? 'M' : 'mln'}`;
-                                            if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                                            return value;
-                                        }} />
-                                        <Tooltip cursor={{ fill: theme === 'dark' ? 'rgba(55, 65, 81, 0.3)' : 'rgba(229, 231, 235, 0.3)' }} content={({ active, payload, label }) => {
-                                            if (active && payload && payload.length) {
-                                                return (
-                                                    <div className={`p-3 rounded-xl border shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.10]' : 'bg-white border-black/[0.08]'}`}>
-                                                        <p className={`text-sm font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{label}</p>
-                                                        {payload.map((entry: any, index: number) => (
-                                                            <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
-                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                                                <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{entry.dataKey === 'Income' ? t('income') : t('expense')}:</span>
-                                                                <span className={`text-sm font-bold ${entry.dataKey === 'Income' ? 'text-[#0f766e]' : 'text-red-600'}`}>{entry.value.toLocaleString()}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                );
-                                            }
-                                            return null;
-                                        }} />
-                                        <Bar dataKey="Income" fill="#0f766e" radius={[4, 4, 0, 0]} />
-                                        <Bar dataKey="Expense" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    ) : (
-                        // Grid View
-                        <div className="h-full flex flex-col">
-                            {(() => {
-                                const startIndex = (dashboardPage - 1) * dashboardItemsPerPage;
-                                const paginatedData = chartData.slice(startIndex, startIndex + dashboardItemsPerPage);
-                                const totalPages = Math.ceil(chartData.length / dashboardItemsPerPage);
-                                return (
-                                    <>
-                                        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 items-start">
-                                            {paginatedData.map((data: any, idx) => {
-                                                const driver = drivers.find(d => d.id === data.id);
-                                                const profit = data.Income - data.Expense;
-                                                return (
-                                                    <div key={idx} className={`p-5 rounded-xl border transition-all hover:shadow-md h-fit ${isDark ? 'bg-surface-2 border-white/[0.10] hover:border-white/[0.16]' : 'bg-white border-black/[0.08] hover:border-gray-300'}`}>
-                                                        <div className="flex items-center gap-3 mb-4">
-                                                            {driver && (
-                                                                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex-shrink-0">
-                                                                    <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                                                                </div>
-                                                            )}
-                                                            <div className="min-w-0">
-                                                                <h4 className={`font-bold text-sm whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.fullName}</h4>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-3">
-                                                            {/* Income & Expense - Kept compact */}
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('income')}</span>
-                                                                    <span className="text-sm font-bold text-[#0f766e] font-mono">+{data.Income.toLocaleString()}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('expense')}</span>
-                                                                    <span className="text-sm font-bold text-red-500 font-mono">-{data.Expense.toLocaleString()}</span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Net Profit - Vertical Stack (Block) */}
-                                                            <div className={`pt-3 mt-2 border-t ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('netProfit')}</span>
-                                                                    <span className={`text-xl font-black font-mono ${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                                        {profit > 0 ? '+' : ''}{profit.toLocaleString()}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    )}
-                </div>
             </div>
 
             {/* DAILY PAYMENT STATUS */}
