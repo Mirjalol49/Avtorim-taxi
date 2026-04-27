@@ -92,7 +92,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
   const canSubmit = !success && !locked && phoneDigits.length === 9 && password.trim().length > 0;
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans transition-colors duration-300 ${isDark ? 'bg-black' : 'bg-[#F2F2F7]'}`}>
+    <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans transition-colors duration-300 ${isDark ? 'bg-[#0b1326]' : 'bg-[#faf8ff]'}`}>
 
       {/* Cyber grid */}
       <div className="absolute inset-0 z-0 opacity-20" style={{

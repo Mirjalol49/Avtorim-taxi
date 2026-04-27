@@ -111,7 +111,7 @@ const CarsPage: React.FC<CarsPageProps> = ({ cars, drivers = [], isDataLoading, 
                                 : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-xl hover:shadow-gray-200/50'}`}>
                                 
                                 {/* Image Container */}
-                                <div className={`relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden ${theme === 'dark' ? 'bg-black' : 'bg-gray-100'}`}>
+                                <div className={`relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden ${theme === 'dark' ? 'bg-surface-3' : 'bg-gray-100'}`}>
                                     {car.avatar ? (
                                         <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
                                     ) : (

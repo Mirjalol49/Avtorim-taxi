@@ -280,7 +280,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           <div className="p-7 space-y-6">
 
             {/* Type toggle */}
-            <div className={`flex gap-1.5 p-1.5 rounded-2xl border ${isDark ? 'bg-black border-white/[0.08]' : 'bg-gray-100 border-gray-200'}`}>
+            <div className={`flex gap-1.5 p-1.5 rounded-2xl border ${isDark ? 'bg-surface-3 border-white/[0.08]' : 'bg-surface-2 border-gray-200'}`}>
               {[
                 { v: TransactionType.INCOME,  label: 'Kirim',     emoji: '💰' },
                 { v: TransactionType.EXPENSE, label: 'Chiqim',    emoji: '💸' },
@@ -304,7 +304,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {/* Expense target tabs — driver | car | other */}
             {type === TransactionType.EXPENSE && (
-              <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-black border-white/[0.06]' : 'bg-gray-100 border-gray-200'}`}>
+              <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-surface-3 border-white/[0.06]' : 'bg-surface-2 border-gray-200'}`}>
                 {([
                   { v: 'driver', label: 'Haydovchi', icon: '👤' },
                   { v: 'car',    label: 'Mashina',   icon: '🚙' },
@@ -355,7 +355,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   </div>
                 ) : (
                   <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-surface-2 border-white/[0.08] shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-black/50' : 'border-gray-100 bg-gray-50'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-surface-3' : 'border-gray-100 bg-gray-50'}`}>
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={driverSearch} onChange={e => setDriverSearch(e.target.value)}
@@ -411,7 +411,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   </div>
                 ) : (
                   <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-surface-2 border-white/[0.08] shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-black/50' : 'border-gray-100 bg-gray-50'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-surface-3' : 'border-gray-100 bg-gray-50'}`}>
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={carSearch} onChange={e => setCarSearch(e.target.value)}
@@ -521,7 +521,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         </div>
 
         {/* ══ RIGHT PANEL ══════════════════════════════════════════════════════ */}
-        <div className={`flex flex-col flex-1 overflow-y-auto ${isDark ? 'bg-black/10' : 'bg-gray-50/60'}`}>
+        <div className={`flex flex-col flex-1 overflow-y-auto ${isDark ? 'bg-surface-2/30' : 'bg-surface-2/50'}`}>
 
           {/* Desktop close */}
           <div className="flex justify-end px-6 py-5 flex-shrink-0">
@@ -573,7 +573,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   Karta cheki <span className="text-red-400 ml-1 normal-case text-xs font-normal">(majburiy)</span>
                 </label>
                 {chequeImage ? (
-                  <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-black' : 'border-teal-300 bg-gray-50'}`}>
+                  <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-surface-3' : 'border-teal-300 bg-gray-50'}`}>
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>✓ Chek qo'shildi</span>
                       <button type="button" onClick={() => { setChequeImage(null); setChequeError(null); }}

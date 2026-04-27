@@ -214,12 +214,12 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     </div>
 
                     {/* Progress bar */}
-                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2.5 ${isDark ? 'bg-surface-2' : 'bg-[#E5E5EA]'}`}>
+                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2.5 ${isDark ? 'bg-surface-2' : 'bg-surface-2'}`}>
                         <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${paidPct}%` }} />
                     </div>
 
                     {/* Plan / paid / remaining row */}
-                    <div className={`grid grid-cols-3 gap-1.5 rounded-xl px-3 py-2 text-center ${isDark ? 'bg-white/[0.05]' : 'bg-[#F2F2F7]'}`}>
+                    <div className={`grid grid-cols-3 gap-1.5 rounded-xl px-3 py-2 text-center ${isDark ? 'bg-white/[0.05]' : 'bg-surface-2'}`}>
                         <div>
                             <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Reja</p>
                             <p className={`text-[11px] font-semibold tabular-nums ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{fmtAmount(dailyPlan)}</p>
@@ -554,7 +554,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 <div className={`flex-shrink-0 px-5 pt-4 pb-0 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.07]'}`}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-[#F2F2F7]'}`}>
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-surface-2'}`}>
                                 <BellIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                             </div>
                             <h2 className={`text-[15px] font-semibold ${isDark ? 'text-white' : 'text-black'}`}>

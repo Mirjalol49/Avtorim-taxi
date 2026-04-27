@@ -50,7 +50,7 @@ const AdminAuditLog: React.FC = () => {
                             placeholder="Search logs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-black border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                            className="w-full bg-surface border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
                         />
                     </div>
                     <div className="relative">
@@ -58,7 +58,7 @@ const AdminAuditLog: React.FC = () => {
                         <select
                             value={filterAction}
                             onChange={(e) => setFilterAction(e.target.value)}
-                            className="bg-black border border-white/[0.08] rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:outline-none focus:border-purple-500 appearance-none"
+                            className="bg-surface border border-white/[0.08] rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:outline-none focus:border-purple-500 appearance-none"
                         >
                             <option value="all">All Actions</option>
                             {uniqueActions.map(action => (

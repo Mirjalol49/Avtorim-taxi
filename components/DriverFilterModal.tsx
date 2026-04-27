@@ -66,7 +66,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
         >
             <div
                 className={`relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-3xl shadow-2xl border overflow-hidden ${
-                    isDark ? 'bg-black border-white/[0.08]' : 'bg-white border-gray-200'
+                    isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'
                 }`}
                 onMouseDown={e => e.stopPropagation()}
             >

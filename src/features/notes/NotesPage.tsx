@@ -289,7 +289,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                         onChange={e => setReminderAt(e.target.value ? new Date(e.target.value).getTime() : null)}
                                         className={`flex-1 text-xs px-3 py-2.5 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e]/40 focus:border-[#0f766e] transition-all font-medium ${
                                             isDark
-                                                ? 'bg-black border-white/[0.08] text-white [color-scheme:dark]'
+                                                ? 'bg-surface-3 border-white/[0.08] text-white [color-scheme:dark]'
                                                 : 'bg-white border-gray-200 text-gray-900'
                                         }`}
                                     />
@@ -594,7 +594,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
     }, [notes]);
 
     return (
-        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-black' : 'bg-[#F2F2F7]'}`}>
+        <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#0b1326]' : 'bg-surface-2'}`}>
             <div className="max-w-7xl mx-auto space-y-6">
 
                 {/* Header */}

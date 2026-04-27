@@ -152,13 +152,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                             placeholder="Search by username or role..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-black border border-white/[0.08] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            className="w-full pl-10 pr-4 py-2 bg-surface border border-white/[0.08] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                         />
                     </div>
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value as any)}
-                        className="px-4 py-2 bg-black border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="px-4 py-2 bg-surface border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-blue-500"
                     >
                         <option value="all">All Status</option>
                         <option value="active">Active Only</option>
@@ -354,7 +354,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     type="text"
                                     value={formData.username}
                                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                    className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-surface border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     required
                                 />
                             </div>
@@ -364,7 +364,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     type="text"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-surface border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     required
                                 />
                             </div>
@@ -374,7 +374,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     <select
                                         value={formData.role}
                                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                        className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                        className="w-full bg-surface border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="admin">Admin</option>
                                         <option value="super_admin">Super Admin</option>
@@ -385,7 +385,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
                                     <select
                                         value={formData.active ? 'active' : 'inactive'}
                                         onChange={(e) => setFormData({ ...formData, active: e.target.value === 'active' })}
-                                        className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                                        className="w-full bg-surface border border-white/[0.08] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="active">Active</option>
                                         <option value="inactive">Disabled</option>

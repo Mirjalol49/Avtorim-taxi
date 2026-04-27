@@ -188,7 +188,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
               <div className="flex items-end gap-4 -mt-10 mb-3">
                 <div className="relative group flex-shrink-0">
                   <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 relative ${
-                    isDark ? 'border-[#181818] bg-surface-2' : 'border-white bg-gray-100'
+                    isDark ? 'border-surface-3 bg-surface-2' : 'border-white bg-gray-100'
                   }`}>
                     {(isSaving || imageLoading) && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
