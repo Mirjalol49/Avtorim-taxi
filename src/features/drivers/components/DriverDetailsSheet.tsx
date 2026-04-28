@@ -78,7 +78,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     if (!driver) return null;
 
     const docs = driver.documents ?? [];
-    const dailyPlan = (car && (car.dailyPlan ?? 0) > 0) ? (car.dailyPlan as number) : ((driver as any).dailyPlan ?? 0);
+    const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
 
     const statusColor: Record<string, string> = {
         ACTIVE:  isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600',

@@ -221,7 +221,7 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
             balance: driver.balance ?? 0,
             rating: driver.rating ?? 5.0,
             monthly_salary: (driver as any).monthlySalary ?? 0,
-            daily_plan: (driver as any).dailyPlan ?? 0,
+            daily_plan: 0,
             telegram: (driver as any).telegram ?? null,
             notes: (driver as any).notes ?? null,
             extra_phone: (driver as any).extraPhone ?? null,

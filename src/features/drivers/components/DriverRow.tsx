@@ -27,7 +27,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     const { t } = useTranslation();
     const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const docs = driver.documents ?? [];
-    const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
+    const explicitDailyPlan = car ? (car.dailyPlan ?? 0) : 0;
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
