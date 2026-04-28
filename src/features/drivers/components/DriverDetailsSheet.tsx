@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
+import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
 import {
-    XIcon, EditIcon, TrashIcon, PhoneIcon, CarIcon, NotesIcon, ChevronRightIcon,
+    XIcon, EditIcon, TrashIcon, PhoneIcon, CarIcon, NotesIcon,
 } from '../../../../components/Icons';
 
 interface Props {
     driver: Driver | null;
     car: Car | null;
+    transactions: Transaction[];
     theme: 'light' | 'dark';
     userRole: 'admin' | 'viewer';
     isOpen: boolean;
@@ -17,6 +19,23 @@ interface Props {
     onEdit: (driver: Driver) => void;
     onDelete: (id: string) => void;
 }
+
+// ── Monthly history helpers ───────────────────────────────────────────────────
+
+const toMonthKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+};
+
+interface MonthSummary {
+    monthKey: string;
+    label: string;
+    income: number;
+    expenseOut: number; // withdrawals/expenses paid out
+}
+
+const MONTH_NAMES_UZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -49,12 +68,47 @@ const Section: React.FC<{ title: string; icon: React.ReactNode; isDark: boolean;
 );
 
 export const DriverDetailsSheet: React.FC<Props> = ({
-    driver, car, theme, userRole, isOpen, onClose, onEdit, onDelete,
+    driver, car, transactions, theme, userRole, isOpen, onClose, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
     const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
+    const [activeTab, setActiveTab] = useState<'info' | 'history'>('info');
     const isDark = theme === 'dark';
+
+    const monthlySummaries = useMemo((): MonthSummary[] => {
+        if (!driver) return [];
+        const driverTxs = transactions.filter(tx =>
+            tx.driverId === driver.id &&
+            tx.status !== PaymentStatus.DELETED &&
+            (tx as any).status !== 'DELETED'
+        );
+        if (driverTxs.length === 0) return [];
+
+        const byMonth = new Map<string, { income: number; expenseOut: number }>();
+        for (const tx of driverTxs) {
+            const mk = toMonthKey(new Date(tx.timestamp));
+            const entry = byMonth.get(mk) ?? { income: 0, expenseOut: 0 };
+            if (tx.type === TransactionType.INCOME) {
+                entry.income += Math.abs(tx.amount);
+            } else {
+                entry.expenseOut += Math.abs(tx.amount);
+            }
+            byMonth.set(mk, entry);
+        }
+
+        return Array.from(byMonth.entries())
+            .sort((a, b) => b[0].localeCompare(a[0]))
+            .map(([mk, data]) => {
+                const [y, m] = mk.split('-').map(Number);
+                return {
+                    monthKey: mk,
+                    label: `${MONTH_NAMES_UZ[m - 1]} ${y}`,
+                    income: data.income,
+                    expenseOut: data.expenseOut,
+                };
+            });
+    }, [driver, transactions]);
 
     useEffect(() => {
         if (isOpen) {
@@ -100,32 +154,108 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 className={`fixed inset-y-0 right-0 z-[201] w-full max-w-md flex flex-col shadow-2xl transition-transform duration-300 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'} ${isDark ? 'bg-[#0b1326]' : 'bg-[#faf8ff]'}`}
             >
                 {/* ── Header ── */}
-                <div className={`flex-shrink-0 flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-white'}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                        {driver.avatar ? (
-                            <img src={driver.avatar} alt={driver.name} className="w-12 h-12 rounded-2xl object-cover flex-shrink-0 border border-white/10" />
-                        ) : (
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black flex-shrink-0 ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                                {driver.name.charAt(0)}
+                <div className={`flex-shrink-0 border-b ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-white'}`}>
+                    <div className="flex items-center justify-between px-5 py-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {driver.avatar ? (
+                                <img src={driver.avatar} alt={driver.name} className="w-12 h-12 rounded-2xl object-cover flex-shrink-0 border border-white/10" />
+                            ) : (
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black flex-shrink-0 ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                                    {driver.name.charAt(0)}
+                                </div>
+                            )}
+                            <div className="min-w-0">
+                                <h2 className={`text-base font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h2>
+                                <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${statusColor[driver.status] ?? statusColor['OFFLINE']}`}>
+                                    {statusLabel[driver.status] ?? driver.status}
+                                </span>
                             </div>
-                        )}
-                        <div className="min-w-0">
-                            <h2 className={`text-base font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h2>
-                            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${statusColor[driver.status] ?? statusColor['OFFLINE']}`}>
-                                {statusLabel[driver.status] ?? driver.status}
-                            </span>
                         </div>
+                        <button
+                            onClick={onClose}
+                            className={`w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 ml-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.06]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            <XIcon className="w-5 h-5" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className={`w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 ml-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.06]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
-                    >
-                        <XIcon className="w-5 h-5" />
-                    </button>
+                    {/* Tab bar */}
+                    <div className="flex px-5 gap-1 pb-0">
+                        {(['info', 'history'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-4 py-2 text-[12px] font-bold tracking-wide rounded-t-xl transition-colors border-b-2 ${
+                                    activeTab === tab
+                                        ? isDark
+                                            ? 'text-teal-400 border-teal-400'
+                                            : 'text-teal-600 border-teal-600'
+                                        : isDark
+                                            ? 'text-gray-500 border-transparent hover:text-gray-300'
+                                            : 'text-gray-400 border-transparent hover:text-gray-600'
+                                }`}
+                            >
+                                {tab === 'info' ? 'Ma\'lumot' : 'Tarix'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* ── Scrollable body ── */}
                 <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+
+                {activeTab === 'history' ? (
+                    monthlySummaries.length === 0 ? (
+                        <div className={`flex flex-col items-center justify-center py-16 gap-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                            <span className="text-4xl">📊</span>
+                            <p className="text-sm font-medium">Tranzaksiyalar yo'q</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Totals */}
+                            <div className={`grid grid-cols-2 gap-3 p-4 rounded-2xl border ${isDark ? 'border-white/[0.06] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}>
+                                <div>
+                                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami kirim</p>
+                                    <p className={`text-base font-black font-mono tabular-nums text-green-500`}>
+                                        {fmt(monthlySummaries.reduce((s, r) => s + r.income, 0))}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami chiqim</p>
+                                    <p className={`text-base font-black font-mono tabular-nums text-red-400`}>
+                                        {fmt(monthlySummaries.reduce((s, r) => s + r.expenseOut, 0))}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {monthlySummaries.map(row => {
+                                const net = row.income - row.expenseOut;
+                                return (
+                                    <div
+                                        key={row.monthKey}
+                                        className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}
+                                    >
+                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                            <span className={`text-[12px] font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{row.label}</span>
+                                            <span className={`text-[11px] font-bold font-mono tabular-nums ${net >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                                {net >= 0 ? '+' : ''}{fmt(net)} UZS
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 divide-x divide-white/[0.04] px-0">
+                                            <div className="px-4 py-3">
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Kirim</p>
+                                                <p className={`text-[13px] font-black font-mono tabular-nums text-green-500`}>{fmt(row.income)}</p>
+                                            </div>
+                                            <div className="px-4 py-3">
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Chiqim</p>
+                                                <p className={`text-[13px] font-black font-mono tabular-nums text-red-400`}>{fmt(row.expenseOut)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )
+                ) : (<>
 
                     {/* Daily plan badge */}
                     {dailyPlan > 0 && (
@@ -245,6 +375,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                             </p>
                         </Section>
                     )}
+                </>)}
                 </div>
 
                 {/* ── Footer ── */}

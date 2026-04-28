@@ -294,6 +294,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
         <DriverDetailsSheet
             driver={sheetDriver}
             car={sheetDriver ? (cars.find(c => c.assignedDriverId === sheetDriver.id) ?? null) : null}
+            transactions={transactions}
             theme={theme}
             userRole={userRole}
             isOpen={sheetDriver !== null}
