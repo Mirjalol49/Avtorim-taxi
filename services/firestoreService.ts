@@ -313,7 +313,8 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     let cache: Transaction[] = [];
 
-    const fetchTx = () =>
+    // Full refetch used on reconnect to reconcile exact DB state
+    const fetchAll = () =>
         supabase
             .from('transactions')
             .select('*')
@@ -321,13 +322,47 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             .neq('status', 'DELETED')
             .order('timestamp_ms', { ascending: false })
             .then(({ data }) => {
-                if (data) {
-                    cache = data.map(transformTx);
+                if (data) { cache = data.map(transformTx); callback(cache); }
+            });
+
+    // Fetch older transactions in background, append to cache
+    const fetchOlderThan = (beforeMs: number) =>
+        supabase
+            .from('transactions')
+            .select('*')
+            .eq('fleet_id', fleetId)
+            .neq('status', 'DELETED')
+            .lt('timestamp_ms', beforeMs)
+            .order('timestamp_ms', { ascending: false })
+            .then(({ data }) => {
+                if (data && data.length > 0) {
+                    cache = [...cache, ...data.map(transformTx)];
                     callback(cache);
                 }
             });
 
-    fetchTx();
+    // Initial load: return recent 100 immediately, then fetch the rest silently
+    const fetchRecent = () =>
+        supabase
+            .from('transactions')
+            .select('*')
+            .eq('fleet_id', fleetId)
+            .neq('status', 'DELETED')
+            .order('timestamp_ms', { ascending: false })
+            .limit(100)
+            .then(({ data }) => {
+                if (data) {
+                    cache = data.map(transformTx);
+                    callback(cache);
+                    if (data.length === 100) {
+                        const oldestMs = data[data.length - 1].timestamp_ms;
+                        // background — don't block paint
+                        setTimeout(() => fetchOlderThan(oldestMs), 0);
+                    }
+                }
+            });
+
+    fetchRecent();
 
     const channel = supabase
         .channel(`transactions_${fleetId}`)
@@ -353,12 +388,12 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             callback(cache);
         })
         .subscribe((status) => {
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchTx();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchAll();
         });
 
     return {
         unsubscribe: () => { supabase.removeChannel(channel); },
-        refetch: fetchTx,
+        refetch: fetchAll,
     };
 };
 
