@@ -24,6 +24,13 @@ function isPayedThisMonth(ts?: number): boolean {
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 
+function isNewDriverThisMonth(driver: Driver): boolean {
+    if (!driver.createdAt) return false;
+    const d = new Date(driver.createdAt);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
 function formatDate(ts: number): string {
     return new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(ts));
 }
@@ -40,6 +47,75 @@ function periodLabel(periodKey: string, monthNames: string[]): string {
     return `${monthNames[idx] ?? m} ${y}`;
 }
 
+// ── Custom dropdown ─────────────────────────────────────────────────────────
+const Dropdown: React.FC<{
+    value: number;
+    options: { value: number; label: string }[];
+    onChange: (v: number) => void;
+    isDark: boolean;
+}> = ({ value, options, onChange, isDark }) => {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    const selected = options.find(o => o.value === value);
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(p => !p)}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                    isDark
+                        ? `bg-surface-2 border-white/[0.10] text-white ${open ? 'border-[#0f766e]' : 'hover:border-white/[0.18]'}`
+                        : `bg-gray-50 border-gray-200 text-gray-900 ${open ? 'border-[#0f766e]' : 'hover:border-gray-300'}`
+                }`}
+            >
+                <span className="truncate">{selected?.label ?? '—'}</span>
+                <svg
+                    className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''} ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className={`absolute z-50 left-0 right-0 mt-1.5 rounded-xl border overflow-hidden shadow-xl ${
+                    isDark ? 'bg-[#1a2236] border-white/[0.10]' : 'bg-white border-gray-200'
+                }`}>
+                    {options.map(opt => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => { onChange(opt.value); setOpen(false); }}
+                            className={`w-full text-left px-3 py-2.5 text-sm font-medium transition-colors ${
+                                opt.value === value
+                                    ? isDark
+                                        ? 'bg-[#0f766e]/20 text-[#6bd8cb]'
+                                        : 'bg-[#0f766e]/10 text-[#0f766e]'
+                                    : isDark
+                                        ? 'text-gray-300 hover:bg-white/[0.05]'
+                                        : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ── Month/Year picker modal ─────────────────────────────────────────────────
 const ConfirmPayModal: React.FC<{
     driver: Driver;
@@ -53,8 +129,13 @@ const ConfirmPayModal: React.FC<{
     const [loading, setLoading] = useState(false);
 
     const now = new Date();
-    const [selYear, setSelYear] = useState(now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear());
-    const [selMonth, setSelMonth] = useState(now.getMonth() === 0 ? 11 : now.getMonth() - 1);
+    const currentYear = now.getFullYear();
+    const currentMonthIdx = now.getMonth(); // 0-based
+
+    // Default to previous month (if Jan, stay in Jan of current year)
+    const defaultMonth = currentMonthIdx === 0 ? 0 : currentMonthIdx - 1;
+    const [selYear, setSelYear] = useState(currentYear);
+    const [selMonth, setSelMonth] = useState(defaultMonth);
 
     const firstBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -65,22 +146,30 @@ const ConfirmPayModal: React.FC<{
         return () => document.removeEventListener('keydown', handler);
     }, [onCancel]);
 
-    const yearOptions = Array.from({ length: 3 }, (_, i) => now.getFullYear() - i);
+    // Only show years from app start (2026) up to current year — grows automatically
+    const APP_START_YEAR = 2026;
+    const yearOptions = Array.from(
+        { length: currentYear - APP_START_YEAR + 1 },
+        (_, i) => ({ value: APP_START_YEAR + i, label: String(APP_START_YEAR + i) })
+    );
+
+    // Only show months that have already started (0..currentMonth)
+    const monthOptions = monthNames
+        .slice(0, currentMonthIdx + 1)
+        .map((name, i) => ({ value: i, label: name }));
+
+    // If selected month is out of range for selected year, clamp it
+    const effectiveMaxMonth = selYear === currentYear ? currentMonthIdx : 11;
+    const clampedMonth = Math.min(selMonth, effectiveMaxMonth);
 
     const handleConfirm = async () => {
         setLoading(true);
         try {
-            await onConfirm({ year: selYear, month: selMonth });
+            await onConfirm({ year: selYear, month: clampedMonth });
         } finally {
             setLoading(false);
         }
     };
-
-    const selectClass = `w-full px-3 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all appearance-none ${
-        isDark
-            ? 'bg-surface-2 border-white/[0.10] text-white focus:border-[#0f766e]'
-            : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e]'
-    }`;
 
     return createPortal(
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -136,38 +225,27 @@ const ConfirmPayModal: React.FC<{
                     {/* Period picker */}
                     <div>
                         <label className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {/* Calendar icon */}
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
                             {t('salaryPeriod')}
                         </label>
                         <div className="grid grid-cols-2 gap-2">
-                            <div className="relative">
-                                <select
-                                    value={selMonth}
-                                    onChange={e => setSelMonth(Number(e.target.value))}
-                                    className={selectClass}
-                                >
-                                    {monthNames.map((m, i) => (
-                                        <option key={i} value={i}>{m}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="relative">
-                                <select
-                                    value={selYear}
-                                    onChange={e => setSelYear(Number(e.target.value))}
-                                    className={selectClass}
-                                >
-                                    {yearOptions.map(y => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <Dropdown
+                                value={clampedMonth}
+                                options={monthOptions}
+                                onChange={setSelMonth}
+                                isDark={isDark}
+                            />
+                            <Dropdown
+                                value={selYear}
+                                options={yearOptions}
+                                onChange={setSelYear}
+                                isDark={isDark}
+                            />
                         </div>
                         <p className={`text-[10px] mt-1.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                            Qaysi oy uchun to'lanayotganini tanlang
+                            {t('salaryPeriodHint')}
                         </p>
                     </div>
                 </div>
@@ -193,7 +271,7 @@ const ConfirmPayModal: React.FC<{
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
                         )}
-                        {loading ? "To'lanmoqda..." : t('paySalary')}
+                        {loading ? t('paying') : t('paySalary')}
                     </button>
                 </div>
             </div>
@@ -213,7 +291,7 @@ const ConfirmPayModal: React.FC<{
 export const PayrollPage: React.FC<PayrollPageProps> = ({
     drivers, cars, transactions, theme, userRole, onPaySalary,
 }) => {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
     const [activeTab, setActiveTab] = useState<'payroll' | 'history'>('payroll');
     const [confirmDriver, setConfirmDriver] = useState<Driver | null>(null);
@@ -239,7 +317,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
 
     const totalMonthly = salaryDrivers.reduce((s, d) => s + (d.monthlySalary ?? 0), 0);
     const paidCount    = salaryDrivers.filter(d => isPayedThisMonth(d.lastSalaryPaidAt)).length;
-    const dueCount     = salaryDrivers.length - paidCount;
+    const dueCount     = salaryDrivers.filter(d => !isPayedThisMonth(d.lastSalaryPaidAt) && !isNewDriverThisMonth(d)).length;
 
     const handleConfirmPay = async (period: { year: number; month: number }) => {
         if (!confirmDriver) return;
@@ -253,7 +331,6 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
         }
     };
 
-    // ── Shared styles ────────────────────────────────────────────────────────
     const cardBase = `${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-gray-200'} border rounded-2xl`;
     const cardShadow = isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.06)';
 
@@ -266,17 +343,17 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                         {t('totalSalaries')}
                     </p>
                     <p className={`text-2xl font-black font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(totalMonthly)}</p>
-                    <p className={`text-[10px] mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS / oy</p>
+                    <p className={`text-[10px] mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS / {t('perMonth')}</p>
                 </div>
                 <div className={`p-5 rounded-2xl border ${isDark ? 'bg-emerald-500/[0.07] border-emerald-500/[0.15]' : 'bg-emerald-50 border-emerald-200'}`}>
                     <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{t('paidThisMonth')}</p>
                     <p className={`text-2xl font-black tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{paidCount}</p>
-                    <p className={`text-[10px] mt-1 ${isDark ? 'text-emerald-600' : 'text-emerald-600'}`}>haydovchi</p>
+                    <p className={`text-[10px] mt-1 ${isDark ? 'text-emerald-600' : 'text-emerald-600'}`}>{t('drivers')}</p>
                 </div>
                 <div className={`p-5 rounded-2xl border ${dueCount > 0 ? isDark ? 'bg-red-500/[0.07] border-red-500/[0.15]' : 'bg-red-50 border-red-200' : cardBase}`}>
                     <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${dueCount > 0 ? isDark ? 'text-red-400' : 'text-red-600' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('salaryDue')}</p>
                     <p className={`text-2xl font-black tabular-nums ${dueCount > 0 ? isDark ? 'text-red-400' : 'text-red-600' : isDark ? 'text-white' : 'text-gray-900'}`}>{dueCount}</p>
-                    <p className={`text-[10px] mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>haydovchi</p>
+                    <p className={`text-[10px] mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('drivers')}</p>
                 </div>
             </div>
 
@@ -323,7 +400,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                 </svg>
                             </div>
                             <p className={`text-base font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('noSalaryDrivers')}</p>
-                            <p className={`text-sm mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Haydovchi tahrirlash orqali oylik maosh qo'shing</p>
+                            <p className={`text-sm mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('noSalaryDriversHint')}</p>
                         </div>
                     ) : (
                         <div>
@@ -333,14 +410,33 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                 <span>{t('driverCol')}</span>
                                 <span className="text-right">{t('monthlySalary')}</span>
                                 <span className="text-right">{t('lastSalaryPaid')}</span>
-                                {userRole === 'admin' && <span className="text-right">Amal</span>}
+                                {userRole === 'admin' && <span className="text-right">{t('action')}</span>}
                             </div>
 
                             {/* Rows */}
                             <div className={`divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-gray-50'}`}>
                                 {salaryDrivers.map(driver => {
                                     const isPaid = isPayedThisMonth(driver.lastSalaryPaidAt);
+                                    const isNew  = isNewDriverThisMonth(driver);
                                     const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
+
+                                    // Status badge
+                                    let badgeClass: string;
+                                    let badgeLabel: string;
+                                    let dotClass: string;
+                                    if (isPaid) {
+                                        badgeClass = isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700';
+                                        dotClass = 'bg-emerald-500';
+                                        badgeLabel = t('paidThisMonth');
+                                    } else if (isNew) {
+                                        badgeClass = isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700';
+                                        dotClass = 'bg-blue-400';
+                                        badgeLabel = t('newDriver');
+                                    } else {
+                                        badgeClass = isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600';
+                                        dotClass = 'bg-red-500';
+                                        badgeLabel = t('salaryDue');
+                                    }
 
                                     return (
                                         <div
@@ -365,7 +461,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                                             <span className={`text-[11px] font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{car.licensePlate}</span>
                                                         </div>
                                                     ) : (
-                                                        <span className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Mashina yo'q</span>
+                                                        <span className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('noCar')}</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -376,18 +472,14 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                                 <span className={`text-[10px] ml-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
                                             </div>
 
-                                            {/* Last paid + status */}
+                                            {/* Status + last paid date */}
                                             <div className="text-right space-y-1">
-                                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                                                    isPaid
-                                                        ? isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
-                                                        : isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPaid ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                                    {isPaid ? t('paidThisMonth') : t('salaryDue')}
+                                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
+                                                    {badgeLabel}
                                                 </span>
                                                 <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt) : t('neverPaid')}
+                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt) : (isNew ? '—' : t('neverPaid'))}
                                                 </p>
                                             </div>
 
