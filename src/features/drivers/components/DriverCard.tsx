@@ -27,9 +27,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     const { t } = useTranslation();
     const isDark = theme === 'dark';
 
-    const dailyPlan = (car && (car.dailyPlan ?? 0) > 0)
-        ? (car.dailyPlan as number)
-        : ((driver as any).dailyPlan ?? 0);
+    const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };

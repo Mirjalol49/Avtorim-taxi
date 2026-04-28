@@ -85,9 +85,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 
         for (const driver of activeDrivers) {
             const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
-            const dailyPlan = (car?.dailyPlan ?? 0) > 0
-                ? (car!.dailyPlan as number)
-                : ((driver as any).dailyPlan ?? 0) as number;
+            const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
 
             if (dailyPlan <= 0) continue; // no plan set — skip
 
