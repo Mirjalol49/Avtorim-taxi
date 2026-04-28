@@ -169,6 +169,13 @@ async function findDriverByTelegramId(telegramId) {
     return data;
 }
 
+// ── Get Telegram file public URL ────────────────────────────────────────────
+async function getTelegramFileUrl(fileId) {
+    const res = await tgPost('getFile', { file_id: fileId });
+    if (!res.ok || !res.result?.file_path) return null;
+    return `https://api.telegram.org/file/bot${TOKEN}/${res.result.file_path}`;
+}
+
 // ── Save income + notify admin ──────────────────────────────────────────────
 async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
     const t = T[lang] || T.uz;
@@ -176,20 +183,45 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
     const dateStr = now.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' });
     const fmt = amount.toLocaleString('uz-UZ');
 
-    // Save to Supabase transactions
+    // Get public URL for the photo
+    const chequeUrl = await getTelegramFileUrl(photoFileId);
+
+    // Save to Supabase transactions (with cheque_image)
     await supabase.from('transactions').insert({
-        driver_id:   driver.id,
-        driver_name: driver.name,
-        amount:      Math.abs(amount),
-        type:        'INCOME',
-        category:    'Telegram',
-        description: 'Karta/chek orqali kirim (bot)',
-        status:      'COMPLETED',
-        timestamp:   Date.now(),
-        source:      'bot',
+        driver_id:    driver.id,
+        driver_name:  driver.name,
+        amount:       Math.abs(amount),
+        type:         'INCOME',
+        category:     'Telegram',
+        description:  'Karta/chek orqali kirim (bot)',
+        status:       'COMPLETED',
+        timestamp:    Date.now(),
+        source:       'bot',
+        cheque_image: chequeUrl ?? null,
     });
 
-    // Notify admin with photo
+    // Insert in-app notification for admins
+    const nowMs = Date.now();
+    await supabase.from('notifications').insert({
+        title:            `💰 Yangi kirim: ${driver.name}`,
+        message:          `${driver.name} — ${fmt} so'm (karta/chek orqali)`,
+        type:             'payment_reminder',
+        category:         'payment_reminder',
+        priority:         'high',
+        target_users:     'role:admin',
+        created_by_name:  'Telegram Bot',
+        created_ms:       nowMs,
+        expires_at:       nowMs + 7 * 24 * 60 * 60 * 1000, // 7 days
+        delivery_tracking: {
+            sent:         nowMs,
+            delivered:    [],
+            read:         [],
+            driverId:     driver.id,
+            driverAvatar: driver.avatar_url ?? null,
+        },
+    });
+
+    // Forward photo to admin Telegram chat
     if (ADMIN_CHAT) {
         const caption = t.admin_notify
             .replace('{name}', driver.name)
