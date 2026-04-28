@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_CHAT  = process.env.TELEGRAM_ADMIN_CHAT_ID; // your personal Telegram chat ID
+const ADMIN_CHAT  = process.env.TELEGRAM_ADMIN_CHAT_ID;
+const FLEET_ID    = process.env.SUPABASE_FLEET_ID; // admin user ID — the app filters by this
 const API         = `https://api.telegram.org/bot${TOKEN}`;
 
 const supabase = createClient(
@@ -186,23 +187,27 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
     // Get public URL for the photo
     const chequeUrl = await getTelegramFileUrl(photoFileId);
 
-    // Save to Supabase transactions (with cheque_image)
-    await supabase.from('transactions').insert({
-        driver_id:    driver.id,
-        driver_name:  driver.name,
-        amount:       Math.abs(amount),
-        type:         'INCOME',
-        category:     'Telegram',
-        description:  'Karta/chek orqali kirim (bot)',
-        status:       'COMPLETED',
-        timestamp:    Date.now(),
-        source:       'bot',
-        cheque_image: chequeUrl ?? null,
-    });
-
-    // Insert in-app notification for admins
+    // Save to Supabase transactions — exact columns from addTransaction in firestoreService
     const nowMs = Date.now();
-    await supabase.from('notifications').insert({
+    const { error: txError } = await supabase.from('transactions').insert({
+        fleet_id:       FLEET_ID ?? null,
+        driver_id:      driver.id,
+        driver_name:    driver.name,
+        amount:         Math.abs(amount),
+        type:           'INCOME',
+        status:         'ACTIVE',
+        description:    'Karta/chek orqali kirim (bot)',
+        note:           null,
+        payment_method: 'CARD',
+        cheque_image:   chequeUrl ?? null,
+        timestamp_ms:   nowMs,
+        created_ms:     nowMs,
+    });
+    if (txError) console.error('Transaction insert error:', JSON.stringify(txError));
+
+    // Insert in-app notification — must include fleet_id so app sees it
+    const { error: notifError } = await supabase.from('notifications').insert({
+        fleet_id:         FLEET_ID ?? null,
         title:            `💰 Yangi kirim: ${driver.name}`,
         message:          `${driver.name} — ${fmt} so'm (karta/chek orqali)`,
         type:             'payment_reminder',
@@ -211,15 +216,14 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
         target_users:     'role:admin',
         created_by_name:  'Telegram Bot',
         created_ms:       nowMs,
-        expires_at:       nowMs + 7 * 24 * 60 * 60 * 1000, // 7 days
+        expires_at:       nowMs + 7 * 24 * 60 * 60 * 1000,
         delivery_tracking: {
-            sent:         nowMs,
-            delivered:    [],
-            read:         [],
-            driverId:     driver.id,
+            sent: nowMs, delivered: [], read: [],
+            driverId: driver.id,
             driverAvatar: driver.avatar_url ?? null,
         },
     });
+    if (notifError) console.error('Notification insert error:', JSON.stringify(notifError));
 
     // Forward photo to admin Telegram chat
     if (ADMIN_CHAT) {
