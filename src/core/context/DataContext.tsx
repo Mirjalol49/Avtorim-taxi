@@ -8,8 +8,10 @@ import { Driver, Transaction, Notification } from '../../core/types';
 interface DataContextType {
     drivers: Driver[];
     driversLoading: boolean;
+    setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>;
     transactions: Transaction[];
     txLoading: boolean;
+    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     notifications: Notification[];
     unreadCount: number;
     readNotificationIds: Set<string>;
@@ -41,8 +43,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setRefreshTrigger(prev => prev + 1);
     }, []);
 
-    const { drivers, loading: driversLoading } = useDrivers(fleetId, refreshTrigger);
-    const { transactions, loading: txLoading } = useTransactions(fleetId, refreshTrigger);
+    const { drivers, setDrivers, loading: driversLoading } = useDrivers(fleetId, refreshTrigger);
+    const { transactions, setTransactions, loading: txLoading } = useTransactions(fleetId, refreshTrigger);
     const {
         notifications,
         unreadCount,
@@ -58,8 +60,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         <DataContext.Provider value={{
             drivers,
             driversLoading,
+            setDrivers,
             transactions,
             txLoading,
+            setTransactions,
             notifications,
             unreadCount,
             readNotificationIds,

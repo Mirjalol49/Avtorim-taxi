@@ -194,27 +194,43 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     {/* Documents */}
                     {docs.length > 0 && (
                         <Section title={t('documents')} icon={<NotesIcon className="w-3.5 h-3.5" />} isDark={isDark}>
-                            <div className="space-y-2">
-                                {docs.map((doc: any, i: number) => {
-                                    const isImage = doc.type?.startsWith('image/');
+                            <div className="space-y-3">
+                                {Array.from(new Set(docs.map((d: any) => d.category))).map((cat: any) => {
+                                    const catDocs = docs.filter((d: any) => d.category === cat);
                                     return (
-                                        <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => {
-                                                if (isImage) setViewingDoc({ name: doc.name, data: doc.data });
-                                                else window.open(doc.data, '_blank');
-                                            }}
-                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-colors ${isDark ? 'border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04]' : 'border-gray-200 hover:border-gray-300 hover:bg-white'}`}
-                                        >
-                                            <div className="flex items-center gap-2.5">
-                                                <span className="text-base">{isImage ? '🖼' : '📄'}</span>
-                                                <span className={`text-[13px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    {getFriendlyDocName(doc)}
-                                                </span>
+                                        <div key={cat}>
+                                            <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                {getFriendlyDocName(catDocs[0])}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {catDocs.map((doc: any, idx: number) => {
+                                                    const isImage = doc.type?.startsWith('image/');
+                                                    return isImage ? (
+                                                        <button key={idx} type="button"
+                                                            onClick={() => setViewingDoc({ name: doc.name, data: doc.data })}
+                                                            className="relative group overflow-hidden rounded-xl border border-white/[0.08] flex-shrink-0"
+                                                        >
+                                                            <img src={doc.data} alt={doc.name}
+                                                                className="w-20 h-20 object-cover" />
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <span className="text-white text-xs font-semibold">Ko'rish</span>
+                                                            </div>
+                                                            <span className={`absolute bottom-0 left-0 right-0 text-[9px] font-medium text-center py-0.5 ${isDark ? 'bg-black/60 text-gray-300' : 'bg-black/50 text-white'}`}>
+                                                                {idx + 1}-rasm
+                                                            </span>
+                                                        </button>
+                                                    ) : (
+                                                        <a key={idx} href={doc.data} download={doc.name} target="_blank" rel="noreferrer"
+                                                            className={`w-20 h-20 rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${isDark ? 'border-red-500/20 bg-red-500/10 hover:bg-red-500/15' : 'border-red-200 bg-red-50 hover:bg-red-100'}`}
+                                                        >
+                                                            <span className="text-2xl">📄</span>
+                                                            <span className="text-[9px] font-bold text-red-400">PDF</span>
+                                                            <span className={`text-[8px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{idx + 1}-fayl</span>
+                                                        </a>
+                                                    );
+                                                })}
                                             </div>
-                                            <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                                        </button>
+                                        </div>
                                     );
                                 })}
                             </div>

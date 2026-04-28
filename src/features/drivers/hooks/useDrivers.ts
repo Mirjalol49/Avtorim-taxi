@@ -49,5 +49,5 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
         return () => document.removeEventListener('visibilitychange', handleVisibility);
     }, []);
 
-    return { drivers, loading, error };
+    return { drivers, setDrivers, loading, error };
 };

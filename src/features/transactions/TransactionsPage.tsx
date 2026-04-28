@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Transaction, Driver, TransactionType, PaymentStatus, UserRole, AdminUser, Language, Car } from '../../core/types';
 import { useFinanceStats } from '../finance/hooks/useFinanceStats';
 import * as firestoreService from '../../../services/firestoreService';
+import { useDataContext } from '../../core/context/DataContext';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
@@ -63,6 +64,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const language = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz') as Language;
     const { addToast } = useToast();
     const confirm = useConfirm();
+    const { setTransactions } = useDataContext();
 
     // useFinanceStats now manages language internally
     const {
@@ -94,26 +96,38 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         });
         if (!ok) return;
 
+        // Optimistic: remove immediately
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        setSelectedTransactions(prev => prev.filter(tid => tid !== id));
+
         try {
             await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, adminUser?.id);
             addToast('success', t('transactionDeleted'));
-            if (selectedTransactions.includes(id)) {
-                setSelectedTransactions(prev => prev.filter(tid => tid !== id));
-            }
         } catch (error) {
             console.error('Failed to delete transaction:', error);
+            setTransactions(prev => {
+                if (prev.find(t => t.id === id)) return prev;
+                return [...prev, tx].sort((a, b) => b.timestamp - a.timestamp);
+            });
             addToast('error', t('transactionDeleteFailed'));
         }
     };
 
     const handleEditSubmit = async (data: Omit<Transaction, 'id'>, id?: string) => {
         if (!id) return;
+        const original = allTransactions.find(t => t.id === id);
+
+        // Optimistic: update immediately and close modal
+        setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+        setEditingTransaction(null);
+
         try {
             await firestoreService.updateTransaction(id, data);
             addToast('success', t('transactionUpdated'));
-            setEditingTransaction(null);
         } catch (error) {
             console.error('Failed to update transaction:', error);
+            if (original) setTransactions(prev => prev.map(t => t.id === id ? original : t));
+            setEditingTransaction(original ?? null);
             addToast('error', t('transactionUpdateFailed'));
         }
     };
@@ -121,11 +135,11 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const handleBulkDelete = async () => {
         if (selectedTransactions.length === 0) return;
 
-        const totalAmount = allTransactions
-            .filter(t => selectedTransactions.includes(t.id))
-            .reduce((sum, t) => sum + t.amount, 0);
-
+        const toDelete = new Set(selectedTransactions);
+        const removed = allTransactions.filter(t => toDelete.has(t.id));
+        const totalAmount = removed.reduce((sum, t) => sum + t.amount, 0);
         const n = selectedTransactions.length;
+
         const ok = await confirm({
             title: t('confirmDeleteTitle'),
             message: t('deleteConfirmBulkTx')
@@ -135,6 +149,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         });
         if (!ok) return;
 
+        // Optimistic: remove all immediately
+        setTransactions(prev => prev.filter(t => !toDelete.has(t.id)));
+        setSelectedTransactions([]);
+
         try {
             await firestoreService.deleteTransactionsBatch(
                 selectedTransactions,
@@ -142,9 +160,13 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 adminUser?.id
             );
             addToast('success', t('bulkDeleteSuccess').replace('{n}', String(n)));
-            setSelectedTransactions([]);
         } catch (error) {
             console.error('Failed to delete transactions:', error);
+            setTransactions(prev => {
+                const existingIds = new Set(prev.map(t => t.id));
+                const reverted = removed.filter(t => !existingIds.has(t.id));
+                return [...prev, ...reverted].sort((a, b) => b.timestamp - a.timestamp);
+            });
             addToast('error', t('bulkDeleteFailed'));
         }
     };

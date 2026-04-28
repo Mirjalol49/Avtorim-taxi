@@ -83,29 +83,32 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   };
 
   const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>, category: CarDocument['category']) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_DOC_MB * 1024 * 1024) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const oversized = files.find(f => f.size > MAX_DOC_MB * 1024 * 1024);
+    if (oversized) {
       setDocError(`Fayl hajmi ${MAX_DOC_MB}MB dan oshmasligi kerak`);
       e.target.value = '';
       return;
     }
     setDocError(null);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setDocuments(prev => [
-        ...prev.filter(d => d.category !== category),
-        { name: file.name, type: file.type, data: reader.result as string, category },
-      ]);
-    };
-    reader.readAsDataURL(file);
+    const promises = files.map(file => new Promise<CarDocument>(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve({ name: file.name, type: file.type, data: reader.result as string, category });
+      reader.readAsDataURL(file);
+    }));
+    Promise.all(promises).then(newDocs => setDocuments(prev => [...prev, ...newDocs]));
     e.target.value = '';
   };
 
-  const removeDoc = (category: CarDocument['category']) =>
-    setDocuments(prev => prev.filter(d => d.category !== category));
-
-  const getDoc = (cat: CarDocument['category']) => documents.find(d => d.category === cat);
+  const removeDoc = (category: CarDocument['category'], indexInCategory: number) => {
+    setDocuments(prev => {
+      const catItems = prev.filter(d => d.category === category);
+      const others = prev.filter(d => d.category !== category);
+      catItems.splice(indexInCategory, 1);
+      return [...others, ...catItems];
+    });
+  };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
     ? 'bg-surface-2 border-white/[0.08] text-white focus:border-[#0f766e] placeholder-gray-500'
@@ -114,39 +117,52 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`;
 
   const DocBox = ({ category, label }: { category: CarDocument['category']; label: string }) => {
-    const doc = getDoc(category);
+    const docs = documents.filter(d => d.category === category);
     return (
-      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
-        <div className="flex-1 min-w-0">
-          <p className={`text-xs font-semibold mb-0.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
-          {doc
-            ? <p className="text-xs text-[#0f766e] truncate">{doc.name}</p>
-            : <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>PDF yoki rasm tanlang (max {MAX_DOC_MB}MB)</p>
-          }
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {doc && (
-            <>
-              {doc.type.startsWith('image/') ? (
-                <a href={doc.data} target="_blank" rel="noreferrer">
-                  <img src={doc.data} alt={doc.name} className="w-8 h-8 rounded object-cover border border-white/[0.08]" />
-                </a>
-              ) : (
-                <a href={doc.data} download={doc.name} className="text-[#0f766e] text-xs font-medium hover:underline">PDF</a>
-              )}
-              <button type="button" onClick={() => removeDoc(category)}
-                className={`p-1 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}>
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
+      <div className={`rounded-xl border p-3 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
+            {docs.length > 0 && (
+              <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{docs.length} ta fayl</p>
+            )}
+          </div>
           <label htmlFor={`car-doc-${category}`}
-            className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors">
-            {doc ? 'Almashtir' : 'Yuklash'}
+            className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors flex-shrink-0">
+            + Qo'shish
           </label>
-          <input id={`car-doc-${category}`} type="file" accept="image/*,application/pdf"
+          <input id={`car-doc-${category}`} type="file" accept="image/*,application/pdf" multiple
             className="hidden" onChange={(e) => handleDocUpload(e, category)} />
         </div>
+        {docs.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {docs.map((doc, idx) => (
+              <div key={idx} className="relative group">
+                {doc.type.startsWith('image/') ? (
+                  <a href={doc.data} target="_blank" rel="noreferrer">
+                    <img src={doc.data} alt={doc.name}
+                      className={`w-14 h-14 rounded-lg object-cover cursor-pointer border ${theme === 'dark' ? 'border-white/[0.10]' : 'border-gray-200'}`} />
+                  </a>
+                ) : (
+                  <a href={doc.data} download={doc.name} target="_blank" rel="noreferrer">
+                    <div className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer border ${theme === 'dark' ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
+                      <span className="text-lg">📄</span>
+                      <span className="text-[9px] font-bold text-red-400">PDF</span>
+                    </div>
+                  </a>
+                )}
+                <button type="button" onClick={() => removeDoc(category, idx)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                  <XIcon className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+            Oldi-orqa tomonlarni yoki bir nechta sahifalarni yuklash mumkin
+          </p>
+        )}
       </div>
     );
   };

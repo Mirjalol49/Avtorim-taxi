@@ -103,6 +103,7 @@ const AppContent: React.FC = () => {
 
   const {
     drivers,
+    setDrivers,
     loading: driversLoading,
     transactions,
     txLoading,
@@ -113,7 +114,6 @@ const AppContent: React.FC = () => {
     setReadNotificationIds,
     setUnreadCount,
     loading: isDataLoading,
-    triggerRefresh
   } = useDataContext();
 
   const location = useLocation();
@@ -238,7 +238,6 @@ const AppContent: React.FC = () => {
         payload as any,
         adminUser?.id
       );
-      triggerRefresh();
     } catch (error) {
       console.error('Failed to add transaction:', error);
       addToast('error', t.transactionSaveFailed);
@@ -256,15 +255,10 @@ const AppContent: React.FC = () => {
       message: t.deleteConfirmTx,
       isDanger: true,
       action: async () => {
-        try {
-          await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' });
-          setSelectedTransactions(prev => prev.filter(txId => txId !== id));
-          triggerRefresh();
-          closeConfirmModal();
-        } catch (error) {
-          console.error('Failed to delete transaction:', error);
-          closeConfirmModal();
-        }
+        closeConfirmModal();
+        setSelectedTransactions(prev => prev.filter(txId => txId !== id));
+        firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' })
+          .catch(err => console.error('Failed to delete transaction:', err));
       }
     });
   };
@@ -309,7 +303,6 @@ const AppContent: React.FC = () => {
       if (assignedCarId && assignedCarId !== previousCarId) {
         await assignCar(assignedCarId, driverId);
       }
-      triggerRefresh();
     } catch (error) {
       console.error('Failed to save driver:', error);
       addToast('error', t.driverSaveFailed);
@@ -321,6 +314,8 @@ const AppContent: React.FC = () => {
     try {
       const now = Date.now();
       const periodKey = `${period.year}-${String(period.month + 1).padStart(2, '0')}`;
+      // Optimistic: mark driver as paid immediately
+      setDrivers(prev => prev.map(d => d.id === driver.id ? { ...d, lastSalaryPaidAt: now } : d));
       await firestoreService.addTransaction({
         driverId: driver.id,
         driverName: driver.name,
@@ -333,7 +328,6 @@ const AppContent: React.FC = () => {
         category: 'SALARY',
       } as any, adminUser?.id);
       await firestoreService.updateDriver(driver.id, { lastSalaryPaidAt: now } as any, adminUser?.id);
-      triggerRefresh();
       addToast('success', t.salaryPaid || "Ish haqi to'landi");
     } catch {
       addToast('error', t.paySalaryError || "Xatolik yuz berdi");
@@ -346,11 +340,13 @@ const AppContent: React.FC = () => {
   };
 
   const handleUpdateDriverStatus = async (driverId: string, newStatus: DriverStatus) => {
+    const prev = drivers.find(d => d.id === driverId)?.status;
+    setDrivers(ds => ds.map(d => d.id === driverId ? { ...d, status: newStatus } : d));
     try {
       await firestoreService.updateDriver(driverId, { status: newStatus }, adminUser?.id);
-      triggerRefresh();
     } catch (error) {
       console.error('Failed to update driver status:', error);
+      if (prev) setDrivers(ds => ds.map(d => d.id === driverId ? { ...d, status: prev } : d));
       addToast('error', t.statusUpdateFailed);
     }
   };
@@ -367,6 +363,8 @@ const AppContent: React.FC = () => {
       action: async () => {
         closeConfirmModal();
 
+        // Optimistic: remove driver immediately
+        setDrivers(ds => ds.filter(d => d.id !== id));
         try {
           const assignedCar = cars.find(c => c.assignedDriverId === id);
           await firestoreService.deleteDriver(id, {
@@ -374,9 +372,9 @@ const AppContent: React.FC = () => {
             reason: 'Manual deletion by admin'
           }, adminUser?.id);
           if (assignedCar) await unassignCar(assignedCar.id);
-          triggerRefresh();
         } catch (error) {
           console.error('Failed to delete driver:', error);
+          if (driver) setDrivers(ds => [...ds, driver]);
           addToast('error', t.driverDeleteFailed);
         }
       }
@@ -393,7 +391,6 @@ const AppContent: React.FC = () => {
     } else {
       await addCar(data as Omit<Car, 'id'>, adminUser.id);
     }
-    triggerRefresh();
   };
 
   const handleDeleteCar = (id: string) => {
@@ -405,7 +402,6 @@ const AppContent: React.FC = () => {
       action: async () => {
         closeConfirmModal();
         await deleteCar(id);
-        triggerRefresh();
       }
     });
   };
