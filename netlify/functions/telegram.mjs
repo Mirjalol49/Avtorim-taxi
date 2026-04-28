@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT  = process.env.TELEGRAM_ADMIN_CHAT_ID;
-const FLEET_ID    = process.env.SUPABASE_FLEET_ID; // admin user ID — the app filters by this
 const API         = `https://api.telegram.org/bot${TOKEN}`;
 
 const supabase = createClient(
@@ -190,7 +189,7 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
     // Save to Supabase transactions — exact columns from addTransaction in firestoreService
     const nowMs = Date.now();
     const { error: txError } = await supabase.from('transactions').insert({
-        fleet_id:       FLEET_ID ?? null,
+        fleet_id:       driver.fleet_id ?? null,
         driver_id:      driver.id,
         driver_name:    driver.name,
         amount:         Math.abs(amount),
@@ -207,7 +206,7 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
 
     // Insert in-app notification — must include fleet_id so app sees it
     const { error: notifError } = await supabase.from('notifications').insert({
-        fleet_id:         FLEET_ID ?? null,
+        fleet_id:         driver.fleet_id ?? null,
         title:            `💰 Yangi kirim: ${driver.name}`,
         message:          `${driver.name} — ${fmt} so'm (karta/chek orqali)`,
         type:             'payment_reminder',
