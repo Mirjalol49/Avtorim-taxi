@@ -218,10 +218,15 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
         expires_at:       nowMs + 7 * 24 * 60 * 60 * 1000,
         delivery_tracking: {
             sent: nowMs, delivered: [], read: [],
-            driverId: driver.id,
-            driverAvatar: driver.avatar_url ?? null,
-            txType: 'income',
-            method: 'card',
+            driverId:    driver.id,
+            driverName:  driver.name  ?? null,
+            driverAvatar: driver.avatar ?? null,
+            carName:     driver.car        ?? null,
+            carPlate:    driver.car_number ?? null,
+            amount:      Math.abs(amount),
+            txType:      'income',
+            method:      'card',
+            chequeImage: chequeUrl ?? null,
         },
     });
     if (notifError) console.error('Notification insert error:', JSON.stringify(notifError));

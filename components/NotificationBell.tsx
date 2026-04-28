@@ -255,13 +255,15 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     // ─── Payment Transaction Card ───────────────────────────────────────────
     const renderPaymentItem = (notification: Notification, isRead: boolean) => {
         const dt         = (notification as any).deliveryTracking ?? {};
-        const txType     = dt.txType    as 'income' | 'expense' | undefined;
-        const method     = dt.method    as 'cash' | 'card' | null;
-        const amount     = dt.amount    as number | undefined;
+        const txType     = dt.txType     as 'income' | 'expense' | undefined;
+        const method     = dt.method     as 'cash' | 'card' | null;
+        const amount     = dt.amount     as number | undefined;
         const driverName = dt.driverName as string | undefined;
-        const note       = dt.note      as string | undefined;
-        const dateStr    = dt.dateStr   as string | undefined;
-        const timeStr    = dt.timeStr   as string | undefined;
+        const carName    = dt.carName    as string | undefined;
+        const carPlate   = dt.carPlate   as string | undefined;
+        const note       = dt.note       as string | undefined;
+        const dateStr    = dt.dateStr    as string | undefined;
+        const timeStr    = dt.timeStr    as string | undefined;
         const avatarUrl  = dt.driverAvatar as string | undefined;
         const chequeUrl  = dt.chequeImage  as string | undefined;
 
@@ -287,11 +289,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 }`}
             >
                 <div className="px-4 py-3.5 pr-10">
-                    <div className="flex items-start gap-3">
+                    {/* Row 1: Avatar + name/car + amount */}
+                    <div className="flex items-center gap-3 mb-2.5">
+                        {/* Avatar */}
                         <div className="relative flex-shrink-0">
                             {avatarUrl ? (
                                 <img src={avatarUrl} alt=""
-                                    className={`w-9 h-9 rounded-xl object-cover ${isRead ? 'opacity-40' : ''}`}
+                                    className={`w-11 h-11 rounded-2xl object-cover ring-2 ${
+                                        isRead ? 'opacity-40 ring-transparent'
+                                               : isIncome ? 'ring-teal-500/30' : 'ring-red-500/30'
+                                    }`}
                                     onError={e => {
                                         (e.currentTarget as HTMLImageElement).style.display = 'none';
                                         (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('style');
@@ -299,67 +306,93 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 />
                             ) : null}
                             <div
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}
+                                className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}
                                 style={{ display: avatarUrl ? 'none' : 'flex' }}
                             >
                                 {isIncome
-                                    ? <TrendingUpIcon   className={`w-4 h-4 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
-                                    : <TrendingDownIcon className={`w-4 h-4 ${isDark ? 'text-red-400'  : 'text-red-500'}`}  />
+                                    ? <TrendingUpIcon   className={`w-5 h-5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
+                                    : <TrendingDownIcon className={`w-5 h-5 ${isDark ? 'text-red-400'  : 'text-red-500'}`}  />
                                 }
                             </div>
                             {!isRead && (
-                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
+                                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
                             )}
                         </div>
 
+                        {/* Name + car info */}
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
-                                <p className={`text-[13px] font-semibold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {nameDisplay}
-                                </p>
-                                <span className={`text-[13px] font-bold font-mono flex-shrink-0 tabular-nums ${isRead ? isDark ? 'text-gray-600' : 'text-gray-400' : isIncome ? 'text-teal-500' : 'text-red-400'}`}>
-                                    {isIncome ? '+' : '−'}{amountDisplay} UZS
-                                </span>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wide ${
-                                    isIncome
-                                        ? isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700'
-                                        : isDark ? 'bg-red-500/15 text-red-400'  : 'bg-red-50 text-red-600'
-                                }`}>
-                                    {isIncome ? '↑ KIRIM' : '↓ CHIQIM'}
-                                </span>
-                                {method === 'card' && (
-                                    <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                                        <CreditCardIcon className="w-2.5 h-2.5" /> Karta
-                                    </span>
-                                )}
-                                {method === 'cash' && (
-                                    <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-700'}`}>
-                                        <BanknoteIcon className="w-2.5 h-2.5" /> Naqd
-                                    </span>
-                                )}
-                                {chequeUrl && (
-                                    <a href={chequeUrl} target="_blank" rel="noopener noreferrer"
-                                        onClick={e => e.stopPropagation()}
-                                        className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-surface-2 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        <ReceiptIcon className="w-2.5 h-2.5" /> Chek
-                                    </a>
-                                )}
-                            </div>
-
-                            {note && (
-                                <p className={`text-[11px] mb-1.5 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>📝 {note}</p>
+                            <p className={`text-[14px] font-semibold leading-tight truncate ${
+                                isRead ? isDark ? 'text-gray-500' : 'text-gray-400'
+                                       : isDark ? 'text-white' : 'text-gray-900'
+                            }`}>
+                                {nameDisplay}
+                            </p>
+                            {(carName || carPlate) && (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <CarIcon className={`w-3 h-3 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                                    {carName && (
+                                        <span className={`text-[11px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            {carName}
+                                        </span>
+                                    )}
+                                    {carPlate && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                                            {carPlate}
+                                        </span>
+                                    )}
+                                </div>
                             )}
-
-                            <div className={`flex items-center gap-1.5 text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                <ClockIcon className="w-3 h-3" />
-                                <span>{formatRelative(notification.createdAt)}</span>
-                                {dateStr && timeStr && <><span>·</span><span className="font-mono">{dateStr}, {timeStr}</span></>}
-                            </div>
                         </div>
+
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
+                            <p className={`text-[15px] font-bold font-mono tabular-nums leading-tight ${
+                                isRead ? isDark ? 'text-gray-600' : 'text-gray-400'
+                                       : isIncome ? 'text-teal-500' : 'text-red-400'
+                            }`}>
+                                {isIncome ? '+' : '−'}{amountDisplay}
+                            </p>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wide ${
+                            isIncome
+                                ? isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700'
+                                : isDark ? 'bg-red-500/15 text-red-400'  : 'bg-red-50 text-red-600'
+                        }`}>
+                            {isIncome ? '↑ KIRIM' : '↓ CHIQIM'}
+                        </span>
+                        {method === 'card' && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                <CreditCardIcon className="w-2.5 h-2.5" /> Karta
+                            </span>
+                        )}
+                        {method === 'cash' && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-700'}`}>
+                                <BanknoteIcon className="w-2.5 h-2.5" /> Naqd
+                            </span>
+                        )}
+                        {chequeUrl && (
+                            <a href={chequeUrl} target="_blank" rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-surface-2 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <ReceiptIcon className="w-2.5 h-2.5" /> Chek
+                            </a>
+                        )}
+                    </div>
+
+                    {note && (
+                        <p className={`text-[11px] mb-1.5 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>📝 {note}</p>
+                    )}
+
+                    <div className={`flex items-center gap-1.5 text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <ClockIcon className="w-3 h-3" />
+                        <span>{formatRelative(notification.createdAt)}</span>
+                        {dateStr && timeStr && <><span>·</span><span className="font-mono">{dateStr}, {timeStr}</span></>}
                     </div>
                 </div>
 
