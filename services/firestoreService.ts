@@ -133,6 +133,31 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
 export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
+    const transformDriver = (r: any): Driver => ({
+        id: r.id,
+        fleetId: r.fleet_id,
+        name: r.name ?? '',
+        phone: r.phone ?? '',
+        carModel: r.car ?? '',
+        licensePlate: r.car_number ?? '',
+        status: r.status ?? 'OFFLINE',
+        avatar: r.avatar ?? '',
+        balance: r.balance ?? 0,
+        rating: r.rating ?? 5.0,
+        monthlySalary: r.monthly_salary ?? 0,
+        dailyPlan: r.daily_plan ?? 0,
+        telegram: r.telegram ?? '',
+        notes: r.notes ?? '',
+        extraPhone: r.extra_phone ?? '',
+        isDeleted: r.is_deleted ?? false,
+        location: r.location ?? { lat: 0, lng: 0, heading: 0 },
+        documents: r.documents ?? [],
+        createdAt: toMs(r.created_ms),
+        lastSalaryPaidAt: r.last_salary_paid_at ? toMs(r.last_salary_paid_at) : undefined,
+    } as Driver);
+
+    let cache: Driver[] = [];
+
     const fetchDrivers = () =>
         supabase
             .from('drivers')
@@ -140,40 +165,39 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             .eq('fleet_id', fleetId)
             .eq('is_deleted', false)
             .then(({ data }) => {
-                if (data) callback(data.map(r => ({
-                    id: r.id,
-                    fleetId: r.fleet_id,
-                    name: r.name ?? '',
-                    phone: r.phone ?? '',
-                    carModel: r.car ?? '',
-                    licensePlate: r.car_number ?? '',
-                    status: r.status ?? 'OFFLINE',
-                    avatar: r.avatar ?? '',
-                    balance: r.balance ?? 0,
-                    rating: r.rating ?? 5.0,
-                    monthlySalary: r.monthly_salary ?? 0,
-                    dailyPlan: r.daily_plan ?? 0,
-                    telegram: r.telegram ?? '',
-                    notes: r.notes ?? '',
-                    extraPhone: r.extra_phone ?? '',
-                    isDeleted: r.is_deleted ?? false,
-                    location: r.location ?? { lat: 0, lng: 0, heading: 0 },
-                    documents: r.documents ?? [],
-                    createdAt: toMs(r.created_ms),
-                    lastSalaryPaidAt: r.last_salary_paid_at ? toMs(r.last_salary_paid_at) : undefined,
-                } as Driver)));
+                if (data) {
+                    cache = data.map(transformDriver);
+                    callback(cache);
+                }
             });
 
-    // Fire immediately — data shows before WebSocket channel connects
     fetchDrivers();
 
     const channel = supabase
         .channel(`drivers_${fleetId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, fetchDrivers)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, ({ new: row }) => {
+            if (row.is_deleted) return;
+            const item = transformDriver(row);
+            cache = [...cache, item];
+            callback(cache);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, ({ new: row }) => {
+            if (row.is_deleted) {
+                cache = cache.filter(d => d.id !== row.id);
+            } else {
+                const item = transformDriver(row);
+                const idx = cache.findIndex(d => d.id === row.id);
+                cache = idx >= 0
+                    ? [...cache.slice(0, idx), item, ...cache.slice(idx + 1)]
+                    : [...cache, item];
+            }
+            callback(cache);
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'drivers', filter: `fleet_id=eq.${fleetId}` }, ({ old: row }) => {
+            cache = cache.filter(d => d.id !== row.id);
+            callback(cache);
+        })
         .subscribe((status) => {
-            // Fetch again once subscribed — catches any changes during channel setup
-            if (status === 'SUBSCRIBED') fetchDrivers();
-            // On error/timeout, do a best-effort fetch so data isn't stale
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchDrivers();
         });
 
@@ -267,6 +291,28 @@ export const deleteDriver = async (id: string, auditInfo?: { adminName: string; 
 export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
+    const transformTx = (r: any): Transaction => ({
+        id: r.id,
+        driverId: r.driver_id ?? undefined,
+        driverName: r.driver_name ?? undefined,
+        carId: r.car_id ?? undefined,
+        carName: r.car_name ?? undefined,
+        amount: r.amount ?? 0,
+        type: r.type,
+        description: r.description ?? '',
+        note: r.note ?? '',
+        timestamp: toMs(r.timestamp_ms),
+        status: r.status,
+        paymentMethod: r.payment_method ?? undefined,
+        chequeImage: r.cheque_image ?? undefined,
+        reversedAt: r.reversed_at ?? undefined,
+        reversedBy: r.reversed_by ?? undefined,
+        reversalReason: r.reversal_reason ?? undefined,
+        originalTransactionId: r.original_transaction_id ?? undefined,
+    } as Transaction);
+
+    let cache: Transaction[] = [];
+
     const fetchTx = () =>
         supabase
             .from('transactions')
@@ -275,35 +321,38 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             .neq('status', 'DELETED')
             .order('timestamp_ms', { ascending: false })
             .then(({ data }) => {
-                if (data) callback(data.map(r => ({
-                    id: r.id,
-                    driverId: r.driver_id ?? undefined,
-                    driverName: r.driver_name ?? undefined,
-                    carId: r.car_id ?? undefined,
-                    carName: r.car_name ?? undefined,
-                    amount: r.amount ?? 0,
-                    type: r.type,
-                    description: r.description ?? '',
-                    note: r.note ?? '',
-                    timestamp: toMs(r.timestamp_ms),
-                    status: r.status,
-                    paymentMethod: r.payment_method ?? undefined,
-                    chequeImage: r.cheque_image ?? undefined,
-                    reversedAt: r.reversed_at ?? undefined,
-                    reversedBy: r.reversed_by ?? undefined,
-                    reversalReason: r.reversal_reason ?? undefined,
-                    originalTransactionId: r.original_transaction_id ?? undefined,
-                } as Transaction)));
+                if (data) {
+                    cache = data.map(transformTx);
+                    callback(cache);
+                }
             });
 
-    // Fire immediately — data shows before WebSocket channel connects
     fetchTx();
 
     const channel = supabase
         .channel(`transactions_${fleetId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, fetchTx)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, ({ new: row }) => {
+            if (row.status === 'DELETED') return;
+            cache = [transformTx(row), ...cache];
+            callback(cache);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, ({ new: row }) => {
+            if (row.status === 'DELETED') {
+                cache = cache.filter(t => t.id !== row.id);
+            } else {
+                const item = transformTx(row);
+                const idx = cache.findIndex(t => t.id === row.id);
+                cache = idx >= 0
+                    ? [...cache.slice(0, idx), item, ...cache.slice(idx + 1)]
+                    : [item, ...cache];
+            }
+            callback(cache);
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, ({ old: row }) => {
+            cache = cache.filter(t => t.id !== row.id);
+            callback(cache);
+        })
         .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetchTx();
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchTx();
         });
 

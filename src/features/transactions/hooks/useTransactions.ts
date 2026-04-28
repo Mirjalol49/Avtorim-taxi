@@ -50,5 +50,5 @@ export const useTransactions = (fleetId?: string, _refreshTrigger?: number) => {
         return () => document.removeEventListener('visibilitychange', handleVisibility);
     }, []);
 
-    return { transactions, loading, error };
+    return { transactions, setTransactions, loading, error };
 };
