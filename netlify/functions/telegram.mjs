@@ -197,7 +197,7 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
         status:         'ACTIVE',
         description:    'Karta/chek orqali kirim (bot)',
         note:           null,
-        payment_method: 'CARD',
+        payment_method: 'card',
         cheque_image:   chequeUrl ?? null,
         timestamp_ms:   nowMs,
         created_ms:     nowMs,
@@ -220,6 +220,8 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
             sent: nowMs, delivered: [], read: [],
             driverId: driver.id,
             driverAvatar: driver.avatar_url ?? null,
+            txType: 'income',
+            method: 'card',
         },
     });
     if (notifError) console.error('Notification insert error:', JSON.stringify(notifError));
