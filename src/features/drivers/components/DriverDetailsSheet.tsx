@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
+import { calcDriverFinance, DriverFinanceSummary } from '../utils/debtUtils';
 import {
     XIcon, EditIcon, TrashIcon, PhoneIcon, CarIcon, NotesIcon,
 } from '../../../../components/Icons';
@@ -155,6 +156,11 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
     const visibleGroups = filterMonth === 'all' ? monthGroups : monthGroups.filter(g => g.monthKey === filterMonth);
 
+    const finance = useMemo((): DriverFinanceSummary | null => {
+        if (!driver) return null;
+        return calcDriverFinance(driver, car, transactions);
+    }, [driver, car, transactions]);
+
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -257,21 +263,57 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     ) : (
                         <div className="space-y-3">
 
-                            {/* ── All-time totals ── */}
-                            <div className={`grid grid-cols-2 gap-0 rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}>
-                                <div className={`px-4 py-3 border-r ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami kirim</p>
-                                    <p className="text-base font-black font-mono tabular-nums text-green-500">
-                                        {fmt(monthGroups.reduce((s, r) => s + r.income, 0))} <span className={`text-[10px] font-bold ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
-                                    </p>
+                            {/* ── Deposit / Salary summary banner ── */}
+                            {finance && (finance.driverType === 'deposit' ? (
+                                <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-amber-500/20 bg-amber-500/[0.06]' : 'border-amber-200 bg-amber-50'}`}>
+                                    <div className={`flex items-center gap-2 px-4 py-2.5 border-b ${isDark ? 'border-amber-500/15' : 'border-amber-200'}`}>
+                                        <span className="text-base">🏦</span>
+                                        <span className={`text-[11px] font-black uppercase tracking-widest ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Depozit holati</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 divide-x divide-amber-500/[0.12] px-0">
+                                        <div className="px-4 py-3">
+                                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-amber-500/60' : 'text-amber-600/70'}`}>Boshlang'ich depozit</p>
+                                            <p className={`text-[13px] font-black font-mono tabular-nums ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>{fmt(finance.depositAmount)}</p>
+                                        </div>
+                                        <div className="px-4 py-3">
+                                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-amber-500/60' : 'text-amber-600/70'}`}>Joriy qoldiq</p>
+                                            <p className={`text-[13px] font-black font-mono tabular-nums ${finance.remainingDeposit >= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : 'text-red-400'}`}>
+                                                {finance.remainingDeposit >= 0 ? '' : '-'}{fmt(Math.abs(finance.remainingDeposit))}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {finance.depositAmount > 0 && (
+                                        <div className={`px-4 pb-3`}>
+                                            <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-amber-500/10' : 'bg-amber-200'}`}>
+                                                <div className="h-full rounded-full bg-amber-500 transition-all duration-700"
+                                                    style={{ width: `${Math.min(100, Math.max(0, (finance.remainingDeposit / finance.depositAmount) * 100))}%` }} />
+                                            </div>
+                                            <p className={`text-[9px] mt-1 ${isDark ? 'text-amber-500/50' : 'text-amber-600/60'}`}>
+                                                {Math.round(Math.max(0, (finance.remainingDeposit / finance.depositAmount) * 100))}% qoldi
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="px-4 py-3">
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami chiqim</p>
-                                    <p className="text-base font-black font-mono tabular-nums text-red-400">
-                                        {fmt(monthGroups.reduce((s, r) => s + r.expense, 0))} <span className={`text-[10px] font-bold ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
-                                    </p>
+                            ) : (
+                                <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-violet-500/20 bg-violet-500/[0.06]' : 'border-violet-200 bg-violet-50'}`}>
+                                    <div className={`flex items-center gap-2 px-4 py-2.5 border-b ${isDark ? 'border-violet-500/15' : 'border-violet-200'}`}>
+                                        <span className="text-base">💳</span>
+                                        <span className={`text-[11px] font-black uppercase tracking-widest ${isDark ? 'text-violet-400' : 'text-violet-700'}`}>Oylik maosh holati</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 divide-x divide-violet-500/[0.12]">
+                                        <div className="px-4 py-3">
+                                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-violet-500/60' : 'text-violet-600/70'}`}>Belgilangan maosh</p>
+                                            <p className={`text-[13px] font-black font-mono tabular-nums ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>{fmt(finance.salaryAmount)}</p>
+                                        </div>
+                                        <div className="px-4 py-3">
+                                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-violet-500/60' : 'text-violet-600/70'}`}>Jami kirim</p>
+                                            <p className="text-[13px] font-black font-mono tabular-nums text-green-500">
+                                                {fmt(monthGroups.reduce((s, r) => s + r.income, 0))}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
 
                             {/* ── Month filter chips ── */}
                             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -364,6 +406,62 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                         {/* Transaction list */}
                                         {isExpanded && (
                                             <div className={`border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                                {/* ── Deduction summary for this month ── */}
+                                                {finance && (() => {
+                                                    const fm = finance.months.find(m => m.monthKey === group.monthKey);
+                                                    if (!fm) return null;
+                                                    const hasDeductions = fm.shortfall > 0 || fm.expenses > 0 || fm.debts > 0;
+                                                    if (!hasDeductions && finance.driverType === 'deposit' && finance.depositAmount === 0) return null;
+                                                    return (
+                                                        <div className={`mx-3 my-3 rounded-xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-gray-50'}`}>
+                                                            <div className={`px-3 py-2 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                                                <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                                    {finance.driverType === 'deposit' ? '🏦 Depozitdan ayirmalar' : '💳 Maoshdan ayirmalar'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="px-3 py-2 space-y-1.5">
+                                                                {fm.shortfall > 0 && (
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>⚠ Reja bajarilmadi</span>
+                                                                        <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.shortfall)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {fm.expenses > 0 && (
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>📤 Xarajatlar</span>
+                                                                        <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.expenses)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {fm.debts > 0 && (
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>🔴 Qarzlar / Jarimalar</span>
+                                                                        <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.debts)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {!hasDeductions && (
+                                                                    <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>✓ Bu oy ayirmalar yo'q</p>
+                                                                )}
+                                                                <div className={`pt-1.5 mt-1 border-t flex justify-between items-center ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                                                    {finance.driverType === 'deposit' ? (
+                                                                        <>
+                                                                            <span className={`text-[10px] font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Oy oxirida depozit</span>
+                                                                            <span className={`text-[12px] font-black font-mono ${fm.depositAfter >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                                                                {fmt(fm.depositAfter)} UZS
+                                                                            </span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <span className={`text-[10px] font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Sof maosh</span>
+                                                                            <span className={`text-[12px] font-black font-mono ${fm.netSalary > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                                                                {fmt(fm.netSalary)} UZS
+                                                                            </span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
                                                 {group.txs.map((tx, i) => {
                                                     const isIncome = tx.type === TransactionType.INCOME;
                                                     const method = (tx.paymentMethod ?? '') as string;
@@ -423,13 +521,39 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     )
                 ) : (<>
 
-                    {/* Daily plan badge */}
-                    {dailyPlan > 0 && (
-                        <div className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${isDark ? 'bg-teal-500/[0.08] border-teal-500/[0.15]' : 'bg-teal-50 border-teal-200'}`}>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{t('dailyPlan')}</span>
-                            <span className={`text-base font-black font-mono tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{fmt(dailyPlan)} UZS</span>
-                        </div>
-                    )}
+                    {/* Driver type + plan badge row */}
+                    <div className="flex gap-2">
+                        {/* Type badge */}
+                        {(() => {
+                            const dt = driver.driverType ?? 'deposit';
+                            const amount = dt === 'deposit' ? driver.depositAmount ?? 0 : driver.monthlySalary ?? 0;
+                            return (
+                                <div className={`flex-1 flex items-center justify-between px-4 py-3 rounded-2xl border ${
+                                    dt === 'deposit'
+                                        ? isDark ? 'bg-amber-500/[0.08] border-amber-500/[0.20]' : 'bg-amber-50 border-amber-200'
+                                        : isDark ? 'bg-violet-500/[0.08] border-violet-500/[0.20]' : 'bg-violet-50 border-violet-200'
+                                }`}>
+                                    <div>
+                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${dt === 'deposit' ? (isDark ? 'text-amber-500' : 'text-amber-600') : (isDark ? 'text-violet-400' : 'text-violet-600')}`}>
+                                            {dt === 'deposit' ? '🏦 Depozitchi' : '💳 Maoshli'}
+                                        </p>
+                                        {amount > 0 && (
+                                            <p className={`text-base font-black font-mono tabular-nums mt-0.5 ${dt === 'deposit' ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-violet-300' : 'text-violet-700')}`}>
+                                                {fmt(amount)} UZS
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                        {/* Daily plan badge */}
+                        {dailyPlan > 0 && (
+                            <div className={`flex flex-col items-center justify-center px-4 py-3 rounded-2xl border ${isDark ? 'bg-teal-500/[0.08] border-teal-500/[0.15]' : 'bg-teal-50 border-teal-200'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-teal-500' : 'text-teal-600'}`}>{t('dailyPlan')}</span>
+                                <span className={`text-sm font-black font-mono tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{fmt(dailyPlan)}</span>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Contact */}
                     <Section title={t('phone')} icon={<PhoneIcon className="w-3.5 h-3.5" />} isDark={isDark}>

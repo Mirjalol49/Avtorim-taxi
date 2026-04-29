@@ -15,6 +15,8 @@ export interface DriverDocument {
     category: 'driver_license' | 'passport' | 'car_registration' | 'car_insurance' | 'other';
 }
 
+export type DriverPaymentType = 'deposit' | 'salary';
+
 export interface Driver extends Lockable {
     id: string;
     name: string;
@@ -37,4 +39,8 @@ export interface Driver extends Lockable {
     extraPhone?: string;
     createdAt?: number;
     lastSalaryPaidAt?: number;
+    /** 'deposit' = driver gives upfront deposit; 'salary' = fleet pays driver monthly */
+    driverType?: DriverPaymentType;
+    /** Initial deposit amount (only meaningful when driverType === 'deposit') */
+    depositAmount?: number;
 }
