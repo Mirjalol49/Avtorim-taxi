@@ -156,13 +156,15 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 const sorted     = [...txs].sort((a, b) => b.timestamp - a.timestamp);
                 const planIncome  = sorted.filter(t => t.type === TransactionType.INCOME && t.category !== 'deposit_topup').reduce((s, t) => s + Math.abs(t.amount), 0);
                 const topUps      = sorted.filter(t => t.type === TransactionType.INCOME && t.category === 'deposit_topup').reduce((s, t) => s + Math.abs(t.amount), 0);
-                const expense     = sorted.filter(t => t.type !== TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
+                const expense     = sorted.filter(t => t.type === TransactionType.EXPENSE || t.type === TransactionType.DEBT).reduce((s, t) => s + Math.abs(t.amount), 0);
+                // Dynamic: count actual DAY_OFF transactions for this month
+                const daysOff     = sorted.filter(t => t.type === TransactionType.DAY_OFF).length;
                 const totalDays   = new Date(y, m, 0).getDate();
-                // For the current month only count elapsed days (no future debt).
+                // Cap current month to today so future days don't create phantom debt
                 const nowMk = toMonthKey(new Date());
                 const isCurrentMonth = mk === nowMk;
                 const effectiveDays = isCurrentMonth ? new Date().getDate() : totalDays;
-                const workingDays = Math.max(0, effectiveDays - 2);
+                const workingDays = Math.max(0, effectiveDays - daysOff);
                 const monthlyTarget  = dailyPlan * workingDays;
                 const overpayment    = Math.max(0, planIncome - monthlyTarget);
                 const paidPercent    = monthlyTarget > 0 ? Math.min(100, Math.round((planIncome / monthlyTarget) * 100)) : 0;

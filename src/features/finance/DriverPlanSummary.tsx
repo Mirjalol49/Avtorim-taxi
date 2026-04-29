@@ -92,16 +92,24 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
 
-                // For the current month cap to today's date so future days don't
-                // inflate the monthly target or debt figure.
+                // Cap current month to today so future days don't inflate the target.
                 const today = new Date();
                 const currentMk = toMonthKey(today);
                 const isCurrentMonth = mk === currentMk;
                 const effectiveDays = isCurrentMonth ? today.getDate() : totalDays;
-                // The global rule: every driver gets 2 days off per month automatically
-                const workingDays = Math.max(0, effectiveDays - 2);
-                const monthlyTarget = dailyPlan * workingDays;
 
+                // Count actual DAY_OFF transactions for this driver in this month
+                const daysOff = transactions.filter(tx =>
+                    tx.driverId === driver.id &&
+                    tx.type === TransactionType.DAY_OFF &&
+                    tx.status !== PaymentStatus.DELETED &&
+                    (tx as any).status !== 'DELETED' &&
+                    toMonthKey(new Date(tx.timestamp)) === mk
+                ).length;
+
+                // Dynamic working days: elapsed days minus actual recorded day-offs
+                const workingDays = Math.max(0, effectiveDays - daysOff);
+                const monthlyTarget = dailyPlan * workingDays;
 
                 const actualIncome = transactions
                     .filter(tx =>

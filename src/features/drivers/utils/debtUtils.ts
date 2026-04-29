@@ -64,10 +64,17 @@ export function calcDriverDebt(
         incomeByDate[key] = (incomeByDate[key] || 0) + Math.abs(tx.amount);
     });
 
+    // Count DAY_OFF transactions per month (used for dynamic days-off)
+    const dayOffsByMonth: Record<string, number> = {};
+    validTxs
+        .filter(tx => tx.type === TransactionType.DAY_OFF)
+        .forEach(tx => {
+            const mk = toMonthKey(tx.timestamp);
+            dayOffsByMonth[mk] = (dayOffsByMonth[mk] || 0) + 1;
+        });
+
     const todayKey = dateKey(Date.now());
-    // Since daysOffSet is computed below, we can either compute it beforehand or calculate todayIsDayOff dynamically.
-    // For simplicity, we just check if today has a DAY_OFF transaction.
-    const todayIsDayOff = validTxs.some(tx => tx.type === 'DAY_OFF' && dateKey(tx.timestamp) === todayKey);
+    const todayIsDayOff = validTxs.some(tx => tx.type === TransactionType.DAY_OFF && dateKey(tx.timestamp) === todayKey);
     const todayIncome = incomeByDate[todayKey] ?? 0;
     const todayDebt = (dailyPlan > 0 && !todayIsDayOff)
         ? Math.max(0, dailyPlan - todayIncome)
@@ -77,59 +84,41 @@ export function calcDriverDebt(
     const explicitTxs = validTxs.filter(tx => tx.type === TransactionType.DEBT);
     let totalExplicitDebt = 0;
     explicitTxs.forEach(tx => {
-        // Debts can technically be negative to provide balance resets/subtractions manually
         totalExplicitDebt += tx.amount;
     });
 
-    // Calculate total Auto Debt since `createdAt`
+    // Calculate total Auto Debt since createdAt (only past days, never future)
     let totalAutoDebt = 0;
     let workingDays = 0;
 
-    // Use driver creation date OR fallback to 30 days ago to prevent catastrophic load if missing
-    // or fallback to the earliest transaction date they possess!
     let earliestTx = Date.now();
-    validTxs.forEach(tx => {
-        if (tx.timestamp < earliestTx) earliestTx = tx.timestamp;
-    });
-    
-    // Bounds tracking safely
-    const fallbackStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime(); // max 1 month lookback if no data
+    validTxs.forEach(tx => { if (tx.timestamp < earliestTx) earliestTx = tx.timestamp; });
+
+    const fallbackStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime();
     const trackingStartMs = driver.createdAt ? driver.createdAt : Math.min(earliestTx, fallbackStart);
-    // Group days by month to apply 2 days off per month dynamically
+
+    // Group elapsed days per month (never exceeds today)
     const daysPerMonth: Record<string, number> = {};
     let currentMs = trackingStartMs;
     const todayMs = Date.now();
-
     while (currentMs <= todayMs) {
         const d = new Date(currentMs);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        
-        daysPerMonth[monthKey] = (daysPerMonth[monthKey] || 0) + 1;
-        currentMs += 86400000; // Increment 1 day safely
+        const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        daysPerMonth[mk] = (daysPerMonth[mk] || 0) + 1;
+        currentMs += 86400000;
     }
 
-    // Apply rule: max 2 days off per month automatically
-    Object.values(daysPerMonth).forEach(daysInMonth => {
-        const activeDays = Math.max(0, daysInMonth - 2);
+    // Use actual DAY_OFF transaction count per month instead of a hardcoded 2
+    Object.entries(daysPerMonth).forEach(([mk, daysInMonth]) => {
+        const offs = dayOffsByMonth[mk] ?? 0;
+        const activeDays = Math.max(0, daysInMonth - offs);
         workingDays += activeDays;
-        totalAutoDebt += (activeDays * dailyPlan);
+        totalAutoDebt += activeDays * dailyPlan;
     });
 
-    // Final Net calculation: How much they strictly owe
-    // Net Debt = Auto Required Plans + Explicit Penalities - What they paid
     const netDebt = (totalAutoDebt + totalExplicitDebt) - totalIncome;
 
-    return { 
-        dailyPlan, 
-        todayIncome, 
-        todayDebt, 
-        totalAutoDebt, 
-        totalExplicitDebt, 
-        totalIncome, 
-        netDebt, 
-        workingDays,
-        todayIsDayOff
-    };
+    return { dailyPlan, todayIncome, todayDebt, totalAutoDebt, totalExplicitDebt, totalIncome, netDebt, workingDays, todayIsDayOff };
 }
 
 // ─── Deposit / Salary breakdown ───────────────────────────────────────────────
@@ -181,11 +170,11 @@ export function calcDriverFinance(
         (tx as any).status !== 'DELETED'
     );
 
-    // Group by month — separate plan payments from deposit top-ups
-    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number }>();
+    // Group by month — separate plan payments, top-ups, expenses, debts, and day-offs
+    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number; daysOff: number }>();
     for (const tx of validTxs) {
         const mk = toMonthKey(tx.timestamp);
-        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0 };
+        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0, daysOff: 0 };
         if (tx.type === TransactionType.INCOME && tx.category === 'deposit_topup') {
             e.topUps     += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.INCOME) {
@@ -194,25 +183,32 @@ export function calcDriverFinance(
             e.expenses   += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.DEBT) {
             e.debts      += Math.abs(tx.amount);
+        } else if (tx.type === TransactionType.DAY_OFF) {
+            e.daysOff    += 1; // each DAY_OFF tx = one actual day off
         }
         byMonth.set(mk, e);
     }
 
     const sortedKeys = Array.from(byMonth.keys()).sort();
+    const today = new Date();
+    const todayMk = toMonthKey(today.getTime());
 
     let runningDeposit = depositAmount;
     const months: MonthlyBreakdown[] = sortedKeys.map(mk => {
         const [y, m]  = mk.split('-').map(Number);
-        const totalDays   = new Date(y, m, 0).getDate();
-        const workingDays = Math.max(0, totalDays - 2);
+        const totalDays = new Date(y, m, 0).getDate();
+        // Cap current month to today so future days don't inflate the target
+        const effectiveDays = mk === todayMk ? today.getDate() : totalDays;
+
+        const { planIncome, topUps, expenses, debts, daysOff } = byMonth.get(mk)!;
+        // Dynamic: use actual recorded day-offs, not a hardcoded 2
+        const workingDays   = Math.max(0, effectiveDays - daysOff);
         const monthlyTarget = dailyPlan * workingDays;
 
-        const { planIncome, topUps, expenses, debts } = byMonth.get(mk)!;
         const shortfall    = Math.max(0, monthlyTarget - planIncome);
-        const overpayment  = Math.max(0, planIncome - monthlyTarget); // extra plan money → credit
+        const overpayment  = Math.max(0, planIncome - monthlyTarget);
         const deductions   = shortfall + expenses + debts;
 
-        // Deposit = prev balance − deductions + overpayment credit + direct top-ups
         runningDeposit = runningDeposit - deductions + overpayment + topUps;
 
         const netSalary = Math.max(0, salaryAmount - deductions);
