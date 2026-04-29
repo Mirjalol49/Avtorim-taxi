@@ -43,4 +43,6 @@ export interface Driver extends Lockable {
     driverType?: DriverPaymentType;
     /** Initial deposit amount (only meaningful when driverType === 'deposit') */
     depositAmount?: number;
+    /** Threshold at which a low-deposit warning is triggered (default 1 000 000 UZS) */
+    depositWarningThreshold?: number;
 }

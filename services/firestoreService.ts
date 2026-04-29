@@ -156,6 +156,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         lastSalaryPaidAt: r.last_salary_paid_at ? toMs(r.last_salary_paid_at) : undefined,
         driverType: r.driver_type ?? 'deposit',
         depositAmount: r.deposit_amount ?? 0,
+        depositWarningThreshold: r.deposit_warning_threshold ?? 1_000_000,
     } as Driver);
 
     let cache: Driver[] = [];
@@ -233,6 +234,7 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
             created_ms: Date.now(),
             driver_type: (driver as any).driverType ?? 'deposit',
             deposit_amount: (driver as any).depositAmount ?? 0,
+            deposit_warning_threshold: (driver as any).depositWarningThreshold ?? 1_000_000,
         })
         .select('id')
         .single();
@@ -261,6 +263,7 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).lastSalaryPaidAt !== undefined) payload.last_salary_paid_at = (driver as any).lastSalaryPaidAt;
     if ((driver as any).driverType !== undefined) payload.driver_type = (driver as any).driverType;
     if ((driver as any).depositAmount !== undefined) payload.deposit_amount = (driver as any).depositAmount;
+    if ((driver as any).depositWarningThreshold !== undefined) payload.deposit_warning_threshold = (driver as any).depositWarningThreshold;
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;
 

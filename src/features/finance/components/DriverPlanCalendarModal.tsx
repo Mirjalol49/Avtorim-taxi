@@ -111,11 +111,15 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 toLocalDateStr(tx.timestamp) === dayStr
             );
 
+            // A day with a recorded payment is always PAID or PARTIAL — even if the
+            // calendar date is technically in the future. Only show FUTURE for days
+            // that have no income at all yet.
+            const isFuture = date.getTime() > Date.now();
             let status: DayStatus = 'UNPAID';
             if (isDayOff) status = 'DAY_OFF';
-            else if (date.getTime() > Date.now()) status = 'FUTURE';
             else if (sumTushum >= monthData.dailyPlan) status = 'PAID';
             else if (sumTushum > 0) status = 'PARTIAL';
+            else if (isFuture) status = 'FUTURE';
 
             return {
                 day: d,

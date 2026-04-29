@@ -158,7 +158,11 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 const topUps      = sorted.filter(t => t.type === TransactionType.INCOME && t.category === 'deposit_topup').reduce((s, t) => s + Math.abs(t.amount), 0);
                 const expense     = sorted.filter(t => t.type !== TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
                 const totalDays   = new Date(y, m, 0).getDate();
-                const workingDays = Math.max(0, totalDays - 2);
+                // For the current month only count elapsed days (no future debt).
+                const nowMk = toMonthKey(new Date());
+                const isCurrentMonth = mk === nowMk;
+                const effectiveDays = isCurrentMonth ? new Date().getDate() : totalDays;
+                const workingDays = Math.max(0, effectiveDays - 2);
                 const monthlyTarget  = dailyPlan * workingDays;
                 const overpayment    = Math.max(0, planIncome - monthlyTarget);
                 const paidPercent    = monthlyTarget > 0 ? Math.min(100, Math.round((planIncome / monthlyTarget) * 100)) : 0;
@@ -540,6 +544,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                                             🏦 Depozit +
                                                                         </span>
                                                                     ) : (
+                                                                    <>
                                                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                                                                         isIncome
                                                                             ? isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-600'
@@ -547,6 +552,17 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                                     }`}>
                                                                         {TX_TYPE_LABEL[tx.type] ?? tx.type}
                                                                     </span>
+                                                                    {/* Expense impact badge — shows which bucket it deducts from */}
+                                                                    {tx.type === TransactionType.EXPENSE && finance && (
+                                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                                                                            finance.driverType === 'deposit'
+                                                                                ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700'
+                                                                                : isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700'
+                                                                        }`}>
+                                                                            {finance.driverType === 'deposit' ? '🏦 depozitdan' : '💳 maoshdan'}
+                                                                        </span>
+                                                                    )}
+                                                                    </>
                                                                     )}
                                                                     {method && METHOD_LABEL[method] && (
                                                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? METHOD_COLOR[method] ?? 'bg-white/[0.06] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
@@ -606,7 +622,8 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                         {dt === 'deposit' && userRole === 'admin' && (
                                             <div className="text-right">
                                                 {remaining !== undefined && (
-                                                    <p className={`text-[11px] font-black font-mono tabular-nums mb-1 ${remaining >= 1_000_000 ? 'text-green-500' : 'text-red-400'}`}>
+                                                    <p className={`text-[11px] font-black font-mono tabular-nums mb-1 ${remaining >= (driver.depositWarningThreshold ?? 1_000_000) ? 'text-green-500' : 'text-red-400'}`}>
+                                                        {remaining < (driver.depositWarningThreshold ?? 1_000_000) && <span className="mr-0.5">⚠</span>}
                                                         {fmt(remaining)} qoldi
                                                     </p>
                                                 )}

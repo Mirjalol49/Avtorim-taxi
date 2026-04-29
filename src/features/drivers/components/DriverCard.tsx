@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CarIcon, MoreVerticalIcon, ChevronRightIcon } from '../../../../components/Icons';
+import { calcDriverFinance } from '../utils/debtUtils';
 
 interface DriverCardProps {
     driver: Driver;
@@ -22,12 +23,23 @@ interface DriverCardProps {
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
 export const DriverCard: React.FC<DriverCardProps> = ({
-    driver, car, theme, userRole, onEdit, onDelete, onCardClick,
+    driver, car, transactions, theme, userRole, onEdit, onDelete, onCardClick,
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
 
     const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
+
+    // Compute deposit warning for deposit-type drivers
+    const depositWarning = useMemo(() => {
+        if ((driver.driverType ?? 'deposit') !== 'deposit') return null;
+        const threshold = driver.depositWarningThreshold ?? 1_000_000;
+        const finance = calcDriverFinance(driver, car ?? null, transactions);
+        if (finance.remainingDeposit <= threshold) {
+            return { remaining: finance.remainingDeposit, threshold };
+        }
+        return null;
+    }, [driver, car, transactions]);
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
@@ -43,11 +55,26 @@ export const DriverCard: React.FC<DriverCardProps> = ({
         <div
             onClick={handleCardClick}
             className={`group relative rounded-2xl border cursor-pointer transition-all duration-200 overflow-hidden ${
-                isDark
-                    ? 'bg-surface border-white/[0.07] hover:border-white/[0.14] hover:bg-surface-2/60 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
-                    : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-[0_8px_24px_rgba(0,40,60,0.10)]'
+                depositWarning
+                    ? isDark
+                        ? 'bg-surface border-amber-500/30 hover:border-amber-500/50 hover:shadow-[0_8px_32px_rgba(245,158,11,0.15)]'
+                        : 'bg-white border-amber-300 hover:border-amber-400 hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)]'
+                    : isDark
+                        ? 'bg-surface border-white/[0.07] hover:border-white/[0.14] hover:bg-surface-2/60 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
+                        : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-[0_8px_24px_rgba(0,40,60,0.10)]'
             }`}
         >
+            {/* Low-deposit warning banner */}
+            {depositWarning && (
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold border-b ${
+                    isDark
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                        : 'bg-amber-50 border-amber-200 text-amber-700'
+                }`}>
+                    <span>⚠</span>
+                    <span>Depozit past: {fmt(depositWarning.remaining)} UZS qoldi</span>
+                </div>
+            )}
             {/* ── Hover action buttons (desktop) ── */}
             {userRole === 'admin' && (
                 <div className="absolute top-3 right-3 z-10 hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">

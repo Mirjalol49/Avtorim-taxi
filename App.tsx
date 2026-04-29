@@ -223,7 +223,7 @@ const AppContent: React.FC = () => {
   });
 
   // --- ACTIONS ---
-  const DEPOSIT_WARN_THRESHOLD = 1_000_000;
+  // Threshold is now per-driver (stored in driver.depositWarningThreshold), fallback 1M
 
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
@@ -254,12 +254,13 @@ const AppContent: React.FC = () => {
         } as any;
         const balanceAfter = calcDriverFinance(driver, car ?? null, [...transactions, fakeTx]).remainingDeposit;
 
-        if (balanceBefore > DEPOSIT_WARN_THRESHOLD && balanceAfter <= DEPOSIT_WARN_THRESHOLD) {
+        const warnThreshold = (driver as any).depositWarningThreshold ?? 1_000_000;
+        if (balanceBefore > warnThreshold && balanceAfter <= warnThreshold) {
           const fmtNum = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
           sendNotification(
             {
               title: `⚠️ Depozit ogohlantirishi`,
-              message: `${driver.name} ning depoziti 1 000 000 UZS dan tushdi. Joriy qoldiq: ${fmtNum(balanceAfter)} UZS`,
+              message: `${driver.name} ning depoziti ${fmtNum(warnThreshold)} UZS dan tushdi. Joriy qoldiq: ${fmtNum(balanceAfter)} UZS`,
               type: 'payment_reminder',
               category: 'FINANCE' as any,
               priority: 'HIGH' as any,

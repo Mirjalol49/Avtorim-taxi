@@ -32,6 +32,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [monthlySalary, setMonthlySalary] = useState(0);
   const [driverType, setDriverType] = useState<'deposit' | 'salary'>('deposit');
   const [depositAmount, setDepositAmount] = useState(0);
+  const [depositWarningThreshold, setDepositWarningThreshold] = useState(1_000_000);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -69,6 +70,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setMonthlySalary(editingDriver.monthlySalary ?? 0);
       setDriverType((editingDriver as any).driverType ?? 'deposit');
       setDepositAmount((editingDriver as any).depositAmount ?? 0);
+      setDepositWarningThreshold((editingDriver as any).depositWarningThreshold ?? 1_000_000);
       setSelectedCarId(currentAssignedCar?.id ?? '');
     } else if (isOpen) {
       setName('');
@@ -81,6 +83,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setMonthlySalary(0);
       setDriverType('deposit');
       setDepositAmount(0);
+      setDepositWarningThreshold(1_000_000);
       setSelectedCarId('');
       setError(null);
       setDocError(null);
@@ -131,6 +134,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         monthlySalary: driverType === 'salary' ? monthlySalary : 0,
         driverType,
         depositAmount: driverType === 'deposit' ? depositAmount : 0,
+        depositWarningThreshold: driverType === 'deposit' ? depositWarningThreshold : 1_000_000,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
@@ -352,6 +356,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           {/* Conditional amount field */}
           {driverType === 'deposit' ? (
+            <>
             <div>
               <label className={labelClass}>Depozit miqdori</label>
               <div className="relative">
@@ -371,6 +376,28 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 Haydovchi bergan boshlang'ich depozit summasi
               </p>
             </div>
+
+            {/* Deposit warning threshold */}
+            <div>
+              <label className={labelClass}>⚠ Ogohlantirish limiti</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={depositWarningThreshold > 0 ? depositWarningThreshold.toLocaleString('uz-UZ') : ''}
+                  onChange={e => {
+                    const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                    setDepositWarningThreshold(isNaN(raw) ? 0 : raw);
+                  }}
+                  className={inputClass}
+                  placeholder="1 000 000"
+                />
+                <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+              </div>
+              <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Depozit bu miqdorga tushsa ogohlantirish yuboriladi
+              </p>
+            </div>
+            </>
           ) : (
             <div>
               <label className={labelClass}>Oylik maosh</label>
