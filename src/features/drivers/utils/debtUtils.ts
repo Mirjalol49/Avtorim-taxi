@@ -201,8 +201,9 @@ export function calcDriverFinance(
         const effectiveDays = mk === todayMk ? today.getDate() : totalDays;
 
         const { planIncome, topUps, expenses, debts, daysOff } = byMonth.get(mk)!;
-        // Dynamic: use actual recorded day-offs, not a hardcoded 2
-        const workingDays   = Math.max(0, effectiveDays - daysOff);
+        // Future months: no working days, no debt (only record actual income/topups)
+        const isFutureMonth = mk > todayMk;
+        const workingDays   = isFutureMonth ? 0 : Math.max(0, effectiveDays - daysOff);
         const monthlyTarget = dailyPlan * workingDays;
 
         const shortfall    = Math.max(0, monthlyTarget - planIncome);
