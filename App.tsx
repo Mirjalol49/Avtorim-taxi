@@ -53,7 +53,8 @@ import { AuthProvider, useAuthContext } from './src/features/auth/context/AuthCo
 import { UIProvider, useUIContext } from './src/features/shared/context/UIContext';
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
-import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, Notification } from './services/notificationService';
+import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, sendNotification, Notification } from './services/notificationService';
+import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
 const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
     <svg viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
@@ -222,22 +223,61 @@ const AppContent: React.FC = () => {
   });
 
   // --- ACTIONS ---
+  const DEPOSIT_WARN_THRESHOLD = 1_000_000;
+
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
       const driver = data.driverId ? drivers.find(d => d.id === data.driverId) : undefined;
-      const car = data.carId ? cars.find(c => c.id === data.carId) : undefined;
+      const car = driver
+        ? (cars.find(c => c.assignedDriverId === driver.id) ?? null)
+        : undefined;
 
-      const payload: Omit<Transaction, 'id'> = {
-        ...data,
-      };
-
+      const payload: Omit<Transaction, 'id'> = { ...data };
       if (driver) (payload as any).driverName = driver.name;
       if (car) payload.carName = `${car.name} — ${car.licensePlate}`;
 
-      await firestoreService.addTransaction(
-        payload as any,
-        adminUser?.id
-      );
+      // Snapshot deposit balance BEFORE saving (deposit drivers only)
+      const isDepositDriver = driver && (driver as any).driverType === 'deposit';
+      const balanceBefore = isDepositDriver && driver
+        ? calcDriverFinance(driver, car ?? null, transactions).remainingDeposit
+        : null;
+
+      const newTxId = await firestoreService.addTransaction(payload as any, adminUser?.id);
+
+      // Check threshold crossing for deposit drivers
+      if (isDepositDriver && driver && balanceBefore !== null && newTxId) {
+        // Simulate the new transaction to get balance after
+        const fakeTx = {
+          ...data,
+          id: newTxId,
+          timestamp: (data as any).timestamp ?? Date.now(),
+        } as any;
+        const balanceAfter = calcDriverFinance(driver, car ?? null, [...transactions, fakeTx]).remainingDeposit;
+
+        if (balanceBefore > DEPOSIT_WARN_THRESHOLD && balanceAfter <= DEPOSIT_WARN_THRESHOLD) {
+          const fmtNum = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+          sendNotification(
+            {
+              title: `⚠️ Depozit ogohlantirishi`,
+              message: `${driver.name} ning depoziti 1 000 000 UZS dan tushdi. Joriy qoldiq: ${fmtNum(balanceAfter)} UZS`,
+              type: 'payment_reminder',
+              category: 'FINANCE' as any,
+              priority: 'HIGH' as any,
+              targetUsers: 'all',
+              expiresIn: 7 * 24 * 60 * 60 * 1000, // 7 days
+              driverId: driver.id,
+              driverAvatar: driver.avatar || undefined,
+              extraTracking: {
+                depositWarning: true,
+                driverName: driver.name,
+                remainingDeposit: balanceAfter,
+              },
+            },
+            adminUser?.id ?? '',
+            adminUser?.username ?? 'Tizim'
+          ).catch(err => console.error('Deposit warning notification failed:', err));
+        }
+      }
     } catch (error) {
       console.error('Failed to add transaction:', error);
       addToast('error', t.transactionSaveFailed);

@@ -1,4 +1,4 @@
-import { Driver } from '../../../core/types/driver.types';
+import { Driver, DriverPaymentType } from '../../../core/types/driver.types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
 
@@ -127,8 +127,91 @@ export function calcDriverDebt(
         totalExplicitDebt, 
         totalIncome, 
         netDebt, 
-        workingDays, 
-        todayIsDayOff 
+        workingDays,
+        todayIsDayOff
     };
+}
+
+// ─── Deposit / Salary breakdown ───────────────────────────────────────────────
+
+export interface MonthlyBreakdown {
+    monthKey:      string;   // 'YYYY-MM'
+    income:        number;   // INCOME transactions
+    expenses:      number;   // EXPENSE transactions (money given/charged to driver)
+    debts:         number;   // DEBT transactions
+    monthlyTarget: number;   // dailyPlan * workingDays
+    shortfall:     number;   // max(0, target - income)
+    /** For salary drivers: salaryAmount - shortfall - expenses - debts */
+    netSalary:     number;
+    /** Running deposit balance AFTER this month (deposit type only) */
+    depositAfter:  number;
+}
+
+export interface DriverFinanceSummary {
+    driverType:       DriverPaymentType;
+    /** Deposit drivers: initial deposit */
+    depositAmount:    number;
+    /** Deposit drivers: current remaining balance */
+    remainingDeposit: number;
+    /** Salary drivers: monthly pay */
+    salaryAmount:     number;
+    months:           MonthlyBreakdown[];
+}
+
+const toMonthKey = (ts: number): string => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+export function calcDriverFinance(
+    driver: Driver,
+    car: Car | null | undefined,
+    transactions: Transaction[]
+): DriverFinanceSummary {
+    const driverType    = driver.driverType ?? 'deposit';
+    const depositAmount = driver.depositAmount ?? 0;
+    const salaryAmount  = driver.monthlySalary ?? 0;
+    const dailyPlan     = car?.dailyPlan ?? 0;
+
+    const validTxs = transactions.filter(tx =>
+        tx.driverId === driver.id &&
+        tx.status !== PaymentStatus.DELETED &&
+        (tx as any).status !== 'DELETED'
+    );
+
+    // Group by month
+    const byMonth = new Map<string, { income: number; expenses: number; debts: number }>();
+    for (const tx of validTxs) {
+        const mk = toMonthKey(tx.timestamp);
+        const e  = byMonth.get(mk) ?? { income: 0, expenses: 0, debts: 0 };
+        if      (tx.type === TransactionType.INCOME)  e.income   += Math.abs(tx.amount);
+        else if (tx.type === TransactionType.EXPENSE)  e.expenses += Math.abs(tx.amount);
+        else if (tx.type === TransactionType.DEBT)     e.debts    += Math.abs(tx.amount);
+        byMonth.set(mk, e);
+    }
+
+    const sortedKeys = Array.from(byMonth.keys()).sort();
+
+    let runningDeposit = depositAmount;
+    const months: MonthlyBreakdown[] = sortedKeys.map(mk => {
+        const [y, m]  = mk.split('-').map(Number);
+        const totalDays   = new Date(y, m, 0).getDate();
+        const workingDays = Math.max(0, totalDays - 2);
+        const monthlyTarget = dailyPlan * workingDays;
+
+        const { income, expenses, debts } = byMonth.get(mk)!;
+        const shortfall  = Math.max(0, monthlyTarget - income);
+        const deductions = shortfall + expenses + debts;
+
+        // For deposit: subtract deductions, credit any over-payment
+        const credit = Math.max(0, income - monthlyTarget);
+        runningDeposit = runningDeposit - deductions + credit;
+
+        const netSalary = Math.max(0, salaryAmount - deductions);
+
+        return { monthKey: mk, income, expenses, debts, monthlyTarget, shortfall, netSalary, depositAfter: runningDeposit };
+    });
+
+    return { driverType, depositAmount, remainingDeposit: runningDeposit, salaryAmount, months };
 }
 

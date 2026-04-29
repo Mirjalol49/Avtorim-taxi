@@ -97,8 +97,21 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         </p>
                     </div>
 
-                    {/* Mobile kebab + plan pill stacked */}
+                    {/* Mobile kebab + plan pill + type badge */}
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        {/* Driver type badge */}
+                        {(() => {
+                            const dt = (driver as any).driverType ?? 'deposit';
+                            return (
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full tracking-wide ${
+                                    dt === 'deposit'
+                                        ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                        : isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
+                                }`}>
+                                    {dt === 'deposit' ? '🏦 Dep' : '💳 Maosh'}
+                                </span>
+                            );
+                        })()}
                         {dailyPlan > 0 && (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${isDark ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-700 border border-teal-200'}`}>
                                 {fmt(dailyPlan)}
