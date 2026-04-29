@@ -5,16 +5,6 @@ import { Language } from '../types';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
 
-const PadlockSVG = () => (
-    <svg width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="112" height="112" rx="28" fill="rgba(255,255,255,0.12)" />
-        <rect x="30" y="52" width="52" height="40" rx="10" fill="rgba(255,255,255,0.90)" />
-        <rect x="38" y="60" width="36" height="24" rx="6" fill="hsl(176,79%,26%)" />
-        <path d="M40 52V38a16 16 0 0 1 32 0v14" stroke="rgba(255,255,255,0.90)" strokeWidth="6" strokeLinecap="round" />
-        <circle cx="56" cy="70" r="5" fill="rgba(255,255,255,0.85)" />
-        <rect x="53" y="70" width="6" height="8" rx="3" fill="rgba(255,255,255,0.85)" />
-    </svg>
-);
 
 interface AuthScreenProps {
     onAuthenticated: (role: 'admin' | 'viewer', viewerData?: any) => void;
@@ -126,9 +116,25 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
             {/* Card */}
             <div className={`relative z-10 w-full max-w-sm px-6 flex flex-col items-center ${shake ? 'animate-shake' : ''}`}>
 
+                {/* Logo */}
+                <div className="mb-5 select-none">
+                    <img
+                        src="/images/taksapark-logo.png"
+                        alt="Taksapark"
+                        className="h-12 object-contain"
+                        style={{ filter: 'brightness(0) invert(1)' }}
+                    />
+                </div>
+
                 {/* Padlock */}
                 <div className={`mb-6 drop-shadow-2xl select-none transition-all duration-500 ${success ? 'scale-110' : 'scale-100'}`}>
-                    <PadlockSVG />
+                    <img
+                        src="/images/lock.png"
+                        alt="lock"
+                        width={108}
+                        height={108}
+                        className="object-contain"
+                    />
                 </div>
 
                 {/* Title */}
