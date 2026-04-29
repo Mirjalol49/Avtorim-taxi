@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
@@ -20,7 +20,7 @@ interface Props {
     onDelete: (id: string) => void;
 }
 
-// ── Monthly history helpers ───────────────────────────────────────────────────
+// ── History helpers ───────────────────────────────────────────────────────────
 
 const toMonthKey = (d: Date) => {
     const y = d.getFullYear();
@@ -28,14 +28,36 @@ const toMonthKey = (d: Date) => {
     return `${y}-${m}`;
 };
 
-interface MonthSummary {
+const MONTH_NAMES_UZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+const MONTH_SHORT_UZ  = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+
+interface MonthGroup {
     monthKey: string;
-    label: string;
-    income: number;
-    expenseOut: number; // withdrawals/expenses paid out
+    label:    string;
+    income:   number;
+    expense:  number;
+    txs:      Transaction[];   // sorted newest-first
+    monthlyTarget: number;
+    paidPercent:   number;
 }
 
-const MONTH_NAMES_UZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+const fmtTime = (ts: number) => {
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const METHOD_LABEL: Record<string, string> = { cash: 'Naqd', card: 'Karta', transfer: "O'tkazma" };
+const METHOD_COLOR: Record<string, string> = {
+    cash:     'bg-amber-500/15 text-amber-400',
+    card:     'bg-sky-500/15 text-sky-400',
+    transfer: 'bg-violet-500/15 text-violet-400',
+};
+const TX_TYPE_LABEL: Record<string, string> = {
+    INCOME:  'Kirim',
+    EXPENSE: 'Chiqim',
+    DAY_OFF: "Kun ta'tili",
+    DEBT:    'Qarz',
+};
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -74,10 +96,13 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const [visible, setVisible] = useState(false);
     const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
     const [activeTab, setActiveTab] = useState<'info' | 'history'>('info');
+    const [filterMonth, setFilterMonth] = useState<string>('all');
+    const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
     const isDark = theme === 'dark';
 
-    const monthlySummaries = useMemo((): MonthSummary[] => {
+    const monthGroups = useMemo((): MonthGroup[] => {
         if (!driver) return [];
+        const dailyPlan = car?.dailyPlan ?? 0;
         const driverTxs = transactions.filter(tx =>
             tx.driverId === driver.id &&
             tx.status !== PaymentStatus.DELETED &&
@@ -85,30 +110,50 @@ export const DriverDetailsSheet: React.FC<Props> = ({
         );
         if (driverTxs.length === 0) return [];
 
-        const byMonth = new Map<string, { income: number; expenseOut: number }>();
+        const byMonth = new Map<string, Transaction[]>();
         for (const tx of driverTxs) {
             const mk = toMonthKey(new Date(tx.timestamp));
-            const entry = byMonth.get(mk) ?? { income: 0, expenseOut: 0 };
-            if (tx.type === TransactionType.INCOME) {
-                entry.income += Math.abs(tx.amount);
-            } else {
-                entry.expenseOut += Math.abs(tx.amount);
-            }
-            byMonth.set(mk, entry);
+            if (!byMonth.has(mk)) byMonth.set(mk, []);
+            byMonth.get(mk)!.push(tx);
         }
 
         return Array.from(byMonth.entries())
             .sort((a, b) => b[0].localeCompare(a[0]))
-            .map(([mk, data]) => {
+            .map(([mk, txs]) => {
                 const [y, m] = mk.split('-').map(Number);
+                const sorted = [...txs].sort((a, b) => b.timestamp - a.timestamp);
+                const income  = sorted.filter(t => t.type === TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
+                const expense = sorted.filter(t => t.type !== TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
+                const totalDays    = new Date(y, m, 0).getDate();
+                const workingDays  = Math.max(0, totalDays - 2);
+                const monthlyTarget = dailyPlan * workingDays;
+                const paidPercent  = monthlyTarget > 0 ? Math.min(100, Math.round((income / monthlyTarget) * 100)) : 0;
                 return {
                     monthKey: mk,
                     label: `${MONTH_NAMES_UZ[m - 1]} ${y}`,
-                    income: data.income,
-                    expenseOut: data.expenseOut,
+                    income, expense, txs: sorted,
+                    monthlyTarget, paidPercent,
                 };
             });
-    }, [driver, transactions]);
+    }, [driver, car, transactions]);
+
+    // Auto-expand the most recent month when history tab first opens
+    const prevTab = useRef(activeTab);
+    useEffect(() => {
+        if (activeTab === 'history' && prevTab.current !== 'history' && monthGroups.length > 0) {
+            setExpandedMonths(new Set([monthGroups[0].monthKey]));
+        }
+        prevTab.current = activeTab;
+    }, [activeTab, monthGroups]);
+
+    const toggleMonth = (mk: string) =>
+        setExpandedMonths(prev => {
+            const next = new Set(prev);
+            next.has(mk) ? next.delete(mk) : next.add(mk);
+            return next;
+        });
+
+    const visibleGroups = filterMonth === 'all' ? monthGroups : monthGroups.filter(g => g.monthKey === filterMonth);
 
     useEffect(() => {
         if (isOpen) {
@@ -204,52 +249,173 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
 
                 {activeTab === 'history' ? (
-                    monthlySummaries.length === 0 ? (
+                    monthGroups.length === 0 ? (
                         <div className={`flex flex-col items-center justify-center py-16 gap-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                             <span className="text-4xl">📊</span>
                             <p className="text-sm font-medium">Tranzaksiyalar yo'q</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {/* Totals */}
-                            <div className={`grid grid-cols-2 gap-3 p-4 rounded-2xl border ${isDark ? 'border-white/[0.06] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}>
-                                <div>
+
+                            {/* ── All-time totals ── */}
+                            <div className={`grid grid-cols-2 gap-0 rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}>
+                                <div className={`px-4 py-3 border-r ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
                                     <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami kirim</p>
-                                    <p className={`text-base font-black font-mono tabular-nums text-green-500`}>
-                                        {fmt(monthlySummaries.reduce((s, r) => s + r.income, 0))}
+                                    <p className="text-base font-black font-mono tabular-nums text-green-500">
+                                        {fmt(monthGroups.reduce((s, r) => s + r.income, 0))} <span className={`text-[10px] font-bold ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
                                     </p>
                                 </div>
-                                <div>
+                                <div className="px-4 py-3">
                                     <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jami chiqim</p>
-                                    <p className={`text-base font-black font-mono tabular-nums text-red-400`}>
-                                        {fmt(monthlySummaries.reduce((s, r) => s + r.expenseOut, 0))}
+                                    <p className="text-base font-black font-mono tabular-nums text-red-400">
+                                        {fmt(monthGroups.reduce((s, r) => s + r.expense, 0))} <span className={`text-[10px] font-bold ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
                                     </p>
                                 </div>
                             </div>
 
-                            {monthlySummaries.map(row => {
-                                const net = row.income - row.expenseOut;
-                                return (
-                                    <div
-                                        key={row.monthKey}
-                                        className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface-2' : 'border-gray-100 bg-gray-50'}`}
+                            {/* ── Month filter chips ── */}
+                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                <button
+                                    onClick={() => setFilterMonth('all')}
+                                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                                        filterMonth === 'all'
+                                            ? isDark ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'bg-teal-100 text-teal-700 border border-teal-300'
+                                            : isDark ? 'bg-white/[0.05] text-gray-400 border border-white/[0.06]' : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                    }`}
+                                >
+                                    Hammasi
+                                </button>
+                                {monthGroups.map(g => (
+                                    <button
+                                        key={g.monthKey}
+                                        onClick={() => { setFilterMonth(g.monthKey); setExpandedMonths(new Set([g.monthKey])); }}
+                                        className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                                            filterMonth === g.monthKey
+                                                ? isDark ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'bg-teal-100 text-teal-700 border border-teal-300'
+                                                : isDark ? 'bg-white/[0.05] text-gray-400 border border-white/[0.06]' : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                        }`}
                                     >
-                                        <div className={`flex items-center justify-between px-4 py-2.5 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                                            <span className={`text-[12px] font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{row.label}</span>
-                                            <span className={`text-[11px] font-bold font-mono tabular-nums ${net >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                                {net >= 0 ? '+' : ''}{fmt(net)} UZS
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-2 divide-x divide-white/[0.04] px-0">
-                                            <div className="px-4 py-3">
-                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Kirim</p>
-                                                <p className={`text-[13px] font-black font-mono tabular-nums text-green-500`}>{fmt(row.income)}</p>
+                                        {g.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* ── Month cards ── */}
+                            {visibleGroups.map(group => {
+                                const isExpanded = expandedMonths.has(group.monthKey);
+                                const net = group.income - group.expense;
+                                const barColor = group.paidPercent >= 80 ? '#22c55e' : group.paidPercent >= 50 ? 'hsl(208,100%,45%)' : 'deeppink';
+                                return (
+                                    <div key={group.monthKey} className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.07] bg-surface-2' : 'border-gray-200 bg-white shadow-sm'}`}>
+
+                                        {/* Month header — tap to expand */}
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleMonth(group.monthKey)}
+                                            className={`w-full text-left px-4 pt-4 pb-3 transition-colors ${isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-gray-50'}`}
+                                        >
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className={`text-[13px] font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{group.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[11px] font-bold font-mono tabular-nums ${net >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                                        {net >= 0 ? '+' : ''}{fmt(net)} UZS
+                                                    </span>
+                                                    <span className={`text-[10px] transition-transform duration-200 ${isDark ? 'text-gray-500' : 'text-gray-400'} ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
+                                                </div>
                                             </div>
-                                            <div className="px-4 py-3">
-                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Chiqim</p>
-                                                <p className={`text-[13px] font-black font-mono tabular-nums text-red-400`}>{fmt(row.expenseOut)}</p>
+
+                                            {/* Mini stats row */}
+                                            <div className="flex items-center gap-4 mb-3">
+                                                <div>
+                                                    <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Kirim</p>
+                                                    <p className="text-[12px] font-black font-mono text-green-500">{fmt(group.income)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Chiqim</p>
+                                                    <p className="text-[12px] font-black font-mono text-red-400">{fmt(group.expense)}</p>
+                                                </div>
+                                                {group.monthlyTarget > 0 && (
+                                                    <div className="ml-auto text-right">
+                                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Plan</p>
+                                                        <p className={`text-[12px] font-black font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{fmt(group.monthlyTarget)}</p>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
+
+                                            {/* Progress bar */}
+                                            {group.monthlyTarget > 0 && (
+                                                <div>
+                                                    <div className="flex justify-between mb-1">
+                                                        <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{group.paidPercent}% to'langan</span>
+                                                        {group.income < group.monthlyTarget && (
+                                                            <span className="text-[10px] font-bold text-red-400">-{fmt(group.monthlyTarget - group.income)}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
+                                                        <div
+                                                            className="h-full rounded-full transition-all duration-700"
+                                                            style={{ width: `${group.paidPercent}%`, background: barColor }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </button>
+
+                                        {/* Transaction list */}
+                                        {isExpanded && (
+                                            <div className={`border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                                {group.txs.map((tx, i) => {
+                                                    const isIncome = tx.type === TransactionType.INCOME;
+                                                    const method = (tx.paymentMethod ?? '') as string;
+                                                    return (
+                                                        <div
+                                                            key={tx.id}
+                                                            className={`flex items-center gap-3 px-4 py-3 ${i < group.txs.length - 1 ? `border-b ${isDark ? 'border-white/[0.04]' : 'border-gray-50'}` : ''} ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'} transition-colors`}
+                                                        >
+                                                            {/* Date block */}
+                                                            <div className={`flex-shrink-0 w-10 text-center rounded-xl py-1.5 ${isDark ? 'bg-white/[0.05]' : 'bg-gray-100'}`}>
+                                                                <p className={`text-[11px] font-black leading-tight ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                    {new Date(tx.timestamp).getDate()}
+                                                                </p>
+                                                                <p className={`text-[9px] font-bold leading-tight ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                                    {MONTH_SHORT_UZ[new Date(tx.timestamp).getMonth()]}
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Middle: type + method + description */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                                                        isIncome
+                                                                            ? isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-600'
+                                                                            : isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'
+                                                                    }`}>
+                                                                        {TX_TYPE_LABEL[tx.type] ?? tx.type}
+                                                                    </span>
+                                                                    {method && METHOD_LABEL[method] && (
+                                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? METHOD_COLOR[method] ?? 'bg-white/[0.06] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                                                                            {METHOD_LABEL[method]}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {tx.description && (
+                                                                    <p className={`text-[11px] mt-0.5 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{tx.description}</p>
+                                                                )}
+                                                                <p className={`text-[10px] ${isDark ? 'text-gray-700' : 'text-gray-300'}`}>{fmtTime(tx.timestamp)}</p>
+                                                            </div>
+
+                                                            {/* Amount */}
+                                                            <div className="flex-shrink-0 text-right">
+                                                                <p className={`text-[13px] font-black font-mono tabular-nums ${isIncome ? 'text-green-500' : 'text-red-400'}`}>
+                                                                    {isIncome ? '+' : '-'}{fmt(Math.abs(tx.amount))}
+                                                                </p>
+                                                                <p className={`text-[9px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
