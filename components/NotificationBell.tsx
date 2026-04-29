@@ -42,8 +42,12 @@ function isPlanReminder(n: Notification) {
     return ((n as any).deliveryTracking?.reminderType === 'daily_plan');
 }
 
+function isDepositWarning(n: Notification) {
+    return (n as any).deliveryTracking?.depositWarning === true;
+}
+
 function isTransaction(n: Notification) {
-    return n.type === 'payment_reminder' && !isPlanReminder(n);
+    return n.type === 'payment_reminder' && !isPlanReminder(n) && !isDepositWarning(n);
 }
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -113,7 +117,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     };
 
     // Split notifications into two buckets
-    const warnings     = useMemo(() => notifications.filter(n => isPlanReminder(n) || (!isTransaction(n) && !isPlanReminder(n) && n.type !== 'payment_reminder')), [notifications]);
+    const warnings     = useMemo(() => notifications.filter(n => isPlanReminder(n) || isDepositWarning(n) || (!isTransaction(n) && !isPlanReminder(n) && !isDepositWarning(n) && n.type !== 'payment_reminder')), [notifications]);
     const transactions = useMemo(() => notifications.filter(isTransaction), [notifications]);
 
     const unreadWarnings     = warnings.filter(n => !readIds.has(n.id)).length;
@@ -407,6 +411,64 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     };
 
     // ─── Generic Card ───────────────────────────────────────────────────────
+    const renderDepositWarning = (notification: Notification, isRead: boolean) => {
+        const dt  = (notification as any).deliveryTracking ?? {};
+        const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors border-l-[3px] ${
+                    !isRead ? 'border-amber-500' : 'border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-amber-500/[0.06] hover:bg-amber-500/[0.09] cursor-pointer'
+                                 : 'bg-amber-50/60 hover:bg-amber-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 py-3.5 pr-10">
+                    <div className="flex items-center gap-3">
+                        {/* Driver avatar or fallback amber icon */}
+                        {dt.driverAvatar ? (
+                            <img src={dt.driverAvatar} alt={dt.driverName ?? ''}
+                                className={`w-11 h-11 rounded-full object-cover flex-shrink-0 ring-2 ${isDark ? 'ring-amber-500/30' : 'ring-amber-300'}`} />
+                        ) : (
+                            <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl ${isDark ? 'bg-amber-500/15' : 'bg-amber-100'}`}>
+                                🏦
+                            </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                                    ⚠ Depozit
+                                </span>
+                            </div>
+                            <p className={`text-[13px] font-bold truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {dt.driverName ?? notification.title}
+                            </p>
+                            {dt.remainingDeposit !== undefined && (
+                                <p className={`text-[12px] font-black font-mono tabular-nums ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                    Qoldiq: {fmt(dt.remainingDeposit)} UZS
+                                </p>
+                            )}
+                            <p className={`text-[10px] flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                <ClockIcon className="w-3 h-3" />
+                                {formatRelative(notification.createdAt)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
     const renderGenericItem = (notification: Notification, isRead: boolean) => {
         const getTypeIcon = (type: NotificationType) => {
             const cls = 'w-4 h-4';
@@ -461,8 +523,9 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
     const renderItem = (notification: Notification) => {
         const isRead = readIds.has(notification.id);
-        if (isPlanReminder(notification))  return renderPlanReminder(notification, isRead);
-        if (isTransaction(notification))   return renderPaymentItem(notification, isRead);
+        if (isPlanReminder(notification))   return renderPlanReminder(notification, isRead);
+        if (isDepositWarning(notification)) return renderDepositWarning(notification, isRead);
+        if (isTransaction(notification))    return renderPaymentItem(notification, isRead);
         return renderGenericItem(notification, isRead);
     };
 
