@@ -5,6 +5,7 @@ import { useFinanceStats } from '../finance/hooks/useFinanceStats';
 import * as firestoreService from '../../../services/firestoreService';
 import { useDataContext } from '../../core/context/DataContext';
 import { formatNumberSmart } from '../../../utils/formatNumber';
+import NumberTooltip from '../../../components/NumberTooltip';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
 import DriverFilterModal from '../../../components/DriverFilterModal';
@@ -514,17 +515,29 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     );
                                                 })()}
                                             </td>
-                                            <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${
-                                                tx.type === TransactionType.INCOME ? 'text-[#0f766e]'
-                                                : tx.type === TransactionType.DAY_OFF ? 'text-blue-400'
-                                                : 'text-red-500'
-                                            }`}>
+                                            <td className="px-6 py-4 text-right">
                                                 {tx.type === TransactionType.DAY_OFF ? (
                                                     <span className="flex items-center justify-end gap-1.5 text-xs font-bold text-blue-400">
                                                         <span>🏝️</span> {t('dayOffLabel')}
                                                     </span>
                                                 ) : (
-                                                    <>{tx.type === TransactionType.INCOME ? '+' : '-'}{formatNumberSmart(tx.amount, false, language)} <span className="ml-1">UZS</span></>
+                                                    <NumberTooltip
+                                                        value={tx.type === TransactionType.INCOME ? Math.abs(tx.amount) : -Math.abs(tx.amount)}
+                                                        align="right"
+                                                        theme={theme}
+                                                    >
+                                                        <span className={`text-sm font-bold font-mono tabular-nums cursor-default select-none ${
+                                                            tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'
+                                                        }`}>
+                                                            {tx.type === TransactionType.INCOME ? '+' : '−'}
+                                                            {formatNumberSmart(tx.amount, false, language)}
+                                                            <span className={`ml-1 text-xs font-semibold ${
+                                                                tx.type === TransactionType.INCOME
+                                                                    ? theme === 'dark' ? 'text-teal-700' : 'text-teal-400'
+                                                                    : theme === 'dark' ? 'text-red-800'  : 'text-red-300'
+                                                            }`}>UZS</span>
+                                                        </span>
+                                                    </NumberTooltip>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right">
