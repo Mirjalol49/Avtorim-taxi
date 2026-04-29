@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AdminUser, AdminProfile } from '../../../core/types';
 import * as firestoreService from '../../../../services/firestoreService';
 import { uploadAdminAvatar } from '../../../../services/storageService';
 import { useToast } from '../../../../components/ToastNotification';
-import { TRANSLATIONS } from '../../../../translations';
 
 interface UseAdminProfileProps {
     adminUser: AdminUser | null;
@@ -21,15 +21,14 @@ export const useAdminProfile = ({
     language
 }: UseAdminProfileProps) => {
     const { addToast } = useToast();
+    const { t } = useTranslation();
     const [isUpdating, setIsUpdating] = useState(false);
 
     const handleUpdateProfile = async (profileData: any) => {
         setIsUpdating(true);
         try {
-            // Race against a 15s timeout
             const updatePromise = async () => {
                 if (adminUser) {
-                    // Update Sub-Admin
                     // Handle avatar upload if it's a data URI
                     if (profileData.avatar && profileData.avatar.startsWith('data:image/')) {
                         try {
@@ -37,12 +36,11 @@ export const useAdminProfile = ({
                             profileData.avatar = result.url;
                         } catch (uploadError: any) {
                             console.error('Avatar upload failed:', uploadError);
-                            addToast('error', `Avatar failed: ${uploadError.message}`);
+                            addToast('error', t('avatarFailed'));
                             delete profileData.avatar;
                         }
                     }
 
-                    // Update in Firestore
                     const sanitizedUpdates = { ...profileData };
                     if (sanitizedUpdates.name) {
                         sanitizedUpdates.username = sanitizedUpdates.name;
@@ -54,26 +52,23 @@ export const useAdminProfile = ({
                         updatedAt: Date.now()
                     }, adminUser.id);
 
-                    // Update Local State
                     setAdminUser(prev => prev ? ({ ...prev, ...sanitizedUpdates }) : null);
 
                 } else {
-                    // Update Super Admin
+                    // Super Admin
                     if (profileData.avatar && profileData.avatar.startsWith('data:image/')) {
                         try {
                             const result = await uploadAdminAvatar(profileData.avatar, 'admin');
                             profileData.avatar = result.url;
                         } catch (uploadError: any) {
                             console.error('Avatar upload failed:', uploadError);
-                            addToast('error', `Avatar failed: ${uploadError.message}`);
+                            addToast('error', t('avatarFailed'));
                             delete profileData.avatar;
                         }
                     }
 
-                    // Update Firestore Admin Profile
                     await firestoreService.updateAdminProfile(profileData);
 
-                    // Update Local State
                     setAdminProfile((prev: any) => ({
                         ...prev,
                         name: profileData.name,
@@ -81,7 +76,6 @@ export const useAdminProfile = ({
                         avatar: profileData.avatar || prev.avatar
                     }));
 
-                    // Update LocalStorage Password if changed
                     if (profileData.password) {
                         localStorage.setItem('avtorim_admin_password', profileData.password);
                     }
@@ -94,17 +88,14 @@ export const useAdminProfile = ({
 
             await Promise.race([updatePromise(), timeoutPromise]);
 
-            addToast('success', TRANSLATIONS[language as keyof typeof TRANSLATIONS]?.profileUpdated || 'Profile updated successfully');
+            addToast('success', t('profileUpdated'));
 
         } catch (error: any) {
             console.error('❌ Failed to update profile:', error);
             if (error.message === 'Operation timed out') {
-                addToast('error', 'Update timed out. Please check your connection.');
+                addToast('error', t('updateTimeout'));
             } else {
-                const errorMessage = error.code === 'storage/unauthorized'
-                    ? 'Permission denied: Check Firebase Storage Rules'
-                    : (error.message || 'Failed to update profile');
-                addToast('error', `Error: ${errorMessage}`);
+                addToast('error', t('profileUpdateFailed'));
             }
         } finally {
             setIsUpdating(false);

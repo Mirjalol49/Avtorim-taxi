@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LockService } from '../services/LockService';
 import { LockState, Lockable } from '../../../core/types/lock.types';
 import { useToast } from '../../../../components/ToastNotification';
@@ -13,6 +14,7 @@ interface UseLockProps {
 
 export const useLock = ({ collectionPath, docId, entity, userId }: UseLockProps) => {
     const { addToast } = useToast();
+    const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
 
     // Initial state from props (relying on parent subscription for real-time updates)
@@ -35,7 +37,7 @@ export const useLock = ({ collectionPath, docId, entity, userId }: UseLockProps)
             // but we could set local state here if we wanted deeper optimism.
             // Since Firestore is fast and local persistence is enabled, standard flow is fine.
         } catch (error) {
-            addToast('error', 'Failed to update lock state');
+            addToast('error', t('lockUpdateFailed'));
         } finally {
             setIsLoading(false);
         }

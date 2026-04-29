@@ -159,7 +159,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 { adminName: adminUser?.username || 'Admin', count: n, totalAmount },
                 adminUser?.id
             );
-            addToast('success', t('bulkDeleteSuccess').replace('{n}', String(n)));
+            addToast('success', t('bulkDeleteSuccess', { n }));
         } catch (error) {
             console.error('Failed to delete transactions:', error);
             setTransactions(prev => {

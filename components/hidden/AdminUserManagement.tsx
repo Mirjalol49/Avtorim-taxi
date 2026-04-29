@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TrashIcon, PlusIcon, UserIcon, CheckCircleIcon, XIcon, EditIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon } from '../Icons';
 import { subscribeToAdminUsers, addAdminUser, updateAdminUser, deleteAdminUser } from '../../services/firestoreService';
 import ConfirmModal from '../ConfirmModal';
@@ -13,6 +14,7 @@ const ITEMS_PER_PAGE = 10;
 
 const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, onViewAccountData }) => {
     const { addToast } = useToast();
+    const { t } = useTranslation();
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,32 +79,32 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
         try {
             if (editingUser) {
                 await updateAdminUser(editingUser.id, formData, currentUser.username);
-                addToast('success', 'User updated successfully');
+                addToast('success', t('userUpdated'));
             } else {
                 if (users.some(u => u.username === formData.username)) {
-                    addToast('error', 'Username already exists');
+                    addToast('error', t('usernameExists'));
                     return;
                 }
                 await addAdminUser(formData, currentUser.username);
-                addToast('success', 'User created successfully');
+                addToast('success', t('userCreated'));
             }
             setIsModalOpen(false);
             setEditingUser(null);
             setFormData({ username: '', password: '', active: true, role: 'admin' });
         } catch (error) {
             console.error('Error saving user:', error);
-            addToast('error', 'Failed to save user');
+            addToast('error', t('userSaveFailed'));
         }
     };
 
     const handleDelete = async () => {
         try {
             await deleteAdminUser(deleteConfirm.userId, deleteConfirm.username, currentUser.username);
-            addToast('success', 'User deleted successfully');
+            addToast('success', t('userDeleted'));
             setDeleteConfirm({ isOpen: false, userId: '', username: '' });
         } catch (error) {
             console.error('Error deleting user:', error);
-            addToast('error', 'Failed to delete user');
+            addToast('error', t('userDeleteFailed'));
         }
     };
 
@@ -110,11 +112,11 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
         if (!statusConfirm.user) return;
         try {
             await updateAdminUser(statusConfirm.user.id, { active: statusConfirm.newStatus }, currentUser.username);
-            addToast('success', `User ${statusConfirm.newStatus ? 'activated' : 'deactivated'} successfully`);
+            addToast('success', statusConfirm.newStatus ? t('userActivated') : t('userDeactivated'));
             setStatusConfirm({ isOpen: false, user: null, newStatus: false });
         } catch (error) {
             console.error('Error updating status:', error);
-            addToast('error', 'Failed to update status');
+            addToast('error', t('userStatusFailed'));
         }
     };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import SuperAdminLogin from './SuperAdminLogin';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAuditLog from './AdminAuditLog';
@@ -22,6 +23,7 @@ const HiddenDashboard: React.FC = () => {
     const [viewingUser, setViewingUser] = useState<any>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const { addToast } = useToast();
+    const { t } = useTranslation();
 
     // Check for session on mount
     useEffect(() => {
@@ -41,8 +43,8 @@ const HiddenDashboard: React.FC = () => {
         setCurrentUser(user);
         setIsAuthenticated(true);
         sessionStorage.setItem('avtorim_super_admin_session', JSON.stringify(user));
-        addToast('success', `Welcome back, ${user.username}!`);
-    }, [addToast]);
+        addToast('success', t('welcomeBack', { name: user.username }));
+    }, [addToast, t]);
 
     const handleLogout = useCallback(() => {
         setIsAuthenticated(false);

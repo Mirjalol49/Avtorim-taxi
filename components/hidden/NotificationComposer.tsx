@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     sendNotification,
     NotificationType
@@ -8,7 +9,6 @@ import {
     NotificationPriority
 } from '../../src/core/types/notification.types';
 import { Language } from '../../types';
-import { TRANSLATIONS } from '../../translations';
 import { subscribeToAdminUsers } from '../../services/firestoreService';
 
 interface NotificationComposerProps {
@@ -30,6 +30,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
     currentUserName,
     addToast
 }) => {
+    const { t } = useTranslation();
     // Form State
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
@@ -48,7 +49,6 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
     // Data
     const [adminUsers, setAdminUsers] = useState<any[]>([]);
 
-    const t = TRANSLATIONS[lang];
     const isDark = theme === 'dark';
 
     // Subscribe to admin users
@@ -130,7 +130,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
 
         if (!isValid) {
             console.warn('❌ Form is not valid');
-            addToast('error', 'Please fill in all required fields');
+            addToast('error', t('notificationFillRequired'));
             return;
         }
 
@@ -178,7 +178,7 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
 
             console.log('✅ Notification sent! ID:', notificationId);
             setSendSuccess(notificationId);
-            addToast('success', `Notification sent to ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''}!`);
+            addToast('success', t('notificationSentCount', { n: recipientCount }));
 
             // Reset form after short delay to show success
             setTimeout(() => {
@@ -195,14 +195,14 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
 
         } catch (error) {
             console.error('❌ Send failed:', error);
-            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-            addToast('error', `Failed to send: ${errorMsg}`);
+            addToast('error', t('notificationSendFailed'));
             // Also show alert for visibility
-            alert(`Send Error: ${errorMsg}\n\nCheck browser console for details.`);
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Send Error:', errorMsg);
         } finally {
             setIsSending(false);
         }
-    }, [isValid, isSending, title, message, category, priority, targetType, targetRole, selectedUserIds, recipientCount, currentUserId, currentUserName, addToast]);
+    }, [isValid, isSending, title, message, category, priority, targetType, targetRole, selectedUserIds, recipientCount, currentUserId, currentUserName, addToast, t]);
 
     const toggleUserSelection = (userId: string) => {
         setSelectedUserIds(prev =>
