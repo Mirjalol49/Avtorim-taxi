@@ -27,12 +27,13 @@ interface DriversPageProps {
     onEditDriver: (driver: Driver) => void;
     onDeleteDriver: (id: string) => void;
     onAddDriver: () => void;
+    onAddTransaction?: (data: Omit<Transaction, 'id'>) => void;
     theme: 'light' | 'dark';
 }
 
 const DriversPage: React.FC<DriversPageProps> = ({
     drivers, cars, transactions, isDataLoading, userRole, fleetId,
-    onUpdateStatus, onEditDriver, onDeleteDriver, onAddDriver, theme,
+    onUpdateStatus, onEditDriver, onDeleteDriver, onAddDriver, onAddTransaction, theme,
 }) => {
     const { t } = useTranslation();
     const { adminUser } = useAuth();
@@ -301,6 +302,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
             onClose={() => setSheetDriver(null)}
             onEdit={d => { setSheetDriver(null); onEditDriver(d); }}
             onDelete={id => { setSheetDriver(null); onDeleteDriver(id); }}
+            onAddTransaction={onAddTransaction}
         />
         </div>
     );

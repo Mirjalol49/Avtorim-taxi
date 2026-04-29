@@ -877,6 +877,7 @@ const AppContent: React.FC = () => {
                   setEditingDriver(null);
                   setIsDriverModalOpen(true);
                 }}
+                onAddTransaction={handleAddTransaction}
                 theme={theme}
               />
             } />

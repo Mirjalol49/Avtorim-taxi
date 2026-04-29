@@ -19,6 +19,7 @@ interface Props {
     onClose: () => void;
     onEdit: (driver: Driver) => void;
     onDelete: (id: string) => void;
+    onAddTransaction?: (data: Omit<Transaction, 'id'>) => void;
 }
 
 // ── History helpers ───────────────────────────────────────────────────────────
@@ -33,11 +34,13 @@ const MONTH_NAMES_UZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyu
 const MONTH_SHORT_UZ  = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
 
 interface MonthGroup {
-    monthKey: string;
-    label:    string;
-    income:   number;
-    expense:  number;
-    txs:      Transaction[];   // sorted newest-first
+    monthKey:      string;
+    label:         string;
+    planIncome:    number;   // regular plan payments
+    topUps:        number;   // deposit top-ups
+    overpayment:   number;   // excess above plan → rolls to deposit
+    expense:       number;
+    txs:           Transaction[];   // sorted newest-first
     monthlyTarget: number;
     paidPercent:   number;
 }
@@ -91,7 +94,7 @@ const Section: React.FC<{ title: string; icon: React.ReactNode; isDark: boolean;
 );
 
 export const DriverDetailsSheet: React.FC<Props> = ({
-    driver, car, transactions, theme, userRole, isOpen, onClose, onEdit, onDelete,
+    driver, car, transactions, theme, userRole, isOpen, onClose, onEdit, onDelete, onAddTransaction,
 }) => {
     const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
@@ -99,7 +102,35 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const [activeTab, setActiveTab] = useState<'info' | 'history'>('info');
     const [filterMonth, setFilterMonth] = useState<string>('all');
     const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+    // Deposit top-up form
+    const [showTopUp, setShowTopUp] = useState(false);
+    const [topUpAmount, setTopUpAmount] = useState('');
+    const [topUpNote, setTopUpNote] = useState('');
+    const [topUpLoading, setTopUpLoading] = useState(false);
     const isDark = theme === 'dark';
+
+    const handleTopUpSubmit = async () => {
+        const amount = parseInt(topUpAmount.replace(/\D/g, ''), 10);
+        if (!driver || isNaN(amount) || amount <= 0 || !onAddTransaction) return;
+        setTopUpLoading(true);
+        try {
+            await onAddTransaction({
+                driverId: driver.id,
+                driverName: driver.name,
+                amount,
+                type: TransactionType.INCOME,
+                category: 'deposit_topup',
+                description: topUpNote.trim() || "Depozit to'ldirish",
+                timestamp: Date.now(),
+                status: 'ACTIVE' as any,
+            } as any);
+            setTopUpAmount('');
+            setTopUpNote('');
+            setShowTopUp(false);
+        } finally {
+            setTopUpLoading(false);
+        }
+    };
 
     const monthGroups = useMemo((): MonthGroup[] => {
         if (!driver) return [];
@@ -122,17 +153,19 @@ export const DriverDetailsSheet: React.FC<Props> = ({
             .sort((a, b) => b[0].localeCompare(a[0]))
             .map(([mk, txs]) => {
                 const [y, m] = mk.split('-').map(Number);
-                const sorted = [...txs].sort((a, b) => b.timestamp - a.timestamp);
-                const income  = sorted.filter(t => t.type === TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
-                const expense = sorted.filter(t => t.type !== TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
-                const totalDays    = new Date(y, m, 0).getDate();
-                const workingDays  = Math.max(0, totalDays - 2);
-                const monthlyTarget = dailyPlan * workingDays;
-                const paidPercent  = monthlyTarget > 0 ? Math.min(100, Math.round((income / monthlyTarget) * 100)) : 0;
+                const sorted     = [...txs].sort((a, b) => b.timestamp - a.timestamp);
+                const planIncome  = sorted.filter(t => t.type === TransactionType.INCOME && t.category !== 'deposit_topup').reduce((s, t) => s + Math.abs(t.amount), 0);
+                const topUps      = sorted.filter(t => t.type === TransactionType.INCOME && t.category === 'deposit_topup').reduce((s, t) => s + Math.abs(t.amount), 0);
+                const expense     = sorted.filter(t => t.type !== TransactionType.INCOME).reduce((s, t) => s + Math.abs(t.amount), 0);
+                const totalDays   = new Date(y, m, 0).getDate();
+                const workingDays = Math.max(0, totalDays - 2);
+                const monthlyTarget  = dailyPlan * workingDays;
+                const overpayment    = Math.max(0, planIncome - monthlyTarget);
+                const paidPercent    = monthlyTarget > 0 ? Math.min(100, Math.round((planIncome / monthlyTarget) * 100)) : 0;
                 return {
                     monthKey: mk,
                     label: `${MONTH_NAMES_UZ[m - 1]} ${y}`,
-                    income, expense, txs: sorted,
+                    planIncome, topUps, overpayment, expense, txs: sorted,
                     monthlyTarget, paidPercent,
                 };
             });
@@ -308,7 +341,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                         <div className="px-4 py-3">
                                             <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-violet-500/60' : 'text-violet-600/70'}`}>Jami kirim</p>
                                             <p className="text-[13px] font-black font-mono tabular-nums text-green-500">
-                                                {fmt(monthGroups.reduce((s, r) => s + r.income, 0))}
+                                                {fmt(monthGroups.reduce((s, r) => s + r.planIncome + r.topUps, 0))}
                                             </p>
                                         </div>
                                     </div>
@@ -345,7 +378,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                             {/* ── Month cards ── */}
                             {visibleGroups.map(group => {
                                 const isExpanded = expandedMonths.has(group.monthKey);
-                                const net = group.income - group.expense;
+                                const net = group.planIncome + group.topUps - group.expense;
                                 const barColor = group.paidPercent >= 80 ? '#22c55e' : group.paidPercent >= 50 ? 'hsl(208,100%,45%)' : 'deeppink';
                                 return (
                                     <div key={group.monthKey} className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.07] bg-surface-2' : 'border-gray-200 bg-white shadow-sm'}`}>
@@ -369,8 +402,11 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                             {/* Mini stats row */}
                                             <div className="flex items-center gap-4 mb-3">
                                                 <div>
-                                                    <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Kirim</p>
-                                                    <p className="text-[12px] font-black font-mono text-green-500">{fmt(group.income)}</p>
+                                                    <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>To'lov</p>
+                                                    <p className="text-[12px] font-black font-mono text-green-500">{fmt(group.planIncome)}</p>
+                                                    {group.topUps > 0 && (
+                                                        <p className={`text-[9px] font-bold font-mono text-amber-400`}>+{fmt(group.topUps)} dep</p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Chiqim</p>
@@ -389,8 +425,11 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                 <div>
                                                     <div className="flex justify-between mb-1">
                                                         <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{group.paidPercent}% to'langan</span>
-                                                        {group.income < group.monthlyTarget && (
-                                                            <span className="text-[10px] font-bold text-red-400">-{fmt(group.monthlyTarget - group.income)}</span>
+                                                        {group.planIncome < group.monthlyTarget && (
+                                                            <span className="text-[10px] font-bold text-red-400">-{fmt(group.monthlyTarget - group.planIncome)}</span>
+                                                        )}
+                                                        {group.overpayment > 0 && (
+                                                            <span className="text-[10px] font-bold text-green-500">+{fmt(group.overpayment)} ortiqcha</span>
                                                         )}
                                                     </div>
                                                     <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
@@ -411,7 +450,8 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                     const fm = finance.months.find(m => m.monthKey === group.monthKey);
                                                     if (!fm) return null;
                                                     const hasDeductions = fm.shortfall > 0 || fm.expenses > 0 || fm.debts > 0;
-                                                    if (!hasDeductions && finance.driverType === 'deposit' && finance.depositAmount === 0) return null;
+                                                    const hasCredits = fm.overpayment > 0 || fm.topUps > 0;
+                                                    if (!hasDeductions && !hasCredits && finance.depositAmount === 0) return null;
                                                     return (
                                                         <div className={`mx-3 my-3 rounded-xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-gray-50'}`}>
                                                             <div className={`px-3 py-2 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
@@ -438,7 +478,19 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                                         <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.debts)}</span>
                                                                     </div>
                                                                 )}
-                                                                {!hasDeductions && (
+                                                                {fm.overpayment > 0 && (
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>⬆ Ortiqcha to'lov (keyingiga o'tadi)</span>
+                                                                        <span className="text-[11px] font-bold font-mono text-green-500">+{fmt(fm.overpayment)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {fm.topUps > 0 && (
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>🏦 Depozit to'ldirildi</span>
+                                                                        <span className="text-[11px] font-bold font-mono text-amber-400">+{fmt(fm.topUps)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {!hasDeductions && !hasCredits && (
                                                                     <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>✓ Bu oy ayirmalar yo'q</p>
                                                                 )}
                                                                 <div className={`pt-1.5 mt-1 border-t flex justify-between items-center ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
@@ -483,6 +535,11 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                             {/* Middle: type + method + description */}
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    {tx.category === 'deposit_topup' ? (
+                                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+                                                                            🏦 Depozit +
+                                                                        </span>
+                                                                    ) : (
                                                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                                                                         isIncome
                                                                             ? isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-600'
@@ -490,6 +547,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                                     }`}>
                                                                         {TX_TYPE_LABEL[tx.type] ?? tx.type}
                                                                     </span>
+                                                                    )}
                                                                     {method && METHOD_LABEL[method] && (
                                                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? METHOD_COLOR[method] ?? 'bg-white/[0.06] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                                                                             {METHOD_LABEL[method]}
@@ -504,7 +562,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
                                                             {/* Amount */}
                                                             <div className="flex-shrink-0 text-right">
-                                                                <p className={`text-[13px] font-black font-mono tabular-nums ${isIncome ? 'text-green-500' : 'text-red-400'}`}>
+                                                                <p className={`text-[13px] font-black font-mono tabular-nums ${tx.category === 'deposit_topup' ? 'text-amber-400' : isIncome ? 'text-green-500' : 'text-red-400'}`}>
                                                                     {isIncome ? '+' : '-'}{fmt(Math.abs(tx.amount))}
                                                                 </p>
                                                                 <p className={`text-[9px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
@@ -523,26 +581,76 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
                     {/* Driver type + plan badge row */}
                     <div className="flex gap-2">
-                        {/* Type badge */}
                         {(() => {
                             const dt = driver.driverType ?? 'deposit';
                             const amount = dt === 'deposit' ? driver.depositAmount ?? 0 : driver.monthlySalary ?? 0;
+                            const remaining = finance?.remainingDeposit;
                             return (
-                                <div className={`flex-1 flex items-center justify-between px-4 py-3 rounded-2xl border ${
+                                <div className={`flex-1 rounded-2xl border overflow-hidden ${
                                     dt === 'deposit'
                                         ? isDark ? 'bg-amber-500/[0.08] border-amber-500/[0.20]' : 'bg-amber-50 border-amber-200'
                                         : isDark ? 'bg-violet-500/[0.08] border-violet-500/[0.20]' : 'bg-violet-50 border-violet-200'
                                 }`}>
-                                    <div>
-                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${dt === 'deposit' ? (isDark ? 'text-amber-500' : 'text-amber-600') : (isDark ? 'text-violet-400' : 'text-violet-600')}`}>
-                                            {dt === 'deposit' ? '🏦 Depozitchi' : '💳 Maoshli'}
-                                        </p>
-                                        {amount > 0 && (
-                                            <p className={`text-base font-black font-mono tabular-nums mt-0.5 ${dt === 'deposit' ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-violet-300' : 'text-violet-700')}`}>
-                                                {fmt(amount)} UZS
+                                    <div className="flex items-center justify-between px-4 py-3">
+                                        <div>
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${dt === 'deposit' ? (isDark ? 'text-amber-500' : 'text-amber-600') : (isDark ? 'text-violet-400' : 'text-violet-600')}`}>
+                                                {dt === 'deposit' ? '🏦 Depozitchi' : '💳 Maoshli'}
                                             </p>
+                                            {amount > 0 && (
+                                                <p className={`text-base font-black font-mono tabular-nums mt-0.5 ${dt === 'deposit' ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-violet-300' : 'text-violet-700')}`}>
+                                                    {fmt(amount)} UZS
+                                                </p>
+                                            )}
+                                        </div>
+                                        {/* Deposit: show remaining + top-up button */}
+                                        {dt === 'deposit' && userRole === 'admin' && (
+                                            <div className="text-right">
+                                                {remaining !== undefined && (
+                                                    <p className={`text-[11px] font-black font-mono tabular-nums mb-1 ${remaining >= 1_000_000 ? 'text-green-500' : 'text-red-400'}`}>
+                                                        {fmt(remaining)} qoldi
+                                                    </p>
+                                                )}
+                                                <button
+                                                    onClick={() => setShowTopUp(v => !v)}
+                                                    className={`text-[11px] font-bold px-3 py-1.5 rounded-xl transition-colors ${isDark ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                                                >
+                                                    {showTopUp ? 'Yopish' : '+ To\'ldirish'}
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
+                                    {/* Top-up form */}
+                                    {showTopUp && dt === 'deposit' && onAddTransaction && (
+                                        <div className={`px-4 pb-4 border-t ${isDark ? 'border-amber-500/10' : 'border-amber-200'}`}>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider pt-3 pb-2 ${isDark ? 'text-amber-500/60' : 'text-amber-600/70'}`}>Depozit to'ldirish</p>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type="text"
+                                                        value={topUpAmount}
+                                                        onChange={e => setTopUpAmount(e.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ','))}
+                                                        placeholder="Miqdor"
+                                                        className={`w-full px-3 py-2.5 pr-12 rounded-xl text-sm font-mono font-bold outline-none border transition-all ${isDark ? 'bg-surface border-amber-500/20 text-white focus:border-amber-500/50 placeholder-gray-600' : 'bg-white border-amber-200 text-gray-900 focus:border-amber-400 placeholder-gray-400'}`}
+                                                    />
+                                                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold ${isDark ? 'text-amber-500/50' : 'text-amber-500'}`}>UZS</span>
+                                                </div>
+                                                <button
+                                                    onClick={handleTopUpSubmit}
+                                                    disabled={topUpLoading || !topUpAmount}
+                                                    className="px-4 py-2.5 rounded-xl text-sm font-bold bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 transition-colors flex-shrink-0"
+                                                >
+                                                    {topUpLoading ? '...' : 'Qo\'sh'}
+                                                </button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={topUpNote}
+                                                onChange={e => setTopUpNote(e.target.value)}
+                                                placeholder="Izoh (ixtiyoriy)"
+                                                className={`mt-2 w-full px-3 py-2 rounded-xl text-sm outline-none border transition-all ${isDark ? 'bg-surface border-amber-500/10 text-white placeholder-gray-600' : 'bg-white border-amber-200 text-gray-900 placeholder-gray-400'}`}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })()}
