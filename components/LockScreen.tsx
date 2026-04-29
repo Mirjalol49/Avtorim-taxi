@@ -3,18 +3,6 @@ import useSound from 'use-sound';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
 
-const PadlockSVG = () => (
-    <svg width="112" height="112" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Shackle */}
-        <path d="M28 52V36C28 20.5 72 20.5 72 36V52" stroke="rgba(200,220,220,0.9)" strokeWidth="10" strokeLinecap="round" fill="none"/>
-        {/* Body */}
-        <rect x="12" y="50" width="76" height="60" rx="14" fill="rgba(255,255,255,0.18)"/>
-        <rect x="16" y="54" width="68" height="52" rx="12" fill="rgba(255,255,255,0.92)"/>
-        {/* Keyhole */}
-        <circle cx="50" cy="76" r="9" fill="hsl(176,79%,26%)"/>
-        <rect x="46" y="80" width="8" height="12" rx="4" fill="hsl(176,79%,26%)"/>
-    </svg>
-);
 
 interface LockScreenProps {
     adminName: string;
@@ -87,7 +75,13 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
 
                 {/* Padlock */}
                 <div className="mb-6 drop-shadow-2xl select-none">
-                    <PadlockSVG />
+                    <img
+                        src="/images/lock.png"
+                        alt="lock"
+                        width={108}
+                        height={108}
+                        className="object-contain"
+                    />
                 </div>
 
                 {/* Title */}
