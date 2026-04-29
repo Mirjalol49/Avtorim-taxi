@@ -136,11 +136,13 @@ export function calcDriverDebt(
 
 export interface MonthlyBreakdown {
     monthKey:      string;   // 'YYYY-MM'
-    income:        number;   // INCOME transactions
-    expenses:      number;   // EXPENSE transactions (money given/charged to driver)
+    planIncome:    number;   // Regular daily-plan payments (INCOME, not topup)
+    topUps:        number;   // Deposit top-up credits (INCOME with category='deposit_topup')
+    overpayment:   number;   // max(0, planIncome - monthlyTarget) — excess rolls to deposit
+    expenses:      number;   // EXPENSE transactions
     debts:         number;   // DEBT transactions
     monthlyTarget: number;   // dailyPlan * workingDays
-    shortfall:     number;   // max(0, target - income)
+    shortfall:     number;   // max(0, target - planIncome)
     /** For salary drivers: salaryAmount - shortfall - expenses - debts */
     netSalary:     number;
     /** Running deposit balance AFTER this month (deposit type only) */
@@ -179,14 +181,20 @@ export function calcDriverFinance(
         (tx as any).status !== 'DELETED'
     );
 
-    // Group by month
-    const byMonth = new Map<string, { income: number; expenses: number; debts: number }>();
+    // Group by month — separate plan payments from deposit top-ups
+    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number }>();
     for (const tx of validTxs) {
         const mk = toMonthKey(tx.timestamp);
-        const e  = byMonth.get(mk) ?? { income: 0, expenses: 0, debts: 0 };
-        if      (tx.type === TransactionType.INCOME)  e.income   += Math.abs(tx.amount);
-        else if (tx.type === TransactionType.EXPENSE)  e.expenses += Math.abs(tx.amount);
-        else if (tx.type === TransactionType.DEBT)     e.debts    += Math.abs(tx.amount);
+        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0 };
+        if (tx.type === TransactionType.INCOME && tx.category === 'deposit_topup') {
+            e.topUps     += Math.abs(tx.amount);
+        } else if (tx.type === TransactionType.INCOME) {
+            e.planIncome += Math.abs(tx.amount);
+        } else if (tx.type === TransactionType.EXPENSE) {
+            e.expenses   += Math.abs(tx.amount);
+        } else if (tx.type === TransactionType.DEBT) {
+            e.debts      += Math.abs(tx.amount);
+        }
         byMonth.set(mk, e);
     }
 
@@ -199,17 +207,17 @@ export function calcDriverFinance(
         const workingDays = Math.max(0, totalDays - 2);
         const monthlyTarget = dailyPlan * workingDays;
 
-        const { income, expenses, debts } = byMonth.get(mk)!;
-        const shortfall  = Math.max(0, monthlyTarget - income);
-        const deductions = shortfall + expenses + debts;
+        const { planIncome, topUps, expenses, debts } = byMonth.get(mk)!;
+        const shortfall    = Math.max(0, monthlyTarget - planIncome);
+        const overpayment  = Math.max(0, planIncome - monthlyTarget); // extra plan money → credit
+        const deductions   = shortfall + expenses + debts;
 
-        // For deposit: subtract deductions, credit any over-payment
-        const credit = Math.max(0, income - monthlyTarget);
-        runningDeposit = runningDeposit - deductions + credit;
+        // Deposit = prev balance − deductions + overpayment credit + direct top-ups
+        runningDeposit = runningDeposit - deductions + overpayment + topUps;
 
         const netSalary = Math.max(0, salaryAmount - deductions);
 
-        return { monthKey: mk, income, expenses, debts, monthlyTarget, shortfall, netSalary, depositAfter: runningDeposit };
+        return { monthKey: mk, planIncome, topUps, overpayment, expenses, debts, monthlyTarget, shortfall, netSalary, depositAfter: runningDeposit };
     });
 
     return { driverType, depositAmount, remainingDeposit: runningDeposit, salaryAmount, months };
