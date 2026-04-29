@@ -92,11 +92,15 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
 
-                // Cap current month to today so future days don't inflate the target.
+                // Cap days correctly:
+                //   future month  → 0 (not started, no debt)
+                //   current month → today's date (only elapsed days count)
+                //   past month    → full month days
                 const today = new Date();
                 const currentMk = toMonthKey(today);
                 const isCurrentMonth = mk === currentMk;
-                const effectiveDays = isCurrentMonth ? today.getDate() : totalDays;
+                const isFutureMonth = mk > currentMk;
+                const effectiveDays = isFutureMonth ? 0 : isCurrentMonth ? today.getDate() : totalDays;
 
                 // Count actual DAY_OFF transactions for this driver in this month
                 const daysOff = transactions.filter(tx =>
