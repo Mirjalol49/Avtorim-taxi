@@ -274,6 +274,8 @@
   "surplusIncome": "Сверхдоход",
   "remainingLabel": "Ещё осталось",
   "planCompleted": "План выполнен",
+  "monthNotStarted": "Месяц не начался",
+  "waitingToStart": "Ожидается",
   "progressGood": "Хороший прогресс",
   "paymentsLate": "Платежи задерживаются",
   "totalPaidAmount": "Всего оплачено",
