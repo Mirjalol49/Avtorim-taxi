@@ -444,8 +444,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               </div>
             )}
 
-            {/* Other: category chips */}
-            {type === TransactionType.EXPENSE && expenseTarget === 'other' && (
+            {/* Category chips — shown for ALL expense targets */}
+            {type === TransactionType.EXPENSE && (
               <div>
                 <label className={labelClass}>📦 Kategoriya</label>
                 <div className="grid grid-cols-4 gap-2">

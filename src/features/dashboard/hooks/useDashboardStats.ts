@@ -94,6 +94,11 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
             // Reusing debt utility logic
             const driverCar = driverCars[0] || null;
+
+            // Skip drivers with no assigned car — they have no daily plan and
+            // would always show as "pending" with -0, which is misleading.
+            if (!driverCar || !driverCar.dailyPlan || driverCar.dailyPlan <= 0) return;
+
             const info = calcDriverDebt(driver, driverCar, transactions);
 
             const adjustedTotalDebt = info.netDebt;

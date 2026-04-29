@@ -18,6 +18,7 @@ interface MonthRow {
     actualIncome: number;
     remaining: number;     // positive = still owes, 0 or negative = done/overpaid
     paidPercent: number;   // 0–100
+    isFutureMonth: boolean;
 }
 
 interface DriverPlanSummaryProps {
@@ -130,7 +131,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                     ? Math.min(100, Math.round((actualIncome / monthlyTarget) * 100))
                     : 0;
 
-                result.push({ driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, actualIncome, remaining, paidPercent });
+                result.push({ driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, actualIncome, remaining, paidPercent, isFutureMonth });
             }
         }
         return result;
@@ -182,23 +183,42 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                     key={row.driver.id}
                                     onClick={() => setSelectedMonthData(row)}
                                     className={`relative p-5 rounded-3xl border transition-all duration-300 cursor-pointer active:scale-[0.98] group overflow-hidden ${
-                                        isDark
+                                        row.isFutureMonth
+                                        ? isDark
+                                            ? 'border-white/[0.05] opacity-60 hover:opacity-80'
+                                            : 'border-gray-200/50 opacity-60 hover:opacity-80'
+                                        : isDark
                                         ? 'border-white/[0.07] shadow-[0_4px_20px_rgb(0,0,0,0.35)] hover:border-white/[0.14]'
                                         : 'bg-white border-gray-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.11)] hover:border-gray-300'
                                     }`}
                                     style={{ background: isDark ? 'var(--color-surface)' : undefined }}
                                 >
+                                    {/* Future month overlay pattern */}
+                                    {row.isFutureMonth && (
+                                        <div className="absolute inset-0 rounded-3xl pointer-events-none"
+                                            style={{
+                                                backgroundImage: `repeating-linear-gradient(
+                                                    -45deg,
+                                                    transparent,
+                                                    transparent 12px,
+                                                    rgba(255,255,255,0.015) 12px,
+                                                    rgba(255,255,255,0.015) 13px
+                                                )`
+                                            }}
+                                        />
+                                    )}
+
                                     {/* Inner Glow Pseudo-element */}
                                     <div className="absolute inset-0 rounded-3xl border-[0.5px] border-white/10 dark:border-white/5 pointer-events-none" />
 
-                                    {/* Top row: driver + status badge */}
+                                    {/* Top row: driver info */}
                                     <div className="flex items-start justify-between mb-5">
                                         <div className="flex items-center gap-3.5">
                                             {row.driver.avatar ? (
                                                 <img
                                                     src={row.driver.avatar}
                                                     alt={row.driver.name}
-                                                    className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-white/[0.06]' : 'border-gray-200/50 shadow-sm'}`}
+                                                    className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-white/[0.06]' : 'border-gray-200/50 shadow-sm'} ${row.isFutureMonth ? 'grayscale' : ''}`}
                                                 />
                                             ) : (
                                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-surface-2 text-gray-300 border-white/[0.08]' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
@@ -214,70 +234,114 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                                 </p>
                                             </div>
                                         </div>
-                                        
                                     </div>
-                                    
+
+                                    {/* Status badge */}
                                     <div className="mb-6">
-                                        <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide inline-flex items-center gap-1.5 backdrop-blur-md shadow-sm transition-colors ${
-                                            row.remaining <= 0
-                                                ? isDark ? 'bg-green-500/15 text-green-400 border border-green-500/20' : 'bg-green-100/80 text-green-700 border border-green-200'
-                                                : row.paidPercent >= 60
-                                                ? isDark ? 'bg-sky-500/15 text-sky-400 border border-sky-500/20' : 'bg-sky-100/80 text-sky-700 border border-sky-200'
-                                                : row.paidPercent >= 30
-                                                ? isDark ? 'bg-pink-500/15 text-pink-400 border border-pink-500/20' : 'bg-pink-100/80 text-pink-700 border border-pink-200'
-                                                : isDark ? 'bg-pink-600/15 text-pink-400 border border-pink-600/20' : 'bg-pink-100/80 text-pink-700 border border-pink-200'
-                                        }`}>
-                                            {row.remaining <= 0
-                                                ? `✓ ${t('planCompleted')}`
-                                                : row.paidPercent >= 60
-                                                ? `⚡ ${t('progressGood')} (${row.paidPercent}%)`
-                                                : `⚠ ${t('paymentsLate')}`}
-                                        </div>
+                                        {row.isFutureMonth ? (
+                                            <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide inline-flex items-center gap-1.5 border ${
+                                                isDark
+                                                    ? 'bg-white/[0.04] text-gray-500 border-white/[0.08]'
+                                                    : 'bg-gray-100 text-gray-400 border-gray-200'
+                                            }`}>
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                                                </svg>
+                                                {t('monthNotStarted') ?? 'Oy boshlanmagan'}
+                                            </div>
+                                        ) : (
+                                            <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide inline-flex items-center gap-1.5 backdrop-blur-md shadow-sm transition-colors ${
+                                                row.remaining <= 0
+                                                    ? isDark ? 'bg-green-500/15 text-green-400 border border-green-500/20' : 'bg-green-100/80 text-green-700 border border-green-200'
+                                                    : row.paidPercent >= 60
+                                                    ? isDark ? 'bg-sky-500/15 text-sky-400 border border-sky-500/20' : 'bg-sky-100/80 text-sky-700 border border-sky-200'
+                                                    : row.paidPercent >= 30
+                                                    ? isDark ? 'bg-pink-500/15 text-pink-400 border border-pink-500/20' : 'bg-pink-100/80 text-pink-700 border border-pink-200'
+                                                    : isDark ? 'bg-pink-600/15 text-pink-400 border border-pink-600/20' : 'bg-pink-100/80 text-pink-700 border border-pink-200'
+                                            }`}>
+                                                {row.remaining <= 0
+                                                    ? `✓ ${t('planCompleted')}`
+                                                    : row.paidPercent >= 60
+                                                    ? `⚡ ${t('progressGood')} (${row.paidPercent}%)`
+                                                    : `⚠ ${t('paymentsLate')}`}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Primary Mini-Stats */}
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <div className="flex flex-col gap-1">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('monthlyPlan')}</p>
-                                            <p className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
+                                    {row.isFutureMonth ? (
+                                        /* Future month: show daily plan as the only meaningful number */
+                                        <div className="flex flex-col gap-1 mb-6">
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('dailyPlan')}</p>
+                                            <p className={`text-lg font-black tracking-tight ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                {fmt(row.dailyPlan)} <span className="text-sm font-normal">/ {t('dailyPlanUnit')}</span>
+                                            </p>
                                         </div>
-                                        <div className="flex flex-col gap-1 items-start">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-green-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPaidAmount')}</p>
-                                            <p className={`text-lg font-black tracking-tight ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div className="flex flex-col gap-1">
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('monthlyPlan')}</p>
+                                                <p className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
+                                            </div>
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-green-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPaidAmount')}</p>
+                                                <p className={`text-lg font-black tracking-tight ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* Progress bar */}
                                     <div className="relative z-10">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                {row.paidPercent}% {t('completedPercent')}
-                                            </span>
-                                            <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : ''}`}
-                                                style={{ color: row.remaining > 0 ? (row.paidPercent >= 60 ? 'hsl(208, 100%, 45%)' : 'deeppink') : undefined }}
-                                            >
-                                                {row.remaining > 0
-                                                    ? `${t('remainingShort')}: ${fmt(row.remaining)}`
-                                                    : `+${fmt(-row.remaining)}`}
-                                            </span>
-                                        </div>
-                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
-                                            <div
-                                                className="h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                                                style={{
-                                                    width: `${Math.min(100, row.paidPercent)}%`,
-                                                    background: row.paidPercent >= 60
-                                                        ? '#22c55e'
-                                                        : row.paidPercent >= 30
-                                                        ? 'hsl(208, 100%, 45%)'
-                                                        : 'deeppink'
-                                                }}
-                                            />
-                                        </div>
+                                        {row.isFutureMonth ? (
+                                            /* Dashed empty bar for future months */
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className={`text-xs font-semibold ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                        — % {t('completedPercent')}
+                                                    </span>
+                                                    <span className={`text-xs font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                        {t('waitingToStart') ?? 'Kutilmoqda'}
+                                                    </span>
+                                                </div>
+                                                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-gray-100'}`}
+                                                    style={{ backgroundImage: `repeating-linear-gradient(90deg, ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} 0px, ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} 6px, transparent 6px, transparent 12px)` }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                        {row.paidPercent}% {t('completedPercent')}
+                                                    </span>
+                                                    <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : ''}`}
+                                                        style={{ color: row.remaining > 0 ? (row.paidPercent >= 60 ? 'hsl(208, 100%, 45%)' : 'deeppink') : undefined }}
+                                                    >
+                                                        {row.remaining > 0
+                                                            ? `${t('remainingShort')}: ${fmt(row.remaining)}`
+                                                            : `+${fmt(-row.remaining)}`}
+                                                    </span>
+                                                </div>
+                                                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                                                        style={{
+                                                            width: `${Math.min(100, row.paidPercent)}%`,
+                                                            background: row.paidPercent >= 60
+                                                                ? '#22c55e'
+                                                                : row.paidPercent >= 30
+                                                                ? 'hsl(208, 100%, 45%)'
+                                                                : 'deeppink'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    
+
                                     {/* Subtle Background Glow */}
-                                    <div className={`absolute bottom-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none transition-opacity duration-700 ease-in-out mix-blend-screen opacity-0 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-400' : 'bg-blue-400'}`} />
+                                    {!row.isFutureMonth && (
+                                        <div className={`absolute bottom-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none transition-opacity duration-700 ease-in-out mix-blend-screen opacity-0 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-400' : 'bg-blue-400'}`} />
+                                    )}
                                 </div>
                             ))}
                         </div>

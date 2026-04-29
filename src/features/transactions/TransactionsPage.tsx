@@ -5,6 +5,7 @@ import { useFinanceStats } from '../finance/hooks/useFinanceStats';
 import * as firestoreService from '../../../services/firestoreService';
 import { useDataContext } from '../../core/context/DataContext';
 import { formatNumberSmart } from '../../../utils/formatNumber';
+import NumberTooltip from '../../../components/NumberTooltip';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
 import DriverFilterModal from '../../../components/DriverFilterModal';
@@ -362,6 +363,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
                                     const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
+                                    // For "other" expenses (no driver, no car) — extract category from description
+                                    const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car
+                                        ? detectCategory(tx.description)
+                                        : null;
                                     return (
                                         <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-black/[0.03]'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
                                             {userRole === 'admin' && (
@@ -391,6 +396,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {car ? (
+                                                        /* ── Car expense ── */
                                                         <>
                                                             <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
                                                                 <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -409,7 +415,38 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                 </div>
                                                             </div>
                                                         </>
+                                                    ) : expenseCat ? (
+                                                        /* ── "Other" expense with detected category ── */
+                                                        <>
+                                                            <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-lg border ${theme === 'dark' ? 'border-red-500/20 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+                                                                {expenseCat.icon}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className={`text-sm font-bold ${theme === 'dark' ? 'text-red-300' : 'text-red-700'}`}>
+                                                                    {expenseCat.label}
+                                                                </span>
+                                                                <span className={`text-[10px] font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                                    {t('generalExpense') ?? 'Umumiy xarajat'}
+                                                                </span>
+                                                            </div>
+                                                        </>
+                                                    ) : tx.type === TransactionType.EXPENSE && !driver ? (
+                                                        /* ── "Other" expense without detected category ── */
+                                                        <>
+                                                            <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-lg border ${theme === 'dark' ? 'border-orange-500/20 bg-orange-500/10' : 'border-orange-200 bg-orange-50'}`}>
+                                                                📦
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className={`text-sm font-bold ${theme === 'dark' ? 'text-orange-300' : 'text-orange-700'}`}>
+                                                                    {t('generalExpense') ?? 'Umumiy xarajat'}
+                                                                </span>
+                                                                <span className={`text-[10px] font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                                    {t('expense')}
+                                                                </span>
+                                                            </div>
+                                                        </>
                                                     ) : (
+                                                        /* ── Driver (or no entity) ── */
                                                         <>
                                                             <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
                                                                 {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
@@ -417,7 +454,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className={`text-sm font-bold ${driver?.isDeleted ? (theme === 'dark' ? 'text-red-400' : 'text-red-600') : (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>
-                                                                        {driver?.name || tx.driverName || 'Noma\'lum'}
+                                                                        {driver?.name || tx.driverName || '—'}
                                                                     </span>
                                                                     {driver?.isDeleted && (
                                                                         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
@@ -478,17 +515,29 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     );
                                                 })()}
                                             </td>
-                                            <td className={`px-6 py-4 text-sm font-bold text-right font-mono ${
-                                                tx.type === TransactionType.INCOME ? 'text-[#0f766e]'
-                                                : tx.type === TransactionType.DAY_OFF ? 'text-blue-400'
-                                                : 'text-red-500'
-                                            }`}>
+                                            <td className="px-6 py-4 text-right">
                                                 {tx.type === TransactionType.DAY_OFF ? (
                                                     <span className="flex items-center justify-end gap-1.5 text-xs font-bold text-blue-400">
                                                         <span>🏝️</span> {t('dayOffLabel')}
                                                     </span>
                                                 ) : (
-                                                    <>{tx.type === TransactionType.INCOME ? '+' : '-'}{formatNumberSmart(tx.amount, false, language)} <span className="ml-1">UZS</span></>
+                                                    <NumberTooltip
+                                                        value={tx.type === TransactionType.INCOME ? Math.abs(tx.amount) : -Math.abs(tx.amount)}
+                                                        align="right"
+                                                        theme={theme}
+                                                    >
+                                                        <span className={`text-sm font-bold font-mono tabular-nums cursor-default select-none ${
+                                                            tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'
+                                                        }`}>
+                                                            {tx.type === TransactionType.INCOME ? '+' : '−'}
+                                                            {formatNumberSmart(tx.amount, false, language)}
+                                                            <span className={`ml-1 text-xs font-semibold ${
+                                                                tx.type === TransactionType.INCOME
+                                                                    ? theme === 'dark' ? 'text-teal-700' : 'text-teal-400'
+                                                                    : theme === 'dark' ? 'text-red-800'  : 'text-red-300'
+                                                            }`}>UZS</span>
+                                                        </span>
+                                                    </NumberTooltip>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right">
