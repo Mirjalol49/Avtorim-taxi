@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Car } from '../../core/types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { Car, CarDocument } from '../../core/types';
 import { Driver } from '../../core/types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
@@ -21,6 +21,174 @@ type FilterTab = 'all' | 'assigned' | 'available';
 
 const ITEMS_PER_PAGE = 12;
 
+// ─── Document Viewer Modal ─────────────────────────────────────────────────────
+
+interface DocViewerState {
+    docs: CarDocument[];
+    index: number;
+    carName: string;
+}
+
+function DocViewerModal({
+    state,
+    onClose,
+}: {
+    state: DocViewerState;
+    onClose: () => void;
+}) {
+    const [idx, setIdx] = useState(state.index);
+    const doc = state.docs[idx];
+    const isPdf = doc.type === 'application/pdf';
+    const total = state.docs.length;
+
+    const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), []);
+    const next = useCallback(() => setIdx(i => Math.min(total - 1, i + 1)), [total]);
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+            if (e.key === 'ArrowLeft')  prev();
+            if (e.key === 'ArrowRight') next();
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [onClose, prev, next]);
+
+    // Trigger browser download
+    const handleDownload = () => {
+        const a = document.createElement('a');
+        a.href = doc.data;
+        a.download = doc.name || 'document';
+        a.click();
+    };
+
+    const categoryLabel: Record<string, string> = {
+        id_card: 'Texpassport',
+        insurance: 'Sug\'urta',
+        technical_passport: 'Tex.Passport',
+        other: 'Hujjat',
+    };
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[300] flex flex-col"
+            style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.15s ease-out' }}
+        >
+            {/* ── Top bar ── */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-white/[0.08]">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/10 flex-shrink-0">
+                        <span className="text-base">{isPdf ? '📄' : '🖼️'}</span>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-white font-semibold text-[14px] truncate leading-tight">
+                            {doc.name}
+                        </p>
+                        <p className="text-white/40 text-[11px] truncate">
+                            {state.carName} · {categoryLabel[doc.category] ?? 'Hujjat'}
+                            {total > 1 && ` · ${idx + 1} / ${total}`}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                    {/* Download */}
+                    <button
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-[12px] bg-teal-500 hover:bg-teal-400 active:scale-95 transition-all text-white text-[13px] font-bold shadow-lg"
+                        title="Yuklab olish"
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Yuklab olish</span>
+                    </button>
+
+                    {/* Close */}
+                    <button
+                        onClick={onClose}
+                        className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90"
+                        title="Yopish (Esc)"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Content area ── */}
+            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+                {isPdf ? (
+                    <iframe
+                        src={doc.data}
+                        className="w-full h-full border-0"
+                        title={doc.name}
+                    />
+                ) : (
+                    <img
+                        key={idx}
+                        src={doc.data}
+                        alt={doc.name}
+                        className="max-w-full max-h-full object-contain select-none"
+                        style={{ animation: 'fadeIn 0.18s ease-out' }}
+                        draggable={false}
+                    />
+                )}
+
+                {/* Prev / Next arrows */}
+                {total > 1 && (
+                    <>
+                        <button
+                            onClick={prev}
+                            disabled={idx === 0}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/70 border border-white/15 text-white flex items-center justify-center transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed backdrop-blur-sm"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={next}
+                            disabled={idx === total - 1}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/70 border border-white/15 text-white flex items-center justify-center transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed backdrop-blur-sm"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </>
+                )}
+            </div>
+
+            {/* ── Thumbnail strip (if multiple docs) ── */}
+            {total > 1 && (
+                <div className="flex-shrink-0 flex items-center justify-center gap-2 py-3 px-4 border-t border-white/[0.08]">
+                    {state.docs.map((d, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setIdx(i)}
+                            className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                                i === idx ? 'border-teal-400 scale-110' : 'border-white/20 opacity-50 hover:opacity-80'
+                            }`}
+                        >
+                            {d.type === 'application/pdf' ? (
+                                <div className="w-full h-full bg-white/10 flex items-center justify-center text-base">📄</div>
+                            ) : (
+                                <img src={d.data} alt={d.name} className="w-full h-full object-cover" />
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* ── Backdrop click to close ── */}
+            <style>{`@keyframes fadeIn { from { opacity:0 } to { opacity:1 } }`}</style>
+        </div>,
+        document.body
+    );
+}
+
+// ─── Cars Page ────────────────────────────────────────────────────────────────
+
 const CarsPage: React.FC<CarsPageProps> = ({
     cars, drivers = [], isDataLoading, userRole, onAddCar, onEditCar, onDeleteCar, theme
 }) => {
@@ -28,6 +196,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
+    const [docViewer, setDocViewer] = useState<DocViewerState | null>(null);
 
     const getDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId && !d.isDeleted);
 
@@ -53,13 +222,18 @@ const CarsPage: React.FC<CarsPageProps> = ({
         { id: 'available', label: "Bo'sh",          count: totalCount - assignedCount },
     ];
 
+    const openDoc = (car: Car, index: number) => {
+        const docs = car.documents ?? [];
+        if (!docs.length) return;
+        setDocViewer({ docs, index, carName: car.name });
+    };
+
     return (
         <div className="space-y-5">
 
             {/* ── Toolbar ── */}
             <div className="flex flex-col gap-3">
                 <div className="flex gap-2.5">
-                    {/* Search */}
                     <div className="flex-1 relative">
                         <SearchIcon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-white/25' : 'text-gray-400'}`} />
                         <input
@@ -103,7 +277,6 @@ const CarsPage: React.FC<CarsPageProps> = ({
                     )}
                 </div>
 
-                {/* Filter tabs */}
                 <div className="flex items-center justify-between">
                     <div className={`flex items-center gap-1 p-1 rounded-[14px] border ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
                         {filterTabs.map(tab => {
@@ -178,6 +351,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 isDark={isDark}
                                 onEdit={onEditCar}
                                 onDelete={onDeleteCar}
+                                onDocClick={(index) => openDoc(car, index)}
                             />
                         ))}
                     </div>
@@ -210,11 +384,19 @@ const CarsPage: React.FC<CarsPageProps> = ({
                     )}
                 </>
             )}
+
+            {/* ── Document viewer modal ── */}
+            {docViewer && (
+                <DocViewerModal
+                    state={docViewer}
+                    onClose={() => setDocViewer(null)}
+                />
+            )}
         </div>
     );
 };
 
-// ─── Car Card ──────────────────────────────────────────────────────────────────
+// ─── Car Card ─────────────────────────────────────────────────────────────────
 
 interface CardProps {
     car: Car;
@@ -223,9 +405,10 @@ interface CardProps {
     isDark: boolean;
     onEdit: (car: Car) => void;
     onDelete: (id: string) => void;
+    onDocClick: (index: number) => void;
 }
 
-function CarCard({ car, driver, userRole, isDark, onEdit, onDelete }: CardProps) {
+function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick }: CardProps) {
     const docs       = car.documents ?? [];
     const isAssigned = !!driver;
 
@@ -252,10 +435,9 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete }: CardProps)
                     </div>
                 )}
 
-                {/* Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/25 pointer-events-none" />
 
-                {/* ── Top-left: driver pill or available badge ── */}
+                {/* Driver pill / Bo'sh */}
                 <div className="absolute top-3 left-3">
                     {isAssigned ? (
                         <div className="flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/15 shadow-sm max-w-[160px]">
@@ -268,22 +450,25 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete }: CardProps)
                             <span className="text-white text-[12px] font-semibold truncate leading-none">{driver!.name.split(' ')[0]}</span>
                         </div>
                     ) : (
-                        /* Clean "Bo'sh" badge — no pulsing dot */
                         <div className="flex items-center px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/15">
                             <span className="text-white/70 text-[11px] font-semibold">Bo'sh</span>
                         </div>
                     )}
                 </div>
 
-                {/* ── Top-right: docs count ── */}
+                {/* Docs count badge */}
                 {docs.length > 0 && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1.5 rounded-[10px] bg-black/40 backdrop-blur-md border border-white/10 shadow-sm">
+                    <button
+                        onClick={() => onDocClick(0)}
+                        className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1.5 rounded-[10px] bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 shadow-sm transition-all active:scale-90"
+                        title="Hujjatlarni ko'rish"
+                    >
                         <span className="text-[11px]">📄</span>
                         <span className="text-white text-[11px] font-bold leading-none">{docs.length}</span>
-                    </div>
+                    </button>
                 )}
 
-                {/* ── Admin actions — on hover ── */}
+                {/* Admin actions on hover */}
                 {userRole === 'admin' && (
                     <div className={`absolute flex gap-1.5 transition-all duration-200 opacity-0 translate-y-[-4px] group-hover:opacity-100 group-hover:translate-y-0 ${
                         docs.length > 0 ? 'top-12 right-3' : 'top-3 right-3'
@@ -305,7 +490,7 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete }: CardProps)
                     </div>
                 )}
 
-                {/* ── Bottom overlay: name + plate + plan ── */}
+                {/* Car name + plate + plan */}
                 <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-10">
                     <h3 className="text-white font-extrabold text-[18px] tracking-tight truncate leading-tight">
                         {car.name}
@@ -326,7 +511,7 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete }: CardProps)
             {/* ── Footer ── */}
             <div className={`px-4 py-3.5 ${isDark ? 'bg-[#111c2d]' : 'bg-white'}`}>
 
-                {/* Driver phone — name is on the image, just show contact */}
+                {/* Driver phone */}
                 {isAssigned ? (
                     <div className="flex items-center gap-2 mb-3">
                         <span className={`text-[13px] ${isDark ? 'text-white/25' : 'text-gray-300'}`}>📞</span>
@@ -342,33 +527,30 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete }: CardProps)
                         )}
                     </div>
                 ) : (
-                    <div className={`flex items-center gap-2 mb-3`}>
+                    <div className="flex items-center gap-2 mb-3">
                         <span className="text-[13px]">👤</span>
                         <span className={`text-[13px] ${isDark ? 'text-white/25' : 'text-gray-400'}`}>Haydovchi biriktirilmagan</span>
                     </div>
                 )}
 
-                {/* Documents — compact chips */}
+                {/* Documents — clickable chips that open the modal */}
                 <div className={`pt-3 border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
                     {docs.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                             {docs.map((doc, i) => (
-                                <a
+                                <button
                                     key={i}
-                                    href={doc.data}
-                                    download={doc.type === 'application/pdf' ? doc.name : undefined}
-                                    target={doc.type !== 'application/pdf' ? '_blank' : undefined}
-                                    rel="noreferrer"
+                                    onClick={() => onDocClick(i)}
                                     title={doc.name}
                                     className={`flex items-center gap-1 px-2.5 py-1 rounded-[8px] border text-[11px] font-medium transition-all active:scale-95 max-w-[130px] truncate ${
                                         isDark
-                                            ? 'bg-white/[0.03] border-white/[0.06] text-white/40 hover:text-teal-400 hover:border-teal-500/25'
+                                            ? 'bg-white/[0.03] border-white/[0.06] text-white/40 hover:text-teal-400 hover:border-teal-500/25 hover:bg-teal-500/[0.06]'
                                             : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-teal-600 hover:border-teal-300 hover:bg-teal-50'
                                     }`}
                                 >
                                     <span className="flex-shrink-0">{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
                                     <span className="truncate">{doc.name}</span>
-                                </a>
+                                </button>
                             ))}
                         </div>
                     ) : (
