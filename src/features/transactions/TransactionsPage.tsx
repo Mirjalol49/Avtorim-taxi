@@ -20,6 +20,7 @@ import {
 import { useToast } from '../../../components/ToastNotification';
 import { useConfirm } from '../../../components/ConfirmContext';
 import FinancialModal from '../../../components/FinancialModal';
+import BalanceCheckModal from '../../../components/BalanceCheckModal';
 import { exportTransactionsToExcel } from '../../../utils/exportToExcel';
 
 const EXPENSE_CATEGORIES = [
@@ -83,6 +84,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [driverModalOpen, setDriverModalOpen] = useState(false);
+    const [balanceCheckOpen, setBalanceCheckOpen] = useState(false);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
 
@@ -175,6 +177,21 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Header Removed - Managed by DesktopHeader */}
+
+            {/* Balance Check button row */}
+            <div className="flex justify-end">
+                <button
+                    onClick={() => setBalanceCheckOpen(true)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[13px] font-bold transition-all active:scale-95 shadow-sm ${
+                        theme === 'dark'
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50'
+                            : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300'
+                    }`}
+                >
+                    <span className="text-base">💳</span>
+                    Balans tekshirish
+                </button>
+            </div>
 
             {/* Filters */}
             <div className={`p-4 rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
@@ -711,6 +728,15 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     initialTransaction={editingTransaction}
                 />
             )}
+
+            {/* Balance Check Modal */}
+            <BalanceCheckModal
+                isOpen={balanceCheckOpen}
+                onClose={() => setBalanceCheckOpen(false)}
+                transactions={allTransactions}
+                drivers={drivers}
+                theme={theme}
+            />
         </div>
     );
 };
