@@ -29,10 +29,7 @@ export class LocationTracker {
      * Start tracking location
      */
     async start(): Promise<void> {
-        if (this.isTracking) {
-            console.warn('Location tracking already started');
-            return;
-        }
+        if (this.isTracking) return;
 
         try {
             // Request initial position to ensure permission is granted
@@ -55,7 +52,6 @@ export class LocationTracker {
                     }
                 },
                 (error) => {
-                    console.error('Watch position error:', error);
                     if (this.config.onError) {
                         this.config.onError(error);
                     }
@@ -73,9 +69,7 @@ export class LocationTracker {
             }, this.config.updateInterval);
 
             this.isTracking = true;
-            console.log(`Location tracking started for driver ${this.config.driverId}`);
         } catch (error) {
-            console.error('Failed to start location tracking:', error);
             if (this.config.onError) {
                 this.config.onError(error as Error);
             }
@@ -87,10 +81,7 @@ export class LocationTracker {
      * Stop tracking location
      */
     stop(): void {
-        if (!this.isTracking) {
-            console.warn('Location tracking not active');
-            return;
-        }
+        if (!this.isTracking) return;
 
         // Clear watch
         if (this.watchId !== null) {
@@ -106,7 +97,6 @@ export class LocationTracker {
 
         this.isTracking = false;
         this.lastPosition = null;
-        console.log(`Location tracking stopped for driver ${this.config.driverId}`);
     }
 
     /**
@@ -130,7 +120,7 @@ export class LocationTracker {
                 speed: position.speed || 0
             });
         } catch (error) {
-            console.error('Failed to send location update, queuing for retry:', error);
+            // Queue for retry silently
 
             // Queue failed update for retry
             this.failedUpdates.push(position);
@@ -147,8 +137,6 @@ export class LocationTracker {
      */
     private async retryFailedUpdates(): Promise<void> {
         if (this.failedUpdates.length === 0) return;
-
-        console.log(`Retrying ${this.failedUpdates.length} failed location updates...`);
 
         const updates = [...this.failedUpdates];
         this.failedUpdates = [];

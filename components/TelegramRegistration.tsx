@@ -33,8 +33,8 @@ const TelegramRegistration: React.FC<TelegramRegistrationProps> = ({ drivers, th
                 const data = await response.json();
                 setRegisteredDrivers(data);
             }
-        } catch (error) {
-            console.error('Failed to fetch registered drivers:', error);
+        } catch {
+            // silently ignore fetch errors for localhost endpoint
         }
     };
 

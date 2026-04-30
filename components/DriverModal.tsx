@@ -143,7 +143,6 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       });
       onClose();
     } catch (err: any) {
-      console.error("Error saving driver:", err);
       setError((err?.message && err.message !== '[object Object]' ? err.message : null) || t('errorSaving') || "Xatolik yuz berdi.");
     } finally {
       setIsSubmitting(false);
@@ -202,8 +201,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
-    if (value) setMonthlySalary(parseInt(value, 10).toLocaleString());
-    else setMonthlySalary('');
+    setMonthlySalary(value ? parseInt(value, 10) : 0);
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'

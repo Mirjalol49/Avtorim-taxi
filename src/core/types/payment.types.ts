@@ -1,4 +1,34 @@
-export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
+export type DailyRecordStatus = 'unpaid' | 'partial' | 'paid';
+
+/** Legacy salary record — stored in driver_salaries table */
+export interface DriverSalary {
+    id: string;
+    driverId: string;
+    driverName?: string;
+    amount: number;
+    status: string; // 'COMPLETED' | 'REVERSED' | 'REFUNDED' | 'PENDING'
+    effectiveDate: number; // timestamp ms
+    createdAt: number;     // timestamp ms
+    period_start?: number;
+    fleetId?: string;
+    transactionId?: string;
+}
+
+/** Reversal request record — stored in payment_reversals table */
+export interface PaymentReversal {
+    id: string;
+    salary_id: string;
+    transaction_id: string;
+    amount: number;
+    driver_id: string;
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected';
+    requested_by: string;
+    approved_by?: string;
+    fleet_id?: string;
+    requested_at: number;
+    resolved_at?: number;
+}
 
 export type AllocationType = 'debt' | 'current' | 'credit';
 
@@ -8,7 +38,7 @@ export interface DriverDailyRecord {
     date: string; // YYYY-MM-DD
     plan_amount: number;
     paid_amount: number;
-    status?: PaymentStatus; // Derived
+    status?: DailyRecordStatus; // Derived
     created_at?: string;
 }
 

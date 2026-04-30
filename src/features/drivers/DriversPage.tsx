@@ -10,11 +10,8 @@ import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { DriverDetailsSheet } from './components/DriverDetailsSheet';
 import { useAuth } from '../auth/hooks/useAuth';
-import { calcDriverDebt } from './utils/debtUtils';
 
 type CarFilter = 'all' | 'with-car' | 'no-car';
-
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
 interface DriversPageProps {
     drivers: Driver[];
@@ -40,20 +37,6 @@ const DriversPage: React.FC<DriversPageProps> = ({
     const currentUserId = adminUser?.id || 'unknown';
     const [carFilter, setCarFilter] = useState<CarFilter>('all');
     const [sheetDriver, setSheetDriver] = useState<Driver | null>(null);
-
-    const fleetStats = useMemo(() => {
-        let totalDebt = 0, totalIncome = 0, todayIncome = 0;
-        drivers.filter(d => !d.isDeleted).forEach(d => {
-            const car = cars.find(c => c.assignedDriverId === d.id) ?? null;
-            const s = calcDriverDebt(d, car, transactions);
-            // Only aggregate if netDebt is positive (meaning they owe money)
-            // Overpayments (credit balances <= 0) don't offset total fleet owed debt
-            totalDebt += s.netDebt > 0 ? s.netDebt : 0;
-            totalIncome += s.totalIncome;
-            todayIncome += s.todayIncome;
-        });
-        return { totalDebt, totalIncome, todayIncome };
-    }, [drivers, cars, transactions]);
 
     const {
         searchQuery, setSearchQuery,

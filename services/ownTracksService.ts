@@ -14,8 +14,7 @@ export const fetchDriverLocations = async (): Promise<DriverLocation[]> => {
             throw new Error('Failed to fetch driver locations');
         }
         return await response.json();
-    } catch (error) {
-        console.error('Error fetching driver locations:', error);
+    } catch {
         return [];
     }
 };

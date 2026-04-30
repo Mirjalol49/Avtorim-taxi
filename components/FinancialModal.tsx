@@ -119,7 +119,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         if (!initialDriverId) setDriverId(drivers[0].id);
       }
     }
-  }, [isOpen, drivers, driverId]);
+  }, [isOpen, drivers, driverId, initialDriverId]);
 
   // ── Cheque paste ─────────────────────────────────────────────────────────────
   const processImageFile = useCallback((file: File) => {

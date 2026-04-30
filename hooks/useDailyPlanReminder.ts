@@ -202,8 +202,8 @@ export const useDailyPlanReminder = ({
                         aId,
                         aName
                     );
-                } catch (err) {
-                    console.error('[DailyPlanReminder] Failed for driver:', driver.name, err);
+                } catch {
+                    // per-driver notification failure should not stop the loop
                 }
             }
         } finally {

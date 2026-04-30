@@ -65,16 +65,16 @@ export const useNoteReminders = ({
                     adminUserId,
                     adminUserName
                 );
-            } catch (err) {
-                console.error('[NoteReminders] Failed to send notification:', err);
+            } catch {
+                // notification send failure should not interrupt reminder flow
             }
 
             // Clear reminder from DB
             try {
                 await updateNote(note.id, { reminderAt: null } as any);
                 onNoteUpdated?.(note.id, { reminderAt: null });
-            } catch (err) {
-                console.error('[NoteReminders] Failed to clear reminder:', err);
+            } catch {
+                // silently continue if clearing reminder fails
             }
         }
     };

@@ -11,7 +11,6 @@ export const compressImage = (dataUrl: string, maxSize: number = 150): Promise<s
   return new Promise((resolve, reject) => {
     // Set a short timeout to prevent hanging
     const timeout = setTimeout(() => {
-      console.warn('⚠️ Image compression timed out, using original');
       if (dataUrl.length < 500 * 1024) {
         resolve(dataUrl);
       } else {
@@ -48,7 +47,6 @@ export const compressImage = (dataUrl: string, maxSize: number = 150): Promise<s
 
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            console.warn('No canvas context, using original');
             resolve(dataUrl);
             return;
           }
@@ -57,17 +55,15 @@ export const compressImage = (dataUrl: string, maxSize: number = 150): Promise<s
           ctx.drawImage(img, 0, 0, width, height);
           const compressed = canvas.toDataURL('image/jpeg', 0.6);
 
-          console.log(`📦 Compressed: ${Math.round(dataUrl.length / 1024)}KB → ${Math.round(compressed.length / 1024)}KB`);
+          // compression complete
           resolve(compressed);
-        } catch (canvasError) {
-          console.warn('Canvas error, using original:', canvasError);
+        } catch {
           resolve(dataUrl);
         }
       };
 
       img.onerror = () => {
         clearTimeout(timeout);
-        console.warn('Image load error, using original');
         resolve(dataUrl); // Fallback to original if image fails to load
       };
 
@@ -75,9 +71,8 @@ export const compressImage = (dataUrl: string, maxSize: number = 150): Promise<s
       img.crossOrigin = 'anonymous';
       img.src = dataUrl;
 
-    } catch (error) {
+    } catch {
       clearTimeout(timeout);
-      console.warn('Compression setup error:', error);
       resolve(dataUrl);
     }
   });
@@ -87,28 +82,21 @@ export const compressImage = (dataUrl: string, maxSize: number = 150): Promise<s
  * Process avatar for saving
  * Compresses the image and returns a base64 string suitable for Firestore
  */
-export const uploadAdminAvatar = async (dataUrl: string, adminName: string): Promise<{
+export const uploadAdminAvatar = async (dataUrl: string, _adminName: string): Promise<{
   url: string;
   backupPath: string | null;
   source: string;
 }> => {
-  console.log('🖼️ Processing avatar for:', adminName);
-  console.log('📊 Original size:', Math.round(dataUrl.length / 1024), 'KB');
-
   try {
     // Compress the image
     const compressed = await compressImage(dataUrl, 150);
     const sizeKB = compressed.length / 1024;
 
-    console.log('📊 Final size:', Math.round(sizeKB), 'KB');
-
     // Check if it's small enough for Firestore (under 500KB to be safe)
     if (sizeKB > 500) {
       // Try more aggressive compression
-      console.log('🔄 Trying more aggressive compression...');
       const moreCompressed = await compressImage(dataUrl, 100);
       const newSize = moreCompressed.length / 1024;
-      console.log('📊 After aggressive compression:', Math.round(newSize), 'KB');
 
       if (newSize > 500) {
         throw new Error('Image too large. Please use a smaller image (under 500KB).');
@@ -121,7 +109,6 @@ export const uploadAdminAvatar = async (dataUrl: string, adminName: string): Pro
       };
     }
 
-    console.log('✅ Avatar processed successfully');
     return {
       url: compressed,
       backupPath: null,
@@ -129,7 +116,6 @@ export const uploadAdminAvatar = async (dataUrl: string, adminName: string): Pro
     };
 
   } catch (error: any) {
-    console.error('❌ Avatar processing failed:', error);
     throw error;
   }
 };

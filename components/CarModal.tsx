@@ -67,7 +67,6 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       await onSubmit({ id: editingCar?.id, name, licensePlate, avatar, dailyPlan: planValue, documents });
       onClose();
     } catch (err: any) {
-      console.error('Car save error:', err);
       setError(err?.message || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
     } finally {
       setIsSubmitting(false);

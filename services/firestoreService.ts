@@ -659,7 +659,6 @@ export const migrateFromLocalStorage = async () => {
     }
 
     localStorage.setItem('avtorim_migrated_to_supabase', 'true');
-    console.log(hasData ? 'Migration completed!' : 'No data to migrate — starting fresh!');
 };
 
 // ==================== LEGACY COMPAT ====================

@@ -53,8 +53,8 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
                 totalIncome: income,
                 totalExpense: expense
             });
-        } catch (error) {
-            console.error('Error fetching account data:', error);
+        } catch {
+            // silently handle fetch errors
         } finally {
             setLoading(false);
         }

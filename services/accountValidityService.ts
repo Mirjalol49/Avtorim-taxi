@@ -23,8 +23,7 @@ export const checkAccountValidity = async (accountId: string): Promise<AccountVa
         }
 
         return { isValid: true, userData: data };
-    } catch (error) {
-        console.error('Error checking account validity:', error);
+    } catch {
         return { isValid: true };
     }
 };
@@ -41,14 +40,12 @@ export const subscribeToAccountValidity = (
             { event: '*', schema: 'public', table: 'admin_users', filter: `id=eq.${accountId}` },
             (payload) => {
                 if (payload.eventType === 'DELETE') {
-                    console.warn('Account deleted - logging out');
                     onInvalid('Your account has been deleted by an administrator');
                     return;
                 }
 
                 const data = payload.new as any;
                 if (data?.active === false) {
-                    console.warn('Account disabled - logging out');
                     onInvalid('Your account has been disabled by an administrator');
                     return;
                 }

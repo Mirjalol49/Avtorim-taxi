@@ -5,3 +5,4 @@ export * from './user.types';
 export * from './notification.types';
 export * from './car.types';
 export * from './note.types';
+export * from './payment.types';

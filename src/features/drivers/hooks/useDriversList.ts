@@ -21,7 +21,7 @@ export const useDriversList = (drivers: Driver[]) => {
             d.licensePlate.toLowerCase().includes(query) ||
             d.carModel.toLowerCase().includes(query)
         );
-    }, [drivers, nonDeletedDrivers, searchQuery]);
+    }, [nonDeletedDrivers, searchQuery]);
 
     const paginatedDrivers = useMemo(() => {
         const startIndex = (currentPage - 1) * itemsPerPage;

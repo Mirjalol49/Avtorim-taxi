@@ -79,12 +79,18 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         }
     }, [isOpen]);
 
-    // Close on Escape
+    // Close on Escape — only listen when the panel is open
     useEffect(() => {
-        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeSidebar(); };
+        if (!isOpen) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setVisible(false);
+                setTimeout(() => setIsOpen(false), 300);
+            }
+        };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
-    }, []);
+    }, [isOpen]);
 
     // Prevent body scroll while open
     useEffect(() => {

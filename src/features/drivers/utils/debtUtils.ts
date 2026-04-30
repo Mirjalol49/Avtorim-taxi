@@ -9,8 +9,7 @@ export interface ExplicitDebtInfo {
 export function calcExplicitDebt(driver: Driver, transactions: Transaction[]): ExplicitDebtInfo {
     const driverTxs = transactions.filter(tx =>
         tx.driverId === driver.id &&
-        tx.status !== PaymentStatus.DELETED &&
-        (tx as any).status !== 'DELETED'
+        tx.status !== PaymentStatus.DELETED
     );
 
     const totalExplicitDebt = driverTxs
@@ -49,8 +48,7 @@ export function calcDriverDebt(
 
     const validTxs = transactions.filter(tx =>
         tx.driverId === driver.id &&
-        tx.status !== PaymentStatus.DELETED &&
-        (tx as any).status !== 'DELETED'
+        tx.status !== PaymentStatus.DELETED
     );
 
     // Sum all incomes EXCLUDING deposit top-ups (those don't fulfil the daily plan)
@@ -168,8 +166,7 @@ export function calcDriverFinance(
 
     const validTxs = transactions.filter(tx =>
         tx.driverId === driver.id &&
-        tx.status !== PaymentStatus.DELETED &&
-        (tx as any).status !== 'DELETED'
+        tx.status !== PaymentStatus.DELETED
     );
 
     // Group by month — separate plan payments, top-ups, expenses, debts, and day-offs

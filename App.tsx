@@ -212,9 +212,7 @@ const AppContent: React.FC = () => {
     // Migration logic remains here or can be moved to DataContext?
     // Keeping it simple: leave here or move eventually.
     // DataContext doesn't handle migration explicitly.
-    firestoreService.migrateFromLocalStorage().then(() => {
-      console.log('Data migration completed');
-    }).catch(err => console.error('Migration failed:', err));
+    firestoreService.migrateFromLocalStorage().catch(() => {});
   }, [isAuthenticated]);
 
   // --- FILTER LOGIC ---
@@ -288,11 +286,10 @@ const AppContent: React.FC = () => {
             },
             adminUser?.id ?? '',
             adminUser?.username ?? 'Tizim'
-          ).catch(err => console.error('Deposit warning notification failed:', err));
+          ).catch(() => {});
         }
       }
-    } catch (error) {
-      console.error('Failed to add transaction:', error);
+    } catch {
       addToast('error', t.transactionSaveFailed);
     }
   };
@@ -311,7 +308,7 @@ const AppContent: React.FC = () => {
         closeConfirmModal();
         setSelectedTransactions(prev => prev.filter(txId => txId !== id));
         firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' })
-          .catch(err => console.error('Failed to delete transaction:', err));
+          .catch(() => {});
       }
     });
   };
@@ -357,7 +354,6 @@ const AppContent: React.FC = () => {
         await assignCar(assignedCarId, driverId);
       }
     } catch (error) {
-      console.error('Failed to save driver:', error);
       addToast('error', t.driverSaveFailed);
       throw error;
     }
@@ -397,8 +393,7 @@ const AppContent: React.FC = () => {
     setDrivers(ds => ds.map(d => d.id === driverId ? { ...d, status: newStatus } : d));
     try {
       await firestoreService.updateDriver(driverId, { status: newStatus }, adminUser?.id);
-    } catch (error) {
-      console.error('Failed to update driver status:', error);
+    } catch {
       if (prev) setDrivers(ds => ds.map(d => d.id === driverId ? { ...d, status: prev } : d));
       addToast('error', t.statusUpdateFailed);
     }
@@ -425,8 +420,7 @@ const AppContent: React.FC = () => {
             reason: 'Manual deletion by admin'
           }, adminUser?.id);
           if (assignedCar) await unassignCar(assignedCar.id);
-        } catch (error) {
-          console.error('Failed to delete driver:', error);
+        } catch {
           if (driver) setDrivers(ds => [...ds, driver]);
           addToast('error', t.driverDeleteFailed);
         }
@@ -779,9 +773,7 @@ const AppContent: React.FC = () => {
               setUnreadCount(0);
 
               // Then persist to Firebase in background  
-              markAllNotificationsAsRead(unreadIds, userId).catch(err => {
-                console.error('Failed to mark notifications as read:', err);
-              });
+              markAllNotificationsAsRead(unreadIds, userId).catch(() => {});
             }
           }}
           onDeleteNotification={async (id) => {

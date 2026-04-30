@@ -81,7 +81,6 @@ export const useAuth = () => {
             if (cancelled) return;
 
             if (!result.isValid) {
-                console.warn('Initial account validation failed');
                 handleLogout();
                 return;
             }
@@ -94,7 +93,6 @@ export const useAuth = () => {
             unsubscribeValidity = subscribeToAccountValidity(
                 adminUser.id,
                 (reason) => {
-                    console.warn('Account invalidated in real-time:', reason);
                     addToast('error', reason);
                     handleLogout();
                 },
@@ -146,11 +144,7 @@ export const useAuth = () => {
     };
 
     const handleLogout = () => {
-        try {
-            playLockSound();
-        } catch (e) {
-            console.warn('Failed to play lock sound', e);
-        }
+        try { playLockSound(); } catch { /* ignore audio errors on logout */ }
 
         setIsAuthenticated(false);
         setUserRole('viewer');

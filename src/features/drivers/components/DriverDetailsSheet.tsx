@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
@@ -86,7 +85,6 @@ interface MonthGroup {
 export const DriverDetailsSheet: React.FC<Props> = ({
     driver, car, transactions, theme, userRole, isOpen, onClose, onEdit, onDelete, onAddTransaction,
 }) => {
-    const { t } = useTranslation();
     const isDark = theme === 'dark';
 
     const [visible,        setVisible]        = useState(false);
@@ -129,8 +127,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
         const dailyPlan = car?.dailyPlan ?? 0;
         const driverTxs = transactions.filter(tx =>
             tx.driverId === driver.id &&
-            tx.status !== PaymentStatus.DELETED &&
-            (tx as any).status !== 'DELETED'
+            tx.status !== PaymentStatus.DELETED
         );
         if (driverTxs.length === 0) return [];
 

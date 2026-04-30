@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { authService } from '../services/authService';
 
 const mockInsert = vi.fn().mockResolvedValue({ error: null });
-const mockFrom = vi.fn(() => ({ insert: mockInsert }));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockFrom = vi.fn((): any => ({ insert: mockInsert }));
 
 vi.mock('../supabase', () => ({
     supabase: { from: mockFrom },

@@ -23,7 +23,6 @@ export class LockService {
             .eq('id', docId);
 
         if (error) {
-            console.error(`Failed to toggle lock for ${tableName}/${docId}:`, error);
             throw error;
         }
         return newIsLocked;

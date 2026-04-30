@@ -62,8 +62,7 @@ class AuthService {
             await this.logAuthAttempt(user.username, true, 'Phone login successful', 'admin');
             this.createSession(user);
             return { success: true, user };
-        } catch (err) {
-            console.error('Phone auth error:', err);
+        } catch {
             return { success: false, error: 'Authentication system error. Please try again.' };
         }
     }
@@ -106,8 +105,7 @@ class AuthService {
             await this.logAuthAttempt(user.username, true, 'Login successful', 'admin');
             this.createSession(user);
             return { success: true, user };
-        } catch (err) {
-            console.error('Auth error:', err);
+        } catch {
             return { success: false, error: 'Authentication system error. Please try again.' };
         }
     }
@@ -143,8 +141,8 @@ class AuthService {
                 details: { user_type: userType, reason, ip_address: 'client-browser' },
                 timestamp_ms: Date.now()
             });
-        } catch (error) {
-            console.error('Failed to log auth attempt:', error);
+        } catch {
+            // Audit log failures must not block auth flow
         }
     }
 

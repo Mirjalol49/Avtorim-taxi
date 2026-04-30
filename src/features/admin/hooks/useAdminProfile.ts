@@ -35,7 +35,7 @@ export const useAdminProfile = ({
                             const result = await uploadAdminAvatar(profileData.avatar, adminUser.username);
                             profileData.avatar = result.url;
                         } catch (uploadError: any) {
-                            console.error('Avatar upload failed:', uploadError);
+                            void uploadError;
                             addToast('error', t('avatarFailed'));
                             delete profileData.avatar;
                         }
@@ -61,7 +61,7 @@ export const useAdminProfile = ({
                             const result = await uploadAdminAvatar(profileData.avatar, 'admin');
                             profileData.avatar = result.url;
                         } catch (uploadError: any) {
-                            console.error('Avatar upload failed:', uploadError);
+                            void uploadError;
                             addToast('error', t('avatarFailed'));
                             delete profileData.avatar;
                         }
@@ -91,7 +91,6 @@ export const useAdminProfile = ({
             addToast('success', t('profileUpdated'));
 
         } catch (error: any) {
-            console.error('❌ Failed to update profile:', error);
             if (error.message === 'Operation timed out') {
                 addToast('error', t('updateTimeout'));
             } else {

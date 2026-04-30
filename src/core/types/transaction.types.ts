@@ -37,6 +37,7 @@ export interface Transaction {
     reversalReason?: string;
     originalTransactionId?: string;
     category?: string;
+    note?: string;
     /** When true: this transaction was funded from the driver's deposit balance */
     useDeposit?: boolean;
 }

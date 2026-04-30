@@ -34,7 +34,6 @@ class SoundService {
             this.loadSound(key, path);
         });
 
-        console.log('🔊 Sound Manager Initialized (Howler.js)');
         this.isInitialized = true;
 
         // Setup explicit unlock listener as backup
@@ -45,9 +44,7 @@ class SoundService {
         if (typeof window !== 'undefined') {
             const unlock = () => {
                 if (Howler.ctx && Howler.ctx.state === 'suspended') {
-                    Howler.ctx.resume().then(() => {
-                        console.log('🔊 AudioContext Resumed by User Interaction');
-                    });
+                    Howler.ctx.resume();
                 }
             };
 
@@ -64,10 +61,9 @@ class SoundService {
             src: [src],
             preload: true,
             html5: false, // Force Web Audio API for better timing and locking handling
-            onload: () => console.log(`✅ Sound loaded: ${key}`),
-            onloaderror: (id, err) => console.error(`❌ Failed to load sound ${key}:`, err),
-            onplayerror: (id, err) => {
-                console.warn(`⚠️ Playback failed for ${key} (browser block?), attempting unlock...`, err);
+            onload: () => {},
+            onloaderror: () => {},
+            onplayerror: () => {
                 (Howler as any).once('unlock', () => {
                     this.play(key);
                 });
@@ -96,8 +92,6 @@ class SoundService {
                 this.play('correct', volumeOverride);
             } else if (key === 'error' || key === 'warning') {
                 this.play('incorrect', volumeOverride);
-            } else {
-                console.warn(`Sound not found: ${key}`);
             }
         }
     }

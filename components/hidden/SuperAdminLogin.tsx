@@ -68,8 +68,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                     setError('Too many failed attempts. Try again in 30s.');
                 }
             }
-        } catch (error) {
-            console.error('Login error:', error);
+        } catch {
             setError('System error. Please try again.');
         } finally {
             setLoading(false);

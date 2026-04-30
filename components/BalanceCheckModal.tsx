@@ -132,7 +132,6 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
             tx.type === TransactionType.INCOME &&
             (tx as any).paymentMethod === 'card' &&
             tx.status !== PaymentStatus.DELETED &&
-            (tx as any).status !== 'DELETED' &&
             tx.timestamp >= ledger.startTimestamp
         );
     }, [transactions, ledger.startTimestamp]);

@@ -91,8 +91,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
             setIsModalOpen(false);
             setEditingUser(null);
             setFormData({ username: '', password: '', active: true, role: 'admin' });
-        } catch (error) {
-            console.error('Error saving user:', error);
+        } catch {
             addToast('error', t('userSaveFailed'));
         }
     };
@@ -102,8 +101,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
             await deleteAdminUser(deleteConfirm.userId, deleteConfirm.username, currentUser.username);
             addToast('success', t('userDeleted'));
             setDeleteConfirm({ isOpen: false, userId: '', username: '' });
-        } catch (error) {
-            console.error('Error deleting user:', error);
+        } catch {
             addToast('error', t('userDeleteFailed'));
         }
     };
@@ -114,8 +112,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ currentUser, 
             await updateAdminUser(statusConfirm.user.id, { active: statusConfirm.newStatus }, currentUser.username);
             addToast('success', statusConfirm.newStatus ? t('userActivated') : t('userDeactivated'));
             setStatusConfirm({ isOpen: false, user: null, newStatus: false });
-        } catch (error) {
-            console.error('Error updating status:', error);
+        } catch {
             addToast('error', t('userStatusFailed'));
         }
     };

@@ -106,8 +106,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         try {
             await firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, adminUser?.id);
             addToast('success', t('transactionDeleted'));
-        } catch (error) {
-            console.error('Failed to delete transaction:', error);
+        } catch {
             setTransactions(prev => {
                 if (prev.find(t => t.id === id)) return prev;
                 return [...prev, tx].sort((a, b) => b.timestamp - a.timestamp);
@@ -127,8 +126,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         try {
             await firestoreService.updateTransaction(id, data);
             addToast('success', t('transactionUpdated'));
-        } catch (error) {
-            console.error('Failed to update transaction:', error);
+        } catch {
             if (original) setTransactions(prev => prev.map(t => t.id === id ? original : t));
             setEditingTransaction(original ?? null);
             addToast('error', t('transactionUpdateFailed'));
@@ -163,8 +161,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 adminUser?.id
             );
             addToast('success', t('bulkDeleteSuccess', { n }));
-        } catch (error) {
-            console.error('Failed to delete transactions:', error);
+        } catch {
             setTransactions(prev => {
                 const existingIds = new Set(prev.map(t => t.id));
                 const reverted = removed.filter(t => !existingIds.has(t.id));

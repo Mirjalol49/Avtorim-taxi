@@ -126,18 +126,12 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
     };
 
     const handleSend = useCallback(async () => {
-        console.log('🔘 Send button clicked! isValid:', isValid, 'isSending:', isSending);
-
         if (!isValid) {
-            console.warn('❌ Form is not valid');
             addToast('error', t('notificationFillRequired'));
             return;
         }
 
-        if (isSending) {
-            console.warn('⏳ Already sending...');
-            return;
-        }
+        if (isSending) return;
 
         setIsSending(true);
         setSendSuccess(null);
@@ -151,16 +145,6 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
             } else {
                 targetUsers = selectedUserIds;
             }
-
-            console.log('📤 Sending notification:', {
-                title: title.trim(),
-                category,
-                priority,
-                targetUsers,
-                recipients: recipientCount,
-                currentUserId,
-                currentUserName
-            });
 
             const notificationId = await sendNotification(
                 {
@@ -176,7 +160,6 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                 currentUserName
             );
 
-            console.log('✅ Notification sent! ID:', notificationId);
             setSendSuccess(notificationId);
             addToast('success', t('notificationSentCount', { n: recipientCount }));
 
@@ -193,12 +176,8 @@ const NotificationComposer: React.FC<NotificationComposerProps> = ({
                 setSendSuccess(null);
             }, 2000);
 
-        } catch (error) {
-            console.error('❌ Send failed:', error);
+        } catch {
             addToast('error', t('notificationSendFailed'));
-            // Also show alert for visibility
-            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Send Error:', errorMsg);
         } finally {
             setIsSending(false);
         }
