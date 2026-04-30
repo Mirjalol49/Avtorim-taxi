@@ -5,6 +5,7 @@ import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
 import { toDateKey } from '../services/daysOffService';
+import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
 
 type PaymentMethod = 'cash' | 'card';
 type ExpenseTarget = 'driver' | 'car' | 'other';
@@ -75,6 +76,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [chequeImage,   setChequeImage]   = useState<string | null>(null);
   const [chequeError,   setChequeError]   = useState<string | null>(null);
+  const [useDeposit,    setUseDeposit]    = useState(false);
   const chequeRef = useRef<HTMLInputElement>(null);
 
   // ── Init / reset ────────────────────────────────────────────────────────────
@@ -92,6 +94,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         setDate(new Date(initialTransaction.timestamp));
         setPaymentMethod((initialTransaction as any).paymentMethod || 'cash');
         setChequeImage((initialTransaction as any).chequeImage || null);
+        setUseDeposit(Boolean(initialTransaction.useDeposit));
         setIsDriverOpen(false);
         setIsCarOpen(false);
       } else {
@@ -109,7 +112,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       setAmount(''); setDisplayAmount(''); setDescription('');
       setType(TransactionType.INCOME); setDate(new Date());
       setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
-      setExpenseTarget('driver');
+      setExpenseTarget('driver'); setUseDeposit(false);
     } else if (isOpen && drivers.length > 0) {
       if (!driverId || !drivers.find(d => d.id === driverId)) {
         // Only fall back to first driver when there's no explicit initial driver
@@ -167,9 +170,21 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     const txs = transactions.filter(tx => tx.driverId === selectedDriver.id && tx.status !== PaymentStatus.DELETED);
     const debt = txs.filter(tx => tx.type === TransactionType.DEBT).reduce((s, tx) => s + Math.abs(tx.amount), 0);
     if (!debt) return null;
-    const income = txs.filter(tx => tx.type === TransactionType.INCOME).reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    const income = txs.filter(tx => tx.type === TransactionType.INCOME && tx.category !== 'deposit_topup').reduce((s, tx) => s + Math.abs(tx.amount), 0);
     return { totalDebt: debt, remaining: Math.max(0, debt - income) };
   }, [selectedDriver, transactions]);
+
+  // Deposit info for deposit-type drivers
+  const depositInfo = useMemo(() => {
+    if (!selectedDriver) return null;
+    if ((selectedDriver.driverType ?? 'deposit') !== 'deposit') return null;
+    const driverCar = cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null;
+    const finance = calcDriverFinance(selectedDriver, driverCar, transactions);
+    return {
+      remaining: finance.remainingDeposit,
+      initial: finance.depositAmount,
+    };
+  }, [selectedDriver, cars, transactions]);
 
   if (!isOpen) return null;
 
@@ -209,6 +224,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       ...entityFields,
       timestamp: timestamp.getTime(),
       ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
+      ...(useDeposit ? { useDeposit: true } : {}),
     } as any, initialTransaction?.id);
 
     resetAndClose();
@@ -221,7 +237,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDriverSearch(''); setCarSearch('');
     setDate(new Date());
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
-    setExpenseTarget('driver');
+    setExpenseTarget('driver'); setUseDeposit(false);
     onClose();
   };
 
@@ -515,6 +531,82 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   />
                   <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
                 </div>
+              </div>
+            )}
+
+            {/* ── Deposit toggle (only for deposit-type drivers, INCOME or EXPENSE) ── */}
+            {depositInfo !== null && type !== TransactionType.DAY_OFF && (
+              <div className={`rounded-2xl border overflow-hidden transition-all ${
+                useDeposit
+                  ? isDark ? 'border-amber-500/50 bg-amber-500/[0.07]' : 'border-amber-400 bg-amber-50'
+                  : isDark ? 'border-white/[0.08] bg-surface-2/40' : 'border-gray-200 bg-gray-50'
+              }`}>
+                {/* Header row with toggle */}
+                <button
+                  type="button"
+                  onClick={() => setUseDeposit(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl flex-shrink-0">🏦</span>
+                    <div className="text-left min-w-0">
+                      <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Depozitdan foydalanish
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                        {type === TransactionType.INCOME
+                          ? 'Haydovchi reja o\'rniga depozitdan to\'lov'
+                          : 'Bu chiqim depozitdan hisoblanadi'}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Toggle switch */}
+                  <div className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
+                    useDeposit ? 'bg-amber-500' : isDark ? 'bg-white/[0.10]' : 'bg-gray-300'
+                  }`}>
+                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                      useDeposit ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </button>
+
+                {/* Deposit balance info */}
+                <div className={`px-4 pb-3 flex items-center justify-between border-t ${
+                  isDark ? 'border-white/[0.06]' : 'border-gray-100'
+                }`}>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wide ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                    Depozit qoldig'i
+                  </span>
+                  <span className={`text-[14px] font-black font-mono ${
+                    depositInfo.remaining <= 0
+                      ? 'text-red-400'
+                      : depositInfo.remaining < 500_000
+                      ? 'text-orange-400'
+                      : isDark ? 'text-amber-400' : 'text-amber-600'
+                  }`}>
+                    {fmt(Math.max(0, depositInfo.remaining))} UZS
+                    {depositInfo.remaining <= 0 && <span className="ml-1 text-[10px] font-normal opacity-70">(tugagan)</span>}
+                  </span>
+                </div>
+
+                {/* Show projected balance after this transaction */}
+                {useDeposit && Number(amount) > 0 && (
+                  <div className={`px-4 pb-3 flex items-center justify-between border-t ${
+                    isDark ? 'border-amber-500/20' : 'border-amber-200'
+                  }`}>
+                    <span className={`text-[11px] font-semibold uppercase tracking-wide ${isDark ? 'text-amber-400/60' : 'text-amber-600/70'}`}>
+                      Bu to'lovdan keyin
+                    </span>
+                    <span className={`text-[14px] font-black font-mono ${
+                      depositInfo.remaining - Number(amount) < 0 ? 'text-red-400' : isDark ? 'text-amber-300' : 'text-amber-700'
+                    }`}>
+                      {depositInfo.remaining - Number(amount) < 0
+                        ? `−${fmt(Number(amount) - depositInfo.remaining)} UZS (yetmaydi)`
+                        : `${fmt(depositInfo.remaining - Number(amount))} UZS`
+                      }
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>

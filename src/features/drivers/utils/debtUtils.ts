@@ -53,8 +53,10 @@ export function calcDriverDebt(
         (tx as any).status !== 'DELETED'
     );
 
-    // Sum all incomes
-    const incomeTxs = validTxs.filter(tx => tx.type === TransactionType.INCOME);
+    // Sum all incomes EXCLUDING deposit top-ups (those don't fulfil the daily plan)
+    const incomeTxs = validTxs.filter(
+        tx => tx.type === TransactionType.INCOME && tx.category !== 'deposit_topup'
+    );
     const totalIncome = incomeTxs.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
     // Group income strictly by date to check today's sub-stats
@@ -171,10 +173,11 @@ export function calcDriverFinance(
     );
 
     // Group by month — separate plan payments, top-ups, expenses, debts, and day-offs
-    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number; daysOff: number }>();
+    // depositUsed: sum of all transactions explicitly drawn from deposit (useDeposit=true)
+    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number; daysOff: number; depositUsed: number }>();
     for (const tx of validTxs) {
         const mk = toMonthKey(tx.timestamp);
-        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0, daysOff: 0 };
+        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0, daysOff: 0, depositUsed: 0 };
         if (tx.type === TransactionType.INCOME && tx.category === 'deposit_topup') {
             e.topUps     += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.INCOME) {
@@ -185,6 +188,10 @@ export function calcDriverFinance(
             e.debts      += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.DAY_OFF) {
             e.daysOff    += 1; // each DAY_OFF tx = one actual day off
+        }
+        // Track explicit deposit usage regardless of transaction type
+        if (tx.useDeposit === true) {
+            e.depositUsed += Math.abs(tx.amount);
         }
         byMonth.set(mk, e);
     }
@@ -200,7 +207,7 @@ export function calcDriverFinance(
         // Cap current month to today so future days don't inflate the target
         const effectiveDays = mk === todayMk ? today.getDate() : totalDays;
 
-        const { planIncome, topUps, expenses, debts, daysOff } = byMonth.get(mk)!;
+        const { planIncome, topUps, expenses, debts, daysOff, depositUsed } = byMonth.get(mk)!;
         // Future months: no working days, no debt (only record actual income/topups)
         const isFutureMonth = mk > todayMk;
         const workingDays   = isFutureMonth ? 0 : Math.max(0, effectiveDays - daysOff);
@@ -208,11 +215,16 @@ export function calcDriverFinance(
 
         const shortfall    = Math.max(0, monthlyTarget - planIncome);
         const overpayment  = Math.max(0, planIncome - monthlyTarget);
-        const deductions   = shortfall + expenses + debts;
 
-        runningDeposit = runningDeposit - deductions + overpayment + topUps;
+        // Deposit is ONLY affected by:
+        //   + explicit top-ups (category='deposit_topup')
+        //   - explicit deposit-funded transactions (useDeposit=true)
+        // NOT automatically by daily-plan shortfall/overpayment
+        runningDeposit = runningDeposit + topUps - depositUsed;
 
-        const netSalary = Math.max(0, salaryAmount - deductions);
+        // Salary driver net calculation (based on plan performance)
+        const salaryDeductions = shortfall + expenses + debts;
+        const netSalary = Math.max(0, salaryAmount - salaryDeductions);
 
         return { monthKey: mk, planIncome, topUps, overpayment, expenses, debts, monthlyTarget, shortfall, netSalary, depositAfter: runningDeposit };
     });
