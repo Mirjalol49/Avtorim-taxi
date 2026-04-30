@@ -534,8 +534,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               </div>
             )}
 
-            {/* ── Deposit toggle (only for deposit-type drivers, INCOME or EXPENSE) ── */}
-            {depositInfo !== null && type !== TransactionType.DAY_OFF && (
+            {/* ── Deposit toggle — only for driver-linked income/expense (not car/other) ── */}
+            {depositInfo !== null && type !== TransactionType.DAY_OFF &&
+             (type === TransactionType.INCOME || expenseTarget === 'driver') && (
               <div className={`rounded-2xl border overflow-hidden transition-all ${
                 useDeposit
                   ? isDark ? 'border-amber-500/50 bg-amber-500/[0.07]' : 'border-amber-400 bg-amber-50'
