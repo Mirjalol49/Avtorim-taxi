@@ -94,6 +94,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const [name, setName]                         = useState(adminData.name);
   const [avatar, setAvatar]                     = useState(adminData.avatar);
   const [newPassword, setNewPassword]           = useState('');
+  const [showCurrentPw, setShowCurrentPw]       = useState(false);
   const [showNewPw, setShowNewPw]               = useState(false);
   const [nameError, setNameError]               = useState('');
   const [pwError, setPwError]                   = useState('');
@@ -111,6 +112,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
       setName(adminData.name);
       setAvatar(adminData.avatar);
       setNewPassword('');
+      setShowCurrentPw(false);
       setNameError('');
       setPwError('');
       setImageError('');
@@ -345,18 +347,31 @@ const AdminModal: React.FC<AdminModalProps> = ({
               <div className={`rounded-[20px] overflow-hidden divide-y ${
                 isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
               }`}>
-                {/* Current password — display only */}
+                {/* Current password — reveal on tap */}
                 <div className="px-4 py-3.5">
                   <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     Joriy parol
                   </label>
-                  <div className={`flex items-center rounded-[14px] px-4 py-3 text-sm font-mono ${
-                    isDark ? 'bg-[#0f1724] text-gray-500' : 'bg-gray-50 text-gray-400'
+                  <div className={`flex items-center rounded-[14px] px-4 py-3 font-mono ${
+                    isDark ? 'bg-[#0f1724] text-gray-300' : 'bg-gray-50 text-gray-700'
                   }`}>
-                    <span className="flex-1 tracking-[0.25em] text-base">••••••••</span>
-                    <span className={`text-[11px] font-sans font-semibold ml-2 ${isDark ? 'text-gray-600' : 'text-gray-300'}`}>
-                      gizlangan
+                    <span className="flex-1 text-[15px] tracking-[0.15em] select-all">
+                      {showCurrentPw
+                        ? (adminData.password || '—')
+                        : '•'.repeat(Math.max(6, (adminData.password || '••••••').length))}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPw(v => !v)}
+                      className={`ml-2 p-1 rounded-lg transition-colors flex-shrink-0 ${
+                        isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                      title={showCurrentPw ? 'Yashirish' : 'Ko\'rsatish'}
+                    >
+                      {showCurrentPw
+                        ? <EyeOffIcon className="w-4 h-4" />
+                        : <EyeIcon className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
