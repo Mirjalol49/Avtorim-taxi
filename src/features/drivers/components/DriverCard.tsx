@@ -27,21 +27,41 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
-    const driverType = (driver as any).driverType ?? 'deposit';
+    const driverType = driver.driverType ?? 'deposit';
+
+    // Always compute finance so we can display the real deposit balance
+    const finance = useMemo(
+        () => calcDriverFinance(driver, car ?? null, transactions),
+        [driver, car, transactions]
+    );
 
     const depositWarning = useMemo(() => {
         if (driverType !== 'deposit') return null;
+        // Only warn if a deposit was actually configured
+        if (!driver.depositAmount || driver.depositAmount <= 0) return null;
         const threshold = driver.depositWarningThreshold ?? 1_000_000;
-        const finance = calcDriverFinance(driver, car ?? null, transactions);
         if (finance.remainingDeposit <= threshold) {
             return { remaining: finance.remainingDeposit };
         }
         return null;
-    }, [driver, car, transactions, driverType]);
+    }, [driverType, driver.depositAmount, driver.depositWarningThreshold, finance.remainingDeposit]);
 
     const handleEdit   = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
+
+    // Right-side value: deposit balance for deposit drivers, salary for salary drivers
+    const typeValueLabel = driverType === 'deposit'
+        ? driver.depositAmount && driver.depositAmount > 0
+            ? fmt(finance.remainingDeposit)
+            : null
+        : driver.monthlySalary && driver.monthlySalary > 0
+            ? fmt(driver.monthlySalary)
+            : null;
+
+    // Color for the value — amber when deposit is low, teal otherwise
+    const valueColor = driverType === 'deposit' && depositWarning
+        ? isDark ? 'text-amber-400' : 'text-amber-600'
+        : isDark ? 'text-teal-400' : 'text-teal-600';
 
     return (
         <div
@@ -97,7 +117,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             {/* ── Card body ── */}
             <div className="p-4">
 
-                {/* Row 1: Avatar · Name/Phone · Type+Plan */}
+                {/* Row 1: Avatar · Name/Phone · Type badge + real balance */}
                 <div className="flex items-center gap-3.5">
 
                     {/* Round avatar — no status dot */}
@@ -125,18 +145,30 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         </p>
                     </div>
 
-                    {/* Type badge + daily plan */}
+                    {/* Type badge + real financial value */}
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0 pr-1">
+                        {/* Driver type badge */}
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-tight ${
                             driverType === 'deposit'
                                 ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600 border border-amber-200'
                                 : isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
                         }`}>
-                            {driverType === 'deposit' ? '🏦 Dep' : '💳 Maosh'}
+                            {driverType === 'deposit' ? '🏦 Depozit' : '💳 Maosh'}
                         </span>
-                        {dailyPlan > 0 && (
-                            <span className={`text-[12px] font-bold tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
-                                {fmt(dailyPlan)}
+
+                        {/* Actual deposit balance OR salary — not the car daily plan */}
+                        {typeValueLabel && (
+                            <span className={`text-[12px] font-bold tabular-nums ${valueColor}`}>
+                                {typeValueLabel}
+                            </span>
+                        )}
+
+                        {/* Sub-label so admin knows what the number represents */}
+                        {typeValueLabel && (
+                            <span className={`text-[9px] font-medium leading-none -mt-1 ${
+                                isDark ? 'text-gray-600' : 'text-gray-400'
+                            }`}>
+                                {driverType === 'deposit' ? 'dep. qoldiq' : 'oylik'}
                             </span>
                         )}
                     </div>

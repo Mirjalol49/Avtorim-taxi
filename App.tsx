@@ -331,6 +331,7 @@ const AppContent: React.FC = () => {
           phone: data.phone,
           status: data.status || DriverStatus.OFFLINE,
           avatar: data.avatar || '',
+          notes: data.notes ?? '',
           location: {
             lat: CITY_CENTER.lat + (Math.random() - 0.5) * 0.05,
             lng: CITY_CENTER.lng + (Math.random() - 0.5) * 0.05,
@@ -341,7 +342,11 @@ const AppContent: React.FC = () => {
           isDeleted: false,
           balance: 0,
           rating: 5.0,
-          dailyPlan: data.dailyPlan || 0
+          dailyPlan: data.dailyPlan || 0,
+          // Payment type fields — these were previously dropped, causing deposit to always read as 0
+          driverType: data.driverType ?? 'deposit',
+          depositAmount: data.depositAmount ?? 0,
+          depositWarningThreshold: data.depositWarningThreshold ?? 1_000_000,
         };
         driverId = await firestoreService.addDriver(newDriver, adminUser?.id);
       }
