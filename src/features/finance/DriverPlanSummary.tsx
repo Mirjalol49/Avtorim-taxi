@@ -75,8 +75,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     const monthNames = t('months', { returnObjects: true }) as string[];
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
     
-    // State for modal
-    const [selectedMonthData, setSelectedMonthData] = useState<MonthRow | null>(null);
+    // Store only a selection key so the modal always derives live data from reactive rows
+    const [selectedKey, setSelectedKey] = useState<{ driverId: string; monthKey: string } | null>(null);
 
     const rows = useMemo((): MonthRow[] => {
         const result: MonthRow[] = [];
@@ -137,6 +137,12 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
         return result;
     }, [drivers, cars, transactions, months, filterDriverId]);
 
+    // Derive live month data from current rows — updates automatically on every realtime tx change
+    const liveModalData = useMemo(() => {
+        if (!selectedKey) return null;
+        return rows.find(r => r.driver.id === selectedKey.driverId && r.monthKey === selectedKey.monthKey) ?? null;
+    }, [selectedKey, rows]);
+
     if (rows.length === 0) return null;
 
     const totalTarget = rows.reduce((s, r) => s + r.monthlyTarget, 0);
@@ -181,7 +187,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                     {rows.map(row => (
                                 <div
                                     key={row.driver.id}
-                                    onClick={() => setSelectedMonthData(row)}
+                                    onClick={() => setSelectedKey({ driverId: row.driver.id, monthKey: row.monthKey })}
                                     className={`relative p-5 rounded-3xl border transition-all duration-300 cursor-pointer active:scale-[0.98] group overflow-hidden ${
                                         row.isFutureMonth
                                         ? isDark
@@ -346,12 +352,12 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                             ))}
                         </div>
                     </div>
-            {/* Modal */}
+            {/* Modal — liveModalData is re-derived from reactive rows on every tx change */}
             <DriverPlanCalendarModal 
-                isOpen={selectedMonthData !== null}
-                onClose={() => setSelectedMonthData(null)}
+                isOpen={selectedKey !== null}
+                onClose={() => setSelectedKey(null)}
                 theme={theme}
-                monthData={selectedMonthData as unknown as DriverPlanMonthInfo}
+                monthData={liveModalData as unknown as DriverPlanMonthInfo}
                 transactions={transactions}
                 onDayClick={onDayClick}
             />

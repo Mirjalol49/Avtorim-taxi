@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/transaction.types';
 import { Driver } from '../src/core/types/driver.types';
 import { XIcon, CheckIcon, TrashIcon } from './Icons';
@@ -52,11 +53,15 @@ const fmtNum = (n: number) =>
 const fmtDisp = (v: string) =>
     v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-const fmtTime = (ts: number) =>
-    new Date(ts).toLocaleString('uz-UZ', {
-        day: '2-digit', month: 'short',
-        hour: '2-digit', minute: '2-digit',
-    });
+const fmtTime = (ts: number) => {
+    const d = new Date(ts);
+    const day = d.getDate();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mon = months[d.getMonth()];
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${mon}, ${hh}:${mm}`;
+};
 
 const timeAgo = (ts: number) => {
     const d = Date.now() - ts;
@@ -196,7 +201,7 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
     if (!isOpen) return null;
 
     // ── Styles ───────────────────────────────────────────────────────────────
-    const bg      = isDark ? '#171f33' : '#ffffff';
+    const bg      = isDark ? '#0f1623' : '#ffffff';
     const bdr     = isDark ? 'border-white/[0.08]' : 'border-gray-200';
     const s2      = isDark ? 'bg-white/[0.03]' : 'bg-gray-50';
     const txt     = isDark ? 'text-white' : 'text-gray-900';
@@ -208,19 +213,18 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
             : 'bg-white border-gray-200 text-gray-900 placeholder-gray-300 focus:border-amber-400'
     }`;
 
-    const balanceColor = balance < 0
-        ? 'text-red-400'
-        : balance < 500_000
-        ? 'text-orange-400'
-        : isDark ? 'text-amber-300' : 'text-amber-600';
+    const balanceColor = balance < 0 ? '#f87171' : balance < 500_000 ? '#fb923c' : '#fbbf24';
 
-    return (
-        <div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
 
             <div
-                className={`relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border shadow-2xl flex flex-col overflow-hidden`}
-                style={{ background: bg, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb', maxHeight: '88vh', animation: 'modalPop 0.22s ease-out' }}
+                className="relative w-full max-w-[420px] rounded-[2rem] border shadow-2xl flex flex-col overflow-hidden"
+                style={{ background: bg, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb', maxHeight: '85vh', animation: 'modalPop 0.22s ease-out' }}
             >
                 {/* ── Header ── */}
                 <div className={`flex items-center justify-between px-5 py-4 border-b ${bdr} flex-shrink-0`}>
@@ -251,49 +255,86 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                 {view === 'main' && (
                     <div className="flex flex-col flex-1 overflow-hidden">
 
-                        {/* Balance display */}
-                        <div className={`px-5 py-5 border-b ${bdr} ${s2} flex-shrink-0`}>
+                        {/* ── Premium wallet card ── */}
+                        <div className="px-5 pt-5 pb-4 flex-shrink-0">
                             {hasLedger ? (
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${muted}`}>Joriy balans</p>
-                                        <p className={`text-[36px] font-black font-mono leading-none mt-1.5 ${balanceColor}`}>
-                                            {fmtNum(balance)}
-                                        </p>
-                                        <p className={`text-[13px] font-semibold mt-0.5 ${muted}`}>UZS</p>
-                                        <div className={`flex items-center gap-3 mt-2.5 text-[12px] ${muted}`}>
-                                            <span className={isDark ? 'text-teal-400' : 'text-teal-600'}>+{fmtNum(totalIn)} keldi</span>
-                                            {totalOut > 0 && <span className={isDark ? 'text-red-400' : 'text-red-500'}>−{fmtNum(totalOut)} sarflandi</span>}
+                                <div
+                                    className="relative w-full rounded-[24px] overflow-hidden select-none"
+                                    style={{
+                                        background: 'linear-gradient(145deg,#1a1f35 0%,#0d1220 100%)',
+                                        minHeight: 190,
+                                        boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+                                    }}
+                                >
+                                    {/* Decorative card strips top-right */}
+                                    <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ overflow: 'hidden', borderRadius: '0 24px 0 0' }}>
+                                        <div className="absolute" style={{ top: 12, right: -24, width: 140, height: 42, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', transform: 'rotate(-8deg)', opacity: 0.9 }} />
+                                        <div className="absolute" style={{ top: 34, right: -12, width: 120, height: 42, borderRadius: 12, background: 'linear-gradient(135deg,#f8fafc,#e2e8f0)', transform: 'rotate(-8deg)', opacity: 0.95 }}>
+                                            <div className="absolute inset-0 flex items-center justify-end pr-4">
+                                                <svg width="28" height="18" viewBox="0 0 38 24" fill="none">
+                                                    <circle cx="15" cy="12" r="11" fill="#eb5757" />
+                                                    <circle cx="23" cy="12" r="11" fill="#f5a623" fillOpacity="0.85" />
+                                                </svg>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col gap-1.5 flex-shrink-0 mt-1">
-                                        <button
-                                            onClick={() => setView('spend')}
-                                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold bg-red-500 hover:bg-red-600 text-white transition-all active:scale-95 shadow-sm"
-                                        >
-                                            <span>−</span> Chiqim
-                                        </button>
-                                        <button
-                                            onClick={() => { setSetupDisplay(fmtDisp(String(balance))); setSetupInput(String(Math.round(balance))); setView('setup'); }}
-                                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-white/60' : 'bg-gray-100 hover:bg-gray-200 text-gray-500'}`}
-                                        >
-                                            ✏️ Yangilash
-                                        </button>
+
+                                    {/* Bottom content */}
+                                    <div className="absolute bottom-0 left-0 right-0 px-6 pb-5">
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Joriy balans</p>
+                                        <p className="text-[38px] font-black font-mono leading-none tabular-nums" style={{ color: balanceColor }}>
+                                            {fmtNum(balance)}
+                                        </p>
+                                        <p className="text-[12px] font-semibold mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>UZS</p>
+                                        <div className="flex items-center gap-4 mt-3">
+                                            <span className="text-[11px] font-bold" style={{ color: '#34d399' }}>+{fmtNum(totalIn)} keldi</span>
+                                            {totalOut > 0 && <span className="text-[11px] font-bold" style={{ color: '#f87171' }}>−{fmtNum(totalOut)} sarflandi</span>}
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-center py-2">
-                                    <p className={`text-[14px] font-semibold mb-1 ${sub}`}>Hali balans kiritilmagan</p>
-                                    <p className={`text-[12px] mb-4 ${muted}`}>Kartangizdagi hozirgi summani bir marta kiriting — keyin avtomatik kuzatiladi</p>
+                                /* Empty state card */
+                                <div
+                                    className="relative w-full rounded-[24px] overflow-hidden flex flex-col items-center justify-center py-10 gap-3"
+                                    style={{
+                                        background: 'linear-gradient(145deg,#1a1f35 0%,#0d1220 100%)',
+                                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                                        minHeight: 190,
+                                    }}
+                                >
+                                    <span className="text-5xl">💳</span>
+                                    <p className="text-[14px] font-bold text-white/70">Hali balans kiritilmagan</p>
+                                    <p className="text-[12px] text-white/35 text-center px-8">Kartangizdagi summani kiriting — keyin avtomatik kuzatiladi</p>
                                     <button
                                         onClick={() => setView('setup')}
-                                        className="px-5 py-2.5 rounded-xl text-[13px] font-bold bg-amber-500 hover:bg-amber-600 text-white transition-all active:scale-95 shadow-sm"
+                                        className="mt-2 px-5 py-2.5 rounded-xl text-[13px] font-bold bg-amber-500 hover:bg-amber-400 text-white transition-all active:scale-95 shadow-lg"
                                     >
                                         💳 Balansni kiriting
                                     </button>
                                 </div>
                             )}
+
+                            {/* Action buttons below card */}
+                            {hasLedger && (
+                                <div className="flex gap-3 mt-4">
+                                    <button
+                                        onClick={() => setView('spend')}
+                                        className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-[14px] font-bold bg-red-500 hover:bg-red-600 text-white transition-all active:scale-[0.98]"
+                                    >
+                                        <span className="text-[16px]">−</span> Chiqim
+                                    </button>
+                                    <button
+                                        onClick={() => { setSetupDisplay(fmtDisp(String(balance))); setSetupInput(String(Math.round(balance))); setView('setup'); }}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-[14px] font-bold transition-all active:scale-[0.98] border ${
+                                            isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-white/70 border-white/[0.10]' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 border-gray-200'
+                                        }`}
+                                    >
+                                        ✏️ Yangilash
+                                    </button>
+                                </div>
+                            )}
                         </div>
+                        <div className={`border-t ${bdr} flex-shrink-0`} />
 
                         {/* Feed */}
                         {hasLedger && (
@@ -489,7 +530,8 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                     </div>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

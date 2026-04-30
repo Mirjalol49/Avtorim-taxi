@@ -77,33 +77,47 @@ export const useAuth = () => {
         let unsubscribeValidity: (() => void) | null = null;
         let cancelled = false;
 
-        validateAccountOnInit(adminUser).then((result) => {
+        // Safety timeout: if Supabase never responds, unblock the UI after 6s
+        const authTimeout = setTimeout(() => {
             if (cancelled) return;
-
-            if (!result.isValid) {
-                handleLogout();
-                return;
-            }
-
-            if (result.userData) {
-                setAdminUser(result.userData);
-                localStorage.setItem('avtorim_admin_user', JSON.stringify(result.userData));
-            }
-
-            unsubscribeValidity = subscribeToAccountValidity(
-                adminUser.id,
-                (reason) => {
-                    addToast('error', reason);
-                    handleLogout();
-                },
-                (updatedData) => {
-                    setAdminUser(updatedData);
-                    localStorage.setItem('avtorim_admin_user', JSON.stringify(updatedData));
-                }
-            );
-
+            console.warn('[useAuth] validateAccountOnInit timed out — unblocking UI');
             setIsAuthChecking(false);
-        });
+        }, 6000);
+
+        validateAccountOnInit(adminUser)
+            .then((result) => {
+                clearTimeout(authTimeout);
+                if (cancelled) return;
+
+                if (!result.isValid) {
+                    handleLogout();
+                    return;
+                }
+
+                if (result.userData) {
+                    setAdminUser(result.userData);
+                    localStorage.setItem('avtorim_admin_user', JSON.stringify(result.userData));
+                }
+
+                unsubscribeValidity = subscribeToAccountValidity(
+                    adminUser.id,
+                    (reason) => {
+                        addToast('error', reason);
+                        handleLogout();
+                    },
+                    (updatedData) => {
+                        setAdminUser(updatedData);
+                        localStorage.setItem('avtorim_admin_user', JSON.stringify(updatedData));
+                    }
+                );
+
+                setIsAuthChecking(false);
+            })
+            .catch(() => {
+                // Network/Supabase error — don't block the user, assume session is still valid
+                clearTimeout(authTimeout);
+                if (!cancelled) setIsAuthChecking(false);
+            });
 
         return () => {
             cancelled = true;

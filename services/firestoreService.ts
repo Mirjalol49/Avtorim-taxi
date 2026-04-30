@@ -318,6 +318,9 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
         reversedBy: r.reversed_by ?? undefined,
         reversalReason: r.reversal_reason ?? undefined,
         originalTransactionId: r.original_transaction_id ?? undefined,
+        // Deposit tracking fields — MUST be mapped so debtUtils sees them
+        useDeposit: r.use_deposit === true ? true : undefined,
+        category: r.category ?? undefined,
     } as Transaction);
 
     let cache: Transaction[] = [];
@@ -425,6 +428,9 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleet
             cheque_image: tx.chequeImage ?? null,
             timestamp_ms: tx.timestamp ?? Date.now(),
             created_ms: Date.now(),
+            // Deposit tracking — critical for balance deduction
+            use_deposit: tx.useDeposit === true ? true : null,
+            category: tx.category ?? null,
         })
         .select('id')
         .single();
@@ -441,6 +447,8 @@ export const updateTransaction = async (id: string, updates: Partial<Transaction
     if (tx.paymentMethod !== undefined) payload.payment_method = tx.paymentMethod;
     if (tx.chequeImage !== undefined) payload.cheque_image = tx.chequeImage;
     if (tx.timestamp !== undefined) payload.timestamp_ms = tx.timestamp;
+    if (tx.useDeposit !== undefined) payload.use_deposit = tx.useDeposit === true ? true : null;
+    if (tx.category !== undefined) payload.category = tx.category ?? null;
 
     const { error } = await supabase
         .from('transactions')
