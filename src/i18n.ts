@@ -27,9 +27,10 @@ i18n
         },
 
         detection: {
-            order: ['localStorage', 'navigator'],
-            caches: ['localStorage'],
-            lookupLocalStorage: 'i18nextLng',
+            // Per-account language is handled by App.tsx using avtorim_lang_{userId} keys.
+            // Global localStorage caching is intentionally disabled so accounts don't share a language setting.
+            order: ['navigator'],
+            caches: [],
         }
     });
 

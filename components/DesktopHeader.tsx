@@ -10,7 +10,7 @@ import { Notification } from '../services/notificationService';
 interface DesktopHeaderProps {
   theme: 'dark' | 'light';
   onThemeToggle: () => void;
-  // language and onLanguageChange removed
+  onLanguageChange: (lang: string) => void;
   activeTab: Tab;
   isMobile: boolean;
   onNewTransactionClick: () => void;
@@ -30,6 +30,7 @@ interface DesktopHeaderProps {
 const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   theme,
   onThemeToggle,
+  onLanguageChange,
   activeTab,
   isMobile,
   onNewTransactionClick,
@@ -93,7 +94,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   };
 
   const handleLanguageChange = (lang: string) => {
-    i18n.changeLanguage(lang);
+    onLanguageChange(lang);
     setIsLangMenuOpen(false);
   };
 

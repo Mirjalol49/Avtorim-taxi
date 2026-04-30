@@ -57,20 +57,13 @@ import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsA
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
 const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
-    <svg viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
-        <text
-            x="50%"
-            y="36"
-            textAnchor="middle"
-            fontFamily="'SF Pro Rounded', 'Nunito', 'Varela Round', system-ui, sans-serif"
-            fontWeight="800"
-            fontSize="40"
-            letterSpacing="-1"
-            fill={theme === 'dark' ? '#6bd8cb' : 'hsl(176,79%,26%)'}
-        >
-            Taksapark
-        </text>
-    </svg>
+    <img
+        src="/images/taksapark-logo.png"
+        alt="Taksapark"
+        className="h-9 w-auto object-contain select-none"
+        draggable={false}
+        style={theme === 'dark' ? { filter: 'brightness(0) invert(1)' } : {}}
+    />
 );
 
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
@@ -172,6 +165,25 @@ const AppContent: React.FC = () => {
     const result = await authService.authenticateAdminByPhone(adminUser.phone, password);
     if (result.success) setIsLocked(false);
     return result.success;
+  };
+
+  // ── Per-account language ──────────────────────────────────────────────────
+  // Load this user's saved language preference when they log in.
+  useEffect(() => {
+    if (!adminUser?.id) return;
+    const saved = localStorage.getItem(`avtorim_lang_${adminUser.id}`);
+    if (saved && (['uz', 'ru', 'en'] as string[]).includes(saved)) {
+      setLanguage(saved as Language);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminUser?.id]);
+
+  /** Save language per-user AND update global i18n / UIContext state. */
+  const handleSetLanguage = (lang: Language) => {
+    setLanguage(lang);
+    if (adminUser?.id) {
+      localStorage.setItem(`avtorim_lang_${adminUser.id}`, lang);
+    }
   };
 
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
@@ -644,9 +656,9 @@ const AppContent: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wide">{language}</span>
           </button>
           <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-black/[0.04]'}`}>
-            <button onClick={() => { setLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>O'zbek</button>
-            <button onClick={() => { setLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>Русский</button>
-            <button onClick={() => { setLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>English</button>
+            <button onClick={() => { handleSetLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>O'zbek</button>
+            <button onClick={() => { handleSetLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>Русский</button>
+            <button onClick={() => { handleSetLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>English</button>
           </div>
         </div>
         <div className={`p-4 border-t space-y-2 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-black/[0.06]'
@@ -734,6 +746,7 @@ const AppContent: React.FC = () => {
         <DesktopHeader
           theme={theme}
           onThemeToggle={toggleTheme}
+          onLanguageChange={handleSetLanguage}
           activeTab={location.pathname === '/' ? Tab.DASHBOARD : location.pathname.substring(1).toUpperCase() as Tab}
           isMobile={isMobile}
           onNewTransactionClick={() => setIsTxModalOpen(true)}
