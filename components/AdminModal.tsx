@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { XIcon, CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon } from './Icons';
+import { CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon, ChevronRightIcon, XIcon } from './Icons';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -20,31 +20,94 @@ const Spinner = () => (
   </svg>
 );
 
+// ── Logout confirmation — proper floating modal ────────────────────────────
+const LogoutModal = ({
+  isDark,
+  onCancel,
+  onConfirm,
+}: {
+  isDark: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => createPortal(
+  <div
+    className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+    style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.12s ease-out' }}
+  >
+    <div
+      className={`w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl border ${
+        isDark ? 'bg-[#1a2236] border-white/[0.08]' : 'bg-white border-gray-200'
+      }`}
+      style={{ animation: 'popUp 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
+    >
+      {/* Icon */}
+      <div className="flex flex-col items-center pt-8 pb-2 px-6 text-center">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          isDark ? 'bg-red-500/15' : 'bg-red-50'
+        }`}>
+          <LogOutIcon className="w-7 h-7 text-red-500" />
+        </div>
+        <h3 className={`text-[18px] font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Tizimdan chiqish
+        </h3>
+        <p className={`text-[13px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+          Hisobingizdan chiqmoqchimisiz?<br />
+          Barcha ma'lumotlaringiz saqlanib qoladi.
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className={`mx-6 mt-6 mb-0 h-px ${isDark ? 'bg-white/[0.06]' : 'bg-gray-100'}`} />
+
+      {/* Actions */}
+      <div className="flex">
+        <button
+          onClick={onCancel}
+          className={`flex-1 py-4 text-[15px] font-semibold transition-colors border-r ${
+            isDark
+              ? 'text-gray-300 hover:bg-white/[0.04] border-white/[0.06]'
+              : 'text-gray-700 hover:bg-gray-50 border-gray-100'
+          }`}
+        >
+          Bekor
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-4 text-[15px] font-bold text-red-500 hover:bg-red-500/[0.06] transition-colors active:scale-[0.98]"
+        >
+          Chiqish
+        </button>
+      </div>
+    </div>
+  </div>,
+  document.body
+);
+
+// ── Main profile panel ────────────────────────────────────────────────────
 const AdminModal: React.FC<AdminModalProps> = ({
   isOpen, onClose, adminData, onUpdate, userRole, theme, onLogout, onLock,
 }) => {
   const isReadOnly = userRole === 'viewer';
   const isDark = theme === 'dark';
 
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [name, setName]                       = useState(adminData.name);
-  const [avatar, setAvatar]                   = useState(adminData.avatar);
-  const [newPassword, setNewPassword]         = useState('');
-  const [showNewPw, setShowNewPw]             = useState(false);
-  const [showCurrentPw, setShowCurrentPw]     = useState(false);
-  const [nameError, setNameError]             = useState('');
-  const [pwError, setPwError]                 = useState('');
-  const [imageError, setImageError]           = useState('');
-  const [isSaving, setIsSaving]               = useState(false);
-  const [saveSuccess, setSaveSuccess]         = useState(false);
-  const [imageLoading, setImageLoading]       = useState(false);
-  const [uploadProgress, setUploadProgress]   = useState(0);
+  const [showLogoutModal, setShowLogoutModal]   = useState(false);
+  const [name, setName]                         = useState(adminData.name);
+  const [avatar, setAvatar]                     = useState(adminData.avatar);
+  const [newPassword, setNewPassword]           = useState('');
+  const [showNewPw, setShowNewPw]               = useState(false);
+  const [nameError, setNameError]               = useState('');
+  const [pwError, setPwError]                   = useState('');
+  const [imageError, setImageError]             = useState('');
+  const [isSaving, setIsSaving]                 = useState(false);
+  const [saveSuccess, setSaveSuccess]           = useState(false);
+  const [imageLoading, setImageLoading]         = useState(false);
+  const [uploadProgress, setUploadProgress]     = useState(0);
 
   const hasChanges = avatar !== adminData.avatar || name !== adminData.name || newPassword.trim().length > 0;
 
   useEffect(() => {
     if (isOpen) {
-      setShowLogoutConfirm(false);
+      setShowLogoutModal(false);
       setName(adminData.name);
       setAvatar(adminData.avatar);
       setNewPassword('');
@@ -59,12 +122,13 @@ const AdminModal: React.FC<AdminModalProps> = ({
   }, [isOpen, adminData]);
 
   useEffect(() => {
+    if (!isOpen || showLogoutModal) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSaving && isOpen) onClose();
+      if (e.key === 'Escape' && !isSaving) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, isSaving, onClose]);
+  }, [isOpen, isSaving, onClose, showLogoutModal]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly || isSaving) return;
@@ -72,7 +136,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
     if (!file) return;
     setImageError('');
     if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-      setImageError("JPG, PNG, GIF yoki WEBP formatida bo'lishi kerak");
+      setImageError('JPG, PNG, GIF yoki WEBP kerak');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
@@ -96,9 +160,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
     e.preventDefault();
     if (isReadOnly || isSaving) return;
     if (name.trim().length < 2) { setNameError('Ism kamida 2 ta belgi'); return; }
-    if (newPassword.trim()) {
-      if (newPassword.length < 6) { setPwError('Parol kamida 6 ta belgi'); return; }
-    }
+    if (newPassword.trim() && newPassword.length < 6) { setPwError('Parol kamida 6 ta belgi'); return; }
     setIsSaving(true);
     try {
       const payload: { name: string; role: string; avatar?: string; password?: string } = {
@@ -121,192 +183,205 @@ const AdminModal: React.FC<AdminModalProps> = ({
     : adminData.role === 'admin' ? 'Admin'
     : adminData.role;
 
-  const roleColor = adminData.role === 'super_admin'
-    ? isDark
-      ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-      : 'bg-amber-50 text-amber-700 border-amber-200'
-    : adminData.role === 'admin'
-    ? isDark
-      ? 'bg-teal-500/15 text-teal-400 border-teal-500/25'
-      : 'bg-teal-50 text-teal-700 border-teal-200'
-    : isDark
-    ? 'bg-white/[0.05] text-gray-400 border-white/[0.08]'
-    : 'bg-gray-100 text-gray-600 border-gray-200';
+  const initials = adminData.name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
-  const inputCls = `w-full rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all border-2 ${
+  // Shared styles
+  const inputCls = `w-full rounded-[14px] px-4 py-3 text-[14px] font-medium outline-none transition-all ${
     isDark
-      ? 'bg-surface-2 border-white/10 text-white placeholder-gray-600 focus:border-teal-500/70 focus:bg-surface'
-      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10'
+      ? 'bg-[#0f1724] text-white placeholder-gray-600 focus:ring-2 focus:ring-teal-500/30'
+      : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:bg-white'
   }`;
 
-  const sectionCls = `rounded-2xl border p-5 ${
-    isDark ? 'bg-surface-2 border-white/[0.06]' : 'bg-gray-50/80 border-gray-200/60'
-  }`;
-
-  const labelCls = `text-[11px] font-bold uppercase tracking-widest mb-1.5 block ${
-    isDark ? 'text-gray-500' : 'text-gray-400'
+  const sectionTitle = `text-[11px] font-bold uppercase tracking-[0.1em] mb-4 ${
+    isDark ? 'text-white/30' : 'text-gray-400'
   }`;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget && !isSaving) onClose(); }}
-      style={{ animation: 'fadeIn 0.15s ease-out' }}
-    >
+    <>
+      {/* ── Backdrop ── */}
       <div
-        className={`w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
-          isDark ? 'border border-white/[0.06]' : 'bg-white border border-gray-200/80'
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px]"
+        style={{ animation: 'fadeIn 0.2s ease-out' }}
+        onClick={() => { if (!isSaving && !showLogoutModal) onClose(); }}
+      />
+
+      {/* ── Panel — slides in from the right ── */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-[110] w-full max-w-[420px] flex flex-col shadow-2xl ${
+          isDark ? 'bg-[#111827]' : 'bg-[#f5f5f7]'
         }`}
-        style={{ animation: 'modalPop 0.2s ease-out', ...(isDark ? { background: '#171f33' } : {}) }}
+        style={{ animation: 'slideInRight 0.25s cubic-bezier(0.32,0.72,0,1)' }}
       >
-        {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${
-          isDark ? 'border-white/[0.05]' : 'border-gray-100'
-        }`}>
-          <h2 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Profil sozlamalari
+
+        {/* ── Top nav bar ── */}
+        <div className={`flex items-center justify-between px-5 pt-safe-top pt-4 pb-3 flex-shrink-0 ${
+          isDark ? 'border-b border-white/[0.06]' : 'border-b border-black/[0.07]'
+        } ${isDark ? 'bg-[#111827]' : 'bg-[#f5f5f7]'}`}>
+          <h2 className={`text-[17px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Sozlamalar
           </h2>
           <button
             onClick={onClose}
             disabled={isSaving}
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
               isDark
-                ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                ? 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
+                : 'bg-black/8 text-gray-500 hover:bg-black/12 hover:text-gray-700'
             }`}
           >
             <XIcon className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1">
-          {/* Banner + Avatar */}
-          <div className="relative">
-            <div className="h-24 bg-gradient-to-r from-teal-800 via-teal-700 to-teal-600" />
-            <div className="px-6 pb-4">
-              <div className="flex items-end gap-4 -mt-10 mb-3">
-                <div className="relative group flex-shrink-0">
-                  <div className={`w-20 h-20 rounded-2xl overflow-hidden border-4 relative ${
-                    isDark ? 'border-surface-3 bg-surface-2' : 'border-white bg-gray-100'
-                  }`}>
-                    {(isSaving || imageLoading) && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                        <Spinner />
-                      </div>
-                    )}
-                    <img
-                      src={avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`}
-                      alt={name}
-                      className="w-full h-full object-cover"
-                      onError={e => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`;
-                      }}
-                    />
-                    {!isReadOnly && !isSaving && !imageLoading && (
-                      <label
-                        htmlFor="admin-avatar-upload"
-                        className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      >
-                        <CameraIcon className="text-white w-5 h-5" />
-                        <span className="text-white text-[9px] mt-0.5 font-semibold">Rasm</span>
-                      </label>
-                    )}
+        {/* ── Scrollable content ── */}
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit}>
+
+            {/* ── Profile hero card ── */}
+            <div className={`mx-4 mt-4 rounded-[20px] overflow-hidden ${
+              isDark ? 'bg-[#1c2333]' : 'bg-white'
+            }`}>
+              {/* Teal gradient banner */}
+              <div className="h-20 bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-600 relative">
+                <div className="absolute inset-0 opacity-30"
+                  style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
+              </div>
+
+              {/* Avatar + info */}
+              <div className="px-5 pb-5">
+                <div className="flex items-end gap-4 -mt-10 mb-0">
+                  {/* Avatar with upload */}
+                  <div className="relative group flex-shrink-0">
+                    <div className={`w-[72px] h-[72px] rounded-[20px] overflow-hidden border-[3px] relative ${
+                      isDark ? 'border-[#1c2333] bg-[#0f1724]' : 'border-white bg-gray-100'
+                    } shadow-md`}>
+                      {(isSaving || imageLoading) && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-[17px]">
+                          <Spinner />
+                        </div>
+                      )}
+                      {avatar ? (
+                        <img
+                          src={avatar}
+                          alt={adminData.name}
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.currentTarget as HTMLImageElement).src = ''; setAvatar(undefined); }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500 to-teal-700">
+                          <span className="text-white text-xl font-black select-none">{initials}</span>
+                        </div>
+                      )}
+                      {!isReadOnly && !isSaving && !imageLoading && (
+                        <label
+                          htmlFor="admin-avatar-upload"
+                          className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-[17px]"
+                        >
+                          <CameraIcon className="text-white w-5 h-5" />
+                        </label>
+                      )}
+                    </div>
+                    <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                   </div>
-                  <span className={`absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 rounded-full border-2 ${
-                    isDark ? 'border-[#181818]' : 'border-white'
-                  }`} />
-                  <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                </div>
-                <div className="pb-1">
-                  <p className={`font-bold text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {adminData.name}
-                  </p>
-                  <span className={`mt-1 inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border ${roleColor}`}>
-                    {roleLabel}
-                  </span>
-                </div>
-              </div>
 
-              {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
-                  <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                  {/* Name + role */}
+                  <div className="pb-1 min-w-0">
+                    <p className={`font-bold text-[17px] leading-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {adminData.name}
+                    </p>
+                    <span className={`mt-1 inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                      adminData.role === 'super_admin'
+                        ? isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'
+                        : isDark ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-100 text-teal-700'
+                    }`}>
+                      {roleLabel}
+                    </span>
+                  </div>
                 </div>
-              )}
-              {imageError && <p className="text-xs text-red-500 mt-1">{imageError}</p>}
-            </div>
-          </div>
 
-          <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
-            {/* Personal info section */}
-            <div className={sectionCls}>
-              <p className={`text-[11px] font-bold uppercase tracking-widest mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Shaxsiy ma'lumotlar
-              </p>
-              <div>
-                <label className={labelCls}>F.I.SH</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => { setName(e.target.value); setNameError(''); }}
-                  disabled={isReadOnly || isSaving}
-                  placeholder="To'liq ismingiz"
-                  className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed ${nameError ? (isDark ? '!border-red-500/60' : '!border-red-400') : ''}`}
-                />
-                {nameError && <p className="text-xs text-red-500 mt-1.5">{nameError}</p>}
+                {/* Upload progress */}
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className={`mt-3 w-full h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                    <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                )}
+                {imageError && (
+                  <p className="mt-2 text-xs text-red-500">{imageError}</p>
+                )}
               </div>
             </div>
 
-            {/* Security section */}
-            <div className={sectionCls}>
-              <p className={`text-[11px] font-bold uppercase tracking-widest mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Xavfsizlik
-              </p>
-              <div className="space-y-3">
-                {/* Current password */}
-                <div>
-                  <label className={labelCls}>Joriy parol</label>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPw ? 'text' : 'password'}
-                      value={adminData.password || '••••••••'}
-                      disabled
-                      className={`w-full rounded-xl px-4 py-3 text-sm font-mono pr-10 border-2 outline-none opacity-60 ${
-                        isDark
-                          ? 'bg-[#0d0d0d] border-white/[0.06] text-gray-400'
-                          : 'bg-gray-100 border-gray-200 text-gray-600'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPw(v => !v)}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
-                        isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
-                      }`}
-                    >
-                      {showCurrentPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                    </button>
+            {/* ── Personal info section ── */}
+            <div className="mx-4 mt-6">
+              <p className={sectionTitle}>Shaxsiy ma'lumotlar</p>
+              <div className={`rounded-[20px] overflow-hidden ${isDark ? 'bg-[#1c2333]' : 'bg-white'}`}>
+                <div className="px-4 py-3.5">
+                  <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    To'liq ism
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => { setName(e.target.value); setNameError(''); }}
+                    disabled={isReadOnly || isSaving}
+                    placeholder="Ismingizni kiriting"
+                    className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed ${
+                      nameError ? 'ring-2 ring-red-500/40' : ''
+                    }`}
+                  />
+                  {nameError && <p className="text-xs text-red-500 mt-1.5">{nameError}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Security section ── */}
+            <div className="mx-4 mt-6">
+              <p className={sectionTitle}>Xavfsizlik</p>
+              <div className={`rounded-[20px] overflow-hidden divide-y ${
+                isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
+              }`}>
+                {/* Current password — display only */}
+                <div className="px-4 py-3.5">
+                  <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Joriy parol
+                  </label>
+                  <div className={`flex items-center rounded-[14px] px-4 py-3 text-sm font-mono ${
+                    isDark ? 'bg-[#0f1724] text-gray-500' : 'bg-gray-50 text-gray-400'
+                  }`}>
+                    <span className="flex-1 tracking-[0.25em] text-base">••••••••</span>
+                    <span className={`text-[11px] font-sans font-semibold ml-2 ${isDark ? 'text-gray-600' : 'text-gray-300'}`}>
+                      gizlangan
+                    </span>
                   </div>
                 </div>
 
                 {/* New password */}
                 {!isReadOnly && (
-                  <div>
-                    <label className={labelCls}>Yangi parol</label>
+                  <div className="px-4 py-3.5">
+                    <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Yangi parol
+                      <span className={`ml-1.5 font-normal ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>(ixtiyoriy)</span>
+                    </label>
                     <div className="relative">
                       <input
                         type={showNewPw ? 'text' : 'password'}
                         value={newPassword}
                         onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
                         disabled={isSaving}
-                        placeholder="(ixtiyoriy — faqat o'zgartirish uchun)"
-                        className={`${inputCls} pr-10 disabled:opacity-50 ${pwError ? (isDark ? '!border-red-500/60' : '!border-red-400') : ''}`}
+                        placeholder="Yangi parol kiriting"
+                        className={`${inputCls} pr-11 disabled:opacity-50 ${
+                          pwError ? 'ring-2 ring-red-500/40' : ''
+                        }`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPw(v => !v)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${
                           isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
                         }`}
                       >
@@ -324,107 +399,124 @@ const AdminModal: React.FC<AdminModalProps> = ({
               </div>
             </div>
 
-            {/* Save button */}
+            {/* ── Save button ── */}
             {!isReadOnly && (
-              <button
-                type="submit"
-                disabled={isSaving || saveSuccess || !hasChanges || !!nameError}
-                className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                  saveSuccess
-                    ? 'bg-emerald-500 text-white'
-                    : !hasChanges || !!nameError
-                    ? isDark
-                      ? 'bg-surface-2 text-gray-600 cursor-not-allowed'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-teal-600 hover:bg-teal-500 text-white shadow-sm active:scale-[0.98]'
-                }`}
-              >
-                {saveSuccess ? (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Saqlandi
-                  </>
-                ) : isSaving ? (
-                  <><Spinner /> Saqlanmoqda...</>
-                ) : 'Saqlash'}
-              </button>
+              <div className="mx-4 mt-5">
+                <button
+                  type="submit"
+                  disabled={isSaving || saveSuccess || !hasChanges || !!nameError}
+                  className={`w-full py-3.5 rounded-[16px] text-[15px] font-bold transition-all flex items-center justify-center gap-2 ${
+                    saveSuccess
+                      ? 'bg-emerald-500 text-white'
+                      : !hasChanges || !!nameError
+                      ? isDark
+                        ? 'bg-white/[0.05] text-gray-600 cursor-not-allowed'
+                        : 'bg-gray-200/70 text-gray-400 cursor-not-allowed'
+                      : 'bg-teal-600 hover:bg-teal-500 text-white shadow-sm active:scale-[0.98]'
+                  }`}
+                >
+                  {saveSuccess ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Saqlandi
+                    </>
+                  ) : isSaving ? (
+                    <><Spinner />Saqlanmoqda…</>
+                  ) : 'Saqlash'}
+                </button>
+              </div>
             )}
 
-            {/* Account actions section */}
-            <div className={sectionCls}>
-              <p className={`text-[11px] font-bold uppercase tracking-widest mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Hisob amallar
-              </p>
+            {/* ── Account actions section ── */}
+            <div className="mx-4 mt-6 mb-8">
+              <p className={sectionTitle}>Hisob</p>
+              <div className={`rounded-[20px] overflow-hidden divide-y ${
+                isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
+              }`}>
+                {/* Lock */}
+                {onLock && (
+                  <button
+                    type="button"
+                    onClick={onLock}
+                    className={`w-full flex items-center gap-3.5 px-4 py-4 text-left transition-colors ${
+                      isDark ? 'hover:bg-white/[0.04] active:bg-white/[0.06]' : 'hover:bg-gray-50 active:bg-gray-100'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-blue-500/20' : 'bg-blue-50'
+                    }`}>
+                      <LockIcon className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[14px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Ekranni qulflash
+                      </p>
+                      <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Parol bilan himoyalash
+                      </p>
+                    </div>
+                    <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                  </button>
+                )}
 
-              {showLogoutConfirm ? (
-                <div className={`rounded-xl p-4 border ${isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
-                  <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
-                    Chiqishni tasdiqlang
-                  </p>
-                  <p className={`text-xs mb-3 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                    Hisobdan chiqmoqchimisiz? Barcha ma'lumotlar saqlanadi.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowLogoutConfirm(false)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        isDark
-                          ? 'bg-white/[0.05] text-gray-300 hover:bg-white/[0.08]'
-                          : 'bg-white text-gray-700 hover:bg-black/[0.03] border border-gray-200'
-                      }`}
-                    >
-                      Bekor
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { onClose(); onLogout?.(); }}
-                      className="flex-1 py-2 rounded-lg text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-colors active:scale-95"
-                    >
-                      Ha, chiqish
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-3">
-                  {onLock && (
-                    <button
-                      type="button"
-                      onClick={onLock}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all group ${
-                        isDark
-                          ? 'bg-surface border-white/[0.08] text-gray-400 hover:text-white hover:border-white/[0.15]'
-                          : 'bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                      }`}
-                    >
-                      <LockIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                      Qulflash
-                    </button>
-                  )}
-                  {onLogout && (
-                    <button
-                      type="button"
-                      onClick={() => setShowLogoutConfirm(true)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-red-500/25 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-all group"
-                    >
-                      <LogOutIcon className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                      Chiqish
-                    </button>
-                  )}
-                </div>
-              )}
+                {/* Logout */}
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutModal(true)}
+                    className={`w-full flex items-center gap-3.5 px-4 py-4 text-left transition-colors ${
+                      isDark ? 'hover:bg-red-500/[0.06] active:bg-red-500/[0.10]' : 'hover:bg-red-50 active:bg-red-100'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-red-500/20' : 'bg-red-50'
+                    }`}>
+                      <LogOutIcon className="w-4 h-4 text-red-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold text-red-500">
+                        Chiqish
+                      </p>
+                      <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Tizimdan chiqish
+                      </p>
+                    </div>
+                    <ChevronRightIcon className="w-4 h-4 flex-shrink-0 text-red-400/60" />
+                  </button>
+                )}
+              </div>
             </div>
+
           </form>
         </div>
       </div>
 
+      {/* ── Logout confirmation modal ── */}
+      {showLogoutModal && (
+        <LogoutModal
+          isDark={isDark}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={() => { setShowLogoutModal(false); onClose(); onLogout?.(); }}
+        />
+      )}
+
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0.5; }
+          to   { transform: translateX(0);    opacity: 1;   }
+        }
+        @keyframes popUp {
+          from { transform: scale(0.88) translateY(16px); opacity: 0; }
+          to   { transform: scale(1)    translateY(0);    opacity: 1; }
+        }
       `}</style>
-    </div>,
+    </>,
     document.body
   );
 };
