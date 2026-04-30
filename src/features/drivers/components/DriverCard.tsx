@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
-import { EditIcon, TrashIcon, CarIcon, MoreVerticalIcon, ChevronRightIcon } from '../../../../components/Icons';
+import { EditIcon, TrashIcon, CarIcon, ChevronRightIcon } from '../../../../components/Icons';
 import { calcDriverFinance } from '../utils/debtUtils';
 
 interface DriverCardProps {
@@ -27,171 +27,159 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-
     const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
+    const driverType = (driver as any).driverType ?? 'deposit';
 
-    // Compute deposit warning for deposit-type drivers
     const depositWarning = useMemo(() => {
-        if ((driver.driverType ?? 'deposit') !== 'deposit') return null;
+        if (driverType !== 'deposit') return null;
         const threshold = driver.depositWarningThreshold ?? 1_000_000;
         const finance = calcDriverFinance(driver, car ?? null, transactions);
         if (finance.remainingDeposit <= threshold) {
-            return { remaining: finance.remainingDeposit, threshold };
+            return { remaining: finance.remainingDeposit };
         }
         return null;
-    }, [driver, car, transactions]);
+    }, [driver, car, transactions, driverType]);
 
-    const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
+    const handleEdit   = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
-    const handleCardClick = () => onCardClick?.(driver);
-
-    const statusDot: Record<string, string> = {
-        ACTIVE:  'bg-emerald-500',
-        OFFLINE: 'bg-gray-500',
-        BUSY:    'bg-amber-400',
-    };
 
     return (
         <div
-            onClick={handleCardClick}
-            className={`group relative rounded-2xl border cursor-pointer transition-all duration-200 overflow-hidden ${
+            onClick={() => onCardClick?.(driver)}
+            className={`group relative rounded-[20px] border cursor-pointer transition-all duration-200 overflow-hidden ${
                 depositWarning
                     ? isDark
-                        ? 'bg-surface border-amber-500/30 hover:border-amber-500/50 hover:shadow-[0_8px_32px_rgba(245,158,11,0.15)]'
-                        : 'bg-white border-amber-300 hover:border-amber-400 hover:shadow-[0_8px_24px_rgba(245,158,11,0.15)]'
+                        ? 'bg-surface border-amber-500/25 hover:shadow-[0_8px_40px_rgba(245,158,11,0.14)]'
+                        : 'bg-white border-amber-200 hover:shadow-[0_8px_32px_rgba(245,158,11,0.12)]'
                     : isDark
-                        ? 'bg-surface border-white/[0.07] hover:border-white/[0.14] hover:bg-surface-2/60 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
-                        : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-[0_8px_24px_rgba(0,40,60,0.10)]'
+                        ? 'bg-surface border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)]'
+                        : 'bg-white border-gray-200/80 hover:border-gray-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
             }`}
         >
-            {/* Low-deposit warning banner */}
+            {/* ── Low-deposit warning banner ── */}
             {depositWarning && (
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold border-b ${
+                <div className={`flex items-center gap-2 px-4 py-2 text-[11px] font-semibold border-b ${
                     isDark
-                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                        : 'bg-amber-50 border-amber-200 text-amber-700'
+                        ? 'bg-amber-500/[0.08] border-amber-500/15 text-amber-400'
+                        : 'bg-amber-50 border-amber-100 text-amber-600'
                 }`}>
-                    <span>⚠</span>
+                    <span>⚠️</span>
                     <span>Depozit past: {fmt(depositWarning.remaining)} UZS qoldi</span>
                 </div>
             )}
-            {/* ── Hover action buttons (desktop) ── */}
+
+            {/* ── Admin hover actions ── */}
             {userRole === 'admin' && (
-                <div className="absolute top-3 right-3 z-10 hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className="absolute top-3.5 right-3.5 z-10 hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-y-[-3px] group-hover:translate-y-0 transition-all duration-150">
                     <button
                         onClick={handleEdit}
-                        title={t('edit')}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'bg-surface text-gray-400 hover:text-teal-400 hover:bg-teal-500/10 border border-white/[0.08]' : 'bg-white text-gray-400 hover:text-teal-600 hover:bg-teal-50 border border-gray-200 shadow-sm'}`}
+                        className={`w-7 h-7 flex items-center justify-center rounded-xl transition-all active:scale-90 ${
+                            isDark
+                                ? 'bg-[#1a2840] text-gray-500 hover:text-teal-400 border border-white/[0.08]'
+                                : 'bg-white text-gray-400 hover:text-teal-600 border border-gray-200 shadow-sm'
+                        }`}
                     >
                         <EditIcon className="w-3.5 h-3.5" />
                     </button>
                     <button
                         onClick={handleDelete}
-                        title={t('delete')}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'bg-surface text-gray-400 hover:text-red-400 hover:bg-red-500/10 border border-white/[0.08]' : 'bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 border border-gray-200 shadow-sm'}`}
+                        className={`w-7 h-7 flex items-center justify-center rounded-xl transition-all active:scale-90 ${
+                            isDark
+                                ? 'bg-[#1a2840] text-gray-500 hover:text-red-400 border border-white/[0.08]'
+                                : 'bg-white text-gray-400 hover:text-red-500 border border-gray-200 shadow-sm'
+                        }`}
                     >
                         <TrashIcon className="w-3.5 h-3.5" />
                     </button>
                 </div>
             )}
 
-            {/* ── Body ── */}
+            {/* ── Card body ── */}
             <div className="p-4">
-                {/* Top row: avatar + info + plan */}
-                <div className="flex items-center gap-3">
-                    {/* Avatar with status dot */}
-                    <div className="relative flex-shrink-0">
-                        <div className={`w-12 h-12 rounded-2xl overflow-hidden border ${isDark ? 'border-white/[0.08]' : 'border-gray-100'}`}>
-                            {driver.avatar ? (
-                                <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className={`w-full h-full flex items-center justify-center text-base font-black ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
-                                    {driver.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                        {/* Status dot */}
-                        <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isDark ? 'border-surface' : 'border-white'} ${statusDot[driver.status] ?? 'bg-gray-500'}`} />
+
+                {/* Row 1: Avatar · Name/Phone · Type+Plan */}
+                <div className="flex items-center gap-3.5">
+
+                    {/* Round avatar — no status dot */}
+                    <div className={`w-[54px] h-[54px] rounded-full overflow-hidden flex-shrink-0 ring-2 ${
+                        isDark ? 'ring-white/[0.07]' : 'ring-black/[0.05]'
+                    }`}>
+                        {driver.avatar ? (
+                            <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className={`w-full h-full flex items-center justify-center text-xl font-black select-none ${
+                                isDark ? 'bg-[#1a2840] text-gray-400' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                                {driver.name.charAt(0).toUpperCase()}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Name & phone */}
-                    <div className="flex-1 min-w-0 pr-2">
-                        <p className={`text-[14px] font-semibold leading-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {/* Name + phone */}
+                    <div className="flex-1 min-w-0">
+                        <p className={`text-[15px] font-semibold leading-snug truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             {driver.name}
                         </p>
                         <p className={`text-[12px] mt-0.5 font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {driver.phone}
+                            {driver.phone || '—'}
                         </p>
                     </div>
 
-                    {/* Mobile kebab + plan pill + type badge */}
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        {/* Driver type badge */}
-                        {(() => {
-                            const dt = (driver as any).driverType ?? 'deposit';
-                            return (
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full tracking-wide ${
-                                    dt === 'deposit'
-                                        ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                        : isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
-                                }`}>
-                                    {dt === 'deposit' ? '🏦 Dep' : '💳 Maosh'}
-                                </span>
-                            );
-                        })()}
+                    {/* Type badge + daily plan */}
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0 pr-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-tight ${
+                            driverType === 'deposit'
+                                ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600 border border-amber-200'
+                                : isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
+                        }`}>
+                            {driverType === 'deposit' ? '🏦 Dep' : '💳 Maosh'}
+                        </span>
                         {dailyPlan > 0 && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${isDark ? 'bg-teal-500/10 text-teal-400' : 'bg-teal-50 text-teal-700 border border-teal-200'}`}>
+                            <span className={`text-[12px] font-bold tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
                                 {fmt(dailyPlan)}
                             </span>
-                        )}
-                        {/* Kebab visible on mobile, hidden on desktop (desktop uses hover buttons) */}
-                        {userRole === 'admin' && (
-                            <button
-                                onClick={e => { e.stopPropagation(); onCardClick?.(driver); }}
-                                className={`sm:hidden w-7 h-7 flex items-center justify-center rounded-lg ${isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600'}`}
-                            >
-                                <MoreVerticalIcon className="w-4 h-4" />
-                            </button>
                         )}
                     </div>
                 </div>
 
-                {/* ── Car row ── */}
-                <div className={`mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-gray-100 bg-gray-50/80'}`}>
+                {/* Thin divider */}
+                <div className={`my-3.5 h-px ${isDark ? 'bg-white/[0.05]' : 'bg-gray-100'}`} />
+
+                {/* Row 2: Car info — iOS table cell style */}
+                <div className="flex items-center gap-3">
+                    {/* Car thumbnail */}
+                    <div className={`w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ${
+                        isDark ? 'bg-[#1a2840] border border-white/[0.06]' : 'bg-gray-100 border border-gray-200'
+                    }`}>
+                        {car?.avatar ? (
+                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Car name + plate */}
                     {car ? (
-                        <>
-                            {/* Thumbnail */}
-                            <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 border ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-200 bg-white'}`}>
-                                {car.avatar ? (
-                                    <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className={`text-[12px] font-semibold truncate leading-tight ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                    {car.name}
-                                </p>
-                                <span className={`text-[10px] font-mono font-bold tracking-widest ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                    {car.licensePlate}
-                                </span>
-                            </div>
-                        </>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[12px] font-semibold truncate leading-tight ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {car.name}
+                            </p>
+                            <p className={`text-[10px] font-mono tracking-widest mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                {car.licensePlate}
+                            </p>
+                        </div>
                     ) : (
-                        <>
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-surface' : 'bg-gray-100'}`}>
-                                <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-700' : 'text-gray-300'}`} />
-                            </div>
-                            <span className={`text-[12px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                {t('carNotAssigned')}
-                            </span>
-                        </>
+                        <span className={`flex-1 text-[12px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                            {t('carNotAssigned')}
+                        </span>
                     )}
 
-                    {/* Drawer hint arrow */}
-                    <ChevronRightIcon className={`w-3.5 h-3.5 flex-shrink-0 ml-auto transition-transform duration-200 group-hover:translate-x-0.5 ${isDark ? 'text-gray-700' : 'text-gray-300'}`} />
+                    {/* Chevron hint */}
+                    <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${
+                        isDark ? 'text-gray-700' : 'text-gray-300'
+                    }`} />
                 </div>
             </div>
         </div>
