@@ -183,18 +183,35 @@ class TelegramService {
         // ── /admin — Admin login in bot ─────────────────────────────────
         this.bot.command('admin', async (ctx) => {
             const tid = ctx.from.id;
-            // Check if already authenticated
+            // Auto-auth: check if this Telegram ID is already linked to an admin
             const aSess = this.adminSessions.get(tid.toString());
             if (aSess?.authenticated) {
                 return ctx.safeReply(
-                    `✅ *Admin paneli*\n\nQuyidagi buyruqlardan foydalaning:`,
+                    `✅ *Admin paneli*\n\nXush kelibsiz, ${aSess.username}!`,
                     Markup.inlineKeyboard([
                         [Markup.button.callback('📊 So\'nggi tranzaksiyalar', 'admin_txlist')],
-                        [Markup.button.callback('🔗 Chat ID olish', 'admin_getchatid')],
+                        [Markup.button.callback('🔗 Chat ID yangilash', 'admin_getchatid')],
                         [Markup.button.callback('🚪 Chiqish', 'admin_logout')]
                     ])
                 );
             }
+            // Try auto-auth by Telegram ID
+            const admin = await this.findAdminByTelegramId(tid);
+            if (admin) {
+                this.adminSessions.set(tid.toString(), {
+                    step: 'idle', authenticated: true,
+                    adminId: admin.id, username: admin.username
+                });
+                return ctx.safeReply(
+                    `✅ *Admin paneli*\n\nXush kelibsiz, ${admin.username}!`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('📊 So\'nggi tranzaksiyalar', 'admin_txlist')],
+                        [Markup.button.callback('🔗 Chat ID yangilash', 'admin_getchatid')],
+                        [Markup.button.callback('🚪 Chiqish', 'admin_logout')]
+                    ])
+                );
+            }
+            // Not linked yet — ask for password once
             this.adminSessions.set(tid.toString(), { step: 'awaiting_password', authenticated: false });
             return ctx.safeReply('🔐 Admin parolini kiriting:');
         });
@@ -203,24 +220,21 @@ class TelegramService {
         this.bot.action('admin_txlist', async (ctx) => {
             await ctx.answerCbQuery();
             const tid = ctx.from.id;
-            const aSess = this.adminSessions.get(tid.toString());
-            if (!aSess?.authenticated) return ctx.safeReply('❌ Avval /admin orqali kiring.');
+            const aSess = await this.resolveAdminSession(tid);
+            if (!aSess) return ctx.safeReply('❌ Avval /admin orqali kiring.');
             await this.sendRecentTransactions(ctx, aSess.adminId);
         });
 
         this.bot.action('admin_getchatid', async (ctx) => {
             await ctx.answerCbQuery();
             const tid = ctx.from.id;
-            const aSess = this.adminSessions.get(tid.toString());
-            if (!aSess?.authenticated) return ctx.safeReply('❌ Avval /admin orqali kiring.');
-            // Auto-save this chat ID
+            const aSess = await this.resolveAdminSession(tid);
+            if (!aSess) return ctx.safeReply('❌ Avval /admin orqali kiring.');
             if (this.db && aSess.adminId) {
                 await this.setAdminChatId(aSess.adminId, tid.toString());
             }
             return ctx.safeReply(
-                `✅ *Chat ID muvaffaqiyatli saqlandi!*\n\n` +
-                `\`${tid}\`\n\n` +
-                `Endi barcha tranzaksiya xabarnomalari shu chatga yuboriladi.`,
+                `✅ *Chat ID saqlandi!*\n\n\`${tid}\`\n\nEndi barcha tranzaksiya xabarnomalari shu chatga yuboriladi.`,
                 { parse_mode: 'Markdown' }
             );
         });
@@ -231,11 +245,11 @@ class TelegramService {
             return ctx.safeReply('✅ Admin sessiyasidan chiqdingiz.');
         });
 
-        // ── /transactions — shortcut ────────────────────────────────────
+        // ── /transactions — auto-auth by Telegram ID ────────────────────
         this.bot.command('transactions', async (ctx) => {
             const tid = ctx.from.id;
-            const aSess = this.adminSessions.get(tid.toString());
-            if (!aSess?.authenticated) return ctx.safeReply('❌ Avval /admin orqali kiring.');
+            const aSess = await this.resolveAdminSession(tid);
+            if (!aSess) return ctx.safeReply('❌ Avval /admin orqali kiring va akkauntingizni bog\'lang.');
             await this.sendRecentTransactions(ctx, aSess.adminId);
         });
 
@@ -502,6 +516,42 @@ class TelegramService {
                 ])
             }
         );
+    }
+
+    // ── Find admin by Telegram ID (auto-auth) ────────────────────────
+    async findAdminByTelegramId(telegramId) {
+        if (!this.db) return null;
+        try {
+            // admin_settings stores telegram_chat_id per admin_id
+            const { data: setting } = await this.db
+                .from('admin_settings')
+                .select('admin_id, telegram_chat_id')
+                .eq('telegram_chat_id', telegramId.toString())
+                .single();
+            if (!setting) return null;
+            // fetch admin username
+            const { data: admin } = await this.db
+                .from('admin_users')
+                .select('id, username, role')
+                .eq('id', setting.admin_id)
+                .single();
+            return admin || null;
+        } catch {
+            return null;
+        }
+    }
+
+    // ── Resolve admin session (memory → DB fallback) ─────────────────
+    async resolveAdminSession(telegramId) {
+        const key = telegramId.toString();
+        const cached = this.adminSessions.get(key);
+        if (cached?.authenticated) return cached;
+        // Try auto-auth from DB
+        const admin = await this.findAdminByTelegramId(telegramId);
+        if (!admin) return null;
+        const sess = { step: 'idle', authenticated: true, adminId: admin.id, username: admin.username };
+        this.adminSessions.set(key, sess);
+        return sess;
     }
 
     // ── Admin helper: send last 10 transactions ───────────────────────

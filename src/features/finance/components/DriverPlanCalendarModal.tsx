@@ -31,6 +31,7 @@ interface Props {
 }
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
+const fmtCompact = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
 
 
 type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' | 'FUTURE_OFF' | 'FUTURE_DISCOUNT';
@@ -254,17 +255,17 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     {/* Stats grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                         {/* Monthly plan */}
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik Reja'}</p>
-                            <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>{fmt(monthData.monthlyTarget)}</p>
+                        <div className="min-w-0">
+                            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 truncate">{t('monthlyPlan') ?? 'Oylik Reja'}</p>
+                            <p className={`text-lg sm:text-2xl font-bold tabular-nums truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{fmt(monthData.monthlyTarget)}</p>
                         </div>
                         {/* Paid */}
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{t('totalPaidAmount') ?? "Jami To'ladi"}</p>
-                            <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{fmt(monthData.actualIncome)}</p>
+                        <div className="min-w-0">
+                            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 truncate">{t('totalPaidAmount') ?? "Jami To'ladi"}</p>
+                            <p className={`text-lg sm:text-2xl font-bold tabular-nums truncate ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{fmt(monthData.actualIncome)}</p>
                         </div>
                         {/* Debt / Prepaid card */}
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
                                 {monthData.remaining <= 0 ? (
                                     <>
@@ -276,7 +277,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     </>
                                 )}
                             </p>
-                            <p className={`text-2xl font-bold tabular-nums ${
+                            <p className={`text-lg sm:text-2xl font-bold tabular-nums truncate ${
                                 monthData.remaining <= 0
                                     ? isDark ? 'text-emerald-400' : 'text-emerald-600'
                                     : isDark ? 'text-red-400' : 'text-red-500'
@@ -395,14 +396,14 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
 
                                         {/* Cell body */}
                                         {d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' ? (
-                                            <div className="flex flex-col items-center justify-center flex-1 gap-1 mt-1">
-                                                <span className="text-lg sm:text-xl leading-none">🏝️</span>
-                                                <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
+                                            <div className="flex flex-col items-center justify-center flex-1 gap-0.5 mt-1">
+                                                <span className="text-sm sm:text-xl leading-none">🏝️</span>
+                                                <span className={`hidden sm:inline-block text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
                                                     {t('legendDayOff')}
                                                 </span>
                                                 {d.income > 0 && (
-                                                    <span className={`text-[9px] sm:text-[10px] font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                                        +{fmt(d.income)}
+                                                    <span className={`text-[8px] sm:text-[10px] font-bold truncate w-full text-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                        +{fmtCompact(d.income)}
                                                     </span>
                                                 )}
                                             </div>
@@ -410,40 +411,40 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             const excess = d.income - d.planForDay;
                                             const isOverpaid = d.income > d.planForDay && d.planForDay > 0;
                                             return (
-                                                <div className="mt-auto pt-3 flex flex-col gap-1">
+                                                <div className="mt-auto pt-2 flex flex-col gap-0.5 sm:gap-1 overflow-hidden">
                                                     {d.income > 0 && (
-                                                        <div className={`text-[10px] sm:text-xs font-bold tabular-nums truncate leading-tight ${
+                                                        <div className={`text-[9px] sm:text-xs font-bold tabular-nums truncate leading-tight w-full ${
                                                             isOverpaid
                                                                 ? isDark ? 'text-emerald-400' : 'text-emerald-600'
                                                                 : isDark ? 'text-gray-200' : 'text-gray-800'
                                                         }`}>
-                                                            {fmt(d.income)}
+                                                            {fmtCompact(d.income)}
                                                         </div>
                                                     )}
                                                     {/* Overpaid excess badge */}
                                                     {isOverpaid && (
-                                                        <div className={`inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full w-fit ${
+                                                        <div className={`inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wide px-1 py-0.5 rounded sm:rounded-full w-full sm:w-fit overflow-hidden ${
                                                             isDark
                                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                                 : 'bg-emerald-100 text-emerald-700'
                                                         }`}>
-                                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="hidden sm:block flex-shrink-0">
                                                                 <polyline points="18 15 12 9 6 15" />
                                                             </svg>
-                                                            +{fmt(excess)}
+                                                            <span className="truncate">+{fmtCompact(excess)}</span>
                                                         </div>
                                                     )}
                                                     {/* Debt badge — red pill, mirrors the overpaid badge */}
                                                     {d.debt > 0 && d.status !== 'PAID' && (
-                                                        <div className={`inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full w-fit ${
+                                                        <div className={`inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wide px-1 py-0.5 rounded sm:rounded-full w-full sm:w-fit overflow-hidden ${
                                                             isDark
                                                                 ? 'bg-red-500/20 text-red-400'
                                                                 : 'bg-red-100 text-red-600'
                                                         }`}>
-                                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="hidden sm:block flex-shrink-0">
                                                                 <polyline points="6 9 12 15 18 9" />
                                                             </svg>
-                                                            -{fmt(d.debt)}
+                                                            <span className="truncate">-{fmtCompact(d.debt)}</span>
                                                         </div>
                                                     )}
                                                 </div>
