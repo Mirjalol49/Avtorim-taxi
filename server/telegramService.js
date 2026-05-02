@@ -1,4 +1,5 @@
 const { Telegraf, Markup } = require('telegraf');
+const cron = require('node-cron');
 
 // --- TRANSLATIONS & CONSTANTS ---
 const SUPPORT_PHONE = "+998 93 748 91 41";
@@ -29,7 +30,9 @@ const TRANSLATIONS = {
         error_generic: "❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.",
         need_start: "⚠️ Iltimos, botni qayta ishga tushiring: /start",
         lang_select: "🇺🇿 Tilni tanlang:",
-        salary_received: "✅ **Maosh To'landi!**\n\n💰 Summa: **{amount}**\n📅 Sana: {date}\n\nHar doim biz bilan bo'lganingiz uchun rahmat! 🚀"
+        salary_received: "✅ **Maosh To'landi!**\n\n💰 Summa: **{amount}**\n📅 Sana: {date}\n\nHar doim biz bilan bo'lganingiz uchun rahmat! 🚀",
+        morning_greeting: "Assalomu aleykum {name} ☀️!\n\nKunni yaxshi kayfiyatda boshlashingizni tilaymiz. Ehtiyot bo'ling va oq yo'l! 🚕💨",
+        evening_reminder: "Xayrli kech {name} 🌙!\n\nBugungi rejangiz ({plan}) to'liq bajarilmadi 📉. Iltimos, qarzlaringiz ko'payib ketmasligi uchun kunlik rejalarni o'z vaqtida bajarishga harakat qiling. Yaxshi dam oling! 🛌💤"
     },
     ru: {
         welcome: "🚖 Добро пожаловать в **TAKSAPARK**!\n\nПожалуйста, выберите язык:",
@@ -56,7 +59,9 @@ const TRANSLATIONS = {
         error_generic: "❌ Произошла ошибка. Попробуйте снова.",
         need_start: "⚠️ Пожалуйста, перезапустите бота: /start",
         lang_select: "🇷🇺 Выберите язык:",
-        salary_received: "✅ **Зарплата Выплачена!**\n\n💰 Сумма: **{amount}**\n📅 Дата: {date}\n\nСпасибо, что вы с нами! 🚀"
+        salary_received: "✅ **Зарплата Выплачена!**\n\n💰 Сумма: **{amount}**\n📅 Дата: {date}\n\nСпасибо, что вы с нами! 🚀",
+        morning_greeting: "Доброе утро, {name} ☀️!\n\nЖелаем вам отличного дня и хорошего настроения. Будьте осторожны на дорогах! 🚕💨",
+        evening_reminder: "Добрый вечер, {name} 🌙!\n\nВаш сегодняшний план ({plan}) не был полностью выполнен 📉. Пожалуйста, старайтесь выполнять ежедневный план, чтобы избежать накопления долгов. Хорошего отдыха! 🛌💤"
     },
     en: {
         welcome: "🚖 Welcome to **TAKSAPARK**!\n\nPlease select your language:",
@@ -83,7 +88,9 @@ const TRANSLATIONS = {
         error_generic: "❌ An error occurred. Please try again.",
         need_start: "⚠️ Please restart the bot: /start",
         lang_select: "🇬🇧 Select language:",
-        salary_received: "✅ **Salary Paid!**\n\n💰 Amount: **{amount}**\n📅 Date: {date}\n\nThanks for being with us! 🚀"
+        salary_received: "✅ **Salary Paid!**\n\n💰 Amount: **{amount}**\n📅 Date: {date}\n\nThanks for being with us! 🚀",
+        morning_greeting: "Good morning {name} ☀️!\n\nWe wish you a great day ahead. Drive safely and take care! 🚕💨",
+        evening_reminder: "Good evening {name} 🌙!\n\nYour daily plan ({plan}) wasn't fully completed today 📉. Please try to fulfill daily plans to avoid accumulating debt. Have a good rest! 🛌💤"
     }
 };
 
@@ -101,8 +108,13 @@ class TelegramService {
         // adminSessions: telegramId → { adminId, authenticated, step, tempAmount, type, lang }
         this.adminSessions = new Map();
 
-        console.log('[BOT] Initializing Service (v4.0 - ADMIN COMMANDS + AUTO ALERTS)...');
+        console.log('[BOT] Initializing Service (v4.1 - DAILY CRONS)...');
         this.setupHandlers();
+
+        if (this.db) {
+            this.startMorningCron();
+            this.startEveningCron();
+        }
 
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
@@ -853,6 +865,120 @@ class TelegramService {
             console.error('[BOT] Failed to send salary notification:', error.message);
             return { success: false, error: error.message };
         }
+    }
+
+    // ── Scheduled Jobs ────────────────────────────────────────────────────────
+
+    startMorningCron() {
+        // Runs at 08:00 AM daily in Tashkent time
+        cron.schedule('0 8 * * *', async () => {
+            console.log('[CRON] Running 8:00 AM Morning Greetings...');
+            try {
+                if (!this.isReady || !this.db) return;
+                // Fetch all active drivers with a telegram_id
+                const { data: drivers } = await this.db
+                    .from('drivers')
+                    .select('id, name, first_name, telegram_id, language')
+                    .eq('is_deleted', false)
+                    .not('telegram_id', 'is', null)
+                    .not('telegram_id', 'eq', '');
+
+                if (!drivers) return;
+
+                for (const driver of drivers) {
+                    const lang = driver.language || 'uz';
+                    const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+                    const name = driver.first_name || driver.name || 'Haydovchi';
+                    const msg = t.morning_greeting.replace('{name}', name);
+
+                    try {
+                        await this.bot.telegram.sendMessage(driver.telegram_id, msg);
+                    } catch (e) {
+                        console.error(`[CRON] Failed to send morning greeting to ${driver.telegram_id}:`, e.message);
+                    }
+                }
+            } catch (e) {
+                console.error('[CRON] Error in Morning Greeting job:', e.message);
+            }
+        }, { timezone: "Asia/Tashkent" });
+    }
+
+    startEveningCron() {
+        // Runs at 11:00 PM (23:00) daily in Tashkent time
+        cron.schedule('0 23 * * *', async () => {
+            console.log('[CRON] Running 11:00 PM Evening Reminders...');
+            try {
+                if (!this.isReady || !this.db) return;
+                
+                // Fetch all active cars assigned to drivers
+                const { data: cars } = await this.db
+                    .from('cars')
+                    .select('id, assigned_driver_id, daily_plan')
+                    .eq('is_deleted', false)
+                    .not('assigned_driver_id', 'is', null)
+                    .gt('daily_plan', 0); // Only cars with a plan
+
+                if (!cars || cars.length === 0) return;
+
+                // Today's timestamp boundaries
+                const now = new Date();
+                const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+                const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+
+                for (const car of cars) {
+                    const driverId = car.assigned_driver_id;
+                    const dailyPlan = car.daily_plan;
+
+                    // Fetch driver to check if telegram linked and active
+                    const { data: driver } = await this.db
+                        .from('drivers')
+                        .select('id, name, first_name, telegram_id, language, is_deleted')
+                        .eq('id', driverId)
+                        .single();
+
+                    if (!driver || driver.is_deleted || !driver.telegram_id) continue;
+
+                    // Check today's transactions for this driver
+                    const { data: txs } = await this.db
+                        .from('transactions')
+                        .select('amount, type')
+                        .eq('driver_id', driverId)
+                        .neq('status', 'DELETED')
+                        .gte('timestamp_ms', startOfDay)
+                        .lte('timestamp_ms', endOfDay);
+
+                    let todayIncome = 0;
+                    let hasDayOff = false;
+
+                    if (txs) {
+                        for (const tx of txs) {
+                            if (tx.type === 'INCOME') todayIncome += Math.abs(tx.amount);
+                            if (tx.type === 'DAY_OFF') hasDayOff = true;
+                        }
+                    }
+
+                    // If driver marked Day Off today, skip reminder
+                    if (hasDayOff) continue;
+
+                    // If income is less than plan, send reminder
+                    if (todayIncome < dailyPlan) {
+                        const lang = driver.language || 'uz';
+                        const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+                        const name = driver.first_name || driver.name || 'Haydovchi';
+                        const fmtPlan = `${new Intl.NumberFormat(lang === 'uz' ? 'uz-UZ' : 'ru-RU').format(dailyPlan)} ${lang === 'en' ? 'UZS' : "so'm"}`;
+                        const msg = t.evening_reminder.replace('{name}', name).replace('{plan}', fmtPlan);
+
+                        try {
+                            await this.bot.telegram.sendMessage(driver.telegram_id, msg);
+                        } catch (e) {
+                            console.error(`[CRON] Failed to send evening reminder to ${driver.telegram_id}:`, e.message);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('[CRON] Error in Evening Reminder job:', e.message);
+            }
+        }, { timezone: "Asia/Tashkent" });
     }
 
 }

@@ -28,6 +28,10 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                     isDeleted: r.is_deleted,
                     createdAt: toMs(r.created_ms),
                 } as Car)));
+            })
+            .catch((err) => {
+                console.warn('[PWA] Fetch cars failed, retrying in 3s...', err.message);
+                setTimeout(fetchCars, 3000);
             });
 
     // Fire immediately — data shows before WebSocket channel connects

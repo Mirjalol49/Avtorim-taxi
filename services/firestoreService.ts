@@ -172,6 +172,10 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
                     cache = data.map(transformDriver);
                     callback(cache);
                 }
+            })
+            .catch((err) => {
+                console.warn('[PWA] Fetch drivers failed, retrying in 3s...', err.message);
+                setTimeout(fetchDrivers, 3000);
             });
 
     fetchDrivers();
@@ -372,6 +376,10 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                         setTimeout(() => fetchOlderThan(oldestMs), 0);
                     }
                 }
+            })
+            .catch((err) => {
+                console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
+                setTimeout(fetchRecent, 3000);
             });
 
     fetchRecent();
@@ -436,25 +444,9 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleet
         .single();
     if (error) throw error;
 
-    // ── Telegram alert (fire-and-forget) ─────────────────────────────────────
-    // Import lazily to avoid circular deps. Never awaited — won't block callers.
-    if (fleetId && tx.type !== 'DAY_OFF') {
-        import('./telegramNotificationService').then(({ notifyTransactionOnTelegram }) => {
-            notifyTransactionOnTelegram({
-                adminId: fleetId,
-                driverName: tx.driverName ?? 'Noma\'lum',
-                amount: Math.abs(tx.amount ?? 0),
-                type: tx.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-                description: tx.description || tx.note || undefined,
-                carName: tx.carName || undefined,
-                performedBy: tx.performedBy || undefined,
-                timestamp: tx.timestamp ?? Date.now(),
-            });
-        }).catch(() => {});
-    }
-    // ─────────────────────────────────────────────────────────────────────────
 
     return data.id as string;
+
 };
 
 export const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
