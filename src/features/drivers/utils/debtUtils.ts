@@ -124,18 +124,20 @@ export function calcDriverDebt(
 // ─── Deposit / Salary breakdown ───────────────────────────────────────────────
 
 export interface MonthlyBreakdown {
-    monthKey:      string;   // 'YYYY-MM'
-    planIncome:    number;   // Regular daily-plan payments (INCOME, not topup)
-    topUps:        number;   // Deposit top-up credits (INCOME with category='deposit_topup')
-    overpayment:   number;   // max(0, planIncome - monthlyTarget) — excess rolls to deposit
-    expenses:      number;   // EXPENSE transactions
-    debts:         number;   // DEBT transactions
-    monthlyTarget: number;   // dailyPlan * workingDays
-    shortfall:     number;   // max(0, target - planIncome)
-    /** For salary drivers: salaryAmount - shortfall - expenses - debts */
-    netSalary:     number;
+    monthKey:       string;   // 'YYYY-MM'
+    planIncome:     number;   // Regular daily-plan payments (INCOME, not topup)
+    topUps:         number;   // Deposit top-up credits (INCOME with category='deposit_topup')
+    overpayment:    number;   // max(0, planIncome - monthlyTarget) — excess rolls to deposit
+    expenses:       number;   // EXPENSE transactions
+    debts:          number;   // DEBT transactions
+    monthlyTarget:  number;   // dailyPlan * workingDays
+    shortfall:      number;   // max(0, target - planIncome)
+    /** For salary drivers: income explicitly funded from the driver's salary (useDeposit=true INCOME txs) */
+    salaryAdvance:  number;
+    /** For salary drivers: salaryAmount - shortfall - expenses - debts - salaryAdvance */
+    netSalary:      number;
     /** Running deposit balance AFTER this month (deposit type only) */
-    depositAfter:  number;
+    depositAfter:   number;
 }
 
 export interface DriverFinanceSummary {
@@ -170,24 +172,29 @@ export function calcDriverFinance(
     );
 
     // Group by month — separate plan payments, top-ups, expenses, debts, and day-offs
-    // depositUsed: sum of all transactions explicitly drawn from deposit (useDeposit=true)
-    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number; daysOff: number; depositUsed: number }>();
+    // depositUsed:    sum of all transactions explicitly drawn from deposit (useDeposit=true)
+    // salaryAdvance:  income funded from driver's salary (useDeposit=true, type=INCOME, salary driver)
+    const byMonth = new Map<string, { planIncome: number; topUps: number; expenses: number; debts: number; daysOff: number; depositUsed: number; salaryAdvance: number }>();
     for (const tx of validTxs) {
         const mk = toMonthKey(tx.timestamp);
-        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0, daysOff: 0, depositUsed: 0 };
+        const e  = byMonth.get(mk) ?? { planIncome: 0, topUps: 0, expenses: 0, debts: 0, daysOff: 0, depositUsed: 0, salaryAdvance: 0 };
         if (tx.type === TransactionType.INCOME && tx.category === 'deposit_topup') {
             e.topUps     += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.INCOME) {
             e.planIncome += Math.abs(tx.amount);
+            // Track salary-funded advances separately (salary drivers only)
+            if (tx.useDeposit === true && driverType === 'salary') {
+                e.salaryAdvance += Math.abs(tx.amount);
+            }
         } else if (tx.type === TransactionType.EXPENSE) {
             e.expenses   += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.DEBT) {
             e.debts      += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.DAY_OFF) {
-            e.daysOff    += 1; // each DAY_OFF tx = one actual day off
+            e.daysOff    += 1;
         }
-        // Track explicit deposit usage regardless of transaction type
-        if (tx.useDeposit === true) {
+        // Track explicit deposit usage regardless of transaction type (deposit drivers)
+        if (tx.useDeposit === true && driverType === 'deposit') {
             e.depositUsed += Math.abs(tx.amount);
         }
         byMonth.set(mk, e);
@@ -204,7 +211,7 @@ export function calcDriverFinance(
         // Cap current month to today so future days don't inflate the target
         const effectiveDays = mk === todayMk ? today.getDate() : totalDays;
 
-        const { planIncome, topUps, expenses, debts, daysOff, depositUsed } = byMonth.get(mk)!;
+        const { planIncome, topUps, expenses, debts, daysOff, depositUsed, salaryAdvance } = byMonth.get(mk)!;
         // Future months: no working days, no debt (only record actual income/topups)
         const isFutureMonth = mk > todayMk;
         const workingDays   = isFutureMonth ? 0 : Math.max(0, effectiveDays - daysOff);
@@ -215,15 +222,17 @@ export function calcDriverFinance(
 
         // Deposit is ONLY affected by:
         //   + explicit top-ups (category='deposit_topup')
-        //   - explicit deposit-funded transactions (useDeposit=true)
+        //   - explicit deposit-funded transactions (useDeposit=true, deposit drivers)
         // NOT automatically by daily-plan shortfall/overpayment
         runningDeposit = runningDeposit + topUps - depositUsed;
 
-        // Salary driver net calculation (based on plan performance)
-        const salaryDeductions = shortfall + expenses + debts;
+        // Salary driver net calculation:
+        // salaryAdvance already covers shortfall (planIncome is up, so shortfall is 0 or reduced),
+        // but we ALSO deduct it explicitly so the end-of-month payout reflects what was already given.
+        const salaryDeductions = shortfall + expenses + debts + salaryAdvance;
         const netSalary = Math.max(0, salaryAmount - salaryDeductions);
 
-        return { monthKey: mk, planIncome, topUps, overpayment, expenses, debts, monthlyTarget, shortfall, netSalary, depositAfter: runningDeposit };
+        return { monthKey: mk, planIncome, topUps, overpayment, expenses, debts, monthlyTarget, shortfall, salaryAdvance, netSalary, depositAfter: runningDeposit };
     });
 
     return { driverType, depositAmount, remainingDeposit: runningDeposit, salaryAmount, months };

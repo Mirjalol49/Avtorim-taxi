@@ -32,6 +32,7 @@ import { ToastProvider, ToastContainer, useToast } from './components/ToastNotif
 import { ConfirmProvider } from './components/ConfirmContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Skeleton from './components/Skeleton';
+import PageSkeleton from './components/PageSkeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
 import DriversPage from './src/features/drivers/DriversPage';
 import NotesPage from './src/features/notes/NotesPage';
@@ -98,7 +99,6 @@ const AppContent: React.FC = () => {
   const {
     drivers,
     setDrivers,
-    loading: driversLoading,
     transactions,
     txLoading,
     notifications,
@@ -107,7 +107,7 @@ const AppContent: React.FC = () => {
     setNotifications,
     setReadNotificationIds,
     setUnreadCount,
-    loading: isDataLoading,
+    loading: contextDataLoading,
   } = useDataContext();
 
   const location = useLocation();
@@ -132,6 +132,7 @@ const AppContent: React.FC = () => {
 
   // Cars state
   const [cars, setCars] = useState<Car[]>([]);
+  const [carsLoading, setCarsLoading] = useState(true);
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
 
@@ -141,9 +142,23 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!carsFleetId) return;
-    const { unsubscribe } = subscribeToCars(setCars, carsFleetId);
-    return unsubscribe;
+    
+    setCarsLoading(true);
+    const timeout = setTimeout(() => setCarsLoading(false), 5000);
+
+    const { unsubscribe } = subscribeToCars((data) => {
+        clearTimeout(timeout);
+        setCars(data);
+        setCarsLoading(false);
+    }, carsFleetId);
+    
+    return () => {
+        clearTimeout(timeout);
+        unsubscribe();
+    };
   }, [carsFleetId]);
+
+  const isDataLoading = contextDataLoading || carsLoading;
 
 
 
@@ -365,11 +380,13 @@ const AppContent: React.FC = () => {
   };
 
   const handlePaySalary = async (driver: Driver, period: { year: number; month: number }) => {
+    const now = Date.now();
+    const periodKey = `${period.year}-${String(period.month + 1).padStart(2, '0')}`;
+
+    // Optimistic update
+    setDrivers(prev => prev.map(d => d.id === driver.id ? { ...d, lastSalaryPaidAt: now } : d));
+
     try {
-      const now = Date.now();
-      const periodKey = `${period.year}-${String(period.month + 1).padStart(2, '0')}`;
-      // Optimistic: mark driver as paid immediately
-      setDrivers(prev => prev.map(d => d.id === driver.id ? { ...d, lastSalaryPaidAt: now } : d));
       await firestoreService.addTransaction({
         driverId: driver.id,
         driverName: driver.name,
@@ -381,9 +398,13 @@ const AppContent: React.FC = () => {
         status: undefined,
         category: 'SALARY',
       } as any, adminUser?.id);
+
       await firestoreService.updateDriver(driver.id, { lastSalaryPaidAt: now } as any, adminUser?.id);
       addToast('success', t.salaryPaid || "Ish haqi to'landi");
-    } catch {
+    } catch (err) {
+      // Roll back optimistic update so UI stays consistent
+      setDrivers(prev => prev.map(d => d.id === driver.id ? { ...d, lastSalaryPaidAt: driver.lastSalaryPaidAt } : d));
+      console.error('[handlePaySalary] Failed:', err);
       addToast('error', t.paySalaryError || "Xatolik yuz berdi");
     }
   };
@@ -911,53 +932,61 @@ const AppContent: React.FC = () => {
 
             {/* FINANCE (ANALYTICS) COMPONENT */}
             <Route path="/finance" element={
-              <FinancePage
-                transactions={transactions}
-                drivers={drivers}
-                theme={theme}
-                isMobile={isMobile}
-              />
-
+              isDataLoading
+                ? <PageSkeleton theme={theme} variant="generic" />
+                : <FinancePage
+                    transactions={transactions}
+                    drivers={drivers}
+                    theme={theme}
+                    isMobile={isMobile}
+                  />
             } />
+
 
             {/* MONTHLY PLAN COMPONENT */}
             <Route path="/monthly-plan" element={
-              <MonthlyPlanPage
-                transactions={transactions}
-                drivers={drivers}
-                cars={cars}
-                theme={theme}
-                isMobile={isMobile}
-                onDayClick={(driverId, date) => {
-                  setTxInitialDriverId(driverId);
-                  setTxInitialDate(date);
-                  setIsTxModalOpen(true);
-                }}
-              />
+              isDataLoading
+                ? <PageSkeleton theme={theme} variant="generic" />
+                : <MonthlyPlanPage
+                    transactions={transactions}
+                    drivers={drivers}
+                    cars={cars}
+                    theme={theme}
+                    isMobile={isMobile}
+                    onDayClick={(driverId, date) => {
+                      setTxInitialDriverId(driverId);
+                      setTxInitialDate(date);
+                      setIsTxModalOpen(true);
+                    }}
+                  />
             } />
 
             {/* PAYROLL */}
             <Route path="/payroll" element={
-              <PayrollPage
-                drivers={drivers}
-                cars={cars}
-                transactions={transactions}
-                theme={theme}
-                userRole={userRole}
-                onPaySalary={handlePaySalary}
-              />
+              isDataLoading
+                ? <PageSkeleton theme={theme} variant="generic" />
+                : <PayrollPage
+                    drivers={drivers}
+                    cars={cars}
+                    transactions={transactions}
+                    theme={theme}
+                    userRole={userRole}
+                    onPaySalary={handlePaySalary}
+                  />
             } />
 
             {/* TRANSACTIONS COMPONENT */}
             <Route path="/transactions" element={
-              <TransactionsPage
-                transactions={transactions}
-                drivers={drivers}
-                cars={cars}
-                userRole={userRole}
-                adminUser={adminUser}
-                theme={theme}
-              />
+              isDataLoading
+                ? <PageSkeleton theme={theme} variant="transactions" />
+                : <TransactionsPage
+                    transactions={transactions}
+                    drivers={drivers}
+                    cars={cars}
+                    userRole={userRole}
+                    adminUser={adminUser}
+                    theme={theme}
+                  />
             } />
 
             {/* NOTES */}

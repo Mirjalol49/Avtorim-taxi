@@ -4,6 +4,7 @@ import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
+import { getEffectivePlanForDay } from '../cars/utils/planHistory';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -14,10 +15,11 @@ interface MonthRow {
     totalDays: number;
     workingDays: number;
     dailyPlan: number;
-    monthlyTarget: number;
+    monthlyTarget: number; // Full month plan (all days)
+    pastTarget: number;    // Elapsed days plan (for debt calculation)
     actualIncome: number;
-    remaining: number;     // positive = still owes, 0 or negative = done/overpaid
-    paidPercent: number;   // 0–100
+    remaining: number;     // positive = still owes, 0 or negative = done/overpaid (based on pastTarget)
+    paidPercent: number;   // 0–100 (based on pastTarget)
     isFutureMonth: boolean;
 }
 
@@ -35,7 +37,7 @@ interface DriverPlanSummaryProps {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fmt = (n: number) =>
-    new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+    `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
 
 const toMonthKey = (d: Date): string => {
     const y = d.getFullYear();
@@ -112,9 +114,41 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                     toMonthKey(new Date(tx.timestamp)) === mk
                 ).length;
 
-                // Dynamic working days: elapsed days minus actual recorded day-offs
-                const workingDays = Math.max(0, effectiveDays - daysOff);
-                const monthlyTarget = dailyPlan * workingDays;
+                // ── Historically-correct monthly target ─────────────────────────────
+                // Instead of flat dailyPlan * workingDays, sum the plan that was
+                // effective on each individual day, factoring in DAY_OFF txs and dayOverrides.
+                const [mkYear, mkMonth] = mk.split('-').map(Number);
+                let monthlyTarget = 0;
+                let pastTarget = 0;
+                let actualWorkingDays = 0; // count days that had a >0 plan
+                
+                for (let d = 1; d <= totalDays; d++) {
+                    const dayDate = new Date(mkYear, mkMonth - 1, d);
+                    const isDayOffTx = transactions.some(tx =>
+                        tx.driverId === driver.id &&
+                        tx.type === TransactionType.DAY_OFF &&
+                        tx.status !== PaymentStatus.DELETED &&
+                        (tx as any).status !== 'DELETED' &&
+                        toMonthKey(new Date(tx.timestamp)) === mk &&
+                        new Date(tx.timestamp).getDate() === d
+                    );
+                    
+                    let planForDay = 0;
+                    if (!isDayOffTx) {
+                        planForDay = getEffectivePlanForDay(car, dayDate);
+                    }
+                    
+                    monthlyTarget += planForDay;
+                    if (d <= effectiveDays) {
+                        pastTarget += planForDay;
+                        if (planForDay > 0) actualWorkingDays++;
+                    }
+                }
+
+                // dailyPlan shown in UI header = the current plan on the car
+                const dailyPlan = car?.dailyPlan ?? 0;
+                // workingDays is still used for the summary card display
+                const workingDays = actualWorkingDays;
 
                 const actualIncome = transactions
                     .filter(tx =>
@@ -126,12 +160,12 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                     )
                     .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
-                const remaining = monthlyTarget - actualIncome;
-                const paidPercent = monthlyTarget > 0
-                    ? Math.min(100, Math.round((actualIncome / monthlyTarget) * 100))
+                const remaining = pastTarget - actualIncome;
+                const paidPercent = pastTarget > 0
+                    ? Math.min(100, Math.round((actualIncome / pastTarget) * 100))
                     : 0;
 
-                result.push({ driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, actualIncome, remaining, paidPercent, isFutureMonth });
+                result.push({ driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, pastTarget, actualIncome, remaining, paidPercent, isFutureMonth });
             }
         }
         return result;
@@ -147,7 +181,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 
     const totalTarget = rows.reduce((s, r) => s + r.monthlyTarget, 0);
     const totalActual = rows.reduce((s, r) => s + r.actualIncome, 0);
-    const totalRemaining = totalTarget - totalActual;
+    const totalRemaining = rows.reduce((s, r) => s + r.remaining, 0); // use per-row remaining sum
     const currentMonthKey = months[0] || toMonthKey(new Date());
 
     return (

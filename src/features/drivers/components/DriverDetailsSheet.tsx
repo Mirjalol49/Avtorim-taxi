@@ -7,6 +7,8 @@ import { calcDriverFinance, DriverFinanceSummary } from '../utils/debtUtils';
 import {
     XIcon, EditIcon, TrashIcon, PhoneIcon, CarIcon, NotesIcon,
 } from '../../../../components/Icons';
+import { DriverHistoryPage } from './DriverHistoryPage';
+import { DriverAvatar } from './DriverAvatar';
 
 interface Props {
     driver: Driver | null;
@@ -47,7 +49,7 @@ const TX_TYPE_LABEL: Record<string,string> = {
     INCOME:'Kirim', EXPENSE:'Chiqim', DAY_OFF:"Ta'til", DEBT:'Qarz',
 };
 
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 const fmtDisp = (v: string) => v.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 
 function getFriendlyDocName(doc: any): string {
@@ -92,6 +94,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const [activeTab,      setActiveTab]       = useState<'info'|'history'>('info');
     const [filterMonth,    setFilterMonth]     = useState<string>('all');
     const [expandedMonths, setExpandedMonths]  = useState<Set<string>>(new Set());
+    const [showHistory,    setShowHistory]     = useState(false);
 
     // Top-up form
     const [showTopUp,    setShowTopUp]    = useState(false);
@@ -255,14 +258,14 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     {/* ══ HEADER ══════════════════════════════════════════════ */}
                     <div className={`flex-shrink-0 flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b ${bdr}`}>
                         <div className="flex items-center gap-4 min-w-0">
-                            {driver.avatar ? (
-                                <img src={driver.avatar} alt={driver.name}
-                                    className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 ring-2 ring-black/10" />
-                            ) : (
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black flex-shrink-0 ${isDark ? 'bg-white/[0.06] text-white/40' : 'bg-gray-100 text-gray-400'}`}>
-                                    {driver.name.charAt(0)}
-                                </div>
-                            )}
+                            <DriverAvatar
+                                src={driver.avatar}
+                                name={driver.name}
+                                size={56}
+                                theme={theme}
+                                rounded="2xl"
+                                className="flex-shrink-0 ring-2 ring-black/10"
+                            />
                             <div className="min-w-0">
                                 <h2 className={`text-lg font-bold truncate ${txt}`}>{driver.name}</h2>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -545,199 +548,64 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     {/* ── HISTORY TAB ── */}
                     {activeTab === 'history' && (
                         <div className="p-5 space-y-3">
-                            {monthGroups.length === 0 ? (
-                                <div className={`flex flex-col items-center justify-center py-16 gap-3 ${muted}`}>
-                                    <span className="text-4xl">📊</span>
+                            {/* Launch pad — 3 section buttons */}
+                            <button
+                                onClick={() => setShowHistory(true)}
+                                className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-[0.98] ${isDark ? 'border-teal-500/20 bg-teal-500/[0.06] hover:bg-teal-500/10' : 'border-teal-200 bg-teal-50 hover:bg-teal-100'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">📋</span>
+                                    <div className="text-left">
+                                        <p className={`text-[14px] font-black ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>Tranzaksiyalar tarixi</p>
+                                        <p className={`text-[11px] ${muted}`}>Barcha kirim / chiqim yozuvlari</p>
+                                    </div>
+                                </div>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isDark ? 'text-teal-400' : 'text-teal-600'}>
+                                    <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                            </button>
+
+                            {dt !== 'salary' && (
+                                <button
+                                    onClick={() => setShowHistory(true)}
+                                    className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-[0.98] ${isDark ? 'border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/10' : 'border-amber-200 bg-amber-50 hover:bg-amber-100'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-2xl">🏦</span>
+                                        <div className="text-left">
+                                            <p className={`text-[14px] font-black ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Depozit tarixi</p>
+                                            <p className={`text-[11px] ${muted}`}>To'ldirish va sarflash ledgeri</p>
+                                        </div>
+                                    </div>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isDark ? 'text-amber-400' : 'text-amber-600'}>
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </button>
+                            )}
+
+                            {dt === 'salary' && (
+                                <button
+                                    onClick={() => setShowHistory(true)}
+                                    className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-[0.98] ${isDark ? 'border-violet-500/20 bg-violet-500/[0.06] hover:bg-violet-500/10' : 'border-violet-200 bg-violet-50 hover:bg-violet-100'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-2xl">💳</span>
+                                        <div className="text-left">
+                                            <p className={`text-[14px] font-black ${isDark ? 'text-violet-400' : 'text-violet-700'}`}>Maosh tarixi</p>
+                                            <p className={`text-[11px] ${muted}`}>Oylik maosh to'lovlari</p>
+                                        </div>
+                                    </div>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isDark ? 'text-violet-400' : 'text-violet-600'}>
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </button>
+                            )}
+
+                            {monthGroups.length === 0 && (
+                                <div className={`flex flex-col items-center justify-center py-8 gap-2 ${muted}`}>
+                                    <span className="text-3xl">📊</span>
                                     <p className="text-sm font-medium">Tranzaksiyalar yo'q</p>
                                 </div>
-                            ) : (
-                                <>
-                                    {/* Month filter chips */}
-                                    <div className="flex gap-2 overflow-x-auto pb-1">
-                                        {[{ key: 'all', label: 'Hammasi' }, ...monthGroups.map(g => ({ key: g.monthKey, label: g.label }))].map(({ key, label }) => (
-                                            <button
-                                                key={key}
-                                                onClick={() => { setFilterMonth(key); if (key !== 'all') setExpandedMonths(new Set([key])); }}
-                                                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors border ${
-                                                    filterMonth === key
-                                                        ? isDark ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-teal-100 text-teal-700 border-teal-300'
-                                                        : isDark ? 'bg-white/[0.05] text-white/40 border-white/[0.06]' : 'bg-gray-100 text-gray-500 border-gray-200'
-                                                }`}
-                                            >
-                                                {label}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Month cards */}
-                                    {visibleGroups.map(group => {
-                                        const isExpanded = expandedMonths.has(group.monthKey);
-                                        const net = group.planIncome + group.topUps - group.expense;
-                                        const barColor = group.paidPercent >= 80 ? '#22c55e' : group.paidPercent >= 50 ? '#3b82f6' : '#f43f5e';
-                                        return (
-                                            <div key={group.monthKey} className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.07] bg-white/[0.02]' : 'border-gray-200 bg-white shadow-sm'}`}>
-                                                {/* Month header */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleMonth(group.monthKey)}
-                                                    className={`w-full text-left px-4 pt-4 pb-3 transition-colors ${isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-gray-50'}`}
-                                                >
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <span className={`text-[14px] font-black ${txt}`}>{group.label}</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-[12px] font-bold font-mono ${net >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                                                {net >= 0 ? '+' : ''}{fmt(net)}
-                                                            </span>
-                                                            <span className={`text-[10px] transition-transform duration-200 ${muted} ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
-                                                        </div>
-                                                    </div>
-                                                    {/* Stats */}
-                                                    <div className="flex items-center gap-4 mb-3">
-                                                        <div>
-                                                            <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>To'lov</p>
-                                                            <p className="text-[13px] font-black font-mono text-green-500">{fmt(group.planIncome)}</p>
-                                                            {group.topUps > 0 && <p className="text-[9px] font-bold font-mono text-amber-400">+{fmt(group.topUps)} dep</p>}
-                                                        </div>
-                                                        <div>
-                                                            <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Chiqim</p>
-                                                            <p className="text-[13px] font-black font-mono text-red-400">{fmt(group.expense)}</p>
-                                                        </div>
-                                                        {group.monthlyTarget > 0 && (
-                                                            <div className="ml-auto text-right">
-                                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Plan</p>
-                                                                <p className={`text-[13px] font-black font-mono ${sub}`}>{fmt(group.monthlyTarget)}</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {group.monthlyTarget > 0 && (
-                                                        <div>
-                                                            <div className="flex justify-between mb-1">
-                                                                <span className={`text-[10px] font-semibold ${muted}`}>{group.paidPercent}% to'langan</span>
-                                                                {group.planIncome < group.monthlyTarget && <span className="text-[10px] font-bold text-red-400">−{fmt(group.monthlyTarget - group.planIncome)}</span>}
-                                                                {group.overpayment > 0 && <span className="text-[10px] font-bold text-green-500">+{fmt(group.overpayment)} ortiq</span>}
-                                                            </div>
-                                                            <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
-                                                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${group.paidPercent}%`, background: barColor }} />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </button>
-
-                                                {/* Transactions */}
-                                                {isExpanded && (
-                                                    <div className={`border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                                                        {finance && (() => {
-                                                            const fm = finance.months.find(m => m.monthKey === group.monthKey);
-                                                            if (!fm) return null;
-                                                            const hasDeductions = fm.shortfall > 0 || fm.expenses > 0 || fm.debts > 0;
-                                                            const hasCredits    = fm.overpayment > 0 || fm.topUps > 0;
-                                                            if (!hasDeductions && !hasCredits && finance.depositAmount === 0) return null;
-                                                            return (
-                                                                <div className={`mx-3 my-3 rounded-xl border overflow-hidden ${isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-gray-50'}`}>
-                                                                    <div className={`px-3 py-2 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                                                                        <p className={`text-[10px] font-black uppercase tracking-widest ${muted}`}>
-                                                                            {finance.driverType === 'deposit' ? '🏦 Depozit harakati' : '💳 Maosh harakati'}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="px-3 py-2 space-y-1.5">
-                                                                        {fm.shortfall > 0 && (
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className={`text-[11px] ${sub}`}>⚠ Reja bajarilmadi</span>
-                                                                                <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.shortfall)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {fm.expenses > 0 && (
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className={`text-[11px] ${sub}`}>📤 Xarajatlar</span>
-                                                                                <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.expenses)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {fm.debts > 0 && (
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className={`text-[11px] ${sub}`}>🔴 Qarzlar</span>
-                                                                                <span className="text-[11px] font-bold font-mono text-red-400">−{fmt(fm.debts)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {fm.overpayment > 0 && (
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className={`text-[11px] ${sub}`}>⬆ Ortiqcha to'lov</span>
-                                                                                <span className="text-[11px] font-bold font-mono text-green-500">+{fmt(fm.overpayment)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {fm.topUps > 0 && (
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className={`text-[11px] ${sub}`}>🏦 Depozit to'ldirildi</span>
-                                                                                <span className="text-[11px] font-bold font-mono text-amber-400">+{fmt(fm.topUps)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        <div className={`pt-1.5 mt-1 border-t flex justify-between items-center ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                                                                            {finance.driverType === 'deposit' ? (
-                                                                                <>
-                                                                                    <span className={`text-[10px] font-bold ${muted}`}>Oy oxirida depozit</span>
-                                                                                    <span className={`text-[12px] font-black font-mono ${fm.depositAfter >= 0 ? 'text-green-500' : 'text-red-400'}`}>{fmt(fm.depositAfter)} UZS</span>
-                                                                                </>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <span className={`text-[10px] font-bold ${muted}`}>Sof maosh</span>
-                                                                                    <span className={`text-[12px] font-black font-mono ${fm.netSalary > 0 ? 'text-green-500' : 'text-red-400'}`}>{fmt(fm.netSalary)} UZS</span>
-                                                                                </>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })()}
-
-                                                        {group.txs.map((tx, i) => {
-                                                            const isIncome = tx.type === TransactionType.INCOME;
-                                                            const method   = (tx.paymentMethod ?? '') as string;
-                                                            return (
-                                                                <div
-                                                                    key={tx.id}
-                                                                    className={`flex items-center gap-3 px-4 py-3 ${i < group.txs.length - 1 ? `border-b ${isDark ? 'border-white/[0.04]' : 'border-gray-50'}` : ''} ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'} transition-colors`}
-                                                                >
-                                                                    <div className={`flex-shrink-0 w-10 text-center rounded-xl py-1.5 ${isDark ? 'bg-white/[0.05]' : 'bg-gray-100'}`}>
-                                                                        <p className={`text-[11px] font-black ${sub}`}>{new Date(tx.timestamp).getDate()}</p>
-                                                                        <p className={`text-[9px] font-bold ${muted}`}>{MONTH_SHORT_UZ[new Date(tx.timestamp).getMonth()]}</p>
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                                            {tx.category === 'deposit_topup' ? (
-                                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>🏦 Depozit +</span>
-                                                                            ) : (
-                                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                                                                                    isIncome
-                                                                                        ? isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-600'
-                                                                                        : isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'
-                                                                                }`}>{TX_TYPE_LABEL[tx.type] ?? tx.type}</span>
-                                                                            )}
-                                                                            {method && METHOD_LABEL[method] && (
-                                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? METHOD_COLOR[method] ?? 'bg-white/[0.06] text-white/40' : 'bg-gray-100 text-gray-500'}`}>
-                                                                                    {METHOD_LABEL[method]}
-                                                                                </span>
-                                                                            )}
-                                                                            {(tx as any).useDeposit && (
-                                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>🏦 depozitdan</span>
-                                                                            )}
-                                                                        </div>
-                                                                        {tx.description && <p className={`text-[11px] mt-0.5 truncate ${muted}`}>{tx.description}</p>}
-                                                                        <p className={`text-[10px] ${isDark ? 'text-white/20' : 'text-gray-300'}`}>{fmtTime(tx.timestamp)}</p>
-                                                                    </div>
-                                                                    <div className="flex-shrink-0 text-right">
-                                                                        <p className={`text-[13px] font-black font-mono tabular-nums ${tx.category === 'deposit_topup' ? 'text-amber-400' : isIncome ? 'text-green-500' : 'text-red-400'}`}>
-                                                                            {isIncome ? '+' : '−'}{fmt(Math.abs(tx.amount))}
-                                                                        </p>
-                                                                        <p className={`text-[9px] ${muted}`}>UZS</p>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </>
                             )}
                         </div>
                     )}
@@ -775,6 +643,16 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     </div>
                 </div>,
                 document.body
+            )}
+            {/* DriverHistoryPage — full-screen slide-over */}
+            {showHistory && driver && (
+                <DriverHistoryPage
+                    driver={driver}
+                    car={car}
+                    transactions={transactions}
+                    theme={theme}
+                    onClose={() => setShowHistory(false)}
+                />
             )}
         </>,
         document.body

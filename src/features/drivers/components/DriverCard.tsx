@@ -5,6 +5,7 @@ import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CarIcon, ChevronRightIcon } from '../../../../components/Icons';
 import { calcDriverFinance } from '../utils/debtUtils';
+import { DriverAvatar } from './DriverAvatar';
 
 interface DriverCardProps {
     driver: Driver;
@@ -20,7 +21,7 @@ interface DriverCardProps {
     onCardClick?: (driver: Driver) => void;
 }
 
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
 export const DriverCard: React.FC<DriverCardProps> = ({
     driver, car, transactions, theme, userRole, onEdit, onDelete, onCardClick,
@@ -120,20 +121,15 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                 {/* Row 1: Avatar · Name/Phone · Type badge + real balance */}
                 <div className="flex items-center gap-3.5">
 
-                    {/* Round avatar — no status dot */}
-                    <div className={`w-[54px] h-[54px] rounded-full overflow-hidden flex-shrink-0 ring-2 ${
-                        isDark ? 'ring-white/[0.07]' : 'ring-black/[0.05]'
-                    }`}>
-                        {driver.avatar ? (
-                            <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className={`w-full h-full flex items-center justify-center text-xl font-black select-none ${
-                                isDark ? 'bg-[#1a2840] text-gray-400' : 'bg-gray-100 text-gray-500'
-                            }`}>
-                                {driver.name.charAt(0).toUpperCase()}
-                            </div>
-                        )}
-                    </div>
+                    {/* Round avatar */}
+                    <DriverAvatar
+                        src={driver.avatar}
+                        name={driver.name}
+                        size={54}
+                        theme={theme}
+                        rounded="full"
+                        className={`ring-2 ${isDark ? 'ring-white/[0.07]' : 'ring-black/[0.05]'}`}
+                    />
 
                     {/* Name + phone */}
                     <div className="flex-1 min-w-0">
@@ -184,7 +180,13 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         isDark ? 'bg-[#1a2840] border border-white/[0.06]' : 'bg-gray-100 border border-gray-200'
                     }`}>
                         {car?.avatar ? (
-                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                            <DriverAvatar
+                                src={car.avatar}
+                                name={car.name}
+                                size={36}
+                                theme={theme}
+                                rounded="xl"
+                            />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center">
                                 <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />

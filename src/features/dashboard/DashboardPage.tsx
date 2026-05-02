@@ -285,13 +285,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-surface-2 text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
                                                     }
                                                 </div>
-                                                {i < 3 && !statusSearch && (
-                                                    <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black border ${
-                                                        i === 0 ? 'bg-yellow-400 text-yellow-900 border-yellow-300'
-                                                        : i === 1 ? 'bg-gray-300 text-gray-700 border-gray-200'
-                                                        : 'bg-amber-600 text-white border-amber-500'
-                                                    }`}>{i + 1}</span>
-                                                )}
                                             </div>
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">

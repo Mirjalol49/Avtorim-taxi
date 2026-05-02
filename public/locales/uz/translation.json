@@ -281,6 +281,7 @@
   "paymentsLate": "To'lovlar kechikmoqda",
   "totalPaidAmount": "Jami To'ladi",
   "currentDebt": "Hozirgi Qarz",
+  "prepaidAmount": "Oldindan To'lov",
   "workingDays": "Ish Kunlari",
   "incomeProgress": "Tushum progressi",
   "noCar": "Avtomobil yo'q",

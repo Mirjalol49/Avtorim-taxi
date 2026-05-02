@@ -286,9 +286,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             value={filters.type}
                             onChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
                             options={[
-                                { id: 'all', name: t('transactions') },
-                                { id: TransactionType.INCOME, name: t('income') },
-                                { id: TransactionType.EXPENSE, name: t('expense') }
+                                { id: 'all',                      name: t('transactions') },
+                                { id: TransactionType.INCOME,     name: t('income') },
+                                { id: TransactionType.EXPENSE,    name: t('expense') },
+                                { id: TransactionType.DAY_OFF,    name: `🏝️ ${t('legendDayOff') || 'Dam olish kuni'}` },
                             ]}
                             theme={theme}
                             icon={FilterIcon}
@@ -405,7 +406,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             )}
                                             <td className="px-6 py-4">
                                                 <div className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                                <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{new Date(tx.timestamp).toLocaleDateString()}</div>
+                                                <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{new Date(tx.timestamp).toLocaleDateString('en-GB')}</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">

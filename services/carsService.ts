@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { Car } from '../src/core/types';
+import { appendPlanChange, buildInitialPlanHistory } from '../src/features/cars/utils/planHistory';
 
 const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now());
 
@@ -22,6 +23,8 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                     documents: r.documents ?? [],
                     assignedDriverId: r.assigned_driver_id ?? null,
                     dailyPlan: r.daily_plan ?? 0,
+                    planHistory: r.plan_history ?? [],
+                    dayOverrides: r.day_overrides ?? undefined,  // safe: undefined until migration runs
                     isDeleted: r.is_deleted,
                     createdAt: toMs(r.created_ms),
                 } as Car)));
@@ -45,6 +48,9 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
 };
 
 export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {
+    const createdAt = Date.now();
+    const planHistory = buildInitialPlanHistory(car.dailyPlan ?? 0, createdAt);
+
     const { data, error } = await supabase
         .from('cars')
         .insert({
@@ -55,8 +61,10 @@ export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {
             documents: car.documents ?? [],
             assigned_driver_id: null,
             daily_plan: car.dailyPlan ?? 0,
+            plan_history: planHistory,
+            // day_overrides omitted — handled by DB DEFAULT '{}' after migration
             is_deleted: false,
-            created_ms: Date.now(),
+            created_ms: createdAt,
         })
         .select('id')
         .single();
@@ -71,7 +79,29 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.avatar !== undefined) payload.avatar = car.avatar;
     if (car.documents !== undefined) payload.documents = car.documents;
     if ('assignedDriverId' in car) payload.assigned_driver_id = car.assignedDriverId ?? null;
-    if (car.dailyPlan !== undefined) payload.daily_plan = car.dailyPlan;
+
+    // ── Plan change: append to history instead of just overwriting ──────────
+    if (car.dailyPlan !== undefined) {
+        payload.daily_plan = car.dailyPlan;
+
+        // Fetch current plan_history + created_ms to correctly append
+        const { data: current } = await supabase
+            .from('cars')
+            .select('daily_plan, plan_history, created_ms')
+            .eq('id', id)
+            .single();
+
+        if (current) {
+            const newHistory = appendPlanChange(
+                current.plan_history ?? [],
+                car.dailyPlan,
+                current.daily_plan ?? 0,
+                toMs(current.created_ms),
+            );
+            payload.plan_history = newHistory;
+        }
+    }
+
     const { error } = await supabase.from('cars').update(payload).eq('id', id);
     if (error) throw error;
 
@@ -104,5 +134,27 @@ export const unassignCar = async (carId: string) => {
 
 export const deleteCar = async (id: string) => {
     const { error } = await supabase.from('cars').update({ is_deleted: true, assigned_driver_id: null }).eq('id', id);
+    if (error) throw error;
+};
+
+export const setDayOverride = async (carId: string, dateKey: string, override: import('../src/core/types/car.types').DayOverride) => {
+    const { data: current } = await supabase.from('cars').select('day_overrides').eq('id', carId).single();
+    if (!current) throw new Error('Car not found');
+
+    const overrides = current.day_overrides || {};
+    overrides[dateKey] = override;
+
+    const { error } = await supabase.from('cars').update({ day_overrides: overrides }).eq('id', carId);
+    if (error) throw error;
+};
+
+export const clearDayOverride = async (carId: string, dateKey: string) => {
+    const { data: current } = await supabase.from('cars').select('day_overrides').eq('id', carId).single();
+    if (!current) throw new Error('Car not found');
+
+    const overrides = current.day_overrides || {};
+    delete overrides[dateKey];
+
+    const { error } = await supabase.from('cars').update({ day_overrides: overrides }).eq('id', carId);
     if (error) throw error;
 };

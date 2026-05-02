@@ -5,14 +5,16 @@ import { XIcon } from '../../../../components/Icons';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { PaymentStatus } from '../../../core/types/transaction.types';
+import { getEffectivePlanForDay, isDayOverrideOff } from '../../cars/utils/planHistory';
+import { setDayOverride, clearDayOverride } from '../../../../services/carsService';
 
 export interface DriverPlanMonthInfo {
     driver: Driver;
-    car: Car | null;
+    car: Car | null;      // needed for getPlanForDate historical lookup
     monthKey: string;
     totalDays: number;
     workingDays: number;
-    dailyPlan: number;
+    dailyPlan: number;    // current plan (for header display only)
     monthlyTarget: number;
     actualIncome: number;
     remaining: number;
@@ -28,9 +30,10 @@ interface Props {
     onDayClick?: (driverId: string, date: Date) => void;
 }
 
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
 
-type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE';
+
+type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' | 'FUTURE_OFF' | 'FUTURE_DISCOUNT';
 
 const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     if (status === 'PAID') return (
@@ -60,6 +63,12 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
             <line x1="15" y1="9" x2="15.01" y2="9" />
         </svg>
     );
+    if (status === 'FUTURE_OFF') return (
+        <span className="text-[12px] leading-none">🏝️</span>
+    );
+    if (status === 'FUTURE_DISCOUNT') return (
+        <span className="text-[10px] font-black bg-orange-500/20 text-orange-500 px-1 rounded">-%</span>
+    );
     return null;
 };
 
@@ -67,6 +76,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
     const { t } = useTranslation();
     const isDark = theme === 'dark';
     const monthNames = t('months', { returnObjects: true }) as string[];
+    
+    const [overrideDate, setOverrideDate] = React.useState<Date | null>(null);
+    const [overrideLoading, setOverrideLoading] = React.useState(false);
+    const [overrideError, setOverrideError] = React.useState<string | null>(null);
+    const [customPlanStr, setCustomPlanStr] = React.useState('');
 
     const todayStr = useMemo(() => {
         const now = new Date();
@@ -95,6 +109,12 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             const date = new Date(year, month, d);
             const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
+            // ── Historically-correct plan for THIS specific day ───────────────────
+            // Uses the planHistory snapshot to find what plan was active on `date`,
+            // and applies any per-day overrides.
+            const planForDay = getEffectivePlanForDay(monthData.car, date);
+            const isOverrideOff = isDayOverrideOff(monthData.car, date);
+
             const sumTushum = transactions
                 .filter(tx =>
                     tx.driverId === monthData.driver.id &&
@@ -105,21 +125,29 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 )
                 .reduce((acc, tx) => acc + Math.abs(tx.amount), 0);
 
-            const isDayOff = transactions.some(tx =>
+            const isDayOffTx = transactions.some(tx =>
                 tx.driverId === monthData.driver.id &&
                 tx.type === 'DAY_OFF' &&
                 toLocalDateStr(tx.timestamp) === dayStr
             );
 
-            // A day with a recorded payment is always PAID or PARTIAL — even if the
-            // calendar date is technically in the future. Only show FUTURE for days
-            // that have no income at all yet.
             const isFuture = date.getTime() > Date.now();
             let status: DayStatus = 'UNPAID';
-            if (isDayOff) status = 'DAY_OFF';
-            else if (sumTushum >= monthData.dailyPlan) status = 'PAID';
-            else if (sumTushum > 0) status = 'PARTIAL';
-            else if (isFuture) status = 'FUTURE';
+
+            if (isDayOffTx || isOverrideOff) {
+                // Explicit day-off always wins
+                status = isFuture ? 'FUTURE_OFF' : 'DAY_OFF';
+            } else if (planForDay > 0 && sumTushum >= planForDay) {
+                // Fully paid — show regardless of whether date is future
+                status = 'PAID';
+            } else if (sumTushum > 0) {
+                // Partially paid — show regardless of whether date is future
+                status = 'PARTIAL';
+            } else if (isFuture) {
+                // No income yet, genuinely future → show override type or plain future
+                const override = monthData.car?.dayOverrides?.[dayStr];
+                status = override?.type === 'DISCOUNT' ? 'FUTURE_DISCOUNT' : 'FUTURE';
+            }
 
             return {
                 day: d,
@@ -127,7 +155,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 dayStr,
                 status,
                 income: sumTushum,
-                debt: status !== 'FUTURE' ? Math.max(0, monthData.dailyPlan - sumTushum) : 0,
+                // debt: show whenever income exists (even on a future-dated tx), but not for day-off or plain future
+                debt: (sumTushum > 0 || !isFuture) && status !== 'DAY_OFF' && status !== 'FUTURE' && status !== 'FUTURE_OFF'
+                    ? Math.max(0, planForDay - sumTushum)
+                    : 0,
+                planForDay,
             };
         });
     }, [monthData, transactions]);
@@ -148,12 +180,12 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 ? 'bg-surface-2 border-2 border-blue-500 shadow-[0_0_0_2px_rgba(59,130,246,0.15)]'
                 : 'bg-white border-2 border-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.10)]';
         }
-        if (status === 'FUTURE') {
+        if (status === 'FUTURE' || status === 'FUTURE_DISCOUNT') {
             return isDark
-                ? 'bg-surface border border-white/[0.04] opacity-40'
-                : 'bg-gray-50/70 border border-gray-100 opacity-60';
+                ? 'bg-surface border border-white/[0.04] opacity-50 hover:opacity-100 hover:border-white/[0.12]'
+                : 'bg-gray-50/70 border border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300';
         }
-        if (status === 'DAY_OFF') {
+        if (status === 'DAY_OFF' || status === 'FUTURE_OFF') {
             return isDark
                 ? 'bg-surface-2 border border-blue-500/20'
                 : 'bg-slate-50 border border-slate-200';
@@ -164,24 +196,36 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-            {/* Backdrop */}
-            <div
-                className={`absolute inset-0 transition-opacity duration-300 ${isDark ? 'bg-black/75 backdrop-blur-md' : 'bg-gray-900/40 backdrop-blur-sm'}`}
-                onClick={onClose}
-            />
-
-            <div
-                className={`relative w-full max-w-6xl h-full max-h-[92vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border ${
-                    isDark ? 'bg-[#0b1326] border-white/[0.08]' : 'bg-[#faf8ff] border-gray-200'
-                }`}
-            >
-                {/* ── Header ── */}
-                <div
-                    className={`flex items-center justify-between px-5 py-4 sm:px-6 sm:py-5 border-b flex-shrink-0 ${
-                        isDark ? 'border-white/[0.06] bg-surface' : 'border-gray-100 bg-white'
+        <div className={`fixed inset-0 z-[100] flex flex-col overflow-y-auto animate-in slide-in-from-bottom-8 duration-300 ${
+            isDark ? 'bg-[#0b1326]' : 'bg-[#faf8ff]'
+        }`}>
+            {/* ── Top Navigation Bar ── */}
+            <div className={`sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 h-16 border-b backdrop-blur-xl flex-shrink-0 ${
+                isDark ? 'bg-[#0b1326]/80 border-white/[0.06]' : 'bg-[#faf8ff]/80 border-gray-200'
+            }`}>
+                <button
+                    onClick={onClose}
+                    className={`flex items-center gap-2 px-3 py-2 -ml-3 rounded-xl transition-colors font-semibold ${
+                        isDark ? 'text-blue-400 hover:bg-blue-500/10' : 'text-blue-600 hover:bg-blue-50'
                     }`}
                 >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                    {t('back', 'Orqaga')}
+                </button>
+                <div className={`font-bold text-sm sm:text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}
+                </div>
+                <div className="w-20" /> {/* Spacer to center title */}
+            </div>
+
+            {/* ── Content Container ── */}
+            <div className="w-full max-w-6xl mx-auto px-4 py-6 sm:px-6 space-y-6 sm:space-y-8 flex-1">
+                {/* ── Profile Header ── */}
+                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl border ${
+                    isDark ? 'bg-surface border-white/[0.06] shadow-sm' : 'bg-white border-gray-200 shadow-sm'
+                }`}>
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         {monthData.driver.avatar ? (
                             <img
@@ -196,30 +240,18 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         )}
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <h2 className={`text-lg sm:text-xl font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                <h2 className={`text-xl sm:text-2xl font-black tracking-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                     {monthData.driver.name}
                                 </h2>
-                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full flex-shrink-0 ${isDark ? 'bg-surface-3 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-                                    {monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}
-                                </span>
                             </div>
-                            <p className={`text-xs sm:text-sm font-medium mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                {t('dailyPlan')}: <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{fmt(monthData.dailyPlan)} UZS</span> {t('dailyPlanUnit')}
+                            <p className={`text-sm font-medium mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {t('dailyPlan')}: <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{fmt(monthData.dailyPlan)} UZS</span> / {t('dailyPlanUnit')}
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className={`w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-colors ml-2 ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.06]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
-                    >
-                        <XIcon className="w-5 h-5" />
-                    </button>
                 </div>
 
-                {/* ── Content ── */}
-                <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 space-y-5">
-
-                    {/* Stats row */}
+                {/* ── Stats row ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {/* Monthly plan */}
                         <div className={`p-4 rounded-2xl ${isDark ? 'bg-surface border border-white/[0.06]' : 'bg-white border border-gray-200'}`}>
@@ -231,17 +263,39 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('totalPaidAmount')}</p>
                             <p className={`text-xl font-black font-mono tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{fmt(monthData.actualIncome)}</p>
                         </div>
-                        {/* Debt */}
-                        <div className={`p-4 rounded-2xl ${
+                        {/* Debt / Prepaid card — title changes dynamically */}
+                        <div className={`p-4 rounded-2xl transition-colors ${
                             monthData.remaining <= 0
                                 ? isDark ? 'bg-emerald-500/[0.08] border border-emerald-500/[0.15]' : 'bg-emerald-50 border border-emerald-200'
                                 : isDark ? 'bg-red-500/[0.08] border border-red-500/[0.15]' : 'bg-red-50 border border-red-200'
                         }`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${monthData.remaining <= 0 ? isDark ? 'text-emerald-400' : 'text-emerald-600' : isDark ? 'text-red-400' : 'text-red-600'}`}>
-                                {t('currentDebt')}
+                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1 ${
+                                monthData.remaining <= 0
+                                    ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                                    : isDark ? 'text-red-400' : 'text-red-600'
+                            }`}>
+                                {monthData.remaining <= 0 ? (
+                                    <>
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
+                                        </svg>
+                                        {t('prepaidAmount')}
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />
+                                        </svg>
+                                        {t('currentDebt') ?? 'Hozirgi Qarz'}
+                                    </>
+                                )}
                             </p>
-                            <p className={`text-xl font-black font-mono tabular-nums ${monthData.remaining <= 0 ? isDark ? 'text-emerald-400' : 'text-emerald-600' : isDark ? 'text-red-400' : 'text-red-600'}`}>
-                                {monthData.remaining > 0 ? fmt(monthData.remaining) : `+${fmt(-monthData.remaining)}`}
+                            <p className={`text-xl font-black font-mono tabular-nums ${
+                                monthData.remaining <= 0
+                                    ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                                    : isDark ? 'text-red-400' : 'text-red-600'
+                            }`}>
+                                {monthData.remaining > 0 ? `-${fmt(monthData.remaining)}` : `+${fmt(-monthData.remaining)}`}
                             </p>
                         </div>
                         {/* Working days */}
@@ -310,13 +364,18 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
 
                             {days.map((d) => {
                                 const isToday = d.dayStr === todayStr;
-                                const isClickable = d.status !== 'FUTURE';
+                                const isFuture = d.status.startsWith('FUTURE');
+                                const isClickable = true; // all days clickable now
 
                                 return (
                                     <div
                                         key={d.day}
                                         onClick={() => {
-                                            if (onDayClick && isClickable) {
+                                            if (isFuture) {
+                                                setOverrideDate(d.date);
+                                                const existingOverride = monthData.car?.dayOverrides?.[d.dayStr];
+                                                setCustomPlanStr(existingOverride?.type === 'DISCOUNT' ? String(existingOverride.customPlan || '') : '');
+                                            } else if (onDayClick && isClickable) {
                                                 const [year, month] = monthData.monthKey.split('-').map(Number);
                                                 onDayClick(monthData.driver.id, new Date(year, month - 1, d.day));
                                             }
@@ -333,8 +392,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                 </span>
                                             ) : (
                                                 <span className={`text-[11px] sm:text-xs font-semibold ${
-                                                    d.status === 'FUTURE'
-                                                        ? isDark ? 'text-gray-700' : 'text-gray-300'
+                                                    d.status.startsWith('FUTURE')
+                                                        ? isDark ? 'text-gray-600' : 'text-gray-400'
                                                         : isDark ? 'text-gray-500' : 'text-gray-400'
                                                 }`}>
                                                     {d.day}
@@ -347,7 +406,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         </div>
 
                                         {/* Cell body */}
-                                        {d.status === 'DAY_OFF' ? (
+                                        {d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' ? (
                                             <div className="flex flex-col items-center justify-center flex-1 gap-1 mt-1">
                                                 <span className="text-lg sm:text-xl leading-none">🏝️</span>
                                                 <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
@@ -359,27 +418,155 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                     </span>
                                                 )}
                                             </div>
-                                        ) : d.status !== 'FUTURE' ? (
+                                        ) : !d.status.startsWith('FUTURE') ? (() => {
+                                            const excess = d.income - d.planForDay;
+                                            const isOverpaid = d.income > d.planForDay && d.planForDay > 0;
+                                            return (
+                                                <div className="mt-auto pt-1.5 flex flex-col gap-0.5">
+                                                    {d.income > 0 && (
+                                                        <div className={`text-[10px] sm:text-xs font-bold tabular-nums truncate leading-tight ${
+                                                            isOverpaid
+                                                                ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                                                                : isDark ? 'text-gray-200' : 'text-gray-800'
+                                                        }`}>
+                                                            {fmt(d.income)}
+                                                        </div>
+                                                    )}
+                                                    {/* Overpaid excess badge */}
+                                                    {isOverpaid && (
+                                                        <div className={`inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full w-fit ${
+                                                            isDark
+                                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                                : 'bg-emerald-100 text-emerald-700'
+                                                        }`}>
+                                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="18 15 12 9 6 15" />
+                                                            </svg>
+                                                            +{fmt(excess)}
+                                                        </div>
+                                                    )}
+                                                    {/* Debt badge — red pill, mirrors the overpaid badge */}
+                                                    {d.debt > 0 && d.status !== 'PAID' && (
+                                                        <div className={`inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full w-fit ${
+                                                            isDark
+                                                                ? 'bg-red-500/20 text-red-400'
+                                                                : 'bg-red-100 text-red-600'
+                                                        }`}>
+                                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="6 9 12 15 18 9" />
+                                                            </svg>
+                                                            -{fmt(d.debt)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })() : d.status === 'FUTURE_DISCOUNT' ? (
                                             <div className="mt-auto pt-1.5">
-                                                {d.income > 0 && (
-                                                    <div className={`text-[10px] sm:text-xs font-semibold tabular-nums truncate leading-tight ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                                                        {fmt(d.income)}
-                                                    </div>
-                                                )}
-                                                {d.debt > 0 && d.status !== 'PAID' && (
-                                                    <div className={`text-[9px] sm:text-[10px] font-medium tabular-nums truncate leading-tight mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                        −{fmt(d.debt)}
-                                                    </div>
-                                                )}
+                                                <div className={`text-[10px] font-semibold tabular-nums truncate ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
+                                                    {fmt(d.planForDay)} UZS
+                                                </div>
                                             </div>
                                         ) : null}
                                     </div>
+
                                 );
                             })}
                         </div>
                     </div>
                 </div>
-            </div>
+
+            {/* Day Override Mini-Modal */}
+            {overrideDate && monthData.car && (() => {
+                const dKey = `${overrideDate.getFullYear()}-${String(overrideDate.getMonth() + 1).padStart(2, '0')}-${String(overrideDate.getDate()).padStart(2, '0')}`;
+                const carId = monthData.car!.id;
+
+                const handleSave = async (fn: () => Promise<void>) => {
+                    setOverrideError(null);
+                    setOverrideLoading(true);
+                    try {
+                        await fn();
+                        setOverrideDate(null);
+                        setCustomPlanStr('');
+                    } catch (err: any) {
+                        console.error('Override save error:', err);
+                        setOverrideError(err?.message ?? 'Xatolik yuz berdi. DB migration run qiling.');
+                    } finally {
+                        setOverrideLoading(false);
+                    }
+                };
+
+                return (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setOverrideDate(null); setOverrideError(null); }} />
+                        <div className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 ${isDark ? 'bg-[#1a2540] border border-white/[0.08]' : 'bg-white border border-gray-200'}`}>
+                            <div className="flex justify-between items-center mb-5">
+                                <div>
+                                    <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                        {overrideDate.getDate()} {monthNames[overrideDate.getMonth()]}
+                                    </h3>
+                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Kelajak rejasini o'zgartirish</p>
+                                </div>
+                                <button onClick={() => { setOverrideDate(null); setOverrideError(null); }} className={`p-2 rounded-full ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
+                                    <XIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Error banner */}
+                            {overrideError && (
+                                <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold">
+                                    ⚠ {overrideError}
+                                </div>
+                            )}
+
+                            <div className="space-y-3">
+                                {/* Standard */}
+                                <button
+                                    disabled={overrideLoading}
+                                    onClick={() => handleSave(() => clearDayOverride(carId, dKey))}
+                                    className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-white/[0.06] hover:bg-white/10 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
+                                >
+                                    <span className="font-semibold flex items-center gap-2">↩️ Standart</span>
+                                    <span className={`text-sm font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fmt(monthData.dailyPlan)}</span>
+                                </button>
+
+                                {/* Day off */}
+                                <button
+                                    disabled={overrideLoading}
+                                    onClick={() => handleSave(() => setDayOverride(carId, dKey, { type: 'OFF' }))}
+                                    className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}
+                                >
+                                    <span className="font-semibold flex items-center gap-2">🏝️ Dam olish</span>
+                                    <span className="text-sm font-bold opacity-50">0</span>
+                                </button>
+
+                                {/* Custom discount */}
+                                <div className={`p-4 rounded-xl ${isDark ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-lg">💸</span>
+                                        <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Chegirma (Custom)</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            value={customPlanStr}
+                                            onChange={e => setCustomPlanStr(e.target.value)}
+                                            placeholder={String(monthData.dailyPlan)}
+                                            className={`flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white placeholder:text-gray-600' : 'bg-white border-orange-200 text-gray-900'}`}
+                                        />
+                                        <button
+                                            disabled={overrideLoading || !customPlanStr}
+                                            onClick={() => handleSave(() => setDayOverride(carId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) }))}
+                                            className="px-4 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold rounded-lg transition-all disabled:opacity-40"
+                                        >
+                                            {overrideLoading ? '...' : 'Saqlash'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>,
         document.body
     );

@@ -10,6 +10,7 @@ import { DriverCard } from './components/DriverCard';
 import { DriverRow } from './components/DriverRow';
 import { DriverDetailsSheet } from './components/DriverDetailsSheet';
 import { useAuth } from '../auth/hooks/useAuth';
+import PageSkeleton from '../../../components/PageSkeleton';
 
 type CarFilter = 'all' | 'with-car' | 'no-car';
 
@@ -38,11 +39,11 @@ const DriversPage: React.FC<DriversPageProps> = ({
     const [carFilter, setCarFilter] = useState<CarFilter>('all');
     const [sheetDriver, setSheetDriver] = useState<Driver | null>(null);
 
+    // ── All hooks MUST be called before any early returns ────────────────────
     const {
         searchQuery, setSearchQuery,
         viewMode, setViewMode,
         currentPage, setCurrentPage,
-        paginatedDrivers: rawPaginated,
         totalPages: rawTotalPages,
         filteredDrivers: rawFiltered
     } = useDriversList(drivers);
@@ -60,6 +61,11 @@ const DriversPage: React.FC<DriversPageProps> = ({
 
     const withCarCount = rawFiltered.filter(d => cars.some(c => c.assignedDriverId === d.id)).length;
     const noCarCount = rawFiltered.filter(d => !cars.some(c => c.assignedDriverId === d.id)).length;
+
+    // ── Loading skeleton (after all hooks) ──────────────────────────────────
+    if (isDataLoading) {
+        return <PageSkeleton theme={theme} variant="drivers" />;
+    }
 
     return (
         <div className="space-y-6">

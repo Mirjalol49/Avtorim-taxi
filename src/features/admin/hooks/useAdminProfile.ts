@@ -46,16 +46,16 @@ export const useAdminProfile = ({
                         sanitizedUpdates.username = sanitizedUpdates.name;
                         delete sanitizedUpdates.name;
                     }
+                    // Strip client-only fields that have no matching DB column
+                    delete (sanitizedUpdates as any).updatedAt;
+                    delete (sanitizedUpdates as any).role; // role changes not allowed via profile edit
 
-                    await firestoreService.updateAdminUser(adminUser.id, {
-                        ...sanitizedUpdates,
-                        updatedAt: Date.now()
-                    }, adminUser.id);
+                    await firestoreService.updateAdminUser(adminUser.id, sanitizedUpdates, adminUser.id);
 
                     setAdminUser(prev => prev ? ({ ...prev, ...sanitizedUpdates }) : null);
 
                 } else {
-                    // Super Admin
+                    // Super Admin — only admin_profile columns: name, role, avatar, password
                     if (profileData.avatar && profileData.avatar.startsWith('data:image/')) {
                         try {
                             const result = await uploadAdminAvatar(profileData.avatar, 'admin');
@@ -67,13 +67,20 @@ export const useAdminProfile = ({
                         }
                     }
 
-                    await firestoreService.updateAdminProfile(profileData);
+                    // Only pass known admin_profile columns — nothing else
+                    const profilePayload: any = {};
+                    if (profileData.name  !== undefined) profilePayload.name     = profileData.name;
+                    if (profileData.role  !== undefined) profilePayload.role     = profileData.role;
+                    if (profileData.avatar !== undefined) profilePayload.avatar  = profileData.avatar;
+                    if (profileData.password !== undefined && profileData.password) profilePayload.password = profileData.password;
+
+                    await firestoreService.updateAdminProfile(profilePayload);
 
                     setAdminProfile((prev: any) => ({
                         ...prev,
-                        name: profileData.name,
-                        role: profileData.role,
-                        avatar: profileData.avatar || prev.avatar
+                        name:   profilePayload.name   ?? prev.name,
+                        role:   profilePayload.role   ?? prev.role,
+                        avatar: profilePayload.avatar ?? prev.avatar,
                     }));
 
                     if (profileData.password) {
@@ -91,6 +98,7 @@ export const useAdminProfile = ({
             addToast('success', t('profileUpdated'));
 
         } catch (error: any) {
+            console.error('[useAdminProfile] Update failed:', error);
             if (error.message === 'Operation timed out') {
                 addToast('error', t('updateTimeout'));
             } else {

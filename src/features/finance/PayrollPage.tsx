@@ -5,6 +5,8 @@ import { Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { Transaction, TransactionType } from '../../core/types/transaction.types';
 import { CarIcon, XIcon } from '../../../components/Icons';
+import { calcDriverFinance } from '../drivers/utils/debtUtils';
+import { exportDriversToExcel } from '../../../utils/exportToExcel';
 
 interface PayrollPageProps {
     drivers: Driver[];
@@ -15,24 +17,37 @@ interface PayrollPageProps {
     onPaySalary: (driver: Driver, period: { year: number; month: number }) => Promise<void>;
 }
 
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
-function isPayedThisMonth(ts?: number): boolean {
-    if (!ts) return false;
-    const d = new Date(ts);
-    const now = new Date();
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+function isPayedForPeriod(transactions: Transaction[], driverId: string, year: number, month: number): boolean {
+    const periodKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+    return transactions.some(tx => 
+        tx.driverId === driverId &&
+        tx.type === TransactionType.EXPENSE &&
+        (tx as any).note === `SALARY|${periodKey}` &&
+        tx.status !== 'DELETED'
+    );
 }
 
-function isNewDriverThisMonth(driver: Driver): boolean {
+function isNewDriverInPeriod(driver: Driver, year: number, month: number): boolean {
     if (!driver.createdAt) return false;
-    const d = new Date(driver.createdAt);
-    const now = new Date();
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    const cd = new Date(driver.createdAt);
+    return cd.getFullYear() === year && cd.getMonth() === month;
 }
+
+function wasDriverCreatedAfterPeriod(driver: Driver, year: number, month: number): boolean {
+    if (!driver.createdAt) return false;
+    const cd = new Date(driver.createdAt);
+    if (cd.getFullYear() > year) return true;
+    if (cd.getFullYear() === year && cd.getMonth() > month) return true;
+    return false;
+}
+
+const MONTH_NAMES_UZ = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 
 function formatDate(ts: number): string {
-    return new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(ts));
+    const d = new Date(ts);
+    return `${String(d.getDate()).padStart(2,'0')} ${MONTH_NAMES_UZ[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
 function parsePeriodFromNote(note?: string): string | null {
@@ -48,19 +63,47 @@ function periodLabel(periodKey: string, monthNames: string[]): string {
 }
 
 // ── Custom dropdown ─────────────────────────────────────────────────────────
-const Dropdown: React.FC<{
-    value: number;
-    options: { value: number; label: string }[];
-    onChange: (v: number) => void;
+function Dropdown<T extends string | number>({
+    value,
+    options,
+    onChange,
+    isDark,
+}: {
+    value: T;
+    options: { value: T; label: string }[];
+    onChange: (v: T) => void;
     isDark: boolean;
-}> = ({ value, options, onChange, isDark }) => {
+}) {
     const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = useState<{ top: number; left: number; width: number; flipUp: boolean } | null>(null);
 
+    // Compute position when opening
+    const handleOpen = () => {
+        if (!btnRef.current) return;
+        const r = btnRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - r.bottom;
+        const estimatedHeight = Math.min(options.length * 40, 220);
+        const flipUp = spaceBelow < estimatedHeight + 8;
+        setCoords({
+            top: flipUp ? r.top - estimatedHeight - 4 : r.bottom + 4,
+            left: r.left,
+            width: r.width,
+            flipUp,
+        });
+        setOpen(true);
+    };
+
+    // Close on outside click
     useEffect(() => {
         if (!open) return;
         const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+            if (
+                btnRef.current?.contains(e.target as Node) ||
+                listRef.current?.contains(e.target as Node)
+            ) return;
+            setOpen(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
@@ -69,10 +112,11 @@ const Dropdown: React.FC<{
     const selected = options.find(o => o.value === value);
 
     return (
-        <div ref={ref} className="relative">
+        <div className="relative">
             <button
+                ref={btnRef}
                 type="button"
-                onClick={() => setOpen(p => !p)}
+                onClick={() => open ? setOpen(false) : handleOpen()}
                 className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                     isDark
                         ? `bg-surface-2 border-white/[0.10] text-white ${open ? 'border-[#0f766e]' : 'hover:border-white/[0.18]'}`
@@ -88,10 +132,20 @@ const Dropdown: React.FC<{
                 </svg>
             </button>
 
-            {open && (
-                <div className={`absolute z-50 left-0 right-0 mt-1.5 rounded-xl border overflow-hidden shadow-xl ${
-                    isDark ? 'bg-[#1a2236] border-white/[0.10]' : 'bg-white border-gray-200'
-                }`}>
+            {open && coords && createPortal(
+                <div
+                    ref={listRef}
+                    style={{
+                        position: 'fixed',
+                        top: coords.top,
+                        left: coords.left,
+                        width: coords.width,
+                        zIndex: 9999,
+                    }}
+                    className={`rounded-xl border shadow-2xl overflow-hidden max-h-[220px] overflow-y-auto ${
+                        isDark ? 'bg-[#1a2236] border-white/[0.10]' : 'bg-white border-gray-200'
+                    }`}
+                >
                     {options.map(opt => (
                         <button
                             key={opt.value}
@@ -110,20 +164,25 @@ const Dropdown: React.FC<{
                             {opt.label}
                         </button>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
-};
+}
 
 // ── Month/Year picker modal ─────────────────────────────────────────────────
 const ConfirmPayModal: React.FC<{
     driver: Driver;
+    cars: Car[];
+    transactions: Transaction[];
     theme: 'light' | 'dark';
     monthNames: string[];
+    initialYear?: number;
+    initialMonth?: number;
     onConfirm: (period: { year: number; month: number }) => Promise<void>;
     onCancel: () => void;
-}> = ({ driver, theme, monthNames, onConfirm, onCancel }) => {
+}> = ({ driver, cars, transactions, theme, monthNames, initialYear, initialMonth, onConfirm, onCancel }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
     const [loading, setLoading] = useState(false);
@@ -134,8 +193,8 @@ const ConfirmPayModal: React.FC<{
 
     // Default to previous month (if Jan, stay in Jan of current year)
     const defaultMonth = currentMonthIdx === 0 ? 0 : currentMonthIdx - 1;
-    const [selYear, setSelYear] = useState(currentYear);
-    const [selMonth, setSelMonth] = useState(defaultMonth);
+    const [selYear, setSelYear] = useState(initialYear ?? currentYear);
+    const [selMonth, setSelMonth] = useState(initialMonth ?? defaultMonth);
 
     const firstBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -155,7 +214,7 @@ const ConfirmPayModal: React.FC<{
 
     // Only show months that have already started (0..currentMonth)
     const monthOptions = monthNames
-        .slice(0, currentMonthIdx + 1)
+        .slice(0, selYear === currentYear ? currentMonthIdx + 1 : 12)
         .map((name, i) => ({ value: i, label: name }));
 
     // If selected month is out of range for selected year, clamp it
@@ -212,15 +271,59 @@ const ConfirmPayModal: React.FC<{
                         </div>
                     </div>
 
-                    {/* Amount */}
-                    <div className={`flex items-center justify-between px-4 py-3.5 rounded-2xl border ${isDark ? 'bg-emerald-500/[0.07] border-emerald-500/[0.18]' : 'bg-emerald-50 border-emerald-200'}`}>
-                        <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                            {t('monthlySalary')}
-                        </span>
-                        <span className={`text-lg font-black font-mono tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                            {fmt(driver.monthlySalary)} UZS
-                        </span>
-                    </div>
+                    {/* Amount — shows net (gross minus advance already given for the selected period) */}
+                    {(() => {
+                        const car = cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted) ?? null;
+                        const finance = calcDriverFinance(driver, car, transactions);
+                        // Use the period the picker is set to, NOT today's date
+                        const selectedMk = `${selYear}-${String(clampedMonth + 1).padStart(2, '0')}`;
+                        const thisMonth = finance.months.find(m => m.monthKey === selectedMk);
+                        const advance = thisMonth?.salaryAdvance ?? 0;
+                        // If no finance entry exists for this period, fall back to the fixed salary
+                        const gross = driver.monthlySalary ?? 0;
+                        const net = thisMonth ? (thisMonth.netSalary ?? gross) : gross;
+                        return (
+                            <div className={`rounded-2xl border overflow-hidden ${
+                                isDark ? 'bg-emerald-500/[0.07] border-emerald-500/[0.18]' : 'bg-emerald-50 border-emerald-200'
+                            }`}>
+                                <div className="flex items-center justify-between px-4 py-3.5">
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${
+                                        isDark ? 'text-emerald-400' : 'text-emerald-700'
+                                    }`}>
+                                        {advance > 0 ? 'Sof maosh (bu oy)' : t('monthlySalary')}
+                                    </span>
+                                    <span className={`text-lg font-black font-mono tabular-nums ${
+                                        isDark ? 'text-emerald-400' : 'text-emerald-700'
+                                    }`}>
+                                        {new Intl.NumberFormat('uz-UZ').format(Math.round(net))} <span className="text-sm font-semibold opacity-60">UZS</span>
+                                    </span>
+                                </div>
+                                {advance > 0 && (
+                                    <div className={`flex items-center justify-between px-4 py-2.5 border-t text-[11px] ${
+                                        isDark ? 'border-emerald-500/10 text-gray-400' : 'border-emerald-100 text-gray-500'
+                                    }`}>
+                                        <span className="flex items-center gap-1">
+                                            <span>💼</span>
+                                            <span>Maoshdan avans berildi</span>
+                                        </span>
+                                        <span className={`font-bold font-mono ${
+                                            isDark ? 'text-violet-400' : 'text-violet-600'
+                                        }`}>
+                                            −{fmt(advance)} UZS
+                                        </span>
+                                    </div>
+                                )}
+                                {advance > 0 && (
+                                    <div className={`flex items-center justify-between px-4 py-2 text-[10px] ${
+                                        isDark ? 'text-gray-600' : 'text-gray-400'
+                                    }`}>
+                                        <span>Oylik maosh (brutto)</span>
+                                        <span className="font-mono line-through">{fmt(gross)} UZS</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {/* Period picker */}
                     <div>
@@ -234,13 +337,13 @@ const ConfirmPayModal: React.FC<{
                             <Dropdown
                                 value={clampedMonth}
                                 options={monthOptions}
-                                onChange={setSelMonth}
+                                onChange={(v) => setSelMonth(v as number)}
                                 isDark={isDark}
                             />
                             <Dropdown
                                 value={selYear}
                                 options={yearOptions}
-                                onChange={setSelYear}
+                                onChange={(v) => setSelYear(v as number)}
                                 isDark={isDark}
                             />
                         </div>
@@ -296,13 +399,59 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
     const [activeTab, setActiveTab] = useState<'payroll' | 'history'>('payroll');
     const [confirmDriver, setConfirmDriver] = useState<Driver | null>(null);
     const [payingId, setPayingId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'due'>('all');
 
     const monthNames = t('months', { returnObjects: true }) as string[];
 
-    const salaryDrivers = useMemo(
-        () => drivers.filter(d => !d.isDeleted && (d.monthlySalary ?? 0) > 0),
-        [drivers]
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthIdx = now.getMonth();
+
+    const [filterYear, setFilterYear] = useState(currentYear);
+    const [filterMonth, setFilterMonth] = useState(currentMonthIdx);
+
+    const APP_START_YEAR = 2026;
+    const yearOptions = Array.from(
+        { length: currentYear - APP_START_YEAR + 1 },
+        (_, i) => ({ value: APP_START_YEAR + i, label: String(APP_START_YEAR + i) })
     );
+
+    const filterMonthOptions = monthNames
+        .slice(0, filterYear === currentYear ? currentMonthIdx + 1 : 12)
+        .map((name, i) => ({ value: i, label: name }));
+
+    const handleFilterYearChange = (y: number) => {
+        setFilterYear(y);
+        if (y === currentYear && filterMonth > currentMonthIdx) {
+            setFilterMonth(currentMonthIdx);
+        }
+    };
+
+    const salaryDrivers = useMemo(
+        () => drivers.filter(d => 
+            !d.isDeleted && 
+            (d.monthlySalary ?? 0) > 0 &&
+            !wasDriverCreatedAfterPeriod(d, filterYear, filterMonth)
+        ),
+        [drivers, filterYear, filterMonth]
+    );
+
+    const filteredSalaryDrivers = useMemo(() => {
+        const q = search.toLowerCase().trim();
+        return salaryDrivers.filter(d => {
+            if (q) {
+                const car = cars.find(c => c.assignedDriverId === d.id);
+                if (!d.name.toLowerCase().includes(q) && !(car?.licensePlate?.toLowerCase().includes(q))) return false;
+            }
+            const isPaid = isPayedForPeriod(transactions, d.id, filterYear, filterMonth);
+            const isNew = isNewDriverInPeriod(d, filterYear, filterMonth);
+            
+            if (statusFilter === 'paid' && !isPaid) return false;
+            if (statusFilter === 'due' && (isPaid || isNew)) return false;
+            return true;
+        });
+    }, [salaryDrivers, search, statusFilter, cars, filterYear, filterMonth, transactions]);
 
     const salaryHistory = useMemo(
         () => transactions
@@ -316,8 +465,12 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
     );
 
     const totalMonthly = salaryDrivers.reduce((s, d) => s + (d.monthlySalary ?? 0), 0);
-    const paidCount    = salaryDrivers.filter(d => isPayedThisMonth(d.lastSalaryPaidAt)).length;
-    const dueCount     = salaryDrivers.filter(d => !isPayedThisMonth(d.lastSalaryPaidAt) && !isNewDriverThisMonth(d)).length;
+    const paidCount    = salaryDrivers.filter(d => isPayedForPeriod(transactions, d.id, filterYear, filterMonth)).length;
+    const dueCount     = salaryDrivers.filter(d => !isPayedForPeriod(transactions, d.id, filterYear, filterMonth) && !isNewDriverInPeriod(d, filterYear, filterMonth)).length;
+
+    const handleExport = () => {
+        exportDriversToExcel(salaryDrivers, 'Ish-haqi-ruyxati');
+    };
 
     const handleConfirmPay = async (period: { year: number; month: number }) => {
         if (!confirmDriver) return;
@@ -357,6 +510,68 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                 </div>
             </div>
 
+            {/* ── Control bar ── */}
+            <div className={`flex flex-col sm:flex-row gap-3 p-4 rounded-2xl border ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-gray-200'}`} style={{ boxShadow: cardShadow }}>
+                {/* Year filter */}
+                <div className="w-full sm:w-28 flex-shrink-0">
+                    <Dropdown
+                        value={filterYear}
+                        options={yearOptions}
+                        onChange={(v) => handleFilterYearChange(v as number)}
+                        isDark={isDark}
+                    />
+                </div>
+                {/* Month filter */}
+                <div className="w-full sm:w-36 flex-shrink-0">
+                    <Dropdown
+                        value={filterMonth}
+                        options={filterMonthOptions}
+                        onChange={(v) => setFilterMonth(v as number)}
+                        isDark={isDark}
+                    />
+                </div>
+                {/* Search */}
+                <div className="relative flex-1">
+                    <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/></svg>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Haydovchi yoki davlat raqami..."
+                        className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border outline-none transition-colors ${
+                            isDark
+                                ? 'bg-surface-2 border-white/[0.10] text-white placeholder-gray-600 focus:border-[#0f766e]'
+                                : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-[#0f766e]'
+                        }`}
+                    />
+                </div>
+                {/* Status filter */}
+                <div className="w-full sm:w-48">
+                    <Dropdown
+                        value={statusFilter}
+                        options={[
+                            { value: 'all', label: 'Barchasi' },
+                            { value: 'paid', label: "To'langan" },
+                            { value: 'due', label: "To'lash kerak" },
+                        ]}
+                        onChange={(v) => setStatusFilter(v as 'all' | 'paid' | 'due')}
+                        isDark={isDark}
+                    />
+                </div>
+                {/* Export */}
+                <button
+                    onClick={handleExport}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-[0.98] ${
+                        isDark
+                            ? 'border-white/[0.10] text-gray-400 hover:text-white hover:bg-white/[0.05]'
+                            : 'border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Excel
+                </button>
+            </div>
+
             {/* ── Tabs ── */}
             <div className={`rounded-3xl border overflow-hidden ${cardBase}`} style={{ boxShadow: cardShadow }}>
                 {/* Tab bar */}
@@ -392,7 +607,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
 
                 {/* ── Tab 1: Payroll ── */}
                 {activeTab === 'payroll' && (
-                    salaryDrivers.length === 0 ? (
+                    filteredSalaryDrivers.length === 0 ? (
                         <div className="text-center py-20">
                             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
                                 <svg className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -415,9 +630,9 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
 
                             {/* Rows */}
                             <div className={`divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-gray-50'}`}>
-                                {salaryDrivers.map(driver => {
-                                    const isPaid = isPayedThisMonth(driver.lastSalaryPaidAt);
-                                    const isNew  = isNewDriverThisMonth(driver);
+                                {filteredSalaryDrivers.map(driver => {
+                                    const isPaid = isPayedForPeriod(transactions, driver.id, filterYear, filterMonth);
+                                    const isNew  = isNewDriverInPeriod(driver, filterYear, filterMonth);
                                     const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
 
                                     // Status badge
@@ -466,10 +681,14 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                                 </div>
                                             </div>
 
-                                            {/* Salary */}
+                                            {/* Fixed monthly salary — dynamic avans breakdown is in the History tab */}
                                             <div className="text-right">
-                                                <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(driver.monthlySalary)}</span>
-                                                <span className={`text-[10px] ml-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                                        {new Intl.NumberFormat('uz-UZ').format(driver.monthlySalary ?? 0)}
+                                                    </span>
+                                                    <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>UZS</span>
+                                                </div>
                                             </div>
 
                                             {/* Status + last paid date */}
@@ -479,31 +698,33 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                                     {badgeLabel}
                                                 </span>
                                                 <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt) : (isNew ? '—' : t('neverPaid'))}
+                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt) : '—'}
                                                 </p>
                                             </div>
 
                                             {/* Pay button */}
                                             {userRole === 'admin' && (
                                                 <div className="flex justify-end">
-                                                    <button
-                                                        onClick={() => setConfirmDriver(driver)}
-                                                        disabled={payingId === driver.id}
-                                                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                            isPaid
-                                                                ? isDark
-                                                                    ? 'border-white/[0.08] text-gray-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.04]'
-                                                                    : 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300'
-                                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-                                                        }`}
-                                                    >
-                                                        {payingId === driver.id ? (
-                                                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                                            </svg>
-                                                        ) : t('paySalary')}
-                                                    </button>
+                                                    {(driver.monthlySalary ?? 0) > 0 && (
+                                                        <button
+                                                            onClick={() => setConfirmDriver(driver)}
+                                                            disabled={payingId === driver.id}
+                                                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                                isPaid
+                                                                    ? isDark
+                                                                        ? 'border-white/[0.08] text-gray-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.04]'
+                                                                        : 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300'
+                                                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                                                            }`}
+                                                        >
+                                                            {payingId === driver.id ? (
+                                                                <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                                </svg>
+                                                            ) : t('paySalary')}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -560,8 +781,8 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
 
                                             {/* Amount */}
                                             <div className="text-right">
-                                                <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(tx.amount)}</span>
-                                                <span className={`text-[10px] ml-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</span>
+                                                <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{new Intl.NumberFormat('uz-UZ').format(Math.round(tx.amount))}</span>
+                                                <span className={`text-[10px] ml-1 font-semibold ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>UZS</span>
                                             </div>
 
                                             {/* Period */}
@@ -592,8 +813,12 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
             {confirmDriver && (
                 <ConfirmPayModal
                     driver={confirmDriver}
+                    cars={cars}
+                    transactions={transactions}
                     theme={theme}
                     monthNames={monthNames}
+                    initialYear={filterYear}
+                    initialMonth={filterMonth}
                     onConfirm={handleConfirmPay}
                     onCancel={() => setConfirmDriver(null)}
                 />

@@ -1,0 +1,1 @@
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS day_overrides JSONB NOT NULL DEFAULT '{}'::jsonb;

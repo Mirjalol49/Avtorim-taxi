@@ -186,6 +186,28 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     };
   }, [selectedDriver, cars, transactions]);
 
+  // Salary info for salary-type drivers — current month's net salary
+  const salaryInfo = useMemo(() => {
+    if (!selectedDriver) return null;
+    if ((selectedDriver.driverType ?? 'deposit') !== 'salary') return null;
+    const driverCar = cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null;
+    const finance = calcDriverFinance(selectedDriver, driverCar, transactions);
+    const currentMk = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const currentMonth = finance.months.find(m => m.monthKey === currentMk);
+    return {
+      netSalary: currentMonth?.netSalary ?? finance.salaryAmount,
+      gross: finance.salaryAmount,
+    };
+  }, [selectedDriver, cars, transactions]);
+
+  // Unified: whichever is non-null
+  const paymentSourceInfo: { type: 'deposit' | 'salary'; balance: number; gross?: number } | null =
+    depositInfo !== null
+      ? { type: 'deposit', balance: depositInfo.remaining }
+      : salaryInfo !== null
+      ? { type: 'salary', balance: salaryInfo.netSalary, gross: salaryInfo.gross }
+      : null;
+
   if (!isOpen) return null;
 
   // ── Submit ───────────────────────────────────────────────────────────────────
@@ -534,36 +556,54 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               </div>
             )}
 
-            {/* ── Deposit toggle — only for driver-linked income/expense (not car/other) ── */}
-            {depositInfo !== null && type !== TransactionType.DAY_OFF &&
+            {/* ── Payment Source — salary or deposit toggle ── */}
+            {paymentSourceInfo !== null && type !== TransactionType.DAY_OFF &&
              (type === TransactionType.INCOME || expenseTarget === 'driver') && (
               <div className={`rounded-2xl border overflow-hidden transition-all ${
                 useDeposit
-                  ? isDark ? 'border-amber-500/50 bg-amber-500/[0.07]' : 'border-amber-400 bg-amber-50'
+                  ? paymentSourceInfo.type === 'salary'
+                    ? isDark ? 'border-violet-500/50 bg-violet-500/[0.07]' : 'border-violet-400 bg-violet-50'
+                    : isDark ? 'border-amber-500/50 bg-amber-500/[0.07]'  : 'border-amber-400 bg-amber-50'
                   : isDark ? 'border-white/[0.08] bg-surface-2/40' : 'border-gray-200 bg-gray-50'
               }`}>
-                {/* Header row with toggle */}
+
+                {/* Header toggle row */}
                 <button
                   type="button"
                   onClick={() => setUseDeposit(v => !v)}
                   className="w-full flex items-center justify-between px-4 py-3 gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xl flex-shrink-0">🏦</span>
+                    <span className="text-xl flex-shrink-0">
+                      {paymentSourceInfo.type === 'salary' ? '💼' : '🏦'}
+                    </span>
                     <div className="text-left min-w-0">
-                      <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Depozitdan foydalanish
+                      <p className={`text-[13px] font-bold leading-tight ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {paymentSourceInfo.type === 'salary'
+                          ? "Maoshdan ushlab qolish"
+                          : "Depozitdan foydalanish"}
                       </p>
-                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
-                        {type === TransactionType.INCOME
-                          ? 'Haydovchi reja o\'rniga depozitdan to\'lov'
-                          : 'Bu chiqim depozitdan hisoblanadi'}
+                      <p className={`text-[11px] mt-0.5 ${
+                        isDark ? 'text-white/40' : 'text-gray-400'
+                      }`}>
+                        {paymentSourceInfo.type === 'salary'
+                          ? type === TransactionType.INCOME
+                            ? "Haydovchi maoshidan ushlab qolinadi"
+                            : "Bu chiqim haydovchi maoshidan hisoblanadi"
+                          : type === TransactionType.INCOME
+                            ? "Haydovchi reja o'rniga depozitdan to'lov"
+                            : "Bu chiqim depozitdan hisoblanadi"}
                       </p>
                     </div>
                   </div>
+
                   {/* Toggle switch */}
                   <div className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
-                    useDeposit ? 'bg-amber-500' : isDark ? 'bg-white/[0.10]' : 'bg-gray-300'
+                    useDeposit
+                      ? paymentSourceInfo.type === 'salary' ? 'bg-violet-500' : 'bg-amber-500'
+                      : isDark ? 'bg-white/[0.10]' : 'bg-gray-300'
                   }`}>
                     <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
                       useDeposit ? 'translate-x-5' : 'translate-x-0'
@@ -571,45 +611,62 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   </div>
                 </button>
 
-                {/* Deposit balance info */}
+                {/* Balance row */}
                 <div className={`px-4 pb-3 flex items-center justify-between border-t ${
                   isDark ? 'border-white/[0.06]' : 'border-gray-100'
                 }`}>
-                  <span className={`text-[11px] font-semibold uppercase tracking-wide ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
-                    Depozit qoldig'i
+                  <span className={`text-[11px] font-semibold uppercase tracking-wide ${
+                    isDark ? 'text-white/40' : 'text-gray-400'
+                  }`}>
+                    {paymentSourceInfo.type === 'salary' ? 'Joriy oy maoshi (sof)' : "Depozit qoldig'i"}
                   </span>
                   <span className={`text-[14px] font-black font-mono ${
-                    depositInfo.remaining <= 0
+                    paymentSourceInfo.balance <= 0
                       ? 'text-red-400'
-                      : depositInfo.remaining < 500_000
+                      : paymentSourceInfo.balance < 500_000
                       ? 'text-orange-400'
-                      : isDark ? 'text-amber-400' : 'text-amber-600'
+                      : paymentSourceInfo.type === 'salary'
+                        ? isDark ? 'text-violet-400' : 'text-violet-600'
+                        : isDark ? 'text-amber-400' : 'text-amber-600'
                   }`}>
-                    {fmt(Math.max(0, depositInfo.remaining))} UZS
-                    {depositInfo.remaining <= 0 && <span className="ml-1 text-[10px] font-normal opacity-70">(tugagan)</span>}
+                    {fmt(Math.max(0, paymentSourceInfo.balance))} UZS
+                    {paymentSourceInfo.balance <= 0 && (
+                      <span className="ml-1 text-[10px] font-normal opacity-70">(tugagan)</span>
+                    )}
                   </span>
                 </div>
 
-                {/* Show projected balance after this transaction */}
+                {/* Post-transaction projection */}
                 {useDeposit && Number(amount) > 0 && (
                   <div className={`px-4 pb-3 flex items-center justify-between border-t ${
-                    isDark ? 'border-amber-500/20' : 'border-amber-200'
+                    isDark
+                      ? paymentSourceInfo.type === 'salary' ? 'border-violet-500/20' : 'border-amber-500/20'
+                      : paymentSourceInfo.type === 'salary' ? 'border-violet-200'    : 'border-amber-200'
                   }`}>
-                    <span className={`text-[11px] font-semibold uppercase tracking-wide ${isDark ? 'text-amber-400/60' : 'text-amber-600/70'}`}>
+                    <span className={`text-[11px] font-semibold uppercase tracking-wide ${
+                      isDark
+                        ? paymentSourceInfo.type === 'salary' ? 'text-violet-400/60' : 'text-amber-400/60'
+                        : paymentSourceInfo.type === 'salary' ? 'text-violet-600/70' : 'text-amber-600/70'
+                    }`}>
                       Bu to'lovdan keyin
                     </span>
                     <span className={`text-[14px] font-black font-mono ${
-                      depositInfo.remaining - Number(amount) < 0 ? 'text-red-400' : isDark ? 'text-amber-300' : 'text-amber-700'
+                      paymentSourceInfo.balance - Number(amount) < 0
+                        ? 'text-red-400'
+                        : paymentSourceInfo.type === 'salary'
+                          ? isDark ? 'text-violet-300' : 'text-violet-700'
+                          : isDark ? 'text-amber-300' : 'text-amber-700'
                     }`}>
-                      {depositInfo.remaining - Number(amount) < 0
-                        ? `−${fmt(Number(amount) - depositInfo.remaining)} UZS (yetmaydi)`
-                        : `${fmt(depositInfo.remaining - Number(amount))} UZS`
+                      {paymentSourceInfo.balance - Number(amount) < 0
+                        ? `−${fmt(Number(amount) - paymentSourceInfo.balance)} UZS (yetmaydi)`
+                        : `${fmt(paymentSourceInfo.balance - Number(amount))} UZS`
                       }
                     </span>
                   </div>
                 )}
               </div>
             )}
+
           </div>
         </div>
 

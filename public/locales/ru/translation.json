@@ -281,6 +281,7 @@
   "paymentsLate": "Платежи задерживаются",
   "totalPaidAmount": "Всего оплачено",
   "currentDebt": "Текущий долг",
+  "prepaidAmount": "Предоплата",
   "workingDays": "Рабочие дни",
   "incomeProgress": "Прогресс дохода",
   "noCar": "Нет автомобиля",

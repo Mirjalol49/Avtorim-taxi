@@ -101,7 +101,7 @@ function timeAgo(ms: number): string {
     if (m < 60) return `${m}m ago`;
     if (h < 24) return `${h}h ago`;
     if (d < 7)  return `${d}d ago`;
-    return new Date(ms).toLocaleDateString();
+    return new Date(ms).toLocaleDateString('en-GB');
 }
 
 // ─── Note Editor Modal ────────────────────────────────────────────────────────
@@ -149,19 +149,14 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
     const hasContent = title.trim() || content.trim();
 
-    const colorCfg = COLOR_MAP[color];
-    const cardBg = isDark
-        ? color === 'default' ? 'bg-surface' : colorCfg.bg
-        : color === 'default' ? 'bg-white' : colorCfg.bg;
-    const cardBorder = isDark
-        ? color === 'default' ? 'border-white/[0.08]' : colorCfg.border
-        : color === 'default' ? 'border-gray-200' : colorCfg.border;
+    const cardBg = isDark ? 'bg-surface' : 'bg-white';
+    const cardBorder = isDark ? 'border-white/[0.08]' : 'border-gray-200';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
                 onClick={e => e.stopPropagation()}
-                className={`w-full max-w-lg rounded-2xl border shadow-2xl flex flex-col overflow-hidden transition-colors ${cardBg} ${cardBorder}`}
+                className={`w-full max-w-lg rounded-2xl border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${cardBg} ${cardBorder}`}
             >
                 {/* Color bar */}
                 <div className={`flex items-center gap-1.5 px-4 pt-4 pb-2`}>
@@ -170,7 +165,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                             key={c}
                             title={COLOR_MAP[c].label}
                             onClick={() => setColor(c)}
-                            className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-transparent scale-110' : 'opacity-60 hover:opacity-100 hover:scale-110'}`}
+                            className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? `outline outline-2 outline-offset-2 ${isDark ? 'outline-white' : 'outline-gray-900'} scale-110` : 'opacity-50 hover:opacity-100 hover:scale-110'}`}
                         />
                     ))}
                     <div className="flex-1" />
@@ -188,7 +183,8 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     placeholder={labels.title}
-                    className={`w-full px-4 py-2 text-lg font-bold bg-transparent border-none outline-none resize-none placeholder-opacity-30 ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'}`}
+                    className={`w-full px-4 py-2 text-lg font-bold bg-transparent border-none outline-none resize-none placeholder-opacity-30 ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'}`}
+                    style={{ backgroundColor: 'transparent' }} // Force transparency if global styles interfere
                 />
 
                 {/* Content */}
@@ -378,43 +374,45 @@ interface NoteCardProps {
 const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }) => {
     const isDark = theme === 'dark';
     const colorCfg = COLOR_MAP[note.color];
-    const bg = isDark
-        ? note.color === 'default' ? 'bg-surface hover:bg-surface-2' : `${colorCfg.bg} hover:brightness-110`
-        : note.color === 'default' ? 'bg-white hover:bg-[#F9F9F9]' : `${colorCfg.bg} hover:brightness-105`;
-    const border = isDark
-        ? note.color === 'default' ? 'border-white/[0.10]' : colorCfg.border
-        : note.color === 'default' ? 'border-black/[0.08]' : colorCfg.border;
+    
+    // Always use plain white/dark background
+    const bg = isDark ? 'bg-surface hover:bg-surface-2' : 'bg-white hover:bg-gray-50';
+    const border = isDark ? 'border-white/[0.08]' : 'border-gray-200';
 
     return (
         <div
             onClick={onClick}
-            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-150 shadow-[0_1px_3px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.10)] ${bg} ${border}`}
+            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${bg} ${border}`}
         >
-            {/* Pin badge */}
-            {note.isPinned && (
-                <div className="absolute top-3 right-3 text-amber-400 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <PinIcon pinned />
-                </div>
-            )}
-
-            {/* Title */}
-            {note.title && (
-                <h3 className={`font-semibold text-[15px] mb-1 pr-5 leading-snug ${isDark ? 'text-white' : 'text-black'}`}>
-                    {note.title}
+            <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className={`font-semibold text-lg leading-snug line-clamp-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                    {note.title || 'Untitled'}
                 </h3>
-            )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Pin badge */}
+                    {note.isPinned && (
+                        <div className="text-amber-400">
+                            <PinIcon pinned />
+                        </div>
+                    )}
+                    {/* Color dot */}
+                    {note.color !== 'default' && (
+                        <div className={`w-3 h-3 rounded-full ${colorCfg.dot}`} />
+                    )}
+                </div>
+            </div>
 
             {/* Content preview */}
             {note.content && (
-                <p className={`text-[13px] leading-relaxed line-clamp-6 whitespace-pre-wrap ${isDark ? 'text-[rgba(235,235,245,0.55)]' : 'text-[rgba(60,60,67,0.65)]'}`}>
+                <p className={`text-sm leading-relaxed line-clamp-4 whitespace-pre-wrap ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
                     {note.content}
                 </p>
             )}
 
             {/* Footer */}
-            <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-white/[0.08]' : 'border-black/[0.06]'}`}>
+            <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center gap-2">
-                    <span className={`text-[11px] font-medium ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
+                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
                         {timeAgo(note.updatedMs)}
                     </span>
                     {note.reminderAt && note.reminderAt > Date.now() && (
@@ -425,10 +423,10 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
                 </div>
                 <button
                     onClick={e => { e.stopPropagation(); onTogglePin(); }}
-                    className={`w-6 h-6 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
                         note.isPinned
-                            ? 'text-amber-400'
-                            : isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-300 hover:text-gray-600'
+                            ? 'text-amber-400 hover:bg-amber-400/10'
+                            : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.08]' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
                     }`}
                     title={note.isPinned ? 'Unpin' : 'Pin'}
                 >
@@ -442,10 +440,10 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
-    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'bg-surface border-white/[0.06]' : 'bg-white border-gray-200'}`}>
-        <div className={`h-4 w-3/4 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-200'}`} />
-        <div className={`h-3 w-full rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`} />
-        <div className={`h-3 w-5/6 rounded-lg mb-1 animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`} />
+    <div className={`rounded-2xl border p-4 h-[140px] ${theme === 'dark' ? 'bg-surface border-white/[0.06]' : 'bg-white border-gray-200'}`}>
+        <div className={`h-5 w-3/4 rounded-lg mb-3 animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-200'}`} />
+        <div className={`h-3 w-full rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`} />
+        <div className={`h-3 w-5/6 rounded-lg mb-2 animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`} />
         <div className={`h-3 w-2/3 rounded-lg animate-pulse ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`} />
     </div>
 );
@@ -597,80 +595,84 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
         <div className={`min-h-screen px-4 py-6 md:px-8 md:py-8 ${isDark ? 'bg-[#0b1326]' : 'bg-surface-2'}`}>
             <div className="max-w-7xl mx-auto space-y-6">
 
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Header & Unified Control Bar */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className={`text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>
                             {t('notes')}
                         </h1>
                         {!loading && (
-                            <p className={`text-[13px] mt-0.5 ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.45)]'}`}>
+                            <p className={`text-[13px] mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {notes.length} note{notes.length !== 1 ? 's' : ''}
                             </p>
                         )}
                     </div>
-                    <button
-                        onClick={openNew}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-[#0a5c56] text-white rounded-xl font-semibold text-[15px] transition-all active:scale-95"
-                    >
-                        <span className="text-lg leading-none">+</span> {t('newNote')}
-                    </button>
-                </div>
-
-                {/* Search + Color filter */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className={`relative flex-1`}>
-                        <div className={`absolute inset-y-0 left-3.5 flex items-center pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.35)]' : 'text-[rgba(60,60,67,0.35)]'}`}>
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                            </svg>
-                        </div>
-                        <input
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder={t('searchNotes')}
-                            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-[15px] outline-none focus:ring-2 focus:ring-[#0f766e]/30 transition-all ${
-                                isDark
-                                    ? 'bg-surface border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)]'
-                                    : 'bg-white border-black/[0.08] text-black placeholder-[rgba(60,60,67,0.35)]'
-                            }`}
-                        />
-                        {search && (
-                            <button
-                                onClick={() => setSearch('')}
-                                className={`absolute inset-y-0 right-3 flex items-center ${isDark ? 'text-[rgba(235,235,245,0.4)] hover:text-[rgba(235,235,245,0.7)]' : 'text-[rgba(60,60,67,0.35)] hover:text-[rgba(60,60,67,0.6)]'}`}
-                            >
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                            </button>
-                        )}
-                    </div>
-
-                    {usedColors.length > 1 && (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                                onClick={() => setFilterColor('all')}
-                                className={`text-[13px] px-3 py-2 rounded-xl font-semibold transition-all ${
-                                    filterColor === 'all'
-                                        ? 'bg-[#0f766e] text-white'
-                                        : isDark ? 'bg-surface border border-white/[0.10] text-[rgba(235,235,245,0.55)] hover:text-white' : 'bg-white border border-black/[0.08] text-[rgba(60,60,67,0.55)] hover:text-black'
+                    
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        {/* Search */}
+                        <div className="relative w-full sm:w-64 flex-shrink-0">
+                            <div className={`absolute inset-y-0 left-3 flex items-center pointer-events-none ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                                </svg>
+                            </div>
+                            <input
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder={t('searchNotes')}
+                                className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[#0f766e]/30 transition-all ${
+                                    isDark
+                                        ? 'bg-surface border-white/[0.10] text-white placeholder-gray-600'
+                                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                                 }`}
-                            >
-                                {t('all') || 'All'}
-                            </button>
-                            {usedColors.map(c => (
+                            />
+                            {search && (
                                 <button
-                                    key={c}
-                                    onClick={() => setFilterColor(filterColor === c ? 'all' : c)}
-                                    title={COLOR_MAP[c].label}
-                                    className={`w-8 h-8 rounded-xl border transition-all ${
-                                        filterColor === c
-                                            ? `${COLOR_MAP[c].dot} border-transparent ring-2 ring-white/30 scale-110`
-                                            : `${COLOR_MAP[c].dot} opacity-50 hover:opacity-90 ${isDark ? 'border-white/[0.08]' : 'border-gray-200'}`
-                                    }`}
-                                />
-                            ))}
+                                    onClick={() => setSearch('')}
+                                    className={`absolute inset-y-0 right-3 flex items-center ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                                </button>
+                            )}
                         </div>
-                    )}
+
+                        {/* Color Filters */}
+                        {usedColors.length > 1 && (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                    onClick={() => setFilterColor('all')}
+                                    className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-all ${
+                                        filterColor === 'all'
+                                            ? isDark ? 'bg-white text-black' : 'bg-gray-900 text-white'
+                                            : isDark ? 'bg-surface border border-white/[0.10] text-gray-400 hover:text-white' : 'bg-gray-100 border border-gray-200 text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    {t('all') || 'All'}
+                                </button>
+                                {usedColors.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setFilterColor(filterColor === c ? 'all' : c)}
+                                        title={COLOR_MAP[c].label}
+                                        className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${
+                                            filterColor === c
+                                                ? `outline outline-2 outline-offset-2 outline-[#0f766e] scale-110`
+                                                : `opacity-50 hover:opacity-100 hover:scale-110`
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* New Note Button */}
+                        <button
+                            onClick={openNew}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-[#0a5c56] text-white rounded-xl font-semibold text-sm transition-all active:scale-95"
+                        >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                            {t('newNote')}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Table not set up yet */}
@@ -678,11 +680,9 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
                 {/* Loading state */}
                 {loading && !tableError && (
-                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="break-inside-avoid mb-4">
-                                <SkeletonCard theme={theme} />
-                            </div>
+                            <SkeletonCard key={i} theme={theme} />
                         ))}
                     </div>
                 )}
@@ -717,19 +717,18 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 {/* Pinned section */}
                 {!loading && pinned.length > 0 && (
                     <section>
-                        <p className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
+                        <p className={`text-[11px] font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
                             📌 {t('pinnedSection')}
                         </p>
-                        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {pinned.map(note => (
-                                <div key={note.id} className="break-inside-avoid mb-4">
-                                    <NoteCard
-                                        note={note}
-                                        theme={theme}
-                                        onClick={() => openEdit(note)}
-                                        onTogglePin={() => handleTogglePin(note)}
-                                    />
-                                </div>
+                                <NoteCard
+                                    key={note.id}
+                                    note={note}
+                                    theme={theme}
+                                    onClick={() => openEdit(note)}
+                                    onTogglePin={() => handleTogglePin(note)}
+                                />
                             ))}
                         </div>
                     </section>
@@ -739,20 +738,19 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
                 {!loading && unpinned.length > 0 && (
                     <section>
                         {pinned.length > 0 && (
-                            <p className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
                                 {t('othersSection')}
                             </p>
                         )}
-                        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {unpinned.map(note => (
-                                <div key={note.id} className="break-inside-avoid mb-4">
-                                    <NoteCard
-                                        note={note}
-                                        theme={theme}
-                                        onClick={() => openEdit(note)}
-                                        onTogglePin={() => handleTogglePin(note)}
-                                    />
-                                </div>
+                                <NoteCard
+                                    key={note.id}
+                                    note={note}
+                                    theme={theme}
+                                    onClick={() => openEdit(note)}
+                                    onTogglePin={() => handleTogglePin(note)}
+                                />
                             ))}
                         </div>
                     </section>

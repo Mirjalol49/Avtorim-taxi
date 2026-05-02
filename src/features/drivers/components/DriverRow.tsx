@@ -5,8 +5,9 @@ import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon, XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
+import { DriverAvatar } from './DriverAvatar';
 
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
 interface DriverRowProps {
     driver: Driver;
@@ -39,13 +40,13 @@ export const DriverRow: React.FC<DriverRowProps> = ({
             <td className="p-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600 flex-shrink-0">
-                        {driver.avatar ? (
-                            <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                                {driver.name.charAt(0).toUpperCase()}
-                            </div>
-                        )}
+                        <DriverAvatar
+                            src={driver.avatar}
+                            name={driver.name}
+                            size={40}
+                            theme={theme}
+                            rounded="full"
+                        />
                     </div>
                     <div>
                         <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
@@ -60,7 +61,13 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     <div className="flex items-center gap-2">
                         <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`}>
                             {car.avatar ? (
-                                <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                                <DriverAvatar
+                                    src={car.avatar}
+                                    name={car.name}
+                                    size={36}
+                                    theme={theme}
+                                    rounded="xl"
+                                />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center">
                                     <CameraIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />

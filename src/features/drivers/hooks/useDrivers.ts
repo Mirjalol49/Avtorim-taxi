@@ -9,10 +9,9 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
     const refetchRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
-        if (!fleetId) {
-            setLoading(false);
-            return;
-        }
+        // Keep loading=true while fleetId is not yet resolved (auth still in progress).
+        // Setting loading=false here would cause a false empty-state flash.
+        if (!fleetId) return;
 
         setLoading(true);
 

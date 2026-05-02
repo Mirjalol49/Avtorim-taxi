@@ -56,13 +56,24 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const loading = driversLoading || txLoading;
 
+    // Safety valve: if data never arrives within 6s (e.g. no fleetId, network issue),
+    // force loading=false so the app doesn't stay stuck on skeleton forever.
+    const [timedOut, setTimedOut] = React.useState(false);
+    React.useEffect(() => {
+        if (!loading) { setTimedOut(false); return; }
+        const t = setTimeout(() => setTimedOut(true), 6000);
+        return () => clearTimeout(t);
+    }, [loading]);
+
+    const effectiveLoading = loading && !timedOut;
+
     return (
         <DataContext.Provider value={{
             drivers,
-            driversLoading,
+            driversLoading: effectiveLoading,
             setDrivers,
             transactions,
-            txLoading,
+            txLoading: effectiveLoading,
             setTransactions,
             notifications,
             unreadCount,
@@ -70,7 +81,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setNotifications,
             setReadNotificationIds,
             setUnreadCount,
-            loading,
+            loading: effectiveLoading,
             triggerRefresh
         }}>
             {children}
