@@ -4,18 +4,17 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import Backend from 'i18next-http-backend';
 
 i18n
-    // load translation using http -> see /public/locales (i.e. https://github.com/i18next/react-i18next/tree/master/example/react/public/locales)
-    // learn more: https://github.com/i18next/i18next-http-backend
+    // load translation using http -> see /public/locales
     .use(Backend)
     // detect user language
-    // learn more: https://github.com/i18next/i18next-browser-languagedetector
     .use(LanguageDetector)
-    // pass the i18n instance to react-i18next.
+    // pass the i18n instance to react-i18next
     .use(initReactI18next)
     // init i18next
-    // for all options read: https://www.i18next.com/overview/configuration-options
     .init({
-        fallbackLng: 'en',
+        // Uzbek is the primary language of the platform
+        fallbackLng: 'uz',
+        supportedLngs: ['uz', 'ru', 'en'],
         debug: process.env.NODE_ENV === 'development',
 
         interpolation: {
@@ -27,10 +26,11 @@ i18n
         },
 
         detection: {
-            // Per-account language is handled by App.tsx using avtorim_lang_{userId} keys.
-            // Global localStorage caching is intentionally disabled so accounts don't share a language setting.
-            order: ['navigator'],
-            caches: [],
+            // Check global localStorage key first, then browser navigator
+            // Per-account language is applied on top of this in App.tsx after login.
+            order: ['localStorage', 'navigator'],
+            lookupLocalStorage: 'avtorim_lang',
+            caches: ['localStorage'],
         }
     });
 

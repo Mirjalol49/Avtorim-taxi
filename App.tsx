@@ -56,6 +56,7 @@ import { UIProvider, useUIContext } from './src/features/shared/context/UIContex
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, sendNotification, Notification } from './services/notificationService';
+import { notifyTransactionOnTelegram } from './services/telegramNotificationService';
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
 const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
@@ -184,7 +185,7 @@ const AppContent: React.FC = () => {
   };
 
   // ── Per-account language ──────────────────────────────────────────────────
-  // Load this user's saved language preference when they log in.
+  // Load this user's saved language preference when admin logs in.
   useEffect(() => {
     if (!adminUser?.id) return;
     const saved = localStorage.getItem(`avtorim_lang_${adminUser.id}`);
@@ -194,11 +195,27 @@ const AppContent: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser?.id]);
 
-  /** Save language per-user AND update global i18n / UIContext state. */
+  // Load language for viewer accounts (keyed by their profile name as unique id)
+  useEffect(() => {
+    if (!adminProfile?.name) return;
+    const profileKey = `avtorim_lang_viewer_${adminProfile.name}`;
+    const saved = localStorage.getItem(profileKey);
+    if (saved && (['uz', 'ru', 'en'] as string[]).includes(saved)) {
+      setLanguage(saved as Language);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminProfile?.name]);
+
+  /** Save language per-user AND globally, then update i18n / UIContext state. */
   const handleSetLanguage = (lang: Language) => {
     setLanguage(lang);
+    // Always persist globally so the choice survives across sessions
+    localStorage.setItem('avtorim_lang', lang);
+    // Also persist per-account for when multiple accounts share a device
     if (adminUser?.id) {
       localStorage.setItem(`avtorim_lang_${adminUser.id}`, lang);
+    } else if (adminProfile?.name) {
+      localStorage.setItem(`avtorim_lang_viewer_${adminProfile.name}`, lang);
     }
   };
 
@@ -268,7 +285,21 @@ const AppContent: React.FC = () => {
         ? calcDriverFinance(driver, car ?? null, transactions).remainingDeposit
         : null;
 
-      const newTxId = await firestoreService.addTransaction(payload as any, adminUser?.id);
+      const newTxId = await firestoreService.addTransaction(payload as any, carsFleetId);
+
+      // Fire-and-forget Telegram alert to admin (never blocks UI)
+      if (adminUser?.id && driver && (data.type === 'INCOME' || data.type === 'EXPENSE')) {
+        notifyTransactionOnTelegram({
+          adminId: carsFleetId ?? adminUser.id,
+          driverName: driver.name,
+          amount: Number(data.amount),
+          type: data.type as 'INCOME' | 'EXPENSE',
+          description: data.description,
+          carName: car ? `${car.name} — ${car.licensePlate}` : undefined,
+          performedBy: adminUser.username,
+          timestamp: (data as any).timestamp ?? Date.now(),
+        });
+      }
 
       // Check threshold crossing for deposit drivers
       if (isDepositDriver && driver && balanceBefore !== null && newTxId) {
@@ -323,7 +354,7 @@ const AppContent: React.FC = () => {
       action: async () => {
         closeConfirmModal();
         setSelectedTransactions(prev => prev.filter(txId => txId !== id));
-        firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' })
+        firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, carsFleetId)
           .catch(() => {});
       }
     });
@@ -398,7 +429,7 @@ const AppContent: React.FC = () => {
         timestamp: now,
         status: undefined,
         category: 'SALARY',
-      } as any, adminUser?.id);
+      } as any, carsFleetId);
 
       await firestoreService.updateDriver(driver.id, { lastSalaryPaidAt: now } as any, adminUser?.id);
       addToast('success', t.salaryPaid || "Ish haqi to'landi");
@@ -915,7 +946,7 @@ const AppContent: React.FC = () => {
             </>
           )}
 
-          {userRole === 'admin' && (
+          {userRole === 'admin' && location.pathname !== '/drivers' && (
             <button onClick={() => setIsTxModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all w-full sm:w-auto bg-[#0f766e] hover:bg-[#0a5c56] text-white active:scale-95">
               <PlusIcon className="w-4 h-4" /> <span>{t.newTransfer}</span>
             </button>

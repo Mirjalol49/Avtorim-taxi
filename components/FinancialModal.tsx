@@ -5,6 +5,7 @@ import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon, CarIcon } fro
 import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
+import { useToast } from './ToastNotification';
 import { toDateKey } from '../services/daysOffService';
 import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
 
@@ -60,6 +61,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   initialType, initialDriverId, initialDate, initialTransaction,
 }) => {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const isDark = theme === 'dark';
 
   const [type,          setType]          = useState<TransactionType>(initialType || TransactionType.INCOME);
@@ -217,16 +219,31 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
     // Validation
     if (type === TransactionType.EXPENSE) {
-      if (expenseTarget === 'driver' && (!driverId || !drivers.find(d => d.id === driverId))) return;
-      if (expenseTarget === 'car'    && (!carId    || !cars.find(c => c.id === carId)))       return;
-      if (!description.trim()) return;
+      if (expenseTarget === 'driver' && (!driverId || !drivers.find(d => d.id === driverId))) {
+        addToast('error', 'Haydovchini tanlang');
+        return;
+      }
+      if (expenseTarget === 'car'    && (!carId    || !cars.find(c => c.id === carId))) {
+        addToast('error', 'Mashinani tanlang');
+        return;
+      }
+      if (!description.trim()) {
+        addToast('error', 'Izoh kiritish majburiy');
+        return;
+      }
     } else {
-      if (!driverId || !drivers.find(d => d.id === driverId)) return;
+      if (!driverId || !drivers.find(d => d.id === driverId)) {
+        addToast('error', 'Haydovchini tanlang');
+        return;
+      }
     }
 
     let finalAmount = Number(amount);
     if (type === TransactionType.DAY_OFF) finalAmount = 0;
-    if (type !== TransactionType.DAY_OFF && (isNaN(finalAmount) || finalAmount <= 0)) return;
+    if (type !== TransactionType.DAY_OFF && (isNaN(finalAmount) || finalAmount <= 0)) {
+        addToast('error', 'Summani kiriting (noldan katta bo\'lishi kerak)');
+        return;
+    }
     if (paymentMethod === 'card' && !chequeImage) {
       setChequeError("Karta orqali to'lovda chek rasmi talab qilinadi");
       return;

@@ -161,22 +161,22 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
 
     let cache: Driver[] = [];
 
-    const fetchDrivers = () =>
-        supabase
-            .from('drivers')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .eq('is_deleted', false)
-            .then(({ data }) => {
-                if (data) {
-                    cache = data.map(transformDriver);
-                    callback(cache);
-                }
-            })
-            .catch((err) => {
-                console.warn('[PWA] Fetch drivers failed, retrying in 3s...', err.message);
-                setTimeout(fetchDrivers, 3000);
-            });
+    const fetchDrivers = async () => {
+        try {
+            const { data } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .eq('is_deleted', false);
+            if (data) {
+                cache = data.map(transformDriver);
+                callback(cache);
+            }
+        } catch (err: any) {
+            console.warn('[PWA] Fetch drivers failed, retrying in 3s...', err.message);
+            setTimeout(fetchDrivers, 3000);
+        }
+    };
 
     fetchDrivers();
 
@@ -358,29 +358,29 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             });
 
     // Initial load: return recent 100 immediately, then fetch the rest silently
-    const fetchRecent = () =>
-        supabase
-            .from('transactions')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .neq('status', 'DELETED')
-            .order('timestamp_ms', { ascending: false })
-            .limit(100)
-            .then(({ data }) => {
-                if (data) {
-                    cache = data.map(transformTx);
-                    callback(cache);
-                    if (data.length === 100) {
-                        const oldestMs = data[data.length - 1].timestamp_ms;
-                        // background — don't block paint
-                        setTimeout(() => fetchOlderThan(oldestMs), 0);
-                    }
+    const fetchRecent = async () => {
+        try {
+            const { data } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .neq('status', 'DELETED')
+                .order('timestamp_ms', { ascending: false })
+                .limit(100);
+            if (data) {
+                cache = data.map(transformTx);
+                callback(cache);
+                if (data.length === 100) {
+                    const oldestMs = data[data.length - 1].timestamp_ms;
+                    // background — don't block paint
+                    setTimeout(() => fetchOlderThan(oldestMs), 0);
                 }
-            })
-            .catch((err) => {
-                console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
-                setTimeout(fetchRecent, 3000);
-            });
+            }
+        } catch (err: any) {
+            console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
+            setTimeout(fetchRecent, 3000);
+        }
+    };
 
     fetchRecent();
 
@@ -648,36 +648,43 @@ export const migrateFromLocalStorage = async () => {
     const migrated = localStorage.getItem('avtorim_migrated_to_supabase');
     if (migrated) return;
 
-    let hasData = false;
+    try {
+        let hasData = false;
 
-    const driversData = localStorage.getItem('avtorim_drivers');
-    if (driversData) {
-        const drivers = JSON.parse(driversData);
-        if (drivers.length > 0) {
-            await supabase.from('drivers').upsert(drivers.map(({ id, ...d }: any) => ({ id, ...d })));
-            hasData = true;
+        const driversData = localStorage.getItem('avtorim_drivers');
+        if (driversData) {
+            const drivers = JSON.parse(driversData);
+            if (drivers.length > 0) {
+                await supabase.from('drivers').upsert(drivers.map(({ id, ...d }: any) => ({ id, ...d })));
+                hasData = true;
+            }
         }
-    }
 
-    const txRaw = localStorage.getItem('avtorim_transactions');
-    if (txRaw) {
-        const transactions = JSON.parse(txRaw);
-        if (transactions.length > 0) {
-            await supabase.from('transactions').upsert(transactions.map(({ id, ...t }: any) => ({ id, ...t })));
-            hasData = true;
+        const txRaw = localStorage.getItem('avtorim_transactions');
+        if (txRaw) {
+            const transactions = JSON.parse(txRaw);
+            if (transactions.length > 0) {
+                await supabase.from('transactions').upsert(transactions.map(({ id, ...t }: any) => ({ id, ...t })));
+                hasData = true;
+            }
         }
-    }
 
-    const adminData = localStorage.getItem('avtorim_admin');
-    if (adminData) {
-        const admin = JSON.parse(adminData);
-        if (admin.name && admin.name !== 'Admin') {
-            await supabase.from('admin_profile').upsert({ id: 'profile', ...admin, updated_ms: Date.now() });
-            hasData = true;
+        const adminData = localStorage.getItem('avtorim_admin');
+        if (adminData) {
+            const admin = JSON.parse(adminData);
+            if (admin.name && admin.name !== 'Admin') {
+                await supabase.from('admin_profile').upsert({ id: 'profile', ...admin, updated_ms: Date.now() });
+                hasData = true;
+            }
         }
-    }
 
-    localStorage.setItem('avtorim_migrated_to_supabase', 'true');
+        // Only mark as complete when migration actually succeeded
+        localStorage.setItem('avtorim_migrated_to_supabase', 'true');
+        void hasData; // suppress unused variable warning
+    } catch (err) {
+        console.warn('[migration] localStorage migration failed, will retry next boot:', err);
+        // Do NOT set the flag so we retry next boot
+    }
 };
 
 // ==================== LEGACY COMPAT ====================

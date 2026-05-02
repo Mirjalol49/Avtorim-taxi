@@ -7,32 +7,32 @@ const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now()
 export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
-    const fetchCars = () =>
-        supabase
-            .from('cars')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .eq('is_deleted', false)
-            .then(({ data }) => {
-                if (data) callback(data.map(r => ({
-                    id: r.id,
-                    fleetId: r.fleet_id,
-                    name: r.name,
-                    licensePlate: r.license_plate,
-                    avatar: r.avatar ?? '',
-                    documents: r.documents ?? [],
-                    assignedDriverId: r.assigned_driver_id ?? null,
-                    dailyPlan: r.daily_plan ?? 0,
-                    planHistory: r.plan_history ?? [],
-                    dayOverrides: r.day_overrides ?? undefined,  // safe: undefined until migration runs
-                    isDeleted: r.is_deleted,
-                    createdAt: toMs(r.created_ms),
-                } as Car)));
-            })
-            .catch((err) => {
-                console.warn('[PWA] Fetch cars failed, retrying in 3s...', err.message);
-                setTimeout(fetchCars, 3000);
-            });
+    const fetchCars = async () => {
+        try {
+            const { data } = await supabase
+                .from('cars')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .eq('is_deleted', false);
+            if (data) callback(data.map(r => ({
+                id: r.id,
+                fleetId: r.fleet_id,
+                name: r.name,
+                licensePlate: r.license_plate,
+                avatar: r.avatar ?? '',
+                documents: r.documents ?? [],
+                assignedDriverId: r.assigned_driver_id ?? null,
+                dailyPlan: r.daily_plan ?? 0,
+                planHistory: r.plan_history ?? [],
+                dayOverrides: r.day_overrides ?? undefined,
+                isDeleted: r.is_deleted,
+                createdAt: toMs(r.created_ms),
+            } as Car)));
+        } catch (err: any) {
+            console.warn('[PWA] Fetch cars failed, retrying in 3s...', err.message);
+            setTimeout(fetchCars, 3000);
+        }
+    };
 
     // Fire immediately — data shows before WebSocket channel connects
     fetchCars();
@@ -41,7 +41,6 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
         .channel(`cars_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cars', filter: `fleet_id=eq.${fleetId}` }, fetchCars)
         .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetchCars();
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchCars();
         });
 

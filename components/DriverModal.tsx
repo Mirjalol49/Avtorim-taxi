@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon, CarIcon } from './Icons';
 import { Driver, DriverStatus, DriverDocument } from '../types';
@@ -262,8 +263,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     );
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
       <div
         className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
         style={theme === 'dark' ? { background: '#171f33' } : undefined}
@@ -557,7 +558,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

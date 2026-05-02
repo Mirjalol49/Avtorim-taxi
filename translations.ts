@@ -119,7 +119,7 @@ export const TRANSLATIONS = {
     nameRequired: "Ism kiritilishi shart",
     phoneRequired: "Telefon raqam kiritilishi shart",
     passwordRequired: "Parol kiritilishi shart",
-    tooManyAttempts: "Urinishlar ko'p. {s} soniyadan so'ng qayta urinib ko'ring",
+    tooManyAttempts: "Urinishlar ko'p. {{s}} soniyadan so'ng qayta urinib ko'ring",
     today: "Bugun",
     week: "Bu hafta",
     month: "Bu oy",
@@ -359,9 +359,9 @@ export const TRANSLATIONS = {
     transactionDeleteFailed: "O'chirishda xatolik yuz berdi",
     transactionUpdated: "Tranzaksiya yangilandi",
     transactionUpdateFailed: "Yangilashda xatolik yuz berdi",
-    bulkDeleteSuccess: "{n} ta tranzaksiya o'chirildi",
+    bulkDeleteSuccess: "{{n}} ta tranzaksiya o'chirildi",
     bulkDeleteFailed: "Ommaviy o'chirishda xatolik",
-    deleteConfirmBulkTx: "{n} ta tranzaksiyani o'chirmoqchimisiz?\nJami summa: {amount} UZS\n\nBu amalni ortga qaytarib bo'lmaydi."
+    deleteConfirmBulkTx: "{{n}} ta tranzaksiyani o'chirmoqchimisiz?\nJami summa: {{amount}} UZS\n\nBu amalni ortga qaytarib bo'lmaydi."
   },
   ru: {
     dashboard: "Приборная панель",
@@ -481,7 +481,7 @@ export const TRANSLATIONS = {
     nameRequired: "Имя обязательно",
     phoneRequired: "Телефон обязателен",
     passwordRequired: "Пароль обязателен",
-    tooManyAttempts: "Слишком много попыток. Попробуйте снова через {s} сек",
+    tooManyAttempts: "Слишком много попыток. Попробуйте снова через {{s}} сек",
     today: "Сегодня",
     week: "Неделя",
     month: "Месяц",
@@ -722,9 +722,9 @@ export const TRANSLATIONS = {
     transactionDeleteFailed: "Не удалось удалить транзакцию",
     transactionUpdated: "Транзакция обновлена",
     transactionUpdateFailed: "Не удалось обновить транзакцию",
-    bulkDeleteSuccess: "{n} транзакций удалено",
+    bulkDeleteSuccess: "{{n}} транзакций удалено",
     bulkDeleteFailed: "Ошибка массового удаления",
-    deleteConfirmBulkTx: "Удалить {n} транзакций?\nОбщая сумма: {amount} UZS\n\nЭто действие нельзя отменить."
+    deleteConfirmBulkTx: "Удалить {{n}} транзакций?\nОбщая сумма: {{amount}} UZS\n\nЭто действие нельзя отменить."
   },
   en: {
     dashboard: "Dashboard",
@@ -844,7 +844,7 @@ export const TRANSLATIONS = {
     nameRequired: "Name is required",
     phoneRequired: "Phone number is required",
     passwordRequired: "Password is required",
-    tooManyAttempts: "Too many attempts. Try again in {s}s",
+    tooManyAttempts: "Too many attempts. Try again in {{s}}s",
     today: "Today",
     week: "This Week",
     month: "This Month",
@@ -1081,8 +1081,8 @@ export const TRANSLATIONS = {
     transactionDeleteFailed: "Failed to delete transaction",
     transactionUpdated: "Transaction updated",
     transactionUpdateFailed: "Failed to update transaction",
-    bulkDeleteSuccess: "{n} transactions deleted",
+    bulkDeleteSuccess: "{{n}} transactions deleted",
     bulkDeleteFailed: "Bulk delete failed",
-    deleteConfirmBulkTx: "Delete {n} transaction(s)?\nTotal amount: {amount} UZS\n\nThis action cannot be undone."
+    deleteConfirmBulkTx: "Delete {{n}} transaction(s)?\nTotal amount: {{amount}} UZS\n\nThis action cannot be undone."
   }
 };
