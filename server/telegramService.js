@@ -88,80 +88,76 @@ const TRANSLATIONS = {
 };
 
 class TelegramService {
-    constructor(token, db) {
+    constructor(token, supabase) {
         if (!token) {
             console.warn('⚠️ Telegram Bot token not provided.');
             return;
         }
 
         this.bot = new Telegraf(token);
-        this.db = db;
+        this.db = supabase; // Supabase client
 
         this.driverCache = new Map();
-        this.driverCache = new Map();
-        // this.sessionCache = new Map(); // Removed in favor of Firestore
+        // adminSessions: telegramId → { adminId, authenticated, step, tempAmount, type, lang }
+        this.adminSessions = new Map();
 
-        console.log('[BOT] Initializing Service (v3.4 - SALARY NOTIFICATIONS)...');
+        console.log('[BOT] Initializing Service (v4.0 - ADMIN COMMANDS + AUTO ALERTS)...');
         this.setupHandlers();
 
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
 
-        console.log('[BOT] Attempting to launch Telegraf...');
-
-        // 1. Verify Connection First (Quick check)
         this.bot.telegram.getMe().then((botInfo) => {
             console.log(`✅ Telegram Bot Connected: @${botInfo.username}`);
             this.isReady = true;
-
-            // 2. Start Polling (Async, don't await)
             this.bot.launch().then(() => {
                 console.log('✅ Polling started.');
             }).catch(err => {
                 console.error('❌ Polling Error:', err.message);
-                this.isReady = false; // Disable if polling fails fatally
+                this.isReady = false;
             });
-
         }).catch(err => {
-            console.error('❌ Failed to Connect to Telegram (Auth/Net):', err.message);
+            console.error('❌ Failed to Connect to Telegram:', err.message);
             this.isReady = false;
             this.launchError = err.message;
         });
     }
 
-    // --- SESSION MANAGEMENT (Moved to Firestore) ---
+    // --- SESSION MANAGEMENT (Supabase-backed, memory cache fallback) ---
 
     async getSession(telegramId) {
-        // Try memory cache first for speed (optional, but let's stick to Firestore for persistence)
-        // Or better: Use Firestore.
+        if (!this.db) return null;
         try {
-            const docRef = this.db.collection('bot_sessions').doc(telegramId.toString());
-            const docSnap = await docRef.get();
-            if (docSnap.exists) {
-                return docSnap.data();
-            }
-            return null;
-        } catch (e) {
-            console.error('Session Get Error:', e);
+            const { data } = await this.db
+                .from('bot_sessions')
+                .select('session_data')
+                .eq('telegram_id', telegramId.toString())
+                .single();
+            return data?.session_data ?? null;
+        } catch {
             return null;
         }
     }
 
     async updateSession(telegramId, data) {
+        if (!this.db) return;
         try {
-            const docRef = this.db.collection('bot_sessions').doc(telegramId.toString());
-            // Merge true to preserve other fields
-            await docRef.set(data, { merge: true });
+            await this.db.from('bot_sessions').upsert({
+                telegram_id: telegramId.toString(),
+                session_data: data,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'telegram_id' });
         } catch (e) {
-            console.error('Session Update Error:', e);
+            console.error('Session Update Error:', e.message);
         }
     }
 
     async clearSession(telegramId) {
+        if (!this.db) return;
         try {
-            await this.db.collection('bot_sessions').doc(telegramId.toString()).delete();
+            await this.db.from('bot_sessions').delete().eq('telegram_id', telegramId.toString());
         } catch (e) {
-            console.error('Session Clear Error:', e);
+            console.error('Session Clear Error:', e.message);
         }
     }
 
@@ -170,20 +166,82 @@ class TelegramService {
             ctx.safeReply = async (text, extra) => {
                 try {
                     return await ctx.reply(text, extra);
-                } catch (e) { console.error("Reply err:", e); }
+                } catch (e) { console.error("Reply err:", e.message); }
             };
             return next();
         });
 
-        // 1. /start
+        // ── /start ──────────────────────────────────────────────────────
         this.bot.start(async (ctx) => {
             if (!ctx.from) return;
-            // HARD RESET
             const id = ctx.from.id;
             await this.clearSession(id);
             this.driverCache.delete(id.toString());
-
             ctx.safeReply(TRANSLATIONS.uz.welcome, Markup.keyboard([['🇺🇿 O\'zbekcha', '🇷🇺 Русский', '🇬🇧 English']]).resize().oneTime());
+        });
+
+        // ── /admin — Admin login in bot ─────────────────────────────────
+        this.bot.command('admin', async (ctx) => {
+            const tid = ctx.from.id;
+            // Check if already authenticated
+            const aSess = this.adminSessions.get(tid.toString());
+            if (aSess?.authenticated) {
+                return ctx.safeReply(
+                    `✅ *Admin paneli*\n\nQuyidagi buyruqlardan foydalaning:`,
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('📊 So\'nggi tranzaksiyalar', 'admin_txlist')],
+                        [Markup.button.callback('🔗 Chat ID olish', 'admin_getchatid')],
+                        [Markup.button.callback('🚪 Chiqish', 'admin_logout')]
+                    ])
+                );
+            }
+            this.adminSessions.set(tid.toString(), { step: 'awaiting_password', authenticated: false });
+            return ctx.safeReply('🔐 Admin parolini kiriting:');
+        });
+
+        // ── Admin inline button actions ─────────────────────────────────
+        this.bot.action('admin_txlist', async (ctx) => {
+            await ctx.answerCbQuery();
+            const tid = ctx.from.id;
+            const aSess = this.adminSessions.get(tid.toString());
+            if (!aSess?.authenticated) return ctx.safeReply('❌ Avval /admin orqali kiring.');
+            await this.sendRecentTransactions(ctx, aSess.adminId);
+        });
+
+        this.bot.action('admin_getchatid', async (ctx) => {
+            await ctx.answerCbQuery();
+            const tid = ctx.from.id;
+            const aSess = this.adminSessions.get(tid.toString());
+            if (!aSess?.authenticated) return ctx.safeReply('❌ Avval /admin orqali kiring.');
+            // Auto-save this chat ID
+            if (this.db && aSess.adminId) {
+                await this.setAdminChatId(aSess.adminId, tid.toString());
+            }
+            return ctx.safeReply(
+                `✅ *Chat ID muvaffaqiyatli saqlandi!*\n\n` +
+                `\`${tid}\`\n\n` +
+                `Endi barcha tranzaksiya xabarnomalari shu chatga yuboriladi.`,
+                { parse_mode: 'Markdown' }
+            );
+        });
+
+        this.bot.action('admin_logout', async (ctx) => {
+            await ctx.answerCbQuery();
+            this.adminSessions.delete(ctx.from.id.toString());
+            return ctx.safeReply('✅ Admin sessiyasidan chiqdingiz.');
+        });
+
+        // ── /transactions — shortcut ────────────────────────────────────
+        this.bot.command('transactions', async (ctx) => {
+            const tid = ctx.from.id;
+            const aSess = this.adminSessions.get(tid.toString());
+            if (!aSess?.authenticated) return ctx.safeReply('❌ Avval /admin orqali kiring.');
+            await this.sendRecentTransactions(ctx, aSess.adminId);
+        });
+
+        // ── /mychatid — quick helper ───────────────────────────────────
+        this.bot.command('mychatid', async (ctx) => {
+            return ctx.safeReply(`📬 Sizning Chat ID: \`${ctx.from.id}\``, { parse_mode: 'Markdown' });
         });
 
         // 2. Language
@@ -199,7 +257,9 @@ class TelegramService {
             if (driver) {
                 driver.data.language = lang;
                 this.cacheDriver(ctx.from.id, driver.data, driver.path);
-                this.db.doc(driver.path).update({ language: lang }).catch(console.error);
+                if (this.db && driver.data.id) {
+                    this.db.from('drivers').update({ language: lang }).eq('id', driver.data.id).catch(() => {});
+                }
                 return ctx.safeReply(TRANSLATIONS[lang].success_login.replace('{name}', driver.data.firstName || driver.data.name || 'Driver'), await this.getMainMenu(lang, driver.data.status));
             }
 
@@ -220,17 +280,17 @@ class TelegramService {
             const driverDoc = await this.verifyDriver(contact.phone_number);
             if (!driverDoc) return ctx.safeReply(t.driver_not_found);
 
+            // Update driver's telegram_id and language via Supabase
             await driverDoc.ref.update({
-                telegramId: tid.toString(),
+                telegram_id: tid.toString(),
                 language: lang,
-                lastActive: admin.firestore.FieldValue.serverTimestamp()
             });
 
             const dData = driverDoc.data();
-            this.cacheDriver(tid, dData, driverDoc.ref.path);
+            this.cacheDriver(tid, dData, `drivers/${driverDoc.id}`);
 
             await this.updateSession(tid, { lang, step: 'idle' });
-            const name = dData.firstName || dData.name || 'Driver';
+            const name = dData.firstName || dData.first_name || dData.name || 'Driver';
             ctx.safeReply(t.success_login.replace('{name}', name), await this.getMainMenu(lang, dData.status));
         });
 
@@ -245,7 +305,7 @@ class TelegramService {
             if (!driver) {
                 const doc = await this.findDriverByTelegramId(tid);
                 if (doc) {
-                    this.cacheDriver(tid, doc.data(), doc.ref.path);
+                    this.cacheDriver(tid, doc.data(), `drivers/${doc.id}`);
                     driver = this.getDriverFromCache(tid);
                 }
             }
@@ -326,42 +386,192 @@ class TelegramService {
 
             return ctx.safeReply("👇", await this.getMainMenu(lang, driver.data.status));
         });
+
+        // ── Admin password handler (catches text when in admin auth flow) ──
+        this.bot.on('text', async (ctx) => {
+            const tid = ctx.from.id;
+            const text = ctx.message.text;
+            const aSess = this.adminSessions.get(tid.toString());
+            if (aSess?.step === 'awaiting_password') {
+                return this.handleAdminPassword(ctx, tid, text);
+            }
+        });
     }
 
     async saveTransaction(ctx, tid, driver, amount, type, comment, lang, t) {
         try {
-            let transactionsRef;
-            const pathSegments = driver.path.split('/');
-            const dRef = this.db.doc(driver.path);
-            if (pathSegments.length > 2) {
-                transactionsRef = dRef.parent.parent.collection('transactions');
-            } else {
-                transactionsRef = this.db.collection('transactions');
+            if (!this.db) throw new Error('Database not connected');
+
+            const driverName = driver.data.firstName || driver.data.name || 'Driver';
+            // Driver's fleet owner id — stored in driver.data.adminId or fleet_id
+            const fleetId = driver.data.adminId || driver.data.fleet_id || driver.data.fleetId || null;
+            const driverId = driver.data.id || driver.path.split('/').pop();
+
+            // Insert into Supabase
+            const { data: txData, error: txError } = await this.db
+                .from('transactions')
+                .insert({
+                    driver_id: driverId,
+                    driver_name: driverName,
+                    fleet_id: fleetId,
+                    amount: Math.abs(amount),
+                    type: type,
+                    category: 'Telegram',
+                    description: comment || '',
+                    status: 'COMPLETED',
+                    timestamp_ms: Date.now(),
+                    source: 'bot',
+                    created_ms: Date.now(),
+                })
+                .select('id')
+                .single();
+
+            if (txError) throw txError;
+
+            // ── Notify the fleet admin on Telegram (fire-and-forget) ──
+            if (fleetId) {
+                this.notifyAdminOfBotTransaction({
+                    adminId: fleetId,
+                    driverName,
+                    amount: Math.abs(amount),
+                    type,
+                    description: comment || undefined,
+                }).catch(() => {});
             }
 
-            await transactionsRef.add({
-                driverId: pathSegments[pathSegments.length - 1],
-                driverName: driver.data.firstName || driver.data.name || 'Driver',
-                amount: Math.abs(amount),
-                type: type,
-                category: 'Telegram',
-                description: comment || '',
-                status: 'COMPLETED',
-                timestamp: Date.now(),
-                source: 'bot'
-            });
-
-            const fmt = amount.toLocaleString(lang === 'uz' ? 'uz-UZ' : 'ru-RU');
+            const fmt = Math.abs(amount).toLocaleString(lang === 'uz' ? 'uz-UZ' : 'ru-RU');
             const msg = type === 'INCOME' ? t.saved_income : t.saved_expense;
-
             await this.updateSession(tid, { step: 'idle' });
             const replyText = msg.replace('{amount}', fmt).replace('{comment}', comment);
-
             return ctx.safeReply(replyText, await this.getMainMenu(lang, driver.data.status));
 
         } catch (e) {
-            console.error("Trans Error:", e);
+            console.error("Trans Error:", e.message);
             return ctx.safeReply(t.error_generic, await this.getMainMenu(lang, driver.data.status));
+        }
+    }
+
+    // ── Admin helper: handle password during /admin flow ─────────────
+    async handleAdminPassword(ctx, tid, text) {
+        if (!this.db) return ctx.safeReply('❌ Server xatosi.');
+        // Look up admin by password in Supabase admin_users table
+        const { data: users } = await this.db
+            .from('admin_users')
+            .select('id, username, role, active')
+            .eq('active', true);
+
+        let matchedAdmin = null;
+        for (const u of (users || [])) {
+            // Simple plain-text match (bcrypt not available without separate dep on this path)
+            const { data: row } = await this.db
+                .from('admin_users')
+                .select('password')
+                .eq('id', u.id)
+                .single();
+            if (row?.password && row.password === text) {
+                matchedAdmin = u;
+                break;
+            }
+        }
+
+        if (!matchedAdmin) {
+            this.adminSessions.set(tid.toString(), { step: 'awaiting_password', authenticated: false });
+            return ctx.safeReply('❌ Noto\'g\'ri parol. Qayta urinib ko\'ring:');
+        }
+
+        this.adminSessions.set(tid.toString(), {
+            step: 'idle',
+            authenticated: true,
+            adminId: matchedAdmin.id,
+            username: matchedAdmin.username
+        });
+
+        // Auto-save their chat ID
+        await this.setAdminChatId(matchedAdmin.id, tid.toString());
+
+        return ctx.safeReply(
+            `✅ *Xush kelibsiz, ${matchedAdmin.username}!*\n\n` +
+            `Chat ID avtomatik saqlandi: \`${tid}\`\n` +
+            `Endi barcha bot tranzaksiyalari sizga yuboriladi.`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('📊 So\'nggi tranzaksiyalar', 'admin_txlist')],
+                    [Markup.button.callback('🔗 Chat ID yangilash', 'admin_getchatid')],
+                    [Markup.button.callback('🚪 Chiqish', 'admin_logout')]
+                ])
+            }
+        );
+    }
+
+    // ── Admin helper: send last 10 transactions ───────────────────────
+    async sendRecentTransactions(ctx, adminId) {
+        if (!this.db) return ctx.safeReply('❌ Server xatosi.');
+        try {
+            const { data: txs } = await this.db
+                .from('transactions')
+                .select('driver_name, amount, type, description, timestamp_ms, source')
+                .eq('fleet_id', adminId)
+                .neq('status', 'DELETED')
+                .order('timestamp_ms', { ascending: false })
+                .limit(10);
+
+            if (!txs || txs.length === 0) {
+                return ctx.safeReply('📭 Hozircha tranzaksiyalar yo\'q.');
+            }
+
+            const fmtNum = (n) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+            const fmtDate = (ts) => {
+                const d = new Date(ts);
+                return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            };
+
+            let msg = `📊 *So'nggi 10 ta tranzaksiya*\n━━━━━━━━━━━━━━━\n`;
+            txs.forEach((tx, i) => {
+                const icon = tx.type === 'INCOME' ? '💰' : '💸';
+                const sign = tx.type === 'INCOME' ? '+' : '-';
+                const src = tx.source === 'bot' ? ' 🤖' : '';
+                msg += `${i + 1}. ${icon} ${sign}${fmtNum(tx.amount)} UZS${src}\n`;
+                msg += `   👤 ${tx.driver_name || '—'}`;
+                if (tx.description) msg += ` · ${tx.description}`;
+                msg += `\n   🕐 ${fmtDate(tx.timestamp_ms)}\n`;
+            });
+
+            return ctx.safeReply(msg, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Yangilash', 'admin_txlist')]])
+            });
+        } catch (e) {
+            console.error('[BOT] sendRecentTransactions error:', e.message);
+            return ctx.safeReply('❌ Ma\'lumot olishda xatolik.');
+        }
+    }
+
+    // ── Notify admin of a transaction submitted via bot ───────────────
+    async notifyAdminOfBotTransaction({ adminId, driverName, amount, type, description }) {
+        if (!this.isReady || !this.db) return;
+        const chatId = await this.getAdminChatId(adminId);
+        if (!chatId) return;
+
+        const fmtNum = (n) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+        const isIncome = type === 'INCOME';
+        const icon = isIncome ? '💰' : '💸';
+        const label = isIncome ? "Kirim (Bot orqali)" : "Chiqim (Bot orqali)";
+        const amtStr = `${isIncome ? '+' : '-'}${fmtNum(amount)} UZS`;
+
+        let msg = `${icon} *Bot tranzaksiyasi*\n`;
+        msg += `━━━━━━━━━━━━━━━\n`;
+        msg += `👤 *Haydovchi:* ${driverName}\n`;
+        msg += `📊 *Tur:* ${label}\n`;
+        msg += `💵 *Summa:* \`${amtStr}\`\n`;
+        if (description) msg += `📝 *Izoh:* ${description}\n`;
+        msg += `━━━━━━━━━━━━━━━\n_TAKSAPARK CRM_`;
+
+        try {
+            await this.bot.telegram.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
+            console.log(`[BOT] Admin alert sent to ${chatId}`);
+        } catch (e) {
+            console.error('[BOT] notifyAdminOfBotTransaction error:', e.message);
         }
     }
 
@@ -396,50 +606,55 @@ class TelegramService {
     }
 
     async verifyDriver(phoneRaw) {
+        if (!this.db) return null;
         const phoneNormalized = phoneRaw.replace(/\D/g, '');
         const suffix = phoneNormalized.slice(-9);
-        const snapshot = await this.db.collectionGroup('drivers').get();
-        let match = null;
-        snapshot.forEach(doc => {
-            if (match) return;
-            const d = doc.data();
-            if (d.isDeleted) return;
-            if (d.phone && d.phone.toString().replace(/\D/g, '').slice(-9) === suffix) match = doc;
-        });
-        return match;
+        try {
+            const { data } = await this.db
+                .from('drivers')
+                .select('*')
+                .eq('is_deleted', false);
+            if (!data) return null;
+            const match = data.find(d => d.phone && d.phone.replace(/\D/g, '').slice(-9) === suffix);
+            if (!match) return null;
+            // Wrap in a firestore-like doc interface for compatibility
+            return { data: () => match, ref: { update: async (upd) => {
+                await this.db.from('drivers').update(upd).eq('id', match.id);
+            }}, id: match.id };
+        } catch (e) {
+            console.error('[BOT] verifyDriver error:', e.message);
+            return null;
+        }
     }
 
     async findDriverByTelegramId(telegramId) {
+        if (!this.db) return null;
         try {
-            const snapshot = await this.db.collectionGroup('drivers').get();
-            let match = null;
-            const targetId = telegramId.toString();
-            snapshot.forEach(doc => {
-                if (match) return;
-                const d = doc.data();
-                if (d.isDeleted) return;
-                if (d.telegramId && d.telegramId.toString() === targetId) {
-                    match = doc;
-                }
-            });
-            return match;
-        } catch (e) {
-            console.error("[BOT DEBUG] findDriver error:", e);
+            const { data } = await this.db
+                .from('drivers')
+                .select('*')
+                .eq('telegram_id', telegramId.toString())
+                .eq('is_deleted', false)
+                .single();
+            if (!data) return null;
+            return { data: () => data, ref: { update: async (upd) => {
+                await this.db.from('drivers').update(upd).eq('id', data.id);
+            }}, id: data.id, path: `drivers/${data.id}` };
+        } catch {
             return null;
         }
     }
 
     async registerDriver(driver_id, telegram_user_id, callback) {
         try {
-            console.log(`[BOT] Registering/Linking driver ${driver_id} with Telegram ID: ${telegram_user_id}`);
-
-            // Update the driver document in Firestore
-            await this.db.collection('drivers').doc(driver_id).update({
-                telegramId: telegram_user_id.toString(), // Store as string to be safe
-                // We can also store extra metadata if needed
-                telegramLinkedAt: Date.now()
-            });
-
+            console.log(`[BOT] Linking driver ${driver_id} with Telegram ID: ${telegram_user_id}`);
+            if (this.db) {
+                const { error } = await this.db
+                    .from('drivers')
+                    .update({ telegram_id: telegram_user_id.toString() })
+                    .eq('id', driver_id);
+                if (error) throw error;
+            }
             console.log(`[BOT] Successfully linked driver ${driver_id} <-> ${telegram_user_id}`);
             if (callback) callback(true);
         } catch (error) {
@@ -455,62 +670,137 @@ class TelegramService {
      * @param {string} date - The formatted date string.
      * @returns {Promise<{success: boolean, error?: string}>}
      */
+    /**
+     * Returns the admin's Telegram chat ID from Supabase admin_settings, or null if not set.
+     */
+    async getAdminChatId(adminId) {
+        if (!this.db) return null;
+        try {
+            const { data } = await this.db
+                .from('admin_settings')
+                .select('telegram_chat_id')
+                .eq('admin_id', adminId)
+                .single();
+            return data?.telegram_chat_id || null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Stores the admin's Telegram chat ID in Supabase admin_settings.
+     */
+    async setAdminChatId(adminId, chatId) {
+        if (!this.db) throw new Error('DB not available');
+        const { error } = await this.db.from('admin_settings').upsert({
+            admin_id: adminId,
+            telegram_chat_id: chatId.toString(),
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'admin_id' });
+        if (error) throw error;
+    }
+
+    /**
+     * Sends a transaction alert to the admin's Telegram chat.
+     * @param {{
+     *   adminId: string,
+     *   driverName: string,
+     *   amount: number,
+     *   type: 'INCOME' | 'EXPENSE',
+     *   description?: string,
+     *   carName?: string,
+     *   performedBy?: string,
+     *   timestamp?: number
+     * }} payload
+     */
+    async sendTransactionAlert(payload) {
+        try {
+            if (!this.isReady) {
+                return { success: false, error: `Bot not active: ${this.launchError || 'Initializing'}` };
+            }
+
+            const { adminId, driverName, amount, type, description, carName, performedBy, timestamp } = payload;
+
+            // Resolve admin chat ID — prefer payload override, then Firestore lookup
+            let chatId = payload.adminChatId || null;
+            if (!chatId && adminId) {
+                chatId = await this.getAdminChatId(adminId);
+            }
+
+            if (!chatId) {
+                return { success: false, error: 'Admin Telegram chat ID not configured' };
+            }
+
+            const fmtNum = (n) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+            const fmtDate = (ts) => {
+                const d = new Date(ts || Date.now());
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            };
+
+            const isIncome  = type === 'INCOME';
+            const typeIcon  = isIncome ? '💰' : '💸';
+            const typeLabel = isIncome ? "To'landi (Kirim)" : "Chiqim";
+            const amtStr    = `${isIncome ? '+' : '-'}${fmtNum(amount)} UZS`;
+
+            let msg = `${typeIcon} *Yangi tranzaksiya*\n`;
+            msg += `━━━━━━━━━━━━━━━\n`;
+            msg += `👤 *Haydovchi:* ${driverName || "Noma'lum"}\n`;
+            if (carName) msg += `🚗 *Avtomobil:* ${carName}\n`;
+            msg += `📊 *Tur:* ${typeLabel}\n`;
+            msg += `💵 *Summa:* \`${amtStr}\`\n`;
+            if (description) msg += `📝 *Izoh:* ${description}\n`;
+            if (performedBy) msg += `👮 *Kim tomonidan:* ${performedBy}\n`;
+            msg += `🕐 *Vaqt:* ${fmtDate(timestamp)}\n`;
+            msg += `━━━━━━━━━━━━━━━\n`;
+            msg += `_TAKSAPARK CRM_`;
+
+            await this.bot.telegram.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
+            console.log(`[BOT] Transaction alert sent to chat ${chatId}`);
+            return { success: true };
+
+        } catch (error) {
+            console.error('[BOT] sendTransactionAlert error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     async sendSalaryNotification(driverId, amount, date) {
         try {
             if (!this.isReady) {
-                console.warn('[BOT] Service not ready or failed to launch:', this.launchError);
                 return { success: false, error: `Bot not active: ${this.launchError || 'Initializing'}` };
             }
-            console.log(`[BOT] Sending salary notification to driver: ${driverId}`);
+            if (!this.db) return { success: false, error: 'Database not connected' };
 
-            // 1. Fetch Driver
-            let driverDoc;
-            // First check if it's a direct path ID
-            try {
-                const d = await this.db.collection('drivers').doc(driverId).get();
-                if (d.exists) driverDoc = d;
-            } catch (e) { }
+            const { data, error } = await this.db
+                .from('drivers')
+                .select('*')
+                .eq('id', driverId)
+                .single();
 
-            // If not found, try scan
-            if (!driverDoc || !driverDoc.exists) {
-                const snapshot = await this.db.collectionGroup('drivers').get();
-                snapshot.forEach(d => {
-                    if (d.id === driverId) driverDoc = d;
-                });
-            }
-
-            if (!driverDoc || !driverDoc.exists) {
+            if (error || !data) {
                 console.warn(`[BOT] Driver not found: ${driverId}`);
                 return { success: false, error: 'Driver not found' };
             }
 
-            const data = driverDoc.data();
-            const telegramId = data.telegramId;
-
+            const telegramId = data.telegram_id || data.telegramId;
             if (!telegramId) {
-                console.warn(`[BOT FAIL] Driver ${driverId} (Name: ${data.name}) found but has NULL telegramId.`);
-                console.log('[BOT DEBUG] Driver Data Dump:', JSON.stringify(data, null, 2));
-                return { success: false, error: 'Telegram not linked (Driver found, but no ID)' };
+                return { success: false, error: 'Telegram not linked' };
             }
-            console.log(`[BOT SUCCESS] Found Telegram ID: ${telegramId} for driver ${data.name}`);
 
-            // 2. Prepare Message
             const lang = data.language || 'uz';
             const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
             const fmtAmount = amount.toLocaleString(lang === 'uz' ? 'uz-UZ' : 'ru-RU') + (lang === 'en' ? ' UZS' : " so'm");
-
             const message = t.salary_received
                 .replace('{amount}', fmtAmount)
                 .replace('{date}', date);
 
-            // 3. Send
             await this.bot.telegram.sendMessage(telegramId, message, { parse_mode: 'Markdown' });
-            console.log(`[BOT] Notification sent to ${telegramId}`);
-
+            console.log(`[BOT] Salary notification sent to ${telegramId}`);
             return { success: true };
 
         } catch (error) {
-            console.error('[BOT] Failed to send notification:', error);
+            console.error('[BOT] Failed to send salary notification:', error.message);
             return { success: false, error: error.message };
         }
     }

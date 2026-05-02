@@ -435,6 +435,25 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>, fleet
         .select('id')
         .single();
     if (error) throw error;
+
+    // ── Telegram alert (fire-and-forget) ─────────────────────────────────────
+    // Import lazily to avoid circular deps. Never awaited — won't block callers.
+    if (fleetId && tx.type !== 'DAY_OFF') {
+        import('./telegramNotificationService').then(({ notifyTransactionOnTelegram }) => {
+            notifyTransactionOnTelegram({
+                adminId: fleetId,
+                driverName: tx.driverName ?? 'Noma\'lum',
+                amount: Math.abs(tx.amount ?? 0),
+                type: tx.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                description: tx.description || tx.note || undefined,
+                carName: tx.carName || undefined,
+                performedBy: tx.performedBy || undefined,
+                timestamp: tx.timestamp ?? Date.now(),
+            });
+        }).catch(() => {});
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     return data.id as string;
 };
 

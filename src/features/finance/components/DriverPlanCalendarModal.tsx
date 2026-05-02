@@ -223,10 +223,10 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             {/* ── Content Container ── */}
             <div className="w-full max-w-6xl mx-auto px-4 py-6 sm:px-6 space-y-6 sm:space-y-8 flex-1">
                 {/* ── Profile Header ── */}
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl border ${
-                    isDark ? 'bg-surface border-white/[0.06] shadow-sm' : 'bg-white border-gray-200 shadow-sm'
+                <div className={`flex items-center justify-between gap-4 p-3 sm:p-4 rounded-2xl border ${
+                    isDark ? 'bg-surface border-white/[0.06] shadow-sm' : 'bg-white border-slate-200 shadow-sm'
                 }`}>
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full">
                         {monthData.driver.avatar ? (
                             <img
                                 src={monthData.driver.avatar}
@@ -234,117 +234,105 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 className="w-11 h-11 rounded-2xl object-cover flex-shrink-0"
                             />
                         ) : (
-                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-base font-bold flex-shrink-0 ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-base font-bold flex-shrink-0 ${isDark ? 'bg-surface-2 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                                 {monthData.driver.name.charAt(0)}
                             </div>
                         )}
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h2 className={`text-xl sm:text-2xl font-black tracking-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {monthData.driver.name}
-                                </h2>
+                        <div className="min-w-0 flex flex-1 items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
+                            <h2 className={`text-lg sm:text-xl font-bold tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {monthData.driver.name}
+                            </h2>
+                            <div className={`text-sm font-medium whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                <span className="font-bold">{fmt(monthData.dailyPlan)}</span> <span className="text-slate-500">/ kun</span>
                             </div>
-                            <p className={`text-sm font-medium mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {t('dailyPlan')}: <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{fmt(monthData.dailyPlan)} UZS</span> / {t('dailyPlanUnit')}
-                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* ── Stats row ── */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* ── Dashboard (Stats + Progress) ── */}
+                <div className={`p-4 sm:p-5 rounded-3xl border flex flex-col gap-6 ${isDark ? 'bg-surface border-white/[0.06]' : 'bg-white border-slate-200'}`}>
+                    {/* Stats grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                         {/* Monthly plan */}
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-surface border border-white/[0.06]' : 'bg-white border border-gray-200'}`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('monthlyPlan') ?? 'Oylik Reja'}</p>
-                            <p className={`text-xl font-black font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(monthData.monthlyTarget)}</p>
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik Reja'}</p>
+                            <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>{fmt(monthData.monthlyTarget)}</p>
                         </div>
                         {/* Paid */}
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-emerald-500/[0.08] border border-emerald-500/[0.15]' : 'bg-emerald-50 border border-emerald-200'}`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('totalPaidAmount')}</p>
-                            <p className={`text-xl font-black font-mono tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{fmt(monthData.actualIncome)}</p>
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{t('totalPaidAmount') ?? "Jami To'ladi"}</p>
+                            <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{fmt(monthData.actualIncome)}</p>
                         </div>
-                        {/* Debt / Prepaid card — title changes dynamically */}
-                        <div className={`p-4 rounded-2xl transition-colors ${
-                            monthData.remaining <= 0
-                                ? isDark ? 'bg-emerald-500/[0.08] border border-emerald-500/[0.15]' : 'bg-emerald-50 border border-emerald-200'
-                                : isDark ? 'bg-red-500/[0.08] border border-red-500/[0.15]' : 'bg-red-50 border border-red-200'
-                        }`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1 ${
-                                monthData.remaining <= 0
-                                    ? isDark ? 'text-emerald-400' : 'text-emerald-600'
-                                    : isDark ? 'text-red-400' : 'text-red-600'
-                            }`}>
+                        {/* Debt / Prepaid card */}
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
                                 {monthData.remaining <= 0 ? (
                                     <>
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
-                                        </svg>
-                                        {t('prepaidAmount')}
+                                        {t('prepaidAmount') ?? 'Oldindan to\'lov'}
                                     </>
                                 ) : (
                                     <>
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />
-                                        </svg>
                                         {t('currentDebt') ?? 'Hozirgi Qarz'}
                                     </>
                                 )}
                             </p>
-                            <p className={`text-xl font-black font-mono tabular-nums ${
+                            <p className={`text-2xl font-bold tabular-nums ${
                                 monthData.remaining <= 0
                                     ? isDark ? 'text-emerald-400' : 'text-emerald-600'
-                                    : isDark ? 'text-red-400' : 'text-red-600'
+                                    : isDark ? 'text-red-400' : 'text-red-500'
                             }`}>
                                 {monthData.remaining > 0 ? `-${fmt(monthData.remaining)}` : `+${fmt(-monthData.remaining)}`}
                             </p>
                         </div>
                         {/* Working days */}
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-surface border border-white/[0.06]' : 'bg-white border border-gray-200'}`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('workingDays')}</p>
-                            <p className={`text-xl font-black tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{t('workingDays') ?? 'Ish Kunlari'}</p>
+                            <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                 {monthData.workingDays}
-                                <span className={`text-sm font-normal ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>/ {monthData.totalDays}</span>
+                                <span className={`text-lg font-medium ml-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>/ {monthData.totalDays}</span>
                             </p>
                         </div>
                     </div>
 
                     {/* Progress bar */}
                     <div>
-                        <div className="flex justify-between text-xs font-semibold mb-2">
-                            <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{t('incomeProgress')}</span>
-                            <span className={isDark ? 'text-white' : 'text-gray-900'}>{monthData.paidPercent}%</span>
+                        <div className="flex justify-between text-sm font-medium mb-2">
+                            <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('incomeProgress') ?? 'Tushum progressi'}</span>
+                            <span className={isDark ? 'text-white' : 'text-slate-900'}>{monthData.paidPercent}%</span>
                         </div>
-                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-surface-3' : 'bg-gray-100'}`}>
+                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-surface-3' : 'bg-slate-100'}`}>
                             <div
                                 className={`h-full rounded-full transition-all duration-700 ease-out ${
                                     monthData.paidPercent >= 100 ? 'bg-emerald-500'
-                                    : monthData.paidPercent >= 60  ? 'bg-amber-400'
-                                    : 'bg-red-500'
+                                    : 'bg-blue-500'
                                 }`}
                                 style={{ width: `${Math.min(100, monthData.paidPercent)}%` }}
                             />
                         </div>
                     </div>
+                </div>
 
+                {/* ── Calendar ── */}
+                <div>
                     {/* Legend */}
-                    <div className={`flex flex-wrap gap-x-5 gap-y-2 pb-4 border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                        {([
-                            { status: 'PAID'    as DayStatus, label: t('legendPaid') },
-                            { status: 'PARTIAL' as DayStatus, label: t('legendPartial') },
-                            { status: 'UNPAID'  as DayStatus, label: t('legendDebt') },
-                            { status: 'DAY_OFF' as DayStatus, label: `🏝️ ${t('legendDayOff')}` },
-                        ]).map(({ status, label }) => (
-                            <div key={status} className="flex items-center gap-1.5">
-                                <StatusIcon status={status} />
-                                <span className={`text-[11px] font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{label}</span>
-                            </div>
-                        ))}
+                    <div className="flex items-center justify-end w-full mb-3">
+                        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+                            {([
+                                { status: 'PAID'    as DayStatus, label: t('legendPaid') ?? "To'liq to'landi" },
+                                { status: 'PARTIAL' as DayStatus, label: t('legendPartial') ?? 'Qisman' },
+                                { status: 'UNPAID'  as DayStatus, label: t('legendDebt') ?? 'Qarz' },
+                                { status: 'DAY_OFF' as DayStatus, label: `🏝️ ${t('legendDayOff') ?? 'Dam olish'}` },
+                            ]).map(({ status, label }) => (
+                                <div key={status} className="flex items-center gap-1.5">
+                                    <StatusIcon status={status} />
+                                    <span className={`text-xs font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{label}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
-                    {/* ── Calendar ── */}
-                    <div>
-                        {/* Weekday headers */}
-                        <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
+                    {/* Weekday headers */}
+                    <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
                             {orderedDays.map(day => (
                                 <div
                                     key={day}
@@ -422,7 +410,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             const excess = d.income - d.planForDay;
                                             const isOverpaid = d.income > d.planForDay && d.planForDay > 0;
                                             return (
-                                                <div className="mt-auto pt-1.5 flex flex-col gap-0.5">
+                                                <div className="mt-auto pt-3 flex flex-col gap-1">
                                                     {d.income > 0 && (
                                                         <div className={`text-[10px] sm:text-xs font-bold tabular-nums truncate leading-tight ${
                                                             isOverpaid
@@ -461,9 +449,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                 </div>
                                             );
                                         })() : d.status === 'FUTURE_DISCOUNT' ? (
-                                            <div className="mt-auto pt-1.5">
+                                            <div className="mt-auto pt-3">
                                                 <div className={`text-[10px] font-semibold tabular-nums truncate ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
-                                                    {fmt(d.planForDay)} UZS
+                                                    {fmt(d.planForDay)} <span className="text-orange-500/70">/ kun</span>
                                                 </div>
                                             </div>
                                         ) : null}

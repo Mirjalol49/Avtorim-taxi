@@ -752,8 +752,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
             <button
                 onClick={openSidebar}
                 className={`relative p-2 rounded-xl transition-colors ${isDark
-                    ? 'hover:bg-white/[0.08] text-[rgba(235,235,245,0.6)] hover:text-white'
-                    : 'hover:bg-black/[0.06] text-[rgba(60,60,67,0.6)] hover:text-black'}`}
+                    ? 'hover:bg-white/[0.08] text-gray-400 hover:text-white'
+                    : 'hover:bg-black/[0.06] text-gray-500 hover:text-black'}`}
                 aria-label="Bildirishnomalar"
             >
                 <BellIcon className="w-5 h-5" />

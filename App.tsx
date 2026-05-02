@@ -8,6 +8,7 @@ import {
 } from './components/Icons';
 
 import FinancialModal from './components/FinancialModal';
+import NotificationBell from './components/NotificationBell';
 import DriverModal from './components/DriverModal';
 import CarModal from './components/CarModal';
 import CarsPage from './src/features/cars/CarsPage';
@@ -826,10 +827,11 @@ const AppContent: React.FC = () => {
           className={`h-16 flex items-center justify-between px-5 z-10 border-b flex-shrink-0 md:hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-black/[0.08]'}`}
           style={{ background: theme === 'dark' ? 'var(--color-sidebar)' : undefined }}
         >
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className={`${theme === 'dark' ? 'text-[rgba(235,235,245,0.6)] hover:text-white' : 'text-[rgba(60,60,67,0.6)] hover:text-black'
+          {/* Left: Hamburger + Page Title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setIsSidebarOpen(true)} className={`flex-shrink-0 ${theme === 'dark' ? 'text-[rgba(235,235,245,0.6)] hover:text-white' : 'text-[rgba(60,60,67,0.6)] hover:text-black'
               }`}><MenuIcon className="w-6 h-6" /></button>
-            <div>
+            <div className="min-w-0">
               <h2 className={`text-[17px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
                 }`}>
                 {location.pathname === '/dashboard' && t.overview}
@@ -854,6 +856,49 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/documents' && 'Fayllar va hujjatlarni saqlash'}
               </p>
             </div>
+          </div>
+
+          {/* Right: Notification Bell */}
+          <div className="flex-shrink-0 ml-2">
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              readIds={readNotificationIds}
+              userId={adminUser?.id || 'global'}
+              theme={theme}
+              onMarkAsRead={async (id) => {
+                const userId = adminUser?.id || 'global';
+                await markNotificationAsRead(id, userId);
+                setReadNotificationIds(prev => new Set(prev).add(id));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+              }}
+              onMarkAllAsRead={async () => {
+                const userId = adminUser?.id || 'global';
+                const unreadIds = notifications
+                  .filter(n => !readNotificationIds.has(n.id))
+                  .map(n => n.id);
+                if (unreadIds.length > 0) {
+                  const newSet = new Set(readNotificationIds);
+                  unreadIds.forEach(id => newSet.add(id));
+                  setReadNotificationIds(newSet);
+                  setUnreadCount(0);
+                  markAllNotificationsAsRead(unreadIds, userId).catch(() => {});
+                }
+              }}
+              onDeleteNotification={async (id) => {
+                const userId = adminUser?.id || 'global';
+                setNotifications(prev => prev.filter(n => n.id !== id));
+                if (!readNotificationIds.has(id)) {
+                  setUnreadCount(prev => Math.max(0, prev - 1));
+                }
+                await deleteNotification(id, userId);
+              }}
+              onClearAllRead={async () => {
+                const userId = adminUser?.id || 'global';
+                setNotifications(prev => prev.filter(n => !readNotificationIds.has(n.id)));
+                await clearAllReadNotifications(userId);
+              }}
+            />
           </div>
         </header>
 
@@ -976,8 +1021,10 @@ const AppContent: React.FC = () => {
             } />
 
             {/* TRANSACTIONS COMPONENT */}
+            {/* Use txLoading (transactions-only) not isDataLoading (which includes carsLoading).
+                This prevents slow car subscriptions from blocking the transaction list. */}
             <Route path="/transactions" element={
-              isDataLoading
+              txLoading
                 ? <PageSkeleton theme={theme} variant="transactions" />
                 : <TransactionsPage
                     transactions={transactions}
@@ -1071,6 +1118,7 @@ const AppContent: React.FC = () => {
         theme={theme}
         onLogout={() => { playLockSound(); handleLogout(); }}
         onLock={() => { playLockSound(); setIsLocked(true); }}
+        adminId={adminUser?.id}
       />
 
       {/* CONFIRMATION MODAL */}

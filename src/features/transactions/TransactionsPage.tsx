@@ -335,8 +335,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             </div>
 
             {/* Transactions Table */}
-            <div className={`rounded-3xl border overflow-hidden shadow-xl ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                <div className="overflow-x-auto">
+            <div className={`rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left min-w-[800px]">
                         <thead className={`border-b ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
                             <tr className={`${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
@@ -573,6 +573,136 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className={`md:hidden flex flex-col divide-y ${theme === 'dark' ? 'divide-white/[0.07] bg-surface' : 'divide-gray-100 bg-white'}`}>
+                    {paginatedTransactions.length === 0 ? (
+                        <div className={`p-8 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {t('noTransactions')}
+                        </div>
+                    ) : (
+                        paginatedTransactions.map(tx => {
+                            const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
+                            const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
+                            const isDeleted = tx.status === PaymentStatus.DELETED;
+                            const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car
+                                ? detectCategory(tx.description)
+                                : null;
+                            const descText = tx.description === 'Salary Refund: Manual Action'
+                                ? t('salaryRefundDescription')
+                                : tx.description || '—';
+
+                            return (
+                                <div key={tx.id} className={`p-4 flex flex-col gap-3 relative ${isDeleted ? 'opacity-50 grayscale' : ''} ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-gray-50'}`}>
+                                    {/* Header row: Driver/Car/Cat + Amount */}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            {car ? (
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
+                                                    <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                </div>
+                                            ) : expenseCat ? (
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border flex-shrink-0 ${theme === 'dark' ? 'border-red-500/20 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+                                                    {expenseCat.icon}
+                                                </div>
+                                            ) : tx.type === TransactionType.EXPENSE && !driver ? (
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border flex-shrink-0 ${theme === 'dark' ? 'border-orange-500/20 bg-orange-500/10' : 'border-orange-200 bg-orange-50'}`}>
+                                                    📦
+                                                </div>
+                                            ) : (
+                                                <div className={`w-10 h-10 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                                                    {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-lg ${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col">
+                                                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                                    {car ? car.name : expenseCat ? expenseCat.label : driver ? driver.name : tx.driverName || t('generalExpense')}
+                                                </span>
+                                                <span className={`text-[11px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                    {car ? car.licensePlate : driver ? driver.licensePlate : t('expense')}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right flex-shrink-0 pl-3">
+                                            {tx.type === TransactionType.DAY_OFF ? (
+                                                <span className="flex items-center justify-end gap-1 text-sm font-bold text-blue-400">
+                                                    <span>🏝️</span> {t('dayOffLabel')}
+                                                </span>
+                                            ) : (
+                                                <span className={`text-[15px] font-bold font-mono tabular-nums leading-tight ${
+                                                    tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'
+                                                }`}>
+                                                    {tx.type === TransactionType.INCOME ? '+' : '−'}{formatNumberSmart(tx.amount, false, language)}
+                                                    <span className={`block text-[10px] uppercase font-semibold mt-0.5 ${
+                                                        tx.type === TransactionType.INCOME
+                                                            ? theme === 'dark' ? 'text-teal-700' : 'text-teal-400'
+                                                            : theme === 'dark' ? 'text-red-800'  : 'text-red-300'
+                                                    }`}>UZS</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Description and Date row */}
+                                    <div className="flex flex-col gap-2 mt-1">
+                                        <span className={`text-[13px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            {descText}
+                                        </span>
+                                        <div className="flex items-center justify-between">
+                                            <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(tx.timestamp).toLocaleDateString('en-GB')}
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                {tx.paymentMethod && (
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                                                        {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
+                                                    </span>
+                                                )}
+                                                {tx.chequeImage && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedImage(tx.chequeImage!); }}
+                                                        className={`text-[10px] px-2 py-0.5 rounded border shadow-sm transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400 hover:bg-blue-800/50 hover:border-blue-600' : 'bg-blue-50 border-blue-200 text-blue-700'}`}
+                                                    >
+                                                        📄 {t('viewReceipt')}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    {userRole === 'admin' && (
+                                        <div className={`flex items-center gap-3 pt-3 mt-1 border-t ${theme === 'dark' ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                            <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedTransactions.includes(tx.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setSelectedTransactions(prev => [...prev, tx.id]);
+                                                        else setSelectedTransactions(prev => prev.filter(tid => tid !== tx.id));
+                                                    }}
+                                                    className={`w-5 h-5 rounded-md transition-all duration-200 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] checked:bg-[#0f766e]' : 'bg-white border-gray-300 checked:bg-[#0f766e]'}`}
+                                                />
+                                                <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                    Tanlash
+                                                </span>
+                                            </label>
+                                            <button onClick={() => setEditingTransaction(tx)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}>
+                                                <EditIcon className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'}`}>
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
 
                 {/* Pagination */}

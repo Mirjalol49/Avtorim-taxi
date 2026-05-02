@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon, ChevronRightIcon, XIcon } from './Icons';
+import { getAdminTelegramChatId, setAdminTelegramChatId } from '../services/telegramNotificationService';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface AdminModalProps {
   theme: 'light' | 'dark';
   onLogout?: () => void;
   onLock?: () => void;
+  /** The currently authenticated admin's user ID — used to load/save Telegram chat ID */
+  adminId?: string;
 }
 
 const Spinner = () => (
@@ -85,7 +88,7 @@ const LogoutModal = ({
 
 // ── Main profile panel ────────────────────────────────────────────────────
 const AdminModal: React.FC<AdminModalProps> = ({
-  isOpen, onClose, adminData, onUpdate, userRole, theme, onLogout, onLock,
+  isOpen, onClose, adminData, onUpdate, userRole, theme, onLogout, onLock, adminId,
 }) => {
   const isReadOnly = userRole === 'viewer';
   const isDark = theme === 'dark';
@@ -104,6 +107,14 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const [imageLoading, setImageLoading]         = useState(false);
   const [uploadProgress, setUploadProgress]     = useState(0);
 
+  // ── Telegram chat ID ─────────────────────────────────────────────────────
+  const [telegramChatId, setTelegramChatId]     = useState('');
+  const [tgSaving, setTgSaving]                 = useState(false);
+  const [tgSaved, setTgSaved]                   = useState(false);
+  const [tgError, setTgError]                   = useState('');
+  const [tgLoading, setTgLoading]               = useState(false);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const hasChanges = avatar !== adminData.avatar || name !== adminData.name || newPassword.trim().length > 0;
 
   useEffect(() => {
@@ -120,8 +131,19 @@ const AdminModal: React.FC<AdminModalProps> = ({
       setSaveSuccess(false);
       setImageLoading(false);
       setUploadProgress(0);
+      setTgSaved(false);
+      setTgError('');
+
+      // Load stored Telegram chat ID for this admin
+      if (adminId) {
+        setTgLoading(true);
+        getAdminTelegramChatId(adminId)
+          .then((id) => setTelegramChatId(id ?? ''))
+          .catch(() => {})
+          .finally(() => setTgLoading(false));
+      }
     }
-  }, [isOpen, adminData]);
+  }, [isOpen, adminData, adminId]);
 
   useEffect(() => {
     if (!isOpen || showLogoutModal) return;
@@ -413,6 +435,77 @@ const AdminModal: React.FC<AdminModalProps> = ({
                 )}
               </div>
             </div>
+
+            {/* ── Telegram Notifications section ── */}
+            {!isReadOnly && adminId && (
+              <div className="mx-4 mt-6">
+                <p className={sectionTitle}>Telegram Xabarnomalar</p>
+                <div className={`rounded-[20px] overflow-hidden ${isDark ? 'bg-[#1c2333]' : 'bg-white'}`}>
+                  <div className="px-4 py-3.5">
+                    {/* How to find your chat ID */}
+                    <div className={`mb-3 p-3 rounded-[12px] text-[12px] leading-relaxed ${
+                      isDark ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    }`}>
+                      <p className="font-semibold mb-1">📱 Chat ID ni qanday topish mumkin?</p>
+                      <p>1. Telegramda <strong>@userinfobot</strong> ga {'/start'} yuboring</p>
+                      <p>2. Bot sizning Chat ID ni yuboradi</p>
+                      <p>3. Uni quyida kiriting va saqlang</p>
+                    </div>
+
+                    <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Telegram Chat ID
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={tgLoading ? 'Yuklanmoqda…' : telegramChatId}
+                        onChange={(e) => { setTelegramChatId(e.target.value); setTgSaved(false); setTgError(''); }}
+                        disabled={tgLoading || tgSaving}
+                        placeholder="Masalan: 123456789"
+                        className={`flex-1 rounded-[14px] px-4 py-3 text-[14px] font-medium outline-none transition-all disabled:opacity-50 ${
+                          isDark
+                            ? 'bg-[#0f1724] text-white placeholder-gray-600 focus:ring-2 focus:ring-teal-500/30'
+                            : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:bg-white'
+                        } ${tgError ? 'ring-2 ring-red-500/40' : ''}`}
+                      />
+                      <button
+                        type="button"
+                        disabled={!telegramChatId.trim() || tgSaving || tgLoading}
+                        onClick={async () => {
+                          if (!adminId || !telegramChatId.trim()) return;
+                          setTgSaving(true); setTgError('');
+                          try {
+                            await setAdminTelegramChatId(adminId, telegramChatId.trim());
+                            setTgSaved(true);
+                            setTimeout(() => setTgSaved(false), 3000);
+                          } catch (e: any) {
+                            setTgError(e.message ?? 'Xatolik yuz berdi');
+                          } finally {
+                            setTgSaving(false);
+                          }
+                        }}
+                        className={`px-4 py-3 rounded-[14px] text-[13px] font-bold transition-all flex-shrink-0 ${
+                          tgSaved
+                            ? 'bg-emerald-500 text-white'
+                            : !telegramChatId.trim() || tgSaving || tgLoading
+                            ? isDark ? 'bg-white/[0.05] text-gray-600 cursor-not-allowed' : 'bg-gray-200/70 text-gray-400 cursor-not-allowed'
+                            : 'bg-teal-600 hover:bg-teal-500 text-white active:scale-[0.97]'
+                        }`}
+                      >
+                        {tgSaved ? '✓' : tgSaving ? '…' : 'Saqlash'}
+                      </button>
+                    </div>
+                    {tgError && <p className="text-xs text-red-500 mt-1.5">{tgError}</p>}
+                    {tgSaved && <p className="text-xs text-emerald-500 mt-1.5">✅ Saqlandi! Endi har bir tranzaksiyada xabarnoma olasiz.</p>}
+                    {telegramChatId && !tgSaved && !tgError && (
+                      <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        Chat ID: <span className="font-mono font-semibold">{telegramChatId}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── Save button ── */}
             {!isReadOnly && (

@@ -195,38 +195,61 @@ const DriversPage: React.FC<DriversPageProps> = ({
                             ))}
                         </div>
                     ) : (
-                        <div className={`rounded-2xl border overflow-hidden shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className={`${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-50 text-gray-500'} text-xs uppercase tracking-wider`}>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('driver')}</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('car')}</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('documents')}</th>
-                                            <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('planDayOff')}</th>
-                                            {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08] text-center">{t('actions')}</th>}
-                                        </tr>
-                                    </thead>
-                                    <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/[0.07]' : 'divide-black/[0.05]'}`}>
-                                        {paginatedDrivers.map(driver => (
-                                            <DriverRow
-                                                key={driver.id}
-                                                driver={driver}
-                                                car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
-                                                transactions={transactions}
-                                                fleetId={fleetId || ''}
-                                                theme={theme}
-                                                userRole={userRole}
-                                                currentUserId={currentUserId}
-                                                onEdit={onEditDriver}
-                                                onDelete={onDeleteDriver}
-                                                onUpdateStatus={onUpdateStatus}
-                                            />
-                                        ))}
-                                    </tbody>
-                                </table>
+                        <>
+                            {/* Desktop Table View */}
+                            <div className={`hidden md:block rounded-2xl border overflow-hidden shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse min-w-[800px]">
+                                        <thead>
+                                            <tr className={`${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-50 text-gray-500'} text-xs uppercase tracking-wider`}>
+                                                <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('driver')}</th>
+                                                <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('car')}</th>
+                                                <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('documents')}</th>
+                                                <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08]">{t('planDayOff')}</th>
+                                                {userRole === 'admin' && <th className="p-4 font-bold border-b border-gray-200 dark:border-white/[0.08] text-center">{t('actions')}</th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/[0.07]' : 'divide-black/[0.05]'}`}>
+                                            {paginatedDrivers.map(driver => (
+                                                <DriverRow
+                                                    key={driver.id}
+                                                    driver={driver}
+                                                    car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
+                                                    transactions={transactions}
+                                                    fleetId={fleetId || ''}
+                                                    theme={theme}
+                                                    userRole={userRole}
+                                                    currentUserId={currentUserId}
+                                                    onEdit={onEditDriver}
+                                                    onDelete={onDeleteDriver}
+                                                    onUpdateStatus={onUpdateStatus}
+                                                />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
+                            
+                            {/* Mobile Card View Fallback */}
+                            <div className="md:hidden grid grid-cols-1 gap-6">
+                                {paginatedDrivers.map(driver => (
+                                    <DriverCard
+                                        key={driver.id}
+                                        driver={driver}
+                                        car={cars.find(c => c.assignedDriverId === driver.id) ?? null}
+                                        transactions={transactions}
+                                        fleetId={fleetId || ''}
+                                        theme={theme}
+                                        userRole={userRole}
+                                        currentUserId={currentUserId}
+                                        onEdit={onEditDriver}
+                                        onDelete={onDeleteDriver}
+                                        onUpdateStatus={onUpdateStatus}
+                                        onCardClick={setSheetDriver}
+                                    />
+                                ))}
+                            </div>
+                        </>
                     )}
 
                     {/* Pagination */}
