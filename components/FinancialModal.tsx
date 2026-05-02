@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon, CarIcon } from './Icons';
 import DatePicker from './DatePicker';
@@ -276,8 +277,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
         className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[92vh] rounded-[2rem] shadow-2xl overflow-hidden border ${
@@ -798,7 +799,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 };
 
