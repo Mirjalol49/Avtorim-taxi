@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Transaction } from '../../../core/types';
 import { subscribeToTransactions } from '../../../../services/firestoreService';
+import { readCache, writeCache } from '../../../core/utils/dataCache';
 
 export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -10,8 +11,18 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
 
     useEffect(() => {
         // Keep loading=true while fleetId is not yet resolved (auth still in progress).
-        // Setting loading=false here would cause a false empty-state flash.
         if (!fleetId) return;
+
+        // ── Pattern 1: Serve stale cache INSTANTLY ──────────────────────────────
+        // Transactions are the slowest resource (dual-fetch, can take 5–9s on a cold
+        // Supabase instance). Showing the last-known list immediately eliminates the
+        // most visible empty-state flash in the entire app.
+        const cached = readCache<Transaction>(`transactions_${fleetId}`);
+        if (cached.length > 0) {
+            setTransactions(cached);
+            setLoading(false); // unblock UI immediately — fetchAll will update silently
+        }
+        // ────────────────────────────────────────────────────────────────────────
 
         // If this is a manual refresh (refreshTrigger changed), use refetch instead of re-subscribing
         if (refreshTrigger !== undefined && refreshTrigger > 0 && refetchRef.current) {
@@ -19,7 +30,8 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
             return;
         }
 
-        setLoading(true);
+        // Only show the spinner on first-ever load (no cache yet)
+        if (cached.length === 0) setLoading(true);
 
         // Bail out after 10s if data never arrives.
         // With 5s AbortController + 3s retry gap, data arrives in ≤9s on cold Supabase.
@@ -31,6 +43,9 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
                 setTransactions(data);
                 setLoading(false);
                 setError(null);
+                // Persist fresh data so the next load is instant.
+                // writeCache guards against oversized payloads automatically.
+                writeCache(`transactions_${fleetId}`, data);
             },
             fleetId,
         );

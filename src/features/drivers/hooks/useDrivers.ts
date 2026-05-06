@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Driver } from '../../../core/types';
 import { subscribeToDrivers } from '../../../../services/firestoreService';
+import { readCache, writeCache } from '../../../core/utils/dataCache';
 
 export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
     const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -10,8 +11,17 @@ export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
 
     useEffect(() => {
         // Keep loading=true while fleetId is not yet resolved (auth still in progress).
-        // Setting loading=false here would cause a false empty-state flash.
         if (!fleetId) return;
+
+        // ── Pattern 1: Serve stale cache INSTANTLY ──────────────────────────────
+        // On every mount/fleetId change, show the last-known data in <1ms so the
+        // user never sees an empty grid while the subscription is being established.
+        const cached = readCache<Driver>(`drivers_${fleetId}`);
+        if (cached.length > 0) {
+            setDrivers(cached);
+            setLoading(false); // unblock UI immediately — subscription will update silently
+        }
+        // ────────────────────────────────────────────────────────────────────────
 
         // If this is a manual refresh (refreshTrigger changed), use refetch instead of re-subscribing
         if (refreshTrigger !== undefined && refreshTrigger > 0 && refetchRef.current) {
@@ -19,7 +29,8 @@ export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
             return;
         }
 
-        setLoading(true);
+        // Only show the spinner on first-ever load (no cache yet)
+        if (cached.length === 0) setLoading(true);
 
         const timeout = setTimeout(() => setLoading(false), 5000);
 
@@ -29,6 +40,8 @@ export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
                 setDrivers(data);
                 setLoading(false);
                 setError(null);
+                // Persist fresh data so the next load is instant
+                writeCache(`drivers_${fleetId}`, data);
             },
             fleetId,
         );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Note } from '../../../core/types/note.types';
 import { subscribeToNotes } from '../../../../services/notesService';
+import { readCache, writeCache } from '../../../core/utils/dataCache';
 
 export const useNotes = (fleetId?: string) => {
     const [notes, setNotes] = useState<Note[]>([]);
@@ -14,7 +15,15 @@ export const useNotes = (fleetId?: string) => {
             return;
         }
 
-        setLoading(true);
+        // ── Pattern 1: Serve stale cache INSTANTLY ──────────────────────────────
+        const cached = readCache<Note>(`notes_${fleetId}`);
+        if (cached.length > 0) {
+            setNotes(cached);
+            setLoading(false);
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
+        if (cached.length === 0) setLoading(true);
         setTableError(false);
 
         const timeout = setTimeout(() => {
@@ -31,6 +40,7 @@ export const useNotes = (fleetId?: string) => {
             }
             setNotes(data);
             setLoading(false);
+            writeCache(`notes_${fleetId}`, data);
         }, fleetId);
 
         refetchRef.current = refetch;

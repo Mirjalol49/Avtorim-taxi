@@ -54,13 +54,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUnreadCount
     } = useNotifications(adminUser, userRole);
 
-    // Safety valve: if any loading state hasn't resolved within 6s, unblock the UI.
-    // Each resource clears independently — drivers finishing doesn't wait for transactions.
+    // Safety valve: if any loading state hasn't resolved, unblock the UI.
+    // Timeout is 11s — just beyond useTransactions' own 10s abort+retry window.
+    // Previously 6s caused transactions to appear empty while still fetching
+    // (the dual-fetch fetchAll can take up to 9s on a cold Supabase instance).
     const [timedOut, setTimedOut] = React.useState(false);
     const combinedLoading = driversLoadingRaw || txLoadingRaw;
     React.useEffect(() => {
         if (!combinedLoading) { setTimedOut(false); return; }
-        const t = setTimeout(() => setTimedOut(true), 6000);
+        const t = setTimeout(() => setTimedOut(true), 11000);
         return () => clearTimeout(t);
     }, [combinedLoading]);
 
