@@ -1052,20 +1052,15 @@ const AppContent: React.FC = () => {
                   />
             } />
 
-            {/* TRANSACTIONS COMPONENT */}
-            {/* Use txLoading (transactions-only) not isDataLoading (which includes carsLoading).
-                This prevents slow car subscriptions from blocking the transaction list. */}
+            {/* TRANSACTIONS — self-fetching with cursor pagination + skeleton */}
             <Route path="/transactions" element={
-              txLoading
-                ? <PageSkeleton theme={theme} variant="transactions" />
-                : <TransactionsPage
-                    transactions={transactions}
-                    drivers={drivers}
-                    cars={cars}
-                    userRole={userRole}
-                    adminUser={adminUser}
-                    theme={theme}
-                  />
+              <TransactionsPage
+                drivers={drivers}
+                cars={cars}
+                userRole={userRole}
+                adminUser={adminUser}
+                theme={theme}
+              />
             } />
 
             {/* NOTES */}
