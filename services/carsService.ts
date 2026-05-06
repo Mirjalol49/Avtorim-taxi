@@ -9,11 +9,12 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
 
     const fetchCars = async () => {
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('cars')
                 .select('*')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false);
+            if (error) throw error;
             if (data) callback(data.map(r => ({
                 id: r.id,
                 fleetId: r.fleet_id,
