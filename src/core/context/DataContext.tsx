@@ -43,8 +43,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setRefreshTrigger(prev => prev + 1);
     }, []);
 
-    const { drivers, setDrivers, loading: driversLoading } = useDrivers(fleetId, refreshTrigger);
-    const { transactions, setTransactions, loading: txLoading } = useTransactions(fleetId, refreshTrigger);
+    const { drivers, setDrivers, loading: driversLoadingRaw } = useDrivers(fleetId, refreshTrigger);
+    const { transactions, setTransactions, loading: txLoadingRaw } = useTransactions(fleetId, refreshTrigger);
     const {
         notifications,
         unreadCount,
@@ -54,26 +54,28 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUnreadCount
     } = useNotifications(adminUser, userRole);
 
-    const loading = driversLoading || txLoading;
-
-    // Safety valve: if data never arrives within 6s (e.g. no fleetId, network issue),
-    // force loading=false so the app doesn't stay stuck on skeleton forever.
+    // Safety valve: if any loading state hasn't resolved within 6s, unblock the UI.
+    // Each resource clears independently — drivers finishing doesn't wait for transactions.
     const [timedOut, setTimedOut] = React.useState(false);
+    const combinedLoading = driversLoadingRaw || txLoadingRaw;
     React.useEffect(() => {
-        if (!loading) { setTimedOut(false); return; }
+        if (!combinedLoading) { setTimedOut(false); return; }
         const t = setTimeout(() => setTimedOut(true), 6000);
         return () => clearTimeout(t);
-    }, [loading]);
+    }, [combinedLoading]);
 
-    const effectiveLoading = loading && !timedOut;
+    // Each resource reports its own real loading state, not the combined one.
+    // This means pages that only need drivers won't wait for transactions and vice versa.
+    const effectiveDriversLoading = driversLoadingRaw && !timedOut;
+    const effectiveTxLoading = txLoadingRaw && !timedOut;
 
     return (
         <DataContext.Provider value={{
             drivers,
-            driversLoading: effectiveLoading,
+            driversLoading: effectiveDriversLoading,
             setDrivers,
             transactions,
-            txLoading: effectiveLoading,
+            txLoading: effectiveTxLoading,
             setTransactions,
             notifications,
             unreadCount,
@@ -81,7 +83,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setNotifications,
             setReadNotificationIds,
             setUnreadCount,
-            loading: effectiveLoading,
+            loading: effectiveDriversLoading || effectiveTxLoading,
             triggerRefresh
         }}>
             {children}

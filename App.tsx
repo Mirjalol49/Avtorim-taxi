@@ -164,7 +164,8 @@ const AppContent: React.FC = () => {
     };
   }, [carsFleetId]);
 
-  const isDataLoading = contextDataLoading || carsLoading;
+  // Cars load independently — don't let carsLoading block drivers/transactions pages.
+  const isDataLoading = contextDataLoading;
 
 
 
