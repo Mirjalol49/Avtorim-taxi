@@ -102,6 +102,7 @@ const AppContent: React.FC = () => {
     drivers,
     setDrivers,
     transactions,
+    driversLoading,
     txLoading,
     notifications,
     unreadCount,
@@ -163,11 +164,6 @@ const AppContent: React.FC = () => {
         unsubscribe();
     };
   }, [carsFleetId]);
-
-  // Cars load independently — don't let carsLoading block drivers/transactions pages.
-  const isDataLoading = contextDataLoading;
-
-
 
   // ── Daily 22:00 plan reminder ──────────────────────────────────────────────
   useDailyPlanReminder({
@@ -722,7 +718,7 @@ const AppContent: React.FC = () => {
           }`}>
           {userRole === 'admin' && (
             <>
-              {isDataLoading || (!adminProfile && !adminUser) ? ( // Using driversLoading as a proxy for general data loading
+              {(!adminProfile && !adminUser) ? (
                 // Skeleton loading state
                 <div className={`rounded-xl p-3 flex items-center gap-3 ${theme === 'dark'
                   ? 'bg-white/[0.06]'
@@ -967,7 +963,7 @@ const AppContent: React.FC = () => {
               transactions={transactions}
               drivers={drivers}
               cars={cars}
-              isDataLoading={isDataLoading}
+              isDataLoading={contextDataLoading}
               theme={theme}
               isMobile={isMobile}
             />} />
@@ -978,7 +974,7 @@ const AppContent: React.FC = () => {
                 drivers={drivers}
                 cars={cars}
                 transactions={transactions}
-                isDataLoading={isDataLoading}
+                isDataLoading={driversLoading}
                 userRole={userRole}
                 fleetId={userRole === 'viewer'
                   ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
@@ -1002,7 +998,7 @@ const AppContent: React.FC = () => {
               <CarsPage
                 cars={cars}
                 drivers={drivers}
-                isDataLoading={isDataLoading}
+                isDataLoading={carsLoading}
                 userRole={userRole}
                 onAddCar={() => { setEditingCar(null); setIsCarModalOpen(true); }}
                 onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
@@ -1013,7 +1009,7 @@ const AppContent: React.FC = () => {
 
             {/* FINANCE (ANALYTICS) COMPONENT */}
             <Route path="/finance" element={
-              isDataLoading
+              txLoading
                 ? <PageSkeleton theme={theme} variant="generic" />
                 : <FinancePage
                     transactions={transactions}
@@ -1026,7 +1022,7 @@ const AppContent: React.FC = () => {
 
             {/* MONTHLY PLAN COMPONENT */}
             <Route path="/monthly-plan" element={
-              isDataLoading
+              (driversLoading || txLoading)
                 ? <PageSkeleton theme={theme} variant="generic" />
                 : <MonthlyPlanPage
                     transactions={transactions}
@@ -1044,7 +1040,7 @@ const AppContent: React.FC = () => {
 
             {/* PAYROLL */}
             <Route path="/payroll" element={
-              isDataLoading
+              driversLoading
                 ? <PageSkeleton theme={theme} variant="generic" />
                 : <PayrollPage
                     drivers={drivers}
