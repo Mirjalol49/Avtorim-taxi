@@ -338,8 +338,10 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
     } as Transaction);
 
     let cache: Transaction[] = [];
+    // Prevents the fast initial fetch from overwriting complete data if it resolves late.
+    let fullLoaded = false;
 
-    // Full fetch — used for reconnects, manual refetch, and background completion.
+    // Full fetch — loads everything. Used for reconnects, manual refetch, and background load.
     // Retries on error. Always replaces cache completely.
     const fetchAll = async () => {
         try {
@@ -351,6 +353,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 .order('timestamp_ms', { ascending: false });
             if (error) throw error;
             if (data) {
+                fullLoaded = true;
                 cache = data.map(transformTx);
                 callback(cache);
             }
@@ -360,8 +363,9 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
         }
     };
 
-    // Initial load: show first 100 immediately so the UI feels fast,
-    // then kick off a full load in the background. Sequential — no race condition.
+    // Fast initial display: fetch first 100 so the UI has something to show immediately.
+    // Runs in parallel with fetchAll. The fullLoaded flag prevents this from overwriting
+    // complete data if fetchAll somehow resolves first (unlikely but safe).
     const fetchInitial = async () => {
         try {
             const { data, error } = await supabase
@@ -372,20 +376,19 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 .order('timestamp_ms', { ascending: false })
                 .limit(100);
             if (error) throw error;
-            if (data) {
+            if (data && !fullLoaded) {
                 cache = data.map(transformTx);
                 callback(cache);
             }
         } catch (err: any) {
-            console.warn('[PWA] Initial tx fetch failed, full load will follow', err.message);
-        } finally {
-            // Always load the complete dataset after the fast initial render,
-            // whether the initial fetch succeeded or failed.
-            setTimeout(fetchAll, 0);
+            console.warn('[PWA] Initial tx fetch failed, fetchAll will provide data', err.message);
         }
     };
 
+    // Run both in parallel: fetchInitial shows data fast (~200ms),
+    // fetchAll loads everything in the background.
     fetchInitial();
+    fetchAll();
 
     const channel = supabase
         .channel(`transactions_${fleetId}`)
