@@ -162,18 +162,23 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
     let cache: Driver[] = [];
 
     const fetchDrivers = async () => {
+        const controller = new AbortController();
+        const abort = setTimeout(() => controller.abort(), 8000);
         try {
             const { data, error } = await supabase
                 .from('drivers')
                 .select('*')
                 .eq('fleet_id', fleetId)
-                .eq('is_deleted', false);
+                .eq('is_deleted', false)
+                .abortSignal(controller.signal);
+            clearTimeout(abort);
             if (error) throw error;
             if (data) {
                 cache = data.map(transformDriver);
                 callback(cache);
             }
         } catch (err: any) {
+            clearTimeout(abort);
             console.warn('[PWA] Fetch drivers failed, retrying in 3s...', err.message);
             setTimeout(fetchDrivers, 3000);
         }
@@ -344,13 +349,17 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
     // Full fetch — loads everything. Used for reconnects, manual refetch, and background load.
     // Retries on error. Always replaces cache completely.
     const fetchAll = async () => {
+        const controller = new AbortController();
+        const abort = setTimeout(() => controller.abort(), 8000);
         try {
             const { data, error } = await supabase
                 .from('transactions')
                 .select('*')
                 .eq('fleet_id', fleetId)
                 .neq('status', 'DELETED')
-                .order('timestamp_ms', { ascending: false });
+                .order('timestamp_ms', { ascending: false })
+                .abortSignal(controller.signal);
+            clearTimeout(abort);
             if (error) throw error;
             if (data) {
                 fullLoaded = true;
@@ -358,6 +367,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 callback(cache);
             }
         } catch (err: any) {
+            clearTimeout(abort);
             console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
             setTimeout(fetchAll, 3000);
         }
@@ -367,6 +377,8 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
     // Runs in parallel with fetchAll. The fullLoaded flag prevents this from overwriting
     // complete data if fetchAll somehow resolves first (unlikely but safe).
     const fetchInitial = async () => {
+        const controller = new AbortController();
+        const abort = setTimeout(() => controller.abort(), 8000);
         try {
             const { data, error } = await supabase
                 .from('transactions')
@@ -374,13 +386,16 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 .eq('fleet_id', fleetId)
                 .neq('status', 'DELETED')
                 .order('timestamp_ms', { ascending: false })
-                .limit(100);
+                .limit(100)
+                .abortSignal(controller.signal);
+            clearTimeout(abort);
             if (error) throw error;
             if (data && !fullLoaded) {
                 cache = data.map(transformTx);
                 callback(cache);
             }
         } catch (err: any) {
+            clearTimeout(abort);
             console.warn('[PWA] Initial tx fetch failed, fetchAll will provide data', err.message);
         }
     };

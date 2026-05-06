@@ -57,9 +57,12 @@ export const useAuth = () => {
 
     // --- EFFECTS ---
 
-    // Seed Super Admin
+    // Seed Super Admin — run at most once per browser session to avoid a boot-time query on every reload
     useEffect(() => {
-        seedSuperAdmin();
+        if (!sessionStorage.getItem('seedChecked')) {
+            sessionStorage.setItem('seedChecked', 'true');
+            seedSuperAdmin();
+        }
     }, []);
 
     // Validate Admin Account
@@ -77,12 +80,12 @@ export const useAuth = () => {
         let unsubscribeValidity: (() => void) | null = null;
         let cancelled = false;
 
-        // Safety timeout: if Supabase never responds, unblock the UI after 6s
+        // Safety timeout: if Supabase never responds, unblock the UI after 2s
         const authTimeout = setTimeout(() => {
             if (cancelled) return;
             console.warn('[useAuth] validateAccountOnInit timed out — unblocking UI');
             setIsAuthChecking(false);
-        }, 6000);
+        }, 2000);
 
         validateAccountOnInit(adminUser)
             .then((result) => {

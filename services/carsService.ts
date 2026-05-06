@@ -8,12 +8,16 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
     const fetchCars = async () => {
+        const controller = new AbortController();
+        const abort = setTimeout(() => controller.abort(), 8000);
         try {
             const { data, error } = await supabase
                 .from('cars')
                 .select('*')
                 .eq('fleet_id', fleetId)
-                .eq('is_deleted', false);
+                .eq('is_deleted', false)
+                .abortSignal(controller.signal);
+            clearTimeout(abort);
             if (error) throw error;
             if (data) callback(data.map(r => ({
                 id: r.id,
@@ -30,6 +34,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 createdAt: toMs(r.created_ms),
             } as Car)));
         } catch (err: any) {
+            clearTimeout(abort);
             console.warn('[PWA] Fetch cars failed, retrying in 3s...', err.message);
             setTimeout(fetchCars, 3000);
         }
