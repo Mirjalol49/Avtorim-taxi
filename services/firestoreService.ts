@@ -339,7 +339,9 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     let cache: Transaction[] = [];
 
-    const fetchTransactions = async () => {
+    // Full fetch — used for reconnects, manual refetch, and background completion.
+    // Retries on error. Always replaces cache completely.
+    const fetchAll = async () => {
         try {
             const { data, error } = await supabase
                 .from('transactions')
@@ -354,11 +356,36 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             }
         } catch (err: any) {
             console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
-            setTimeout(fetchTransactions, 3000);
+            setTimeout(fetchAll, 3000);
         }
     };
 
-    fetchTransactions();
+    // Initial load: show first 100 immediately so the UI feels fast,
+    // then kick off a full load in the background. Sequential — no race condition.
+    const fetchInitial = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .neq('status', 'DELETED')
+                .order('timestamp_ms', { ascending: false })
+                .limit(100);
+            if (error) throw error;
+            if (data) {
+                cache = data.map(transformTx);
+                callback(cache);
+            }
+        } catch (err: any) {
+            console.warn('[PWA] Initial tx fetch failed, full load will follow', err.message);
+        } finally {
+            // Always load the complete dataset after the fast initial render,
+            // whether the initial fetch succeeded or failed.
+            setTimeout(fetchAll, 0);
+        }
+    };
+
+    fetchInitial();
 
     const channel = supabase
         .channel(`transactions_${fleetId}`)
@@ -387,18 +414,18 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             let subscribedCount = 0;
             return (status: string) => {
                 if (status === 'SUBSCRIBED') {
-                    // Skip first SUBSCRIBED (initial setup) — fetchTransactions() already called above.
+                    // Skip first SUBSCRIBED (initial setup) — fetchInitial() already called above.
                     // Re-fetch only on reconnects (2nd+ SUBSCRIBED) to recover missed events.
-                    if (++subscribedCount > 1) fetchTransactions();
+                    if (++subscribedCount > 1) fetchAll();
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    fetchTransactions();
+                    fetchAll();
                 }
             };
         })());
 
     return {
         unsubscribe: () => { supabase.removeChannel(channel); },
-        refetch: fetchTransactions,
+        refetch: fetchAll,
     };
 };
 
