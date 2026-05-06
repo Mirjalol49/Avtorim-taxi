@@ -9,7 +9,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
 
     const fetchCars = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 8000);
+        const abort = setTimeout(() => controller.abort(), 5000);
         try {
             const { data, error } = await supabase
                 .from('cars')

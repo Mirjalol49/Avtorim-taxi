@@ -56,7 +56,7 @@ export const fetchTransactionsPage = async (
     filters: TxPageFilters = {},
 ): Promise<TxPageResult> => {
     const controller = new AbortController();
-    const abort = setTimeout(() => controller.abort(), 8000);
+    const abort = setTimeout(() => controller.abort(), 5000);
     try {
         let q = supabase
             .from('transactions')
@@ -242,7 +242,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
 
     const fetchDrivers = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 8000);
+        const abort = setTimeout(() => controller.abort(), 5000);
         try {
             const { data, error } = await supabase
                 .from('drivers')
@@ -407,7 +407,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
     // Retries on error. Always replaces cache completely.
     const fetchAll = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 8000);
+        const abort = setTimeout(() => controller.abort(), 5000);
         try {
             const { data, error } = await supabase
                 .from('transactions')
@@ -435,7 +435,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
     // complete data if fetchAll somehow resolves first (unlikely but safe).
     const fetchInitial = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 8000);
+        const abort = setTimeout(() => controller.abort(), 5000);
         try {
             const { data, error } = await supabase
                 .from('transactions')
