@@ -21,9 +21,9 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
 
         setLoading(true);
 
-        // Bail out after 15s if data never arrives (network/RLS issue).
-        // Kept high because fetchAll (triggered on reconnect) can take several seconds on slow networks.
-        const timeout = setTimeout(() => setLoading(false), 15000);
+        // Bail out after 10s if data never arrives.
+        // With 5s AbortController + 3s retry gap, data arrives in ≤9s on cold Supabase.
+        const timeout = setTimeout(() => setLoading(false), 10000);
 
         const { unsubscribe, refetch } = subscribeToTransactions(
             (data) => {

@@ -11,7 +11,6 @@ export interface UsePaginatedTxState {
     error: string | null;
     reload: () => void;
     fetchMore: () => void;
-    // Optimistic update helpers for CRUD operations
     removeRows: (ids: Set<string>) => void;
     restoreRows: (rows: Transaction[]) => void;
     patchRow: (id: string, patch: Partial<Transaction>) => void;
@@ -28,7 +27,6 @@ export const useTransactionsPaginated = (
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Keep stable refs so callbacks don't go stale
     const fleetRef = useRef(fleetId);
     fleetRef.current = fleetId;
     const filtersRef = useRef(filters);
@@ -37,6 +35,11 @@ export const useTransactionsPaginated = (
     cursorRef.current = nextCursor;
     const fetchingMoreRef = useRef(false);
     fetchingMoreRef.current = isFetchingMore;
+
+    // Generation counter: incremented on every reset (filter change / initial load).
+    // Any async callback checks this before committing state — prevents stale fetches
+    // from landing after a newer fetch has already started.
+    const genRef = useRef(0);
 
     const fetchPage = useCallback(async (cursor: number | null, reset: boolean) => {
         const fleet = fleetRef.current;
@@ -50,24 +53,51 @@ export const useTransactionsPaginated = (
             setIsFetchingMore(true);
         }
 
-        try {
-            const result = await fetchTransactionsPage(fleet, cursor, 100, filtersRef.current);
-            if (reset) {
-                setRows(result.data);
-            } else {
-                setRows(prev => {
-                    // Deduplicate in case of cursor overlap on identical timestamps
-                    const existing = new Set(prev.map(r => r.id));
-                    return [...prev, ...result.data.filter(r => !existing.has(r.id))];
-                });
+        const gen = reset ? ++genRef.current : genRef.current;
+        const stale = () => genRef.current !== gen;
+
+        // Retry up to 3 attempts with a 3s gap between each.
+        // Mirrors the retry pattern in subscribeToTransactions/fetchAll so cold-start
+        // Supabase hangs are handled the same way everywhere.
+        let lastErr: any = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (stale()) return;
+            if (attempt > 0) {
+                // Wait 3s before retry, abort if a newer fetch superseded us
+                await new Promise<void>(resolve => setTimeout(resolve, 3000));
+                if (stale()) return;
             }
-            setNextCursor(result.nextCursor);
-            setHasMore(result.nextCursor !== null);
-        } catch (err: any) {
-            setError(err?.message ?? 'Failed to load transactions');
-            // On error still mark as not loading so UI unblocks
+            try {
+                const result = await fetchTransactionsPage(fleet, cursor, 100, filtersRef.current);
+                if (stale()) return;
+
+                if (reset) {
+                    setRows(result.data);
+                } else {
+                    setRows(prev => {
+                        const existing = new Set(prev.map(r => r.id));
+                        return [...prev, ...result.data.filter(r => !existing.has(r.id))];
+                    });
+                }
+                setNextCursor(result.nextCursor);
+                setHasMore(result.nextCursor !== null);
+                setError(null);
+                setLoading(false);
+                setIsFetchingMore(false);
+                return; // success — exit the retry loop
+            } catch (err: any) {
+                lastErr = err;
+                // Log on first attempt only to avoid console spam during retries
+                if (attempt === 0) {
+                    console.warn('[Tx] fetch failed, will retry up to 2 more times:', err.message);
+                }
+            }
+        }
+
+        // All 3 attempts failed
+        if (!stale()) {
+            setError(lastErr?.message ?? 'Failed to load transactions');
             setHasMore(false);
-        } finally {
             setLoading(false);
             setIsFetchingMore(false);
         }
@@ -83,13 +113,11 @@ export const useTransactionsPaginated = (
         fetchPage(cursor, false);
     }, [fetchPage]);
 
-    // Reload whenever fleetId or filters change
     useEffect(() => {
         fetchPage(null, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fleetId, filters.startMs, filters.endMs, filters.driverId, filters.type]);
 
-    // ── Optimistic update helpers ─────────────────────────────────────────────
     const removeRows = useCallback((ids: Set<string>) => {
         setRows(prev => prev.filter(r => !ids.has(r.id)));
     }, []);
