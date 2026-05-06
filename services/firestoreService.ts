@@ -9,6 +9,85 @@ const toMs = (val: string | number | null | undefined): number => {
     return new Date(val).getTime();
 };
 
+// ==================== TRANSACTION ROW TRANSFORM (shared) ====================
+// Extracted so both the real-time subscription and the paginated fetcher use the same mapping.
+const transformTxRow = (r: any): Transaction => ({
+    id: r.id,
+    driverId: r.driver_id ?? undefined,
+    driverName: r.driver_name ?? undefined,
+    carId: r.car_id ?? undefined,
+    carName: r.car_name ?? undefined,
+    amount: r.amount ?? 0,
+    type: r.type,
+    description: r.description ?? '',
+    note: r.note ?? '',
+    timestamp: toMs(r.timestamp_ms),
+    status: r.status,
+    paymentMethod: r.payment_method ?? undefined,
+    chequeImage: r.cheque_image ?? undefined,
+    reversedAt: r.reversed_at ?? undefined,
+    reversedBy: r.reversed_by ?? undefined,
+    reversalReason: r.reversal_reason ?? undefined,
+    originalTransactionId: r.original_transaction_id ?? undefined,
+    useDeposit: r.use_deposit === true ? true : undefined,
+    category: r.category ?? undefined,
+} as Transaction);
+
+// ==================== CURSOR-BASED PAGINATED FETCH ====================
+
+export interface TxPageFilters {
+    startMs?: number;   // timestamp_ms inclusive lower bound
+    endMs?: number;     // timestamp_ms inclusive upper bound
+    driverId?: string;  // 'all' or a driver UUID
+    type?: string;      // 'all' or TransactionType value
+}
+
+export interface TxPageResult {
+    data: Transaction[];
+    /** timestamp_ms of the last row in this page, used as the cursor for the next page.
+     *  null means this is the final page — no more rows exist. */
+    nextCursor: number | null;
+}
+
+export const fetchTransactionsPage = async (
+    fleetId: string,
+    cursor?: number | null,
+    limit = 100,
+    filters: TxPageFilters = {},
+): Promise<TxPageResult> => {
+    const controller = new AbortController();
+    const abort = setTimeout(() => controller.abort(), 8000);
+    try {
+        let q = supabase
+            .from('transactions')
+            .select('*')
+            .eq('fleet_id', fleetId)
+            .neq('status', 'DELETED')
+            .order('timestamp_ms', { ascending: false })
+            .limit(limit + 1); // fetch one extra row to detect whether a next page exists
+
+        if (cursor) q = q.lt('timestamp_ms', cursor);
+        if (filters.startMs) q = q.gte('timestamp_ms', filters.startMs);
+        if (filters.endMs) q = q.lte('timestamp_ms', filters.endMs);
+        if (filters.driverId && filters.driverId !== 'all') q = q.eq('driver_id', filters.driverId);
+        if (filters.type && filters.type !== 'all') q = q.eq('type', filters.type);
+
+        const { data, error } = await q.abortSignal(controller.signal);
+        clearTimeout(abort);
+        if (error) throw error;
+
+        const rows = data ?? [];
+        const hasMore = rows.length > limit;
+        const page = hasMore ? rows.slice(0, limit) : rows;
+        const nextCursor = hasMore ? page[page.length - 1].timestamp_ms : null;
+
+        return { data: page.map(transformTxRow), nextCursor };
+    } catch (err) {
+        clearTimeout(abort);
+        throw err;
+    }
+};
+
 // ==================== ADMIN USERS ====================
 
 export const subscribeToAdminUsers = (callback: (users: any[]) => void) => {
@@ -319,29 +398,7 @@ export const deleteDriver = async (id: string, auditInfo?: { adminName: string; 
 export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
-    const transformTx = (r: any): Transaction => ({
-        id: r.id,
-        driverId: r.driver_id ?? undefined,
-        driverName: r.driver_name ?? undefined,
-        carId: r.car_id ?? undefined,
-        carName: r.car_name ?? undefined,
-        amount: r.amount ?? 0,
-        type: r.type,
-        description: r.description ?? '',
-        note: r.note ?? '',
-        timestamp: toMs(r.timestamp_ms),
-        status: r.status,
-        paymentMethod: r.payment_method ?? undefined,
-        chequeImage: r.cheque_image ?? undefined,
-        reversedAt: r.reversed_at ?? undefined,
-        reversedBy: r.reversed_by ?? undefined,
-        reversalReason: r.reversal_reason ?? undefined,
-        originalTransactionId: r.original_transaction_id ?? undefined,
-        // Deposit tracking fields — MUST be mapped so debtUtils sees them
-        useDeposit: r.use_deposit === true ? true : undefined,
-        category: r.category ?? undefined,
-    } as Transaction);
-
+    const transformTx = transformTxRow;
     let cache: Transaction[] = [];
     // Prevents the fast initial fetch from overwriting complete data if it resolves late.
     let fullLoaded = false;
