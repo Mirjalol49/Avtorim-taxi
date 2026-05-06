@@ -205,7 +205,8 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             callback(cache);
         })
         .subscribe((status) => {
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchDrivers();
+            // Re-fetch on reconnect to recover any events missed during the disconnection window
+            if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchDrivers();
         });
 
     return {
@@ -329,36 +330,58 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     let cache: Transaction[] = [];
 
-    // Full refetch used on reconnect to reconcile exact DB state
-    const fetchAll = () =>
-        supabase
-            .from('transactions')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .neq('status', 'DELETED')
-            .order('timestamp_ms', { ascending: false })
-            .then(({ data }) => {
-                if (data) { cache = data.map(transformTx); callback(cache); }
-            });
+    // Guard flag: prevents fetchOlderThan from appending stale data after a full refetch
+    let fetchGeneration = 0;
 
-    // Fetch older transactions in background, append to cache
-    const fetchOlderThan = (beforeMs: number) =>
-        supabase
-            .from('transactions')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .neq('status', 'DELETED')
-            .lt('timestamp_ms', beforeMs)
-            .order('timestamp_ms', { ascending: false })
-            .then(({ data }) => {
-                if (data && data.length > 0) {
-                    cache = [...cache, ...data.map(transformTx)];
-                    callback(cache);
+    // Full refetch used on reconnect to reconcile exact DB state
+    const fetchAll = async () => {
+        const gen = ++fetchGeneration;
+        try {
+            const { data } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .neq('status', 'DELETED')
+                .order('timestamp_ms', { ascending: false });
+            if (data && gen === fetchGeneration) {
+                cache = data.map(transformTx);
+                callback(cache);
+            }
+        } catch (err: any) {
+            console.warn('[PWA] Full refetch failed, retrying in 3s...', err.message);
+            setTimeout(fetchAll, 3000);
+        }
+    };
+
+    // Recursively fetch older pages and append, aborting if a full refetch ran meanwhile
+    const fetchOlderThan = async (beforeMs: number, gen: number) => {
+        try {
+            const { data } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('fleet_id', fleetId)
+                .neq('status', 'DELETED')
+                .lt('timestamp_ms', beforeMs)
+                .order('timestamp_ms', { ascending: false })
+                .limit(100);
+            if (!data || gen !== fetchGeneration) return;
+            if (data.length > 0) {
+                cache = [...cache, ...data.map(transformTx)];
+                callback(cache);
+                if (data.length === 100) {
+                    const oldestMs = data[data.length - 1].timestamp_ms;
+                    setTimeout(() => fetchOlderThan(oldestMs, gen), 0);
                 }
-            });
+            }
+        } catch (err: any) {
+            console.warn('[PWA] fetchOlderThan failed, retrying in 3s...', err.message);
+            if (gen === fetchGeneration) setTimeout(() => fetchOlderThan(beforeMs, gen), 3000);
+        }
+    };
 
     // Initial load: return recent 100 immediately, then fetch the rest silently
     const fetchRecent = async () => {
+        const gen = ++fetchGeneration;
         try {
             const { data } = await supabase
                 .from('transactions')
@@ -367,13 +390,12 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 .neq('status', 'DELETED')
                 .order('timestamp_ms', { ascending: false })
                 .limit(100);
-            if (data) {
+            if (data && gen === fetchGeneration) {
                 cache = data.map(transformTx);
                 callback(cache);
                 if (data.length === 100) {
                     const oldestMs = data[data.length - 1].timestamp_ms;
-                    // background — don't block paint
-                    setTimeout(() => fetchOlderThan(oldestMs), 0);
+                    setTimeout(() => fetchOlderThan(oldestMs, gen), 0);
                 }
             }
         } catch (err: any) {
@@ -408,7 +430,8 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             callback(cache);
         })
         .subscribe((status) => {
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchAll();
+            // Re-fetch on reconnect to recover any events missed during the disconnection window
+            if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchAll();
         });
 
     return {

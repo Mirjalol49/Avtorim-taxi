@@ -143,8 +143,12 @@ const AppContent: React.FC = () => {
     : adminUser?.id;
 
   useEffect(() => {
-    if (!carsFleetId) return;
-    
+    if (!carsFleetId) {
+      // No fleet ID yet — don't block the UI indefinitely
+      const t = setTimeout(() => setCarsLoading(false), 6000);
+      return () => clearTimeout(t);
+    }
+
     setCarsLoading(true);
     const timeout = setTimeout(() => setCarsLoading(false), 5000);
 

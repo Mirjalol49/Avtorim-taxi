@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Driver } from '../../../core/types';
 import { subscribeToDrivers } from '../../../../services/firestoreService';
 
-export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
+export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -12,6 +12,12 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
         // Keep loading=true while fleetId is not yet resolved (auth still in progress).
         // Setting loading=false here would cause a false empty-state flash.
         if (!fleetId) return;
+
+        // If this is a manual refresh (refreshTrigger changed), use refetch instead of re-subscribing
+        if (refreshTrigger !== undefined && refreshTrigger > 0 && refetchRef.current) {
+            refetchRef.current();
+            return;
+        }
 
         setLoading(true);
 
@@ -35,7 +41,7 @@ export const useDrivers = (fleetId?: string, _refreshTrigger?: number) => {
             unsubscribe();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fleetId]);
+    }, [fleetId, refreshTrigger]);
 
     // Refetch when the app comes back to the foreground (PWA resume, tab switch)
     useEffect(() => {
