@@ -21,8 +21,9 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
 
         setLoading(true);
 
-        // Bail out after 5s if data never arrives (network/RLS issue)
-        const timeout = setTimeout(() => setLoading(false), 5000);
+        // Bail out after 15s if data never arrives (network/RLS issue).
+        // Kept high because fetchAll (triggered on reconnect) can take several seconds on slow networks.
+        const timeout = setTimeout(() => setLoading(false), 15000);
 
         const { unsubscribe, refetch } = subscribeToTransactions(
             (data) => {

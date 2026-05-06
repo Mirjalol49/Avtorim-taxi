@@ -204,10 +204,18 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             cache = cache.filter(d => d.id !== row.id);
             callback(cache);
         })
-        .subscribe((status) => {
-            // Re-fetch on reconnect to recover any events missed during the disconnection window
-            if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchDrivers();
-        });
+        .subscribe((() => {
+            let subscribedCount = 0;
+            return (status: string) => {
+                if (status === 'SUBSCRIBED') {
+                    // Skip first SUBSCRIBED (initial setup) — fetchDrivers() already called above.
+                    // Re-fetch only on reconnects (2nd+ SUBSCRIBED) to recover missed events.
+                    if (++subscribedCount > 1) fetchDrivers();
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    fetchDrivers();
+                }
+            };
+        })());
 
     return {
         unsubscribe: () => { supabase.removeChannel(channel); },
@@ -429,10 +437,18 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             cache = cache.filter(t => t.id !== row.id);
             callback(cache);
         })
-        .subscribe((status) => {
-            // Re-fetch on reconnect to recover any events missed during the disconnection window
-            if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchAll();
-        });
+        .subscribe((() => {
+            let subscribedCount = 0;
+            return (status: string) => {
+                if (status === 'SUBSCRIBED') {
+                    // Skip first SUBSCRIBED (initial setup) — fetchRecent() already called above.
+                    // Re-fetch only on reconnects (2nd+ SUBSCRIBED) to recover missed events.
+                    if (++subscribedCount > 1) fetchAll();
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    fetchAll();
+                }
+            };
+        })());
 
     return {
         unsubscribe: () => { supabase.removeChannel(channel); },
