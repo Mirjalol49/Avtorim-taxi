@@ -49,9 +49,42 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/[A-Za-z0-9-]+\.supabase\.co\/.*/i,
-              handler: 'NetworkOnly'
-            }
+              // Supabase Storage bucket (driver avatars, documents, car photos).
+              // CacheFirst: serve from cache instantly, network only if cache misses.
+              // 24-hour TTL keeps images fresh without wasting bandwidth on every load.
+              urlPattern: /^https:\/\/[A-Za-z0-9-]+\.supabase\.co\/storage\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'supabase-storage-v1',
+                expiration: {
+                  maxEntries: 200,
+                  maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Supabase REST API (select/insert/update queries).
+              // NetworkFirst: try network first (3s timeout), fall back to cache.
+              // This means on slow connections the app shows last-known data instantly.
+              // Realtime channels use WebSockets and are unaffected by this rule.
+              urlPattern: /^https:\/\/[A-Za-z0-9-]+\.supabase\.co\/rest\/.*/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'supabase-rest-v1',
+                networkTimeoutSeconds: 3,
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 60 * 5, // 5 minutes
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Supabase Auth endpoints — always NetworkOnly, never cache auth tokens.
+              urlPattern: /^https:\/\/[A-Za-z0-9-]+\.supabase\.co\/auth\/.*/i,
+              handler: 'NetworkOnly',
+            },
           ]
         }
       })

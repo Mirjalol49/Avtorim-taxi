@@ -4,6 +4,7 @@ import seedSuperAdmin from '../../../../services/seedAdmin';
 import { validateAccountOnInit, subscribeToAccountValidity } from '../../../../services/accountValidityService';
 import { playLockSound } from '../../../../services/soundService';
 import { AdminUser } from '../../../core/types';
+import { clearAllCache } from '../../../core/utils/dataCache';
 
 export const useAuth = () => {
     const { addToast } = useToast();
@@ -173,6 +174,8 @@ export const useAuth = () => {
         localStorage.removeItem('avtorim_role');
         localStorage.removeItem('avtorim_admin_user');
         localStorage.removeItem('avtorim_viewer_profile');
+        // Clear data cache so a different user logging in doesn't see stale data
+        clearAllCache();
     };
 
     // Auto-Lock Logic (Disabled as per user request)
