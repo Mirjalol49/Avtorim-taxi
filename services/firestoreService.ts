@@ -163,11 +163,12 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
 
     const fetchDrivers = async () => {
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('drivers')
                 .select('*')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false);
+            if (error) throw error;
             if (data) {
                 cache = data.map(transformDriver);
                 callback(cache);
@@ -338,81 +339,26 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     let cache: Transaction[] = [];
 
-    // Guard flag: prevents fetchOlderThan from appending stale data after a full refetch
-    let fetchGeneration = 0;
-
-    // Full refetch used on reconnect to reconcile exact DB state
-    const fetchAll = async () => {
-        const gen = ++fetchGeneration;
+    const fetchTransactions = async () => {
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('transactions')
                 .select('*')
                 .eq('fleet_id', fleetId)
                 .neq('status', 'DELETED')
                 .order('timestamp_ms', { ascending: false });
-            if (data && gen === fetchGeneration) {
+            if (error) throw error;
+            if (data) {
                 cache = data.map(transformTx);
                 callback(cache);
-            }
-        } catch (err: any) {
-            console.warn('[PWA] Full refetch failed, retrying in 3s...', err.message);
-            setTimeout(fetchAll, 3000);
-        }
-    };
-
-    // Recursively fetch older pages and append, aborting if a full refetch ran meanwhile
-    const fetchOlderThan = async (beforeMs: number, gen: number) => {
-        try {
-            const { data } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('fleet_id', fleetId)
-                .neq('status', 'DELETED')
-                .lt('timestamp_ms', beforeMs)
-                .order('timestamp_ms', { ascending: false })
-                .limit(100);
-            if (!data || gen !== fetchGeneration) return;
-            if (data.length > 0) {
-                cache = [...cache, ...data.map(transformTx)];
-                callback(cache);
-                if (data.length === 100) {
-                    const oldestMs = data[data.length - 1].timestamp_ms;
-                    setTimeout(() => fetchOlderThan(oldestMs, gen), 0);
-                }
-            }
-        } catch (err: any) {
-            console.warn('[PWA] fetchOlderThan failed, retrying in 3s...', err.message);
-            if (gen === fetchGeneration) setTimeout(() => fetchOlderThan(beforeMs, gen), 3000);
-        }
-    };
-
-    // Initial load: return recent 100 immediately, then fetch the rest silently
-    const fetchRecent = async () => {
-        const gen = ++fetchGeneration;
-        try {
-            const { data } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('fleet_id', fleetId)
-                .neq('status', 'DELETED')
-                .order('timestamp_ms', { ascending: false })
-                .limit(100);
-            if (data && gen === fetchGeneration) {
-                cache = data.map(transformTx);
-                callback(cache);
-                if (data.length === 100) {
-                    const oldestMs = data[data.length - 1].timestamp_ms;
-                    setTimeout(() => fetchOlderThan(oldestMs, gen), 0);
-                }
             }
         } catch (err: any) {
             console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
-            setTimeout(fetchRecent, 3000);
+            setTimeout(fetchTransactions, 3000);
         }
     };
 
-    fetchRecent();
+    fetchTransactions();
 
     const channel = supabase
         .channel(`transactions_${fleetId}`)
@@ -441,18 +387,18 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             let subscribedCount = 0;
             return (status: string) => {
                 if (status === 'SUBSCRIBED') {
-                    // Skip first SUBSCRIBED (initial setup) — fetchRecent() already called above.
+                    // Skip first SUBSCRIBED (initial setup) — fetchTransactions() already called above.
                     // Re-fetch only on reconnects (2nd+ SUBSCRIBED) to recover missed events.
-                    if (++subscribedCount > 1) fetchAll();
+                    if (++subscribedCount > 1) fetchTransactions();
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    fetchAll();
+                    fetchTransactions();
                 }
             };
         })());
 
     return {
         unsubscribe: () => { supabase.removeChannel(channel); },
-        refetch: fetchAll,
+        refetch: fetchTransactions,
     };
 };
 
