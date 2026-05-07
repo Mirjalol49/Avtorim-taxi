@@ -1125,6 +1125,7 @@ const AppContent: React.FC = () => {
         onClose={() => { setIsCarModalOpen(false); setEditingCar(null); }}
         onSubmit={handleSaveCar}
         editingCar={editingCar}
+        adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
         theme={theme}
       />
 
