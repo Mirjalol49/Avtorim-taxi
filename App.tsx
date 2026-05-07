@@ -1000,6 +1000,7 @@ const AppContent: React.FC = () => {
                 drivers={drivers}
                 isDataLoading={carsLoading}
                 userRole={userRole}
+                adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
                 onAddCar={() => { setEditingCar(null); setIsCarModalOpen(true); }}
                 onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
                 onDeleteCar={handleDeleteCar}

@@ -32,6 +32,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 dayOverrides: r.day_overrides ?? undefined,
                 isDeleted: r.is_deleted,
                 createdAt: toMs(r.created_ms),
+                damage: r.damage ?? [],
             } as Car)));
         } catch (err: any) {
             clearTimeout(abort);
@@ -94,6 +95,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.licensePlate !== undefined) payload.license_plate = car.licensePlate;
     if (car.avatar !== undefined) payload.avatar = car.avatar;
     if (car.documents !== undefined) payload.documents = car.documents;
+    if (car.damage !== undefined)    payload.damage = car.damage;
     if ('assignedDriverId' in car) payload.assigned_driver_id = car.assignedDriverId ?? null;
 
     // ── Plan change: append to history instead of just overwriting ──────────

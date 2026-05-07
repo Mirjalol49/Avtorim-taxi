@@ -5,6 +5,54 @@ export interface CarDocument {
     category: 'id_card' | 'insurance' | 'technical_passport' | 'other';
 }
 
+// ─── Car Damage / Scratch Recorder ───────────────────────────────────────────
+
+/** One photo attached to a damage record (same shape as CarDocument minus category). */
+export interface DamageImage {
+    name: string;
+    type: string;   // MIME type (image/*)
+    data: string;   // base64 data URL
+}
+
+export type DamageSeverity = 'minor' | 'moderate' | 'severe';
+
+/** A single scratch / damage record for a car. */
+export interface CarDamage {
+    id: string;               // unique ID (Date.now().toString(36) + random)
+    partKey: string;          // key from CAR_PARTS, e.g. 'front_bumper'
+    severity: DamageSeverity;
+    description: string;
+    images: DamageImage[];    // base64, same pattern as CarDocument
+    recordedAt: number;       // epoch ms
+    recordedBy: string;       // admin display name
+}
+
+/** All selectable car parts. */
+export const CAR_PARTS: { key: string; label: string; icon: string }[] = [
+    { key: 'front_bumper',       label: "Old bufer",           icon: '⬆️' },
+    { key: 'rear_bumper',        label: "Orqa bufer",          icon: '⬇️' },
+    { key: 'hood',               label: "Kaput",               icon: '🔲' },
+    { key: 'trunk',              label: "Bagaj",               icon: '📦' },
+    { key: 'roof',               label: "Tom",                 icon: '🏠' },
+    { key: 'front_windshield',   label: "Old oyna",            icon: '🪟' },
+    { key: 'rear_windshield',    label: "Orqa oyna",           icon: '🪟' },
+    { key: 'front_left_door',    label: "Old chap eshik",      icon: '🚪' },
+    { key: 'front_right_door',   label: "Old o'ng eshik",      icon: '🚪' },
+    { key: 'rear_left_door',     label: "Orqa chap eshik",     icon: '🚪' },
+    { key: 'rear_right_door',    label: "Orqa o'ng eshik",     icon: '🚪' },
+    { key: 'front_left_fender',  label: "Old chap qanot",      icon: '⚡' },
+    { key: 'front_right_fender', label: "Old o'ng qanot",      icon: '⚡' },
+    { key: 'rear_left_fender',   label: "Orqa chap qanot",     icon: '⚡' },
+    { key: 'rear_right_fender',  label: "Orqa o'ng qanot",     icon: '⚡' },
+    { key: 'left_mirror',        label: "Chap ko'zgu",         icon: '🪞' },
+    { key: 'right_mirror',       label: "O'ng ko'zgu",         icon: '🪞' },
+    { key: 'headlight_fl',       label: "Old chap chiroq",     icon: '💡' },
+    { key: 'headlight_fr',       label: "Old o'ng chiroq",     icon: '💡' },
+    { key: 'taillight_rl',       label: "Orqa chap chiroq",    icon: '🔴' },
+    { key: 'taillight_rr',       label: "Orqa o'ng chiroq",    icon: '🔴' },
+    { key: 'other',              label: "Boshqa",              icon: '🔩' },
+];
+
 /**
  * Immutable snapshot of a daily plan change.
  * When a car's dailyPlan is updated, a new entry is appended here.
@@ -46,4 +94,6 @@ export interface Car {
     dayOverrides?: Record<string, DayOverride>;
     isDeleted?: boolean;
     createdAt?: number;
+    /** Scratch / damage history for this car. Persisted as JSONB in the cars table. */
+    damage?: CarDamage[];
 }
