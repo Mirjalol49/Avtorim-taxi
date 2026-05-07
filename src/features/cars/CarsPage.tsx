@@ -1,16 +1,18 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Car, CarDocument } from '../../core/types';
+import { Car, CarDocument, CarDamage } from '../../core/types';
 import { Driver } from '../../core/types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
 import { formatNumberSmart } from '../../../utils/formatNumber';
+import CarDamageSheet from './components/CarDamageSheet';
 
 interface CarsPageProps {
     cars: Car[];
     drivers?: Driver[];
     isDataLoading: boolean;
     userRole: 'admin' | 'viewer';
+    adminName?: string;
     onAddCar: () => void;
     onEditCar: (car: Car) => void;
     onDeleteCar: (id: string) => void;
@@ -190,13 +192,14 @@ function DocViewerModal({
 // ─── Cars Page ────────────────────────────────────────────────────────────────
 
 const CarsPage: React.FC<CarsPageProps> = ({
-    cars, drivers = [], isDataLoading, userRole, onAddCar, onEditCar, onDeleteCar, theme
+    cars, drivers = [], isDataLoading, userRole, adminName = 'Admin', onAddCar, onEditCar, onDeleteCar, theme
 }) => {
     const isDark = theme === 'dark';
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
     const [docViewer, setDocViewer] = useState<DocViewerState | null>(null);
+    const [damageSheetCar, setDamageSheetCar] = useState<Car | null>(null);
 
     const getDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId && !d.isDeleted);
 
@@ -352,6 +355,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 onEdit={onEditCar}
                                 onDelete={onDeleteCar}
                                 onDocClick={(index) => openDoc(car, index)}
+                                onDamageClick={() => setDamageSheetCar(car)}
                             />
                         ))}
                     </div>
@@ -392,6 +396,21 @@ const CarsPage: React.FC<CarsPageProps> = ({
                     onClose={() => setDocViewer(null)}
                 />
             )}
+
+            {/* ── Car Damage Sheet ── */}
+            {damageSheetCar && (
+                <CarDamageSheet
+                    car={damageSheetCar}
+                    isDark={isDark}
+                    userRole={userRole}
+                    adminName={adminName}
+                    onClose={() => setDamageSheetCar(null)}
+                    onUpdated={(updatedDamage: CarDamage[]) => {
+                        // Optimistically patch the local car object so the badge updates instantly
+                        setDamageSheetCar(prev => prev ? { ...prev, damage: updatedDamage } : null);
+                    }}
+                />
+            )}
         </div>
     );
 };
@@ -406,11 +425,15 @@ interface CardProps {
     onEdit: (car: Car) => void;
     onDelete: (id: string) => void;
     onDocClick: (index: number) => void;
+    onDamageClick: () => void;
 }
 
-function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick }: CardProps) {
-    const docs       = car.documents ?? [];
-    const isAssigned = !!driver;
+function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick, onDamageClick }: CardProps) {
+    const docs        = car.documents ?? [];
+    const damages     = car.damage ?? [];
+    const isAssigned  = !!driver;
+    const hasSevere   = damages.some(d => d.severity === 'severe');
+    const hasModerate = damages.some(d => d.severity === 'moderate');
 
     return (
         <article className={`group rounded-[20px] overflow-hidden flex flex-col transition-all duration-200 ${
@@ -468,10 +491,30 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick }
                     </button>
                 )}
 
+                {/* Damage badge — shows count; color indicates highest severity */}
+                <button
+                    onClick={onDamageClick}
+                    className={`absolute flex items-center gap-1 px-2 py-1.5 rounded-[10px] backdrop-blur-md border shadow-sm transition-all active:scale-90 ${
+                        docs.length > 0 ? 'top-12 right-3' : 'top-3 right-3'
+                    } ${
+                        damages.length > 0
+                            ? hasSevere
+                                ? 'bg-red-500/50 hover:bg-red-500/70 border-red-400/40'
+                                : hasModerate
+                                    ? 'bg-orange-500/45 hover:bg-orange-500/65 border-orange-400/40'
+                                    : 'bg-yellow-500/40 hover:bg-yellow-500/60 border-yellow-400/40'
+                            : 'bg-black/30 hover:bg-black/50 border-white/10'
+                    }`}
+                    title="Shikastlar"
+                >
+                    <span className="text-[11px]">💥</span>
+                    <span className="text-white text-[11px] font-bold leading-none">{damages.length}</span>
+                </button>
+
                 {/* Admin actions on hover */}
                 {userRole === 'admin' && (
                     <div className={`absolute flex gap-1.5 transition-all duration-200 opacity-0 translate-y-[-4px] group-hover:opacity-100 group-hover:translate-y-0 ${
-                        docs.length > 0 ? 'top-12 right-3' : 'top-3 right-3'
+                        docs.length > 0 ? 'top-[88px] right-3' : 'top-[52px] right-3'
                     }`}>
                         <button
                             onClick={e => { e.stopPropagation(); onEdit(car); }}
