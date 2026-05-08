@@ -5,6 +5,7 @@ import { XIcon, CameraIcon, CarIcon } from './Icons';
 import { Driver, DriverStatus, DriverDocument } from '../types';
 import { Car } from '../src/core/types';
 import { decodeHtml } from '../utils/textUtils';
+import { supabase } from '../supabase';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -60,20 +61,24 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
 
   useEffect(() => {
-    if (isOpen && editingDriver) {
+    if (!isOpen) return;
+    if (editingDriver) {
       setName(decodeHtml(editingDriver.name));
       setPhone(editingDriver.phone);
       setExtraPhone(editingDriver.extraPhone ?? '');
       setAvatar(editingDriver.avatar);
       setStatus(editingDriver.status);
       setNotes(editingDriver.notes ?? '');
-      setDocuments(editingDriver.documents ?? []);
       setMonthlySalary(editingDriver.monthlySalary ?? 0);
       setDriverType((editingDriver as any).driverType ?? 'deposit');
       setDepositAmount((editingDriver as any).depositAmount ?? 0);
       setDepositWarningThreshold((editingDriver as any).depositWarningThreshold ?? 1_000_000);
       setSelectedCarId(currentAssignedCar?.id ?? '');
-    } else if (isOpen) {
+      setDocuments([]);
+      // Load documents on-demand (excluded from realtime subscription to save egress)
+      supabase.from('drivers').select('documents').eq('id', editingDriver.id).single()
+        .then(({ data }) => { if (data?.documents) setDocuments(data.documents); });
+    } else {
       setName('');
       setPhone('+998 ');
       setExtraPhone('');
@@ -89,7 +94,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setError(null);
       setDocError(null);
     }
-  }, [isOpen, editingDriver]);
+  }, [isOpen, editingDriver?.id]);
 
   // Close picker when clicking outside
   useEffect(() => {

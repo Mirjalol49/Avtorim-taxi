@@ -7,13 +7,17 @@ const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now()
 export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const fetchCars = async () => {
         const controller = new AbortController();
         const abort = setTimeout(() => controller.abort(), 5000);
         try {
             const { data, error } = await supabase
                 .from('cars')
-                .select('*')
+                // ⚠️ documents can be large base64 blobs — excluded, loaded on demand in CarModal.
+                // avatar IS included — it's shown throughout the UI (car cards, damage page, etc.).
+                .select('id,fleet_id,name,license_plate,assigned_driver_id,daily_plan,plan_history,day_overrides,is_deleted,created_ms,damage,avatar')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -25,7 +29,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 name: r.name,
                 licensePlate: r.license_plate,
                 avatar: r.avatar ?? '',
-                documents: r.documents ?? [],
+                documents: [],        // not fetched here — load on demand in CarModal
                 assignedDriverId: r.assigned_driver_id ?? null,
                 dailyPlan: r.daily_plan ?? 0,
                 planHistory: r.plan_history ?? [],
@@ -41,25 +45,33 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
         }
     };
 
+    const debouncedFetch = () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchCars, 300);
+    };
+
     // Fire immediately — data shows before WebSocket channel connects
     fetchCars();
 
     const channel = supabase
         .channel(`cars_${fleetId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'cars', filter: `fleet_id=eq.${fleetId}` }, fetchCars)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'cars', filter: `fleet_id=eq.${fleetId}` }, debouncedFetch)
         .subscribe((() => {
             let subscribedCount = 0;
             return (status: string) => {
                 if (status === 'SUBSCRIBED') {
-                    if (++subscribedCount > 1) fetchCars();
+                    if (++subscribedCount > 1) debouncedFetch();
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    fetchCars();
+                    debouncedFetch();
                 }
             };
         })());
 
     return {
-        unsubscribe: () => { supabase.removeChannel(channel); },
+        unsubscribe: () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            supabase.removeChannel(channel);
+        },
         refetch: fetchCars,
     };
 };

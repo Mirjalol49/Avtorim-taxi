@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon, NotesIcon, FolderOpenIcon
+  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon, NotesIcon, FolderOpenIcon, AlertTriangleIcon
 } from './components/Icons';
 
 import FinancialModal from './components/FinancialModal';
@@ -12,6 +12,7 @@ import NotificationBell from './components/NotificationBell';
 import DriverModal from './components/DriverModal';
 import CarModal from './components/CarModal';
 import CarsPage from './src/features/cars/CarsPage';
+import DamagesPage from './src/features/damages/DamagesPage';
 import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar } from './services/carsService';
 import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
@@ -600,7 +601,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/payroll', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/damages', '/transactions', '/finance', '/monthly-plan', '/payroll', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -647,6 +648,7 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
           {renderSidebarItem('/cars', t.cars, CarIcon)}
+          {renderSidebarItem('/damages', 'Shikastlar', AlertTriangleIcon)}
           {renderSidebarItem('/monthly-plan', t.monthlyPlan, CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
@@ -1004,6 +1006,17 @@ const AppContent: React.FC = () => {
                 onAddCar={() => { setEditingCar(null); setIsCarModalOpen(true); }}
                 onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
                 onDeleteCar={handleDeleteCar}
+                theme={theme}
+              />
+            } />
+
+            {/* DAMAGES */}
+            <Route path="/damages" element={
+              <DamagesPage
+                cars={cars}
+                isDataLoading={carsLoading}
+                userRole={userRole}
+                adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
                 theme={theme}
               />
             } />

@@ -91,22 +91,30 @@ export const fetchTransactionsPage = async (
 // ==================== ADMIN USERS ====================
 
 export const subscribeToAdminUsers = (callback: (users: any[]) => void) => {
-    const fetch = () =>
-        supabase.from('admin_users').select('*').then(({ data }) => {
-            if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_ms) })));
-        });
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const fetch = () => {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(() =>
+            // Exclude avatar (base64) — only load it in AdminModal on demand
+            supabase.from('admin_users')
+                .select('id,username,phone,role,active,created_ms,created_by')
+                .then(({ data }) => {
+                    if (data) callback(data.map(r => ({ ...r, createdAt: toMs(r.created_ms) })));
+                })
+        , 300);
+    };
 
     fetch();
 
     const channel = supabase
         .channel('admin_users_changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, fetch)
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetch();
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetch();
-        });
+        .subscribe(); // no re-fetch on SUBSCRIBED — fetch() already called above
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+        if (debounce) clearTimeout(debounce);
+        supabase.removeChannel(channel);
+    };
 };
 
 export const addAdminUser = async (user: any, performedBy: string) => {
@@ -207,11 +215,11 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
     return () => { supabase.removeChannel(channel); };
 };
 
-// ==================== DRIVERS ====================
-
 export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
+    // documents is excluded here — it contains base64 scans and is only needed in DriverModal.
+    // avatar is included because it's shown throughout the UI (driver cards, tx list, etc.).
     const transformDriver = (r: any): Driver => ({
         id: r.id,
         fleetId: r.fleet_id,
@@ -230,7 +238,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         extraPhone: r.extra_phone ?? '',
         isDeleted: r.is_deleted ?? false,
         location: r.location ?? { lat: 0, lng: 0, heading: 0 },
-        documents: r.documents ?? [],
+        documents: [],           // not fetched here — load on demand in DriverModal
         createdAt: toMs(r.created_ms),
         lastSalaryPaidAt: r.last_salary_paid_at ? toMs(r.last_salary_paid_at) : undefined,
         driverType: r.driver_type ?? 'deposit',
@@ -239,6 +247,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
     } as Driver);
 
     let cache: Driver[] = [];
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const fetchDrivers = async () => {
         const controller = new AbortController();
@@ -246,7 +255,8 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         try {
             const { data, error } = await supabase
                 .from('drivers')
-                .select('*')
+                // Exclude documents (base64 scans) — huge, only needed in DriverModal
+                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,telegram,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -261,6 +271,11 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             console.warn('[PWA] Fetch drivers failed, retrying in 3s...', err.message);
             setTimeout(fetchDrivers, 3000);
         }
+    };
+
+    const debouncedFetch = () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchDrivers, 300);
     };
 
     fetchDrivers();
@@ -293,17 +308,18 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             let subscribedCount = 0;
             return (status: string) => {
                 if (status === 'SUBSCRIBED') {
-                    // Skip first SUBSCRIBED (initial setup) — fetchDrivers() already called above.
-                    // Re-fetch only on reconnects (2nd+ SUBSCRIBED) to recover missed events.
-                    if (++subscribedCount > 1) fetchDrivers();
+                    if (++subscribedCount > 1) debouncedFetch();
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    fetchDrivers();
+                    debouncedFetch();
                 }
             };
         })());
 
     return {
-        unsubscribe: () => { supabase.removeChannel(channel); },
+        unsubscribe: () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            supabase.removeChannel(channel);
+        },
         refetch: fetchDrivers,
     };
 };
@@ -400,18 +416,16 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     const transformTx = transformTxRow;
     let cache: Transaction[] = [];
-    // Prevents the fast initial fetch from overwriting complete data if it resolves late.
-    let fullLoaded = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Full fetch — loads everything. Used for reconnects, manual refetch, and background load.
-    // Retries on error. Always replaces cache completely.
     const fetchAll = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 5000);
+        const abort = setTimeout(() => controller.abort(), 8000);
         try {
             const { data, error } = await supabase
                 .from('transactions')
-                .select('*')
+                // Exclude cheque_image (base64) from the list view — only fetch it when opening a specific transaction
+                .select('id,fleet_id,driver_id,driver_name,car_id,car_name,amount,type,description,note,timestamp_ms,status,payment_method,reversed_at,reversed_by,reversal_reason,original_transaction_id,use_deposit,category')
                 .eq('fleet_id', fleetId)
                 .neq('status', 'DELETED')
                 .order('timestamp_ms', { ascending: false })
@@ -419,7 +433,6 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             clearTimeout(abort);
             if (error) throw error;
             if (data) {
-                fullLoaded = true;
                 cache = data.map(transformTx);
                 callback(cache);
             }
@@ -430,37 +443,12 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
         }
     };
 
-    // Fast initial display: fetch first 100 so the UI has something to show immediately.
-    // Runs in parallel with fetchAll. The fullLoaded flag prevents this from overwriting
-    // complete data if fetchAll somehow resolves first (unlikely but safe).
-    const fetchInitial = async () => {
-        const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 5000);
-        try {
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('fleet_id', fleetId)
-                .neq('status', 'DELETED')
-                .order('timestamp_ms', { ascending: false })
-                .limit(100)
-                .abortSignal(controller.signal);
-            clearTimeout(abort);
-            if (error) throw error;
-            if (data && !fullLoaded) {
-                cache = data.map(transformTx);
-                callback(cache);
-            }
-        } catch (err: any) {
-            clearTimeout(abort);
-            console.warn('[PWA] Initial tx fetch failed, fetchAll will provide data', err.message);
-        }
-    };
-
-    // Run both in parallel: fetchInitial shows data fast (~200ms),
-    // fetchAll loads everything in the background.
-    fetchInitial();
     fetchAll();
+
+    const debouncedFetchAll = () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchAll, 300);
+    };
 
     const channel = supabase
         .channel(`transactions_${fleetId}`)
@@ -489,17 +477,18 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
             let subscribedCount = 0;
             return (status: string) => {
                 if (status === 'SUBSCRIBED') {
-                    // Skip first SUBSCRIBED (initial setup) — fetchInitial() already called above.
-                    // Re-fetch only on reconnects (2nd+ SUBSCRIBED) to recover missed events.
-                    if (++subscribedCount > 1) fetchAll();
+                    if (++subscribedCount > 1) debouncedFetchAll();
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    fetchAll();
+                    debouncedFetchAll();
                 }
             };
         })());
 
     return {
-        unsubscribe: () => { supabase.removeChannel(channel); },
+        unsubscribe: () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            supabase.removeChannel(channel);
+        },
         refetch: fetchAll,
     };
 };
@@ -597,7 +586,11 @@ export const deleteTransactionsBatch = async (ids: string[], auditInfo: { adminN
 
 export const subscribeToAdminProfile = (callback: (admin: any) => void) => {
     const fetch = () =>
-        supabase.from('admin_profile').select('*').eq('id', 'profile').single()
+        supabase.from('admin_profile')
+            // Exclude avatar (base64) from realtime — load on demand in settings
+            .select('id,name,phone,created_ms,updated_ms')
+            .eq('id', 'profile')
+            .single()
             .then(({ data }) => { if (data) callback(data); });
 
     fetch();
@@ -605,10 +598,7 @@ export const subscribeToAdminProfile = (callback: (admin: any) => void) => {
     const channel = supabase
         .channel('admin_profile_changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_profile' }, fetch)
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetch();
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetch();
-        });
+        .subscribe(); // no re-fetch on SUBSCRIBED — initial fetch() already called
 
     return () => { supabase.removeChannel(channel); };
 };
@@ -641,22 +631,27 @@ export const updateAdminProfile = async (admin: any) => {
 // ==================== VIEWERS ====================
 
 export const subscribeToViewers = (callback: (viewers: Viewer[]) => void) => {
-    const fetch = () =>
-        supabase.from('viewers').select('*').then(({ data }) => {
-            if (data) callback(data as Viewer[]);
-        });
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const fetch = () => {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(() =>
+            supabase.from('viewers').select('id,username,phone,role,active,created_ms').then(({ data }) => {
+                if (data) callback(data as unknown as Viewer[]);
+            })
+        , 300);
+    };
 
     fetch();
 
     const channel = supabase
         .channel('viewers_changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'viewers' }, fetch)
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetch();
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetch();
-        });
+        .subscribe(); // no re-fetch on SUBSCRIBED
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+        if (debounce) clearTimeout(debounce);
+        supabase.removeChannel(channel);
+    };
 };
 
 export const addViewer = async (viewer: Omit<Viewer, 'id'>) => {

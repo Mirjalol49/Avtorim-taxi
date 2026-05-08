@@ -20,8 +20,16 @@ import { Car } from '../src/core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/transaction.types';
 import { NotificationCategory, NotificationPriority } from '../src/core/types/notification.types';
 import { sendNotification } from '../services/notificationService';
+import { supabase } from '../supabase';
 
 const STORAGE_KEY_PREFIX = 'daily_plan_reminder_';
+
+/**
+ * Module-level in-memory dedup set.
+ * Survives re-renders within a session. Cleared only on full page reload.
+ * Key format: `YYYY-MM-DD_22_driverId`
+ */
+const SESSION_SENT = new Set<string>();
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
@@ -84,9 +92,22 @@ const getSentDriverIds = (dateKey: string, slot: string): Set<string> => {
 };
 
 const markDriverSent = (dateKey: string, slot: string, driverId: string) => {
-    const ids = getSentDriverIds(dateKey, slot);
-    ids.add(driverId);
-    localStorage.setItem(getStorageKey(dateKey, slot), JSON.stringify([...ids]));
+    const sessionKey = `${dateKey}_${slot}_${driverId}`;
+    SESSION_SENT.add(sessionKey);
+    try {
+        const ids = getSentDriverIds(dateKey, slot);
+        ids.add(driverId);
+        localStorage.setItem(getStorageKey(dateKey, slot), JSON.stringify([...ids]));
+    } catch {
+        // localStorage may be unavailable — session dedup still protects us
+    }
+};
+
+const isAlreadySent = (dateKey: string, slot: string, driverId: string): boolean => {
+    // Check in-memory first (fastest, most reliable within a session)
+    if (SESSION_SENT.has(`${dateKey}_${slot}_${driverId}`)) return true;
+    // Then check localStorage (survives page reload)
+    return getSentDriverIds(dateKey, slot).has(driverId);
 };
 
 interface UseDailyPlanReminderOptions {
@@ -126,7 +147,6 @@ export const useDailyPlanReminder = ({
             const { drivers, cars, transactions, adminUserId: aId, adminUserName: aName } = dataRef.current;
             const today = todayDateKey();
             const dateDisplay = todayDisplayStr();
-            const alreadySent = getSentDriverIds(today, slot);
             const activeDrivers = drivers.filter(d => !d.isDeleted);
 
             // Build the list of drivers that need reminders
@@ -141,7 +161,8 @@ export const useDailyPlanReminder = ({
             const eligible: Eligible[] = [];
 
             for (const driver of activeDrivers) {
-                if (alreadySent.has(driver.id)) continue;
+                // Double-guard: session memory + localStorage
+                if (isAlreadySent(today, slot, driver.id)) continue;
                 if (hasDayOffToday(driver.id, transactions)) continue;
 
                 const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
@@ -167,13 +188,30 @@ export const useDailyPlanReminder = ({
             if (eligible.length === 0) return;
 
             // Pre-mark ALL eligible drivers synchronously before any async work.
-            // This prevents a second concurrent fire() from sending duplicates.
+            // This prevents a second concurrent fire() from sending duplicates within the same tab.
             for (const { driver } of eligible) {
                 markDriverSent(today, slot, driver.id);
             }
 
-            // Now send notifications (failures won't cause re-sends)
+            // Server-side dedup: check which drivers already have a notification in DB for today.
+            // This prevents multi-tab sends (localStorage is per-tab session, DB is shared).
+            const todayStartMs = new Date().setHours(0, 0, 0, 0);
+            const { data: existing } = await supabase
+                .from('notifications')
+                .select('delivery_tracking')
+                .eq('fleet_id', aId)
+                .eq('type', 'payment_reminder')
+                .gte('created_ms', todayStartMs);
+
+            const alreadySentInDb = new Set<string>(
+                (existing ?? [])
+                    .map((r: any) => r.delivery_tracking?.driverId as string | undefined)
+                    .filter(Boolean) as string[]
+            );
+
+            // Now send notifications only for drivers not already in DB for today
             for (const { driver, car, dailyPlan, todayIncome, remaining, paidPct } of eligible) {
+                if (alreadySentInDb.has(driver.id)) continue; // server-side guard
                 try {
                     await sendNotification(
                         {
@@ -213,8 +251,13 @@ export const useDailyPlanReminder = ({
 
     useInterval(fire, 60 * 1000);
 
+    // Run once on mount only — NOT on every prop change.
+    // useInterval handles subsequent checks every minute.
+    const hasFiredOnMount = useRef(false);
     useEffect(() => {
-        fire();
+        if (hasFiredOnMount.current) return;
+        hasFiredOnMount.current = true;
+        if (enabled && adminUserId) fire();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [enabled, adminUserId]);
+    }, []);
 };

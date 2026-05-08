@@ -53,7 +53,8 @@ export const sendNotification = async (
         sent: now, delivered: [], read: [],
         ...(notificationData.extraTracking ?? {}),
     };
-    if (notificationData.driverAvatar) deliveryTracking.driverAvatar = notificationData.driverAvatar;
+    // ⚠️ Do NOT store driverAvatar (base64) in the DB — massive egress cost.
+    // Store only driverId; the UI resolves the avatar from already-loaded drivers.
     if (notificationData.driverId) deliveryTracking.driverId = notificationData.driverId;
 
     const { data, error } = await supabase
@@ -87,48 +88,55 @@ export const subscribeToNotifications = (
     callback: (notifications: Notification[], unreadCount: number, readIds: Set<string>) => void
 ) => {
     const now = Date.now();
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const fetchAndNotify = async () => {
-        const { data: rows } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('fleet_id', userId)
-            .gt('expires_at', now)
-            .order('expires_at', { ascending: false });
+    const fetchAndNotify = () => {
+        // Debounce: collapse rapid successive realtime events into one fetch
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            // Select only the columns we actually use — skip heavy JSONB where possible
+            const { data: rows } = await supabase
+                .from('notifications')
+                .select('id,title,message,type,category,priority,target_users,created_by,created_by_name,created_ms,expires_at,delivery_tracking,min_account_age')
+                .eq('fleet_id', userId)
+                .gt('expires_at', now)
+                .order('created_ms', { ascending: false })
+                .limit(100); // cap at 100 — no need to fetch thousands of old notifications
 
-        const notifications: Notification[] = (rows ?? [])
-            .filter(r => isNotificationTargetedToUser(r.target_users as NotificationTargetType, userId, userRole))
-            .map(r => ({
-                id: r.id,
-                title: r.title,
-                message: r.message,
-                type: r.type,
-                category: r.category,
-                priority: r.priority,
-                targetUsers: r.target_users,
-                createdBy: r.created_by,
-                createdByName: r.created_by_name,
-                createdAt: r.created_ms,
-                expiresAt: r.expires_at,
-                deliveryTracking: r.delivery_tracking,
-                minAccountAge: r.min_account_age
-            } as Notification));
+            const notifications: Notification[] = (rows ?? [])
+                .filter(r => isNotificationTargetedToUser(r.target_users as NotificationTargetType, userId, userRole))
+                .map(r => ({
+                    id: r.id,
+                    title: r.title,
+                    message: r.message,
+                    type: r.type,
+                    category: r.category,
+                    priority: r.priority,
+                    targetUsers: r.target_users,
+                    createdBy: r.created_by,
+                    createdByName: r.created_by_name,
+                    createdAt: r.created_ms,
+                    expiresAt: r.expires_at,
+                    deliveryTracking: r.delivery_tracking,
+                    minAccountAge: r.min_account_age
+                } as Notification));
 
-        const { data: reads } = await supabase
-            .from('notification_reads')
-            .select('notification_id')
-            .eq('user_id', userId);
-        const readIds = new Set<string>((reads ?? []).map(r => r.notification_id));
+            const { data: reads } = await supabase
+                .from('notification_reads')
+                .select('notification_id')
+                .eq('user_id', userId);
+            const readIds = new Set<string>((reads ?? []).map(r => r.notification_id));
 
-        const { data: deletes } = await supabase
-            .from('notification_deletes')
-            .select('notification_id')
-            .eq('user_id', userId);
-        const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
+            const { data: deletes } = await supabase
+                .from('notification_deletes')
+                .select('notification_id')
+                .eq('user_id', userId);
+            const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
 
-        const active = notifications.filter(n => !deletedIds.has(n.id));
-        const unreadCount = active.filter(n => !readIds.has(n.id)).length;
-        callback(active, unreadCount, readIds);
+            const active = notifications.filter(n => !deletedIds.has(n.id));
+            const unreadCount = active.filter(n => !readIds.has(n.id)).length;
+            callback(active, unreadCount, readIds);
+        }, 400); // 400ms debounce — collapses bursts of realtime events
     };
 
     fetchAndNotify();
@@ -140,7 +148,10 @@ export const subscribeToNotifications = (
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_deletes', filter: `user_id=eq.${userId}` }, fetchAndNotify)
         .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        supabase.removeChannel(channel);
+    };
 };
 
 export const markNotificationAsRead = async (notificationId: string, userId: string): Promise<void> => {

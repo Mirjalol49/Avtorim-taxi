@@ -7,11 +7,14 @@ export interface CarDocument {
 
 // ─── Car Damage / Scratch Recorder ───────────────────────────────────────────
 
-/** One photo attached to a damage record (same shape as CarDocument minus category). */
+/** One photo attached to a damage record. */
 export interface DamageImage {
     name: string;
     type: string;   // MIME type (image/*)
-    data: string;   // base64 data URL
+    /** Public Supabase Storage URL — preferred for new uploads. */
+    url?: string;
+    /** Legacy base64 data URL — only present on old records. */
+    data?: string;
 }
 
 export type DamageSeverity = 'minor' | 'moderate' | 'severe';

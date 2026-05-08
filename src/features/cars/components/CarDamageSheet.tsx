@@ -44,25 +44,38 @@ function formatDate(ms: number) {
 
 // ─── Image strip inside a damage record ───────────────────────────────────────
 
+function resolveSrc(img: { url?: string; data?: string }) {
+    return img.url ?? img.data ?? '';
+}
+
 function ImageStrip({
     images,
     onPreview,
 }: {
-    images: { name: string; type: string; data: string }[];
+    images: { name: string; type: string; url?: string; data?: string }[];
     onPreview: (src: string) => void;
 }) {
     if (!images.length) return null;
     return (
         <div className="flex gap-2 mt-3 flex-wrap">
-            {images.map((img, i) => (
-                <button
-                    key={i}
-                    onClick={() => onPreview(img.data)}
-                    className="w-14 h-14 rounded-[10px] overflow-hidden flex-shrink-0 border border-white/10 hover:border-teal-400/50 transition-all active:scale-90"
-                >
-                    <img src={img.data} alt={img.name} className="w-full h-full object-cover" />
-                </button>
-            ))}
+            {images.map((img, i) => {
+                const src = resolveSrc(img);
+                if (!src) return null;
+                return (
+                    <button
+                        key={i}
+                        onClick={() => onPreview(src)}
+                        className="w-16 h-16 rounded-[12px] overflow-hidden flex-shrink-0 border border-white/10 hover:border-teal-400/50 transition-all active:scale-90 shadow-sm"
+                    >
+                        <img
+                            src={src}
+                            alt={img.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                        />
+                    </button>
+                );
+            })}
         </div>
     );
 }
@@ -145,27 +158,47 @@ export default function CarDamageSheet({ car, isDark, userRole, adminName, onClo
                 style={{ animation: 'slideInRight 0.22s cubic-bezier(0.22,1,0.36,1)' }}
                 onClick={e => e.stopPropagation()}
             >
-                {/* ── Header ── */}
-                <div className={`flex items-center gap-3 px-5 py-4 border-b flex-shrink-0 ${isDark ? 'border-white/[0.06]' : 'border-gray-200'}`}>
-                    <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0 text-xl ${isDark ? 'bg-red-500/15' : 'bg-red-50'}`}>
-                        💥
+                {/* ── Header with car photo ── */}
+                <div className={`border-b flex-shrink-0 ${isDark ? 'border-white/[0.06]' : 'border-gray-200'}`}>
+                    {/* Car photo banner */}
+                    <div className="relative h-32 overflow-hidden">
+                        {car.avatar ? (
+                            <img
+                                src={car.avatar}
+                                alt={car.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-[#0a1628]' : 'bg-gray-100'}`}>
+                                <span className="text-5xl opacity-20">🚗</span>
+                            </div>
+                        )}
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                        {/* Name + plate overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
+                            <h2 className="font-extrabold text-white text-[17px] leading-tight truncate drop-shadow">
+                                {car.name}
+                            </h2>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="px-2 py-0.5 rounded-md bg-white/15 backdrop-blur-sm border border-white/20 text-white text-[11px] font-mono font-bold tracking-widest">
+                                    {car.licensePlate}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-red-500/40 backdrop-blur-sm border border-red-400/30 text-red-200 text-[11px] font-bold">
+                                    💥 {records.length} shikast
+                                </span>
+                            </div>
+                        </div>
+                        {/* Close button */}
+                        <button
+                            onClick={onClose}
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className={`font-extrabold text-[15px] leading-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            Shikast yozuvlari
-                        </h2>
-                        <p className={`text-[12px] truncate mt-0.5 ${isDark ? 'text-white/35' : 'text-gray-500'}`}>
-                            {car.name} · {car.licensePlate}
-                        </p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 flex-shrink-0 ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.12] text-white/50' : 'bg-gray-100 hover:bg-gray-200 text-gray-500'}`}
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
                 </div>
 
                 {/* ── Summary chips ── */}
@@ -300,6 +333,7 @@ export default function CarDamageSheet({ car, isDark, userRole, adminName, onClo
             {showAddModal && (
                 <CarDamageModal
                     isDark={isDark}
+                    carId={car.id}
                     carName={`${car.name} — ${car.licensePlate}`}
                     recordedBy={adminName}
                     onSave={handleAdd}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XIcon, CameraIcon } from './Icons';
 import { Car, CarDocument } from '../src/core/types';
+import { supabase } from '../supabase';
 
 interface CarModalProps {
   isOpen: boolean;
@@ -33,13 +34,30 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    if (isOpen && editingCar) {
+    if (!isOpen) return;
+
+    if (editingCar) {
       setName(editingCar.name);
       setLicensePlate(editingCar.licensePlate);
-      setAvatar(editingCar.avatar ?? '');
       setDailyPlan(editingCar.dailyPlan ? editingCar.dailyPlan.toLocaleString() : '');
-      setDocuments(editingCar.documents ?? []);
-    } else if (isOpen) {
+      setError(null);
+      setDocError(null);
+
+      // Load avatar + documents on-demand (not included in realtime subscription to save egress)
+      if (editingCar.id) {
+        supabase
+          .from('cars')
+          .select('avatar,documents')
+          .eq('id', editingCar.id)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              setAvatar(data.avatar ?? '');
+              setDocuments(data.documents ?? []);
+            }
+          });
+      }
+    } else {
       setName('');
       setLicensePlate('');
       setAvatar('');
@@ -48,7 +66,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       setError(null);
       setDocError(null);
     }
-  }, [isOpen, editingCar]);
+  }, [isOpen, editingCar?.id]);
 
   const handleDailyPlanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value.replace(/[^0-9]/g, '');
