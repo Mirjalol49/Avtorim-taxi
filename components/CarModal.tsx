@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { XIcon, CameraIcon } from './Icons';
 import { Car, CarDocument } from '../src/core/types';
 import { supabase } from '../supabase';
+import { uploadAvatarToStorage } from '../services/storageService';
 
 interface CarModalProps {
   isOpen: boolean;
@@ -24,17 +25,19 @@ const DOC_SLOTS: { category: CarDocument['category']; label: string }[] = [
 const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingCar, theme }) => {
   const [name,         setName]         = useState('');
   const [licensePlate, setLicensePlate] = useState('');
-  const [avatar,       setAvatar]       = useState('');
+  const [avatar,       setAvatar]       = useState('');   // CDN URL or preview URL
   const [dailyPlan,    setDailyPlan]    = useState('');
   const [documents,    setDocuments]    = useState<CarDocument[]>([]);
   const [docError,     setDocError]     = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
+  const avatarFileRef = useRef<File | null>(null); // raw File — uploaded to Storage on submit
 
   const isDark = theme === 'dark';
 
   useEffect(() => {
     if (!isOpen) return;
+    avatarFileRef.current = null; // reset pending upload on open
 
     if (editingCar) {
       setName(editingCar.name);
@@ -87,7 +90,17 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       const planValue = dailyPlan
         ? parseInt(dailyPlan.replace(/\s/g, '').replace(/,/g, ''), 10)
         : 0;
-      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar, dailyPlan: planValue, documents });
+
+      // If user selected a new avatar file, upload it to Storage first
+      let finalAvatar = avatar;
+      const pendingFile = avatarFileRef.current;
+      if (pendingFile) {
+        const entityId = editingCar?.id ?? `car_${Date.now()}`;
+        finalAvatar = await uploadAvatarToStorage(pendingFile, 'cars', entityId);
+        avatarFileRef.current = null;
+      }
+
+      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar: finalAvatar, dailyPlan: planValue, documents });
       onClose();
     } catch (err: any) {
       setError(err?.message || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
@@ -96,12 +109,15 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
     }
   };
 
+  // Store the raw File in a ref and show a local object URL as preview.
+  // Actual upload to Supabase Storage happens on form submit.
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setAvatar(reader.result as string);
-    reader.readAsDataURL(file);
+    avatarFileRef.current = file;
+    const previewUrl = URL.createObjectURL(file);
+    setAvatar(previewUrl); // shows instantly in the UI
+    e.target.value = '';   // reset so same file can be re-selected
   };
 
   const handleDocUpload = (

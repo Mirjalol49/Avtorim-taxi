@@ -6,6 +6,7 @@ import { Driver, DriverStatus, DriverDocument } from '../types';
 import { Car } from '../src/core/types';
 import { decodeHtml } from '../utils/textUtils';
 import { supabase } from '../supabase';
+import { uploadAvatarToStorage } from '../services/storageService';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -24,7 +25,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [extraPhone, setExtraPhone] = useState('');
-  const [avatar, setAvatar] = useState('');
+  const [avatar, setAvatar] = useState('');   // CDN URL or preview URL
+  const avatarFileRef = useRef<File | null>(null); // raw File — uploaded to Storage on submit
   const [status, setStatus] = useState<DriverStatus>(DriverStatus.OFFLINE);
   const [notes, setNotes] = useState('');
   const [documents, setDocuments] = useState<DriverDocument[]>([]);
@@ -62,6 +64,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
   useEffect(() => {
     if (!isOpen) return;
+    avatarFileRef.current = null; // reset pending upload on open
     if (editingDriver) {
       setName(decodeHtml(editingDriver.name));
       setPhone(editingDriver.phone);
@@ -128,13 +131,21 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     }
 
     try {
-      // carModel and licensePlate auto-filled from selected car for backward compat with display
+      // If user picked a new avatar file, upload to Storage first
+      let finalAvatar = avatar;
+      const pendingFile = avatarFileRef.current;
+      if (pendingFile) {
+        const entityId = editingDriver?.id ?? `driver_${Date.now()}`;
+        finalAvatar = await uploadAvatarToStorage(pendingFile, 'drivers', entityId);
+        avatarFileRef.current = null;
+      }
+
       await onSubmit({
         id: editingDriver?.id,
         name,
         phone,
         extraPhone,
-        avatar,
+        avatar: finalAvatar,
         status,
         notes,
         monthlySalary: driverType === 'salary' ? monthlySalary : 0,
@@ -155,12 +166,14 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     }
   };
 
+  // Store the raw File in a ref and show a local object URL as preview.
+  // Actual upload to Supabase Storage happens on form submit.
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setAvatar(reader.result as string);
-      reader.readAsDataURL(file);
+      avatarFileRef.current = file;
+      setAvatar(URL.createObjectURL(file)); // instant preview
+      e.target.value = '';
     }
   };
 
