@@ -529,7 +529,11 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     {car ? (
                                                         <>
                                                             <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
-                                                                <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                                {car.avatar ? (
+                                                                    <img src={car.avatar} className="w-full h-full object-cover" alt={car.name} />
+                                                                ) : (
+                                                                    <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                                )}
                                                             </div>
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
@@ -658,7 +662,13 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
                                             {car ? (
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}><CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} /></div>
+                                                <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
+                                                    {car.avatar ? (
+                                                        <img src={car.avatar} className="w-full h-full object-cover" alt={car.name} />
+                                                    ) : (
+                                                        <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                                                    )}
+                                                </div>
                                             ) : expenseCat ? (
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border flex-shrink-0 ${theme === 'dark' ? 'border-red-500/20 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>{expenseCat.icon}</div>
                                             ) : tx.type === TransactionType.EXPENSE && !driver ? (
