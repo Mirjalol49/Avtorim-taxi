@@ -256,7 +256,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             const { data, error } = await supabase
                 .from('drivers')
                 // Exclude documents (base64 scans) — huge, only needed in DriverModal
-                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,telegram,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold')
+                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -383,7 +383,7 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
 
     if (payload.name !== undefined) {
         await supabase.from('transactions').update({ driver_name: payload.name }).eq('driver_id', id).neq('status', 'DELETED');
-        await supabase.from('telegram_sessions').update({ driver_name: payload.name }).eq('driver_id', id);
+
     }
 
     if (payload.car !== undefined || payload.car_number !== undefined) {

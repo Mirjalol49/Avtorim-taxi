@@ -57,7 +57,7 @@ import { UIProvider, useUIContext } from './src/features/shared/context/UIContex
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
 import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, sendNotification, Notification } from './services/notificationService';
-import { notifyTransactionOnTelegram } from './services/telegramNotificationService';
+
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
 const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
@@ -289,19 +289,7 @@ const AppContent: React.FC = () => {
 
       const newTxId = await firestoreService.addTransaction(payload as any, carsFleetId);
 
-      // Fire-and-forget Telegram alert to admin (never blocks UI)
-      if (adminUser?.id && driver && (data.type === 'INCOME' || data.type === 'EXPENSE')) {
-        notifyTransactionOnTelegram({
-          adminId: carsFleetId ?? adminUser.id,
-          driverName: driver.name,
-          amount: Number(data.amount),
-          type: data.type as 'INCOME' | 'EXPENSE',
-          description: data.description,
-          carName: car ? `${car.name} — ${car.licensePlate}` : undefined,
-          performedBy: adminUser.username,
-          timestamp: (data as any).timestamp ?? Date.now(),
-        });
-      }
+
 
       // Check threshold crossing for deposit drivers
       if (isDepositDriver && driver && balanceBefore !== null && newTxId) {
@@ -1160,7 +1148,6 @@ const AppContent: React.FC = () => {
         theme={theme}
         onLogout={() => { playLockSound(); handleLogout(); }}
         onLock={() => { playLockSound(); setIsLocked(true); }}
-        adminId={adminUser?.id}
       />
 
       {/* CONFIRMATION MODAL */}
