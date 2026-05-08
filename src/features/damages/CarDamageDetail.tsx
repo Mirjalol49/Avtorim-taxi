@@ -5,6 +5,7 @@ import { Car, CarDamage, DamageImage, DamageSeverity, CAR_PARTS } from '../../co
 import { updateCar } from '../../../services/carsService';
 import { supabase } from '../../../supabase';
 import { useConfirm } from '../../../components/ConfirmContext';
+import { useToast } from '../../../components/ToastNotification';
 
 interface Props {
     car: Car;
@@ -54,6 +55,7 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
     const isDark = theme === 'dark';
     const damages = car.damage ?? [];
     const confirm = useConfirm();
+    const { addToast } = useToast();
 
     const [desc, setDesc]       = useState('');
     const [files, setFiles]     = useState<{ file: File; prev: string }[]>([]);
@@ -79,7 +81,7 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
             const record: CarDamage = { id, partKey: 'other', severity: 'minor', description: desc.trim(), images, recordedAt: Date.now(), recordedBy: adminName };
             await updateCar(car.id, { damage: [record, ...damages] });
             reset(); setShowForm(false);
-        } catch (e: any) { alert('Xatolik: ' + e?.message); }
+        } catch (e: any) { addToast('error', 'Xatolik: ' + (e?.message ?? 'Nomalum xatolik')); }
         finally { setSaving(false); }
     }, [car.id, damages, desc, files, adminName]);
 

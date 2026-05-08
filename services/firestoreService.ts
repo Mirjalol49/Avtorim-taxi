@@ -429,6 +429,11 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 .eq('fleet_id', fleetId)
                 .neq('status', 'DELETED')
                 .order('timestamp_ms', { ascending: false })
+                // ⚠️ Egress guard: cap to 500 most recent rows. DataContext only needs
+                // this for the balance-check modal. The TransactionsPage uses the
+                // separate cursor-paginated hook (useTransactionsPaginated) which has
+                // its own limit. Fetching ALL rows with no bound was the #2 egress culprit.
+                .limit(500)
                 .abortSignal(controller.signal);
             clearTimeout(abort);
             if (error) throw error;

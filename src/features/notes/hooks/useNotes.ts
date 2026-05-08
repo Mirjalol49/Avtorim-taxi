@@ -52,11 +52,19 @@ export const useNotes = (fleetId?: string) => {
         };
     }, [fleetId]);
 
-    // Refetch when the app comes back to the foreground (PWA resume, tab switch)
+    // Refetch when the app comes back to the foreground — but only if the tab
+    // was hidden for >60s. This prevents burning egress on every tab switch.
     useEffect(() => {
+        let hiddenAt = 0;
+        const STALE_THRESHOLD_MS = 60_000;
         const handleVisibility = () => {
-            if (document.visibilityState === 'visible' && refetchRef.current) {
-                refetchRef.current();
+            if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
+            } else if (document.visibilityState === 'visible' && refetchRef.current) {
+                if (hiddenAt > 0 && Date.now() - hiddenAt > STALE_THRESHOLD_MS) {
+                    refetchRef.current();
+                }
+                hiddenAt = 0;
             }
         };
         document.addEventListener('visibilitychange', handleVisibility);

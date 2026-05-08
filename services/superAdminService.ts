@@ -49,23 +49,37 @@ export const generatePassword = (): string => {
 };
 
 export const getAllAccounts = async (): Promise<AccountRecord[]> => {
-    const [usersRes, driversRes, txRes] = await Promise.all([
-        supabase.from('admin_users').select('id,username,phone,role,active,avatar,created_ms').order('created_ms', { ascending: false }),
+    // Fetch users and drivers normally, but get transaction counts via
+    // head-only COUNT queries — no row data downloaded, zero egress cost.
+    const [usersRes, driversRes] = await Promise.all([
+        // Exclude avatar (base64 blob) — not needed in admin list view
+        supabase.from('admin_users').select('id,username,phone,role,active,created_ms').order('created_ms', { ascending: false }),
         supabase.from('drivers').select('fleet_id').eq('is_deleted', false),
-        supabase.from('transactions').select('fleet_id'),
     ]);
 
     const users = usersRes.data ?? [];
-    const driverMap: Record<string, number> = {};
-    const txMap: Record<string, number> = {};
 
+    const driverMap: Record<string, number> = {};
     (driversRes.data ?? []).forEach(d => { if (d.fleet_id) driverMap[d.fleet_id] = (driverMap[d.fleet_id] || 0) + 1; });
-    (txRes.data ?? []).forEach(t => { if (t.fleet_id) txMap[t.fleet_id] = (txMap[t.fleet_id] || 0) + 1; });
+
+    // Count transactions per fleet using head-only queries (no row data transferred)
+    const txCountMap: Record<string, number> = {};
+    await Promise.all(
+        users.map(async (u) => {
+            const { count } = await supabase
+                .from('transactions')
+                .select('id', { count: 'exact', head: true })
+                .eq('fleet_id', u.id)
+                .neq('status', 'DELETED');
+            txCountMap[u.id] = count ?? 0;
+        })
+    );
 
     return users.map(u => ({
         ...u,
+        avatar: null, // not fetched — load on demand
         driverCount: driverMap[u.id] || 0,
-        transactionCount: txMap[u.id] || 0,
+        transactionCount: txCountMap[u.id] || 0,
     }));
 };
 
