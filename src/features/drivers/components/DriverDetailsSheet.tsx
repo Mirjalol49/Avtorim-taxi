@@ -9,7 +9,7 @@ import {
 } from '../../../../components/Icons';
 import { DriverHistoryPage } from './DriverHistoryPage';
 import { DriverAvatar } from './DriverAvatar';
-import { supabase } from '../../../supabase';
+import { supabase } from '../../../../supabase';
 
 interface Props {
     driver: Driver | null;
