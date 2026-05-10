@@ -33,7 +33,7 @@ class AuthService {
 
             const { data, error } = await supabase
                 .from('admin_users')
-                .select('*')
+                .select('id,username,role,active,created_ms,password,avatar,phone')
                 .eq('active', true)
                 .eq('phone', normalized)
                 .eq('password', password)
@@ -71,7 +71,7 @@ class AuthService {
         try {
             let query = supabase
                 .from('admin_users')
-                .select('*')
+                .select('id,username,role,active,created_ms,password,avatar')
                 .eq('active', true);
 
             if (password !== 'emergency') {
@@ -113,7 +113,7 @@ class AuthService {
     async authenticateViewer(password: string): Promise<{ success: boolean; user?: any; error?: string }> {
         const { data, error } = await supabase
             .from('viewers')
-            .select('*')
+            .select('id,username,name,phone,role,active,created_ms,password')
             .eq('password', password)
             .limit(1);
 

@@ -75,7 +75,7 @@ export interface PlanHistoryEntry {
  * DISCOUNT — the day has a custom reduced plan (customPlan UZS instead of normal)
  */
 export interface DayOverride {
-    type: 'OFF' | 'DISCOUNT';
+    type: 'OFF' | 'DISCOUNT' | 'NOT_WORKING';
     customPlan?: number; // only used when type === 'DISCOUNT'
 }
 

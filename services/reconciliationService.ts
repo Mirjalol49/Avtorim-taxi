@@ -31,14 +31,14 @@ export const reconcileSalaryTransactions = async (
 
     const { data: salaryRows } = await supabase
         .from('driver_salaries')
-        .select('*')
+        .select('id,driver_id,amount,status,created_at,period_start')
         .gte('period_start', startDate)
         .lte('period_start', endDate);
     const salaries = (salaryRows ?? []) as DriverSalary[];
 
     const { data: txRows } = await supabase
         .from('transactions')
-        .select('*')
+        .select('id,driver_id,amount,type,status,description,timestamp_ms')
         .gte('timestamp_ms', startDate)
         .lte('timestamp_ms', endDate)
         .eq('type', TransactionType.EXPENSE);

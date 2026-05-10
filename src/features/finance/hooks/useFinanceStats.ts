@@ -7,6 +7,7 @@ interface FinanceFilters {
     endDate: string;
     driverId: string;
     type: string;
+    paymentMethod: string;
 }
 
 export const useFinanceStats = (transactions: Transaction[]) => {
@@ -31,7 +32,8 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         startDate: defaultStartDate,
         endDate: defaultEndDate,
         driverId: 'all',
-        type: 'all'
+        type: 'all',
+        paymentMethod: 'all'
     });
     const [analyticsYear, setAnalyticsYear] = useState<number>(new Date().getFullYear());
     const [currentPage, setCurrentPage] = useState(1);
@@ -62,7 +64,11 @@ export const useFinanceStats = (transactions: Transaction[]) => {
             if (filters.type !== 'all') {
                 typeMatch = tx.type === filters.type;
             }
-            return dateMatch && driverMatch && typeMatch;
+            let methodMatch = true;
+            if (filters.paymentMethod !== 'all') {
+                methodMatch = tx.paymentMethod === filters.paymentMethod;
+            }
+            return dateMatch && driverMatch && typeMatch && methodMatch;
         }).sort((a, b) => b.timestamp - a.timestamp);
     }, [transactions, filters]);
 

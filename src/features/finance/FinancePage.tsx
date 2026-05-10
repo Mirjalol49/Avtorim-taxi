@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transaction, Driver, Language } from '../../core/types';
+import { Transaction, Driver, Language, TransactionType } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { useFinanceStats } from './hooks/useFinanceStats';
 import { formatNumberSmart } from '../../../utils/formatNumber';
@@ -52,7 +52,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
         <div className="space-y-6 animate-fadeIn">
             {/* Analytics Header Filters */}
             <div className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <DatePicker
                         label={t('fromDate') || 'Boshlanish sanasi'}
                         value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
@@ -78,6 +78,19 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                         theme={theme}
                         showSearch={true}
                         icon={UsersIcon}
+                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
+                    />
+                    <CustomSelect
+                        label={t('paymentMethodFilter', 'To\'lov usuli')}
+                        value={filters.paymentMethod}
+                        onChange={(val) => setFilters(prev => ({ ...prev, paymentMethod: val }))}
+                        options={[
+                            { id: 'all', name: t('allMethods', 'Barchasi') },
+                            { id: 'cash', name: t('cash', 'Naqd pul') },
+                            { id: 'card', name: t('card', 'Karta') }
+                        ]}
+                        theme={theme}
+                        icon={WalletIcon}
                         labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
                     />
                 </div>

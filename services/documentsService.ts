@@ -49,12 +49,15 @@ export function subscribeToDocuments(
         onData((data ?? []) as Document[]);
     };
 
+    // Fire initial fetch immediately before the realtime channel is ready
+    fetchDocs();
+
     const channel = supabase
         .channel(`documents:${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `fleet_id=eq.${fleetId}` }, fetchDocs)
         .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetchDocs();
-            else if (status === 'CHANNEL_ERROR') onError?.(new Error('Realtime channel error'));
+            // Only recover from errors — initial fetch already ran above
+            if (status === 'CHANNEL_ERROR') onError?.(new Error('Realtime channel error'));
         });
 
     return {

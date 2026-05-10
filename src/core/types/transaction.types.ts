@@ -10,7 +10,8 @@ export enum TransactionType {
     INCOME = 'INCOME',
     EXPENSE = 'EXPENSE',
     DEBT = 'DEBT',
-    DAY_OFF = 'DAY_OFF'
+    DAY_OFF = 'DAY_OFF',
+    NOT_WORKING = 'NOT_WORKING'
 }
 
 export enum FineStatus {

@@ -358,7 +358,13 @@ const AppContent: React.FC = () => {
 
       if (data.id) {
         const { id, ...updateData } = driverData;
-        await firestoreService.updateDriver(id, updateData, adminUser?.id);
+        // Explicitly null-clear contract fields when switching away from lease_to_own
+        if (updateData.driverType !== 'lease_to_own') {
+          updateData.totalContractAmount = null;
+          updateData.contractDurationMonths = null;
+          updateData.contractStartDate = null;
+        }
+        await firestoreService.updateDriver(id, updateData, carsFleetId);
         driverId = id;
       } else {
         const newDriver = {
@@ -366,6 +372,7 @@ const AppContent: React.FC = () => {
           licensePlate: data.licensePlate ?? '',
           carModel: data.carModel ?? '',
           phone: data.phone,
+          extraPhone: data.extraPhone ?? '',       // ← was silently dropped before
           status: data.status || DriverStatus.OFFLINE,
           avatar: data.avatar || '',
           notes: data.notes ?? '',
@@ -380,12 +387,16 @@ const AppContent: React.FC = () => {
           balance: 0,
           rating: 5.0,
           dailyPlan: data.dailyPlan || 0,
-          // Payment type fields — these were previously dropped, causing deposit to always read as 0
+          // Payment type fields
           driverType: data.driverType ?? 'deposit',
           depositAmount: data.depositAmount ?? 0,
           depositWarningThreshold: data.depositWarningThreshold ?? 1_000_000,
+          // Lease-to-own contract fields — always pass explicit null when not used so old values are cleared on updates
+          totalContractAmount: data.driverType === 'lease_to_own' ? (data.totalContractAmount ?? null) : null,
+          contractDurationMonths: data.driverType === 'lease_to_own' ? (data.contractDurationMonths ?? null) : null,
+          contractStartDate: data.driverType === 'lease_to_own' ? (data.contractStartDate ?? null) : null,
         };
-        driverId = await firestoreService.addDriver(newDriver, adminUser?.id);
+        driverId = await firestoreService.addDriver(newDriver, carsFleetId);
       }
 
       // Handle car assignment changes
@@ -395,8 +406,10 @@ const AppContent: React.FC = () => {
       if (assignedCarId && assignedCarId !== previousCarId) {
         await assignCar(assignedCarId, driverId);
       }
-    } catch (error) {
-      addToast('error', t.driverSaveFailed);
+    } catch (error: any) {
+      const msg = error?.message || error?.details || 'Xatolik yuz berdi';
+      console.error('[handleSaveDriver] Failed:', msg, error);
+      addToast('error', msg);
       throw error;
     }
   };

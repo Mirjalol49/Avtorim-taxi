@@ -15,7 +15,7 @@ export interface DriverDocument {
     category: 'driver_license' | 'passport' | 'car_registration' | 'car_insurance' | 'other';
 }
 
-export type DriverPaymentType = 'deposit' | 'salary';
+export type DriverPaymentType = 'deposit' | 'salary' | 'lease_to_own';
 
 export interface Driver extends Lockable {
     id: string;
@@ -45,4 +45,10 @@ export interface Driver extends Lockable {
     depositAmount?: number;
     /** Threshold at which a low-deposit warning is triggered (default 1 000 000 UZS) */
     depositWarningThreshold?: number;
+    /** Total price of the car for Lease-to-own contracts */
+    totalContractAmount?: number;
+    /** Duration of the lease-to-own contract in months */
+    contractDurationMonths?: number;
+    /** Start date of the lease-to-own contract (epoch ms) */
+    contractStartDate?: number;
 }

@@ -60,7 +60,8 @@ export const fetchTransactionsPage = async (
     try {
         let q = supabase
             .from('transactions')
-            .select('*')
+            // cheque_image is base64 — never fetch it in list queries, only in detail view
+            .select('id,fleet_id,driver_id,driver_name,car_id,car_name,amount,type,description,note,timestamp_ms,status,payment_method,reversed_at,reversed_by,reversal_reason,original_transaction_id,use_deposit,category')
             .eq('fleet_id', fleetId)
             .neq('status', 'DELETED')
             .order('timestamp_ms', { ascending: false })
@@ -200,7 +201,7 @@ export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
     const fetchLogs = () =>
         supabase
             .from('audit_logs')
-            .select('*')
+            .select('id,action,target_id,target_name,performed_by,performed_by_name,details,fleet_id,timestamp_ms')
             .order('timestamp_ms', { ascending: false })
             .limit(100)
             .then(({ data }) => { if (data) callback(data); });
@@ -244,6 +245,9 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         driverType: r.driver_type ?? 'deposit',
         depositAmount: r.deposit_amount ?? 0,
         depositWarningThreshold: r.deposit_warning_threshold ?? 1_000_000,
+        totalContractAmount: r.total_contract_amount ?? undefined,
+        contractDurationMonths: r.contract_duration_months ?? undefined,
+        contractStartDate: r.contract_start_date ? toMs(r.contract_start_date) : undefined,
     } as Driver);
 
     let cache: Driver[] = [];
@@ -256,7 +260,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             const { data, error } = await supabase
                 .from('drivers')
                 // Exclude documents (base64 scans) — huge, only needed in DriverModal
-                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold')
+                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold,total_contract_amount,contract_duration_months,contract_start_date')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -349,10 +353,20 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
             driver_type: (driver as any).driverType ?? 'deposit',
             deposit_amount: (driver as any).depositAmount ?? 0,
             deposit_warning_threshold: (driver as any).depositWarningThreshold ?? 1_000_000,
+            total_contract_amount: (driver as any).totalContractAmount ?? null,
+            contract_duration_months: (driver as any).contractDurationMonths ?? null,
+            contract_start_date: (driver as any).contractStartDate ?? null,
         })
         .select('id')
         .single();
-    if (error) throw error;
+    if (error) {
+        console.error('[addDriver] Supabase error:', JSON.stringify(error, null, 2));
+        console.error('[addDriver] error.message:', error.message);
+        console.error('[addDriver] error.details:', error.details);
+        console.error('[addDriver] error.hint:', error.hint);
+        console.error('[addDriver] error.code:', error.code);
+        throw error;
+    }
     return data.id as string;
 };
 
@@ -378,6 +392,10 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).driverType !== undefined) payload.driver_type = (driver as any).driverType;
     if ((driver as any).depositAmount !== undefined) payload.deposit_amount = (driver as any).depositAmount;
     if ((driver as any).depositWarningThreshold !== undefined) payload.deposit_warning_threshold = (driver as any).depositWarningThreshold;
+    if ((driver as any).totalContractAmount !== undefined) payload.total_contract_amount = (driver as any).totalContractAmount;
+    if ((driver as any).contractDurationMonths !== undefined) payload.contract_duration_months = (driver as any).contractDurationMonths;
+    if ((driver as any).contractStartDate !== undefined) payload.contract_start_date = (driver as any).contractStartDate;
+    
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;
 
@@ -704,7 +722,7 @@ export const updateDriverLocation = async (driverId: string, location: LocationU
 export const authenticateAdminUser = async (password: string): Promise<any | null> => {
     const { data, error } = await supabase
         .from('admin_users')
-        .select('*')
+        .select('id,username,role,active,created_ms,password,avatar')
         .eq('password', password)
         .eq('active', true)
         .limit(1)

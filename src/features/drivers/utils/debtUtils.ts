@@ -67,14 +67,14 @@ export function calcDriverDebt(
     // Count DAY_OFF transactions per month (used for dynamic days-off)
     const dayOffsByMonth: Record<string, number> = {};
     validTxs
-        .filter(tx => tx.type === TransactionType.DAY_OFF)
+        .filter(tx => tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING)
         .forEach(tx => {
             const mk = toMonthKey(tx.timestamp);
             dayOffsByMonth[mk] = (dayOffsByMonth[mk] || 0) + 1;
         });
 
     const todayKey = dateKey(Date.now());
-    const todayIsDayOff = validTxs.some(tx => tx.type === TransactionType.DAY_OFF && dateKey(tx.timestamp) === todayKey);
+    const todayIsDayOff = validTxs.some(tx => (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) && dateKey(tx.timestamp) === todayKey);
     const todayIncome = incomeByDate[todayKey] ?? 0;
     const todayDebt = (dailyPlan > 0 && !todayIsDayOff)
         ? Math.max(0, dailyPlan - todayIncome)
@@ -148,6 +148,12 @@ export interface DriverFinanceSummary {
     remainingDeposit: number;
     /** Salary drivers: monthly pay */
     salaryAmount:     number;
+    /** Lease-to-own: total initial contract amount */
+    totalContractAmount?: number;
+    /** Lease-to-own: total amount paid towards contract */
+    contractPaid?:    number;
+    /** Lease-to-own: remaining balance of contract */
+    contractRemaining?: number;
     months:           MonthlyBreakdown[];
 }
 
@@ -190,7 +196,7 @@ export function calcDriverFinance(
             e.expenses   += Math.abs(tx.amount);
         } else if (tx.type === TransactionType.DEBT) {
             e.debts      += Math.abs(tx.amount);
-        } else if (tx.type === TransactionType.DAY_OFF) {
+        } else if (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) {
             e.daysOff    += 1;
         }
         // Track explicit deposit usage regardless of transaction type (deposit drivers)
@@ -235,6 +241,27 @@ export function calcDriverFinance(
         return { monthKey: mk, planIncome, topUps, overpayment, expenses, debts, monthlyTarget, shortfall, salaryAdvance, netSalary, depositAfter: runningDeposit };
     });
 
-    return { driverType, depositAmount, remainingDeposit: runningDeposit, salaryAmount, months };
+    let contractPaid = 0;
+    let contractRemaining = driver.totalContractAmount ?? 0;
+
+    if (driverType === 'lease_to_own') {
+        const totalIncome = validTxs.filter(tx => tx.type === TransactionType.INCOME).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        const totalDebts = validTxs.filter(tx => tx.type === TransactionType.DEBT).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        const totalExpenses = validTxs.filter(tx => tx.type === TransactionType.EXPENSE).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+        contractPaid = totalIncome;
+        contractRemaining = Math.max(0, (driver.totalContractAmount ?? 0) + totalDebts + totalExpenses - contractPaid);
+    }
+
+    return { 
+        driverType, 
+        depositAmount, 
+        remainingDeposit: runningDeposit, 
+        salaryAmount, 
+        totalContractAmount: driver.totalContractAmount,
+        contractPaid: driverType === 'lease_to_own' ? contractPaid : undefined,
+        contractRemaining: driverType === 'lease_to_own' ? contractRemaining : undefined,
+        months 
+    };
 }
 

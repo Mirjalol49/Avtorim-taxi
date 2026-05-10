@@ -106,47 +106,43 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
         <div className="flex flex-col gap-5 pb-8">
 
             {/* ── HERO ── */}
-            <div className="relative w-full overflow-hidden rounded-3xl shadow-2xl" style={{ height: 260 }}>
+            <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm ring-1 ring-black/5" style={{ height: 220 }}>
                 {car.avatar
                     ? <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
-                    : <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-[#0a1020]' : 'bg-gray-200'}`}><span className="text-8xl opacity-10">🚗</span></div>
+                    : <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-[#151c2c]' : 'bg-gray-100'}`}><span className="text-7xl opacity-10 grayscale">🚗</span></div>
                 }
                 {/* gradient layers */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                 {/* back button */}
                 <button onClick={onBack}
-                    className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-md text-white text-[13px] font-semibold transition-all active:scale-95 border border-white/10">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                    {t('back', 'Orqaga')}
+                    className="absolute top-4 left-4 flex items-center justify-center w-10 h-10 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all active:scale-95 border border-white/10 group">
+                    <svg className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
 
                 {/* damage counter badge */}
                 {totalDmg > 0 && (
-                    <div className={`absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md text-[13px] font-bold border ${hasSevere ? 'bg-red-500/30 border-red-400/40 text-red-200' : 'bg-black/30 border-white/10 text-white/70'}`}>
-                        {hasSevere && <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse inline-block" />}
+                    <div className={`absolute top-4 right-4 flex items-center gap-2 px-4 py-2 rounded-[14px] backdrop-blur-md text-[13px] font-semibold border shadow-lg ${hasSevere ? 'bg-red-500/20 border-red-400/30 text-red-200' : 'bg-white/10 border-white/10 text-white'}`}>
+                        {hasSevere && <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse inline-block shadow-[0_0_8px_rgba(248,113,113,0.8)]" />}
                         {totalDmg} {t('damageCountPlural', 'ta shikast')}
                     </div>
                 )}
 
                 {/* car info */}
-                <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
-                    <p className="text-white/50 text-[11px] font-semibold uppercase tracking-[0.2em] mb-0.5">{t('carLabel', 'Avtomobil')}</p>
-                    <h1 className="text-white font-bold text-[28px] leading-tight tracking-tight">{car.name}</h1>
-                    <p className="text-white/70 font-mono font-semibold text-[18px] tracking-[0.3em] mt-0.5">{car.licensePlate}</p>
-
-                    {/* status pill */}
-                    <div className="mt-3">
-                        {totalDmg === 0
-                            ? <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[12px] font-semibold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />🛡️ {t('noDamage', "Shikast yo'q")}
-                              </span>
-                            : <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold border ${hasSevere ? 'bg-red-500/20 border-red-400/30 text-red-300' : 'bg-orange-500/20 border-orange-400/30 text-orange-300'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${hasSevere ? 'bg-red-400 animate-pulse' : 'bg-orange-400'}`} />
-                                {totalDmg} {t('damageCountPlural', 'ta shikast')}
-                              </span>
-                        }
+                <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
+                    <div>
+                        <p className="text-white/60 text-[11px] font-bold uppercase tracking-[0.25em] mb-1.5 drop-shadow-md">{t('carLabel', 'Avtomobil')}</p>
+                        <h1 className="text-white font-extrabold text-[32px] leading-none tracking-tight drop-shadow-lg">{car.name}</h1>
+                        <div className="mt-3 flex items-center gap-3">
+                            <span className="inline-block px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white font-mono font-bold text-[14px] tracking-[0.2em] shadow-sm border border-white/10">
+                                {car.licensePlate}
+                            </span>
+                            {totalDmg === 0 && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-[13px] font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />🛡️ Toza
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -159,9 +155,11 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                     <div className="w-full lg:w-72 xl:w-80 flex-shrink-0">
                         {!showForm ? (
                             <button onClick={() => setShowForm(true)}
-                                className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-semibold transition-all active:scale-[0.98] ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-white/60 hover:text-white/90 border border-white/[0.07]' : 'bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-800 border border-gray-200 shadow-sm'}`}>
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                {t('addNewDamageBtn', "Yangi shikast qo'shish")}
+                                className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-[20px] text-[15px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20' : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'}`}>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-teal-500/20' : 'bg-teal-200/50'}`}>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                </div>
+                                <span className="truncate">{t('addNewDamageBtn', "Yangi shikast qo'shish").replace(/^\+\s*/, '')}</span>
                             </button>
                         ) : (
                             <div className={`rounded-2xl overflow-hidden shadow-sm ${card}`}>
@@ -196,7 +194,7 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                                                 </button>
                                             )}
                                         </div>
-                                        <input ref={fileRef} type="file" accept="image/*" multiple capture="environment" className="hidden"
+                                        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
                                             onChange={e => {
                                                 const f = Array.from(e.target.files ?? []).slice(0, 8 - files.length);
                                                 e.target.value = '';
@@ -230,80 +228,79 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                 )}
 
                 {/* ── RIGHT: DAMAGE LIST ── */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full">
                     {damages.length === 0 ? (
-                        <div className={`rounded-2xl border flex flex-col items-center justify-center py-24 text-center ${card}`}>
-                            <span className="text-5xl mb-3 opacity-30">🛡️</span>
-                            <p className={`text-[15px] font-semibold ${muted}`}>{t('noDamageRecords', "Shikast yozuvlari yo'q")}</p>
-                            {userRole === 'admin' && !showForm && (
-                                <button onClick={() => setShowForm(true)}
-                                    className={`mt-4 text-[13px] font-medium transition-colors ${isDark ? 'text-white/30 hover:text-white/60' : 'text-gray-400 hover:text-gray-700'}`}>
-                                    {t('addFirstDamage', "+ Birinchi shikastni qo'shing")}
-                                </button>
-                            )}
+                        <div className={`rounded-[24px] border-2 border-dashed flex flex-col items-center justify-center py-16 md:py-28 text-center transition-colors ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-gray-200 bg-gray-50/50'}`}>
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-5 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}`}>
+                                <span className="text-4xl">🛡️</span>
+                            </div>
+                            <h3 className={`text-[18px] font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Avtomobil soz holatda</h3>
+                            <p className={`text-[14px] max-w-[250px] ${muted}`}>{t('noDamageRecords', "Hozircha hech qanday shikast yozuvlari kiritilmagan.")}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-5 items-start">
                             {damages.map((d) => {
                                 const { icon } = partDisplay(d.partKey);
                                 const showSevTag = d.severity !== 'minor';
 
                                 return (
-                                    <div key={d.id} className={`rounded-2xl overflow-hidden transition-all flex flex-col ${card}`}>
+                                    <div key={d.id} className={`rounded-[24px] overflow-hidden transition-all flex flex-col group ${card} hover:shadow-lg hover:border-gray-300 dark:hover:border-white/20`}>
                                         {/* ── image gallery top ── */}
                                         {d.images.length > 0 && (
-                                            <div className={`grid gap-0.5 w-full bg-black/5 ${d.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                                                {d.images.map((img, i) => {
-                                                    const s = imgSrc(img);
-                                                    if (!s) return null;
-                                                    const showOverlay = i === 3 && d.images.length > 4;
-                                                    if (i > 3) return null;
-                                                    return (
-                                                        <button key={i} onClick={() => setPreview(s)}
-                                                            className="relative aspect-square w-full overflow-hidden group">
-                                                            <img
-                                                                src={s} alt=""
-                                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                                loading="lazy"
-                                                            />
-                                                            {showOverlay && (
-                                                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
-                                                                    <span className="text-white font-bold text-[20px]">+{d.images.length - 4}</span>
-                                                                </div>
-                                                            )}
-                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                                                        </button>
-                                                    );
-                                                })}
+                                            <div className="p-2 pb-0">
+                                                <div className={`grid gap-1.5 w-full rounded-[18px] overflow-hidden ${d.images.length === 1 ? 'grid-cols-1 aspect-[4/3]' : 'grid-cols-2 aspect-[4/3]'}`}>
+                                                    {d.images.map((img, i) => {
+                                                        const s = imgSrc(img);
+                                                        if (!s) return null;
+                                                        const showOverlay = i === 3 && d.images.length > 4;
+                                                        if (i > 3) return null;
+                                                        return (
+                                                            <button key={i} onClick={() => setPreview(s)}
+                                                                className="relative w-full h-full overflow-hidden focus:outline-none">
+                                                                <img
+                                                                    src={s} alt=""
+                                                                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                                                                    loading="lazy"
+                                                                />
+                                                                {showOverlay && (
+                                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
+                                                                        <span className="text-white font-bold text-[20px]">+{d.images.length - 4}</span>
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
                                         )}
 
 
                                         {/* card body */}
-                                        <div className="px-4 py-4 flex-1 flex flex-col">
-                                            <div className="flex items-start justify-between gap-3 mb-2">
-                                                <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                                    <span className="text-xl leading-none">{icon}</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            {showSevTag && (
-                                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                                                                    d.severity === 'severe'
-                                                                        ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
-                                                                        : isDark ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-600'
-                                                                }`}>
-                                                                    <span className={`w-1 h-1 rounded-full ${d.severity === 'severe' ? 'bg-red-400' : 'bg-orange-400'}`} />
-                                                                    {d.severity === 'severe' ? 'Jiddiy' : "O'rtacha"}
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                        <div className="px-5 py-5 flex-1 flex flex-col">
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center text-xl shadow-inner ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                                        {icon}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                                        <span className={`text-[11px] font-bold uppercase tracking-wider ${muted}`}>{fmt(d.recordedAt)}</span>
+                                                        {showSevTag && (
+                                                            <span className={`self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                                                                d.severity === 'severe'
+                                                                    ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
+                                                                    : isDark ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-600'
+                                                            }`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${d.severity === 'severe' ? 'bg-red-400' : 'bg-orange-400'}`} />
+                                                                {d.severity === 'severe' ? 'Jiddiy' : "O'rtacha"}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
 
                                                 {userRole === 'admin' && (
                                                     <button onClick={() => del(d.id)}
-                                                        className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${isDark ? 'text-white/15 hover:bg-red-500/15 hover:text-red-400' : 'text-gray-300 hover:bg-red-50 hover:text-red-500'}`}>
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${isDark ? 'text-white/20 hover:bg-red-500/20 hover:text-red-400' : 'text-gray-300 hover:bg-red-50 hover:text-red-500'}`}>
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                                         </svg>
                                                     </button>
@@ -311,17 +308,18 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                                             </div>
 
                                             {d.description && (
-                                                <p className={`text-[14px] leading-relaxed mb-3 flex-1 ${bold}`}>{d.description}</p>
+                                                <p className={`text-[14px] leading-relaxed flex-1 ${bold}`}>{d.description}</p>
                                             )}
 
                                             {/* meta row */}
-                                            <div className={`flex items-center gap-2 mt-auto text-[11px] font-medium pt-3 border-t ${isDark ? 'border-white/5 text-white/30' : 'border-gray-100 text-gray-400'}`}>
-                                                <span>{fmt(d.recordedAt)}</span>
-                                                {d.recordedBy && <>
-                                                    <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`} />
+                                            {d.recordedBy && (
+                                                <div className={`flex items-center gap-2 mt-4 text-[12px] font-medium pt-4 border-t ${isDark ? 'border-white/10 text-white/40' : 'border-gray-100 text-gray-500'}`}>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+                                                        {d.recordedBy[0].toUpperCase()}
+                                                    </div>
                                                     <span>{d.recordedBy}</span>
-                                                </>}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );

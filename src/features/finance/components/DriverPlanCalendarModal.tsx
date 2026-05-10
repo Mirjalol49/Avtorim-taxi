@@ -5,7 +5,7 @@ import { XIcon } from '../../../../components/Icons';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { PaymentStatus } from '../../../core/types/transaction.types';
-import { getEffectivePlanForDay, isDayOverrideOff } from '../../cars/utils/planHistory';
+import { getEffectivePlanForDay, getDayOverrideType } from '../../cars/utils/planHistory';
 import { setDayOverride, clearDayOverride } from '../../../../services/carsService';
 
 export interface DriverPlanMonthInfo {
@@ -34,7 +34,7 @@ const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(M
 const fmtCompact = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
 
 
-type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' | 'FUTURE_OFF' | 'FUTURE_DISCOUNT';
+type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' | 'FUTURE_OFF' | 'FUTURE_DISCOUNT' | 'NOT_WORKING';
 
 const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     if (status === 'PAID') return (
@@ -69,6 +69,9 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     );
     if (status === 'FUTURE_DISCOUNT') return (
         <span className="text-[10px] font-black bg-orange-500/20 text-orange-500 px-1 rounded">-%</span>
+    );
+    if (status === 'NOT_WORKING') return (
+        <span className="text-[12px] leading-none">❌</span>
     );
     return null;
 };
@@ -114,7 +117,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             // Uses the planHistory snapshot to find what plan was active on `date`,
             // and applies any per-day overrides.
             const planForDay = getEffectivePlanForDay(monthData.car, date);
-            const isOverrideOff = isDayOverrideOff(monthData.car, date);
+            const overrideType = getDayOverrideType(monthData.car, date);
 
             const sumTushum = transactions
                 .filter(tx =>
@@ -132,12 +135,20 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 toLocalDateStr(tx.timestamp) === dayStr
             );
 
+            const isNotWorkingTx = transactions.some(tx =>
+                tx.driverId === monthData.driver.id &&
+                tx.type === 'NOT_WORKING' &&
+                toLocalDateStr(tx.timestamp) === dayStr
+            );
+
             const isFuture = date.getTime() > Date.now();
             let status: DayStatus = 'UNPAID';
 
-            if (isDayOffTx || isOverrideOff) {
+            if (isDayOffTx || overrideType === 'OFF') {
                 // Explicit day-off always wins
                 status = isFuture ? 'FUTURE_OFF' : 'DAY_OFF';
+            } else if (isNotWorkingTx || overrideType === 'NOT_WORKING') {
+                status = 'NOT_WORKING';
             } else if (planForDay > 0 && sumTushum >= planForDay) {
                 // Fully paid — show regardless of whether date is future
                 status = 'PAID';
@@ -146,8 +157,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 status = 'PARTIAL';
             } else if (isFuture) {
                 // No income yet, genuinely future → show override type or plain future
-                const override = monthData.car?.dayOverrides?.[dayStr];
-                status = override?.type === 'DISCOUNT' ? 'FUTURE_DISCOUNT' : 'FUTURE';
+                status = overrideType === 'DISCOUNT' ? 'FUTURE_DISCOUNT' : 'FUTURE';
             }
 
             return {
@@ -156,8 +166,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 dayStr,
                 status,
                 income: sumTushum,
-                // debt: show whenever income exists (even on a future-dated tx), but not for day-off or plain future
-                debt: (sumTushum > 0 || !isFuture) && status !== 'DAY_OFF' && status !== 'FUTURE' && status !== 'FUTURE_OFF'
+                // debt: show whenever income exists (even on a future-dated tx), but not for day-off, not-working or plain future
+                debt: (sumTushum > 0 || !isFuture) && status !== 'DAY_OFF' && status !== 'NOT_WORKING' && status !== 'FUTURE' && status !== 'FUTURE_OFF'
                     ? Math.max(0, planForDay - sumTushum)
                     : 0,
                 planForDay,
@@ -186,7 +196,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 ? 'bg-surface border border-white/[0.04] opacity-50 hover:opacity-100 hover:border-white/[0.12]'
                 : 'bg-gray-50/70 border border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300';
         }
-        if (status === 'DAY_OFF' || status === 'FUTURE_OFF') {
+        if (status === 'DAY_OFF' || status === 'FUTURE_OFF' || status === 'NOT_WORKING') {
             return isDark
                 ? 'bg-surface-2 border border-blue-500/20'
                 : 'bg-slate-50 border border-slate-200';
@@ -323,6 +333,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 { status: 'PARTIAL' as DayStatus, label: t('legendPartial') ?? 'Qisman' },
                                 { status: 'UNPAID'  as DayStatus, label: t('legendDebt') ?? 'Qarz' },
                                 { status: 'DAY_OFF' as DayStatus, label: `🏝️ ${t('legendDayOff') ?? 'Dam olish'}` },
+                                { status: 'NOT_WORKING' as DayStatus, label: `❌ Ishlamagan` },
                             ]).map(({ status, label }) => (
                                 <div key={status} className="flex items-center gap-1.5">
                                     <StatusIcon status={status} />
@@ -394,12 +405,23 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             )}
                                         </div>
 
-                                        {/* Cell body */}
                                         {d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' ? (
                                             <div className="flex flex-col items-center justify-center flex-1 gap-0.5 mt-1">
                                                 <span className="text-sm sm:text-xl leading-none">🏝️</span>
                                                 <span className={`hidden sm:inline-block text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
                                                     {t('legendDayOff')}
+                                                </span>
+                                                {d.income > 0 && (
+                                                    <span className={`text-[8px] sm:text-[10px] font-bold truncate w-full text-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                        +{fmtCompact(d.income)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : d.status === 'NOT_WORKING' ? (
+                                            <div className="flex flex-col items-center justify-center flex-1 gap-0.5 mt-1">
+                                                <span className="text-sm sm:text-xl leading-none">❌</span>
+                                                <span className={`hidden sm:inline-block text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
+                                                    Ishlamagan
                                                 </span>
                                                 {d.income > 0 && (
                                                     <span className={`text-[8px] sm:text-[10px] font-bold truncate w-full text-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
@@ -525,6 +547,16 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}
                                 >
                                     <span className="font-semibold flex items-center gap-2">🏝️ Dam olish</span>
+                                    <span className="text-sm font-bold opacity-50">0</span>
+                                </button>
+
+                                {/* Not working */}
+                                <button
+                                    disabled={overrideLoading}
+                                    onClick={() => handleSave(() => setDayOverride(carId, dKey, { type: 'NOT_WORKING' }))}
+                                    className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
+                                >
+                                    <span className="font-semibold flex items-center gap-2">❌ Ishlamagan</span>
                                     <span className="text-sm font-bold opacity-50">0</span>
                                 </button>
 

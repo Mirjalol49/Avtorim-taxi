@@ -30,7 +30,7 @@ export const getDriverCalendar = async (
     
     const { data, error } = await supabase
         .from('driver_daily_records')
-        .select('*')
+        .select('id,driver_id,date,plan_amount,paid_amount,created_at,updated_at')
         .eq('driver_id', driverId)
         .gte('date', startDate)
         .lte('date', `${monthKey}-31`) // Simple trick to get the whole month
@@ -63,7 +63,7 @@ export const getDriverDebt = async (
     // (PostgREST doesn't support column-to-column comparisons directly)
     const { data: allPastDays, error: pastError } = await supabase
         .from('driver_daily_records')
-        .select('*')
+        .select('id,driver_id,date,plan_amount,paid_amount,created_at,updated_at')
         .eq('driver_id', driverId)
         .lt('date', today)
         .order('date', { ascending: true });

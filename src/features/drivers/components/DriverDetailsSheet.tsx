@@ -217,11 +217,6 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const threshold  = driver.depositWarningThreshold ?? 1_000_000;
     const isLow      = dt === 'deposit' && remaining <= threshold;
 
-    const statusColor: Record<string,string> = {
-        ACTIVE:  isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600 border border-emerald-200',
-        OFFLINE: isDark ? 'bg-gray-500/15 text-gray-400'      : 'bg-gray-100 text-gray-500',
-        BUSY:    isDark ? 'bg-amber-500/15 text-amber-400'     : 'bg-amber-50 text-amber-600',
-    };
     const statusLabel: Record<string,string> = { ACTIVE: 'Faol', OFFLINE: 'Oflayn', BUSY: "Band" };
 
     // ── Base styles ───────────────────────────────────────────────────────────
@@ -241,18 +236,15 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 onClick={onClose}
             />
 
-            {/* ── Centered modal ── */}
-            <div className="fixed inset-0 z-[201] flex items-center justify-center p-3 sm:p-5 pointer-events-none">
+            {/* ── Right-Side Slide-Over Sheet ── */}
+            <div className="fixed inset-y-0 right-0 z-[201] flex pointer-events-none w-full sm:w-[520px]">
                 <div
-                    className={`relative w-full pointer-events-auto flex flex-col rounded-3xl border shadow-2xl overflow-hidden`}
+                    className={`relative w-full h-full pointer-events-auto flex flex-col shadow-2xl overflow-hidden`}
                     style={{
                         background: bg,
-                        borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
-                        maxWidth: 760,
-                        maxHeight: '90vh',
-                        transform: visible ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(12px)',
-                        opacity: visible ? 1 : 0,
-                        transition: 'transform 0.28s cubic-bezier(.22,.68,0,1.2), opacity 0.22s ease',
+                        borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`,
+                        transform: visible ? 'translateX(0)' : 'translateX(100%)',
+                        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
                 >
                     {/* ══ HEADER ══════════════════════════════════════════════ */}
@@ -269,14 +261,6 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                             <div className="min-w-0">
                                 <h2 className={`text-lg font-bold truncate ${txt}`}>{driver.name}</h2>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span className={`inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full ${statusColor[driver.status] ?? statusColor['OFFLINE']}`}>
-                                        {statusLabel[driver.status] ?? driver.status}
-                                    </span>
-                                    {car && (
-                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${isDark ? 'border-white/[0.08] text-white/40' : 'border-gray-200 text-gray-400'}`}>
-                                            🚗 {car.licensePlate}
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -288,8 +272,71 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                         </button>
                     </div>
 
-                    {/* ══ DEPOSIT / SALARY HERO ═══════════════════════════════ */}
-                    {dt === 'deposit' ? (
+                    {/* ══ DEPOSIT / SALARY HERO / LEASE HERO ═══════════════════════════════ */}
+                    {dt === 'lease_to_own' ? (
+                        <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl overflow-hidden border ${isDark ? 'border-teal-500/30 bg-teal-500/[0.07]' : 'border-teal-200 bg-teal-50'}`}>
+                            <div className="flex items-start gap-0 divide-x divide-teal-500/[0.12]">
+                                {/* Remaining */}
+                                <div className="flex-1 px-5 py-4">
+                                    <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-teal-400/70' : 'text-teal-700/70'}`}>
+                                        🚗 Shartnoma qoldig'i
+                                    </p>
+                                    <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
+                                        {fmt(finance?.contractRemaining ?? 0)}
+                                    </p>
+                                    <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS</p>
+                                </div>
+
+                                {/* Stats column */}
+                                <div className="flex flex-col divide-y divide-teal-500/[0.10]">
+                                    <div className="px-4 py-2.5 min-w-[130px]">
+                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Jami</p>
+                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(driver.totalContractAmount ?? 0)}</p>
+                                    </div>
+                                    <div className="px-4 py-2.5">
+                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>To'langan</p>
+                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(finance?.contractPaid ?? 0)}</p>
+                                    </div>
+                                    <div className="px-4 py-2.5">
+                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Foizi</p>
+                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
+                                            {driver.totalContractAmount ? Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100) : 0}%
+                                        </p>
+                                    </div>
+                                    {(driver.contractDurationMonths && driver.contractDurationMonths > 0) ? (() => {
+                                        const totalM = driver.contractDurationMonths;
+                                        const startMs = driver.contractStartDate || Date.now();
+                                        const msPassed = Math.max(0, Date.now() - startMs);
+                                        const mPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24 * 30.44));
+                                        
+                                        return (
+                                            <div className="px-4 py-2.5 bg-teal-500/5">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Muddat ({totalM} oy)</p>
+                                                <p className={`text-[13px] font-black mt-0.5 ${isDark ? 'text-teal-400/80' : 'text-teal-700/80'}`}>
+                                                    {mPassed} oy o'tdi
+                                                </p>
+                                                <p className={`text-[10px] font-semibold mt-0.5 ${isDark ? 'text-teal-400/50' : 'text-teal-700/50'}`}>
+                                                    {Math.max(0, totalM - mPassed)} oy qoldi
+                                                </p>
+                                            </div>
+                                        );
+                                    })() : null}
+                                </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            {driver.totalContractAmount && driver.totalContractAmount > 0 ? (
+                                <div className={`px-5 pb-4 mt-2`}>
+                                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-teal-200/60'}`}>
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-700 bg-teal-500`}
+                                            style={{ width: `${Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : dt === 'deposit' ? (
                         <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl overflow-hidden border ${
                             isLow
                                 ? isDark ? 'border-red-500/30 bg-red-500/[0.07]' : 'border-red-200 bg-red-50'
@@ -565,7 +612,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                 </svg>
                             </button>
 
-                            {dt !== 'salary' && (
+                            {dt === 'deposit' && (
                                 <button
                                     onClick={() => setShowHistory(true)}
                                     className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-[0.98] ${isDark ? 'border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/10' : 'border-amber-200 bg-amber-50 hover:bg-amber-100'}`}
@@ -613,16 +660,16 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
                     {/* ══ FOOTER ══════════════════════════════════════════════ */}
                     {userRole === 'admin' && (
-                        <div className={`flex-shrink-0 flex gap-3 px-5 py-4 border-t ${bdr} ${isDark ? '' : 'bg-gray-50'}`}>
+                        <div className={`flex-shrink-0 flex gap-3 px-5 py-4 border-t pb-8 sm:pb-4 ${bdr} ${isDark ? '' : 'bg-gray-50'}`}>
                             <button
                                 onClick={() => { onClose(); setTimeout(() => onEdit(driver), 150); }}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 border-teal-500/20' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 border-teal-500/20' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'}`}
                             >
                                 <EditIcon className="w-4 h-4" /> Tahrirlash
                             </button>
                             <button
                                 onClick={() => { onClose(); setTimeout(() => onDelete(driver.id), 150); }}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'}`}
                             >
                                 <TrashIcon className="w-4 h-4" /> O'chirish
                             </button>

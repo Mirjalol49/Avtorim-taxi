@@ -50,14 +50,18 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     const handleEdit   = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
-    // Right-side value: deposit balance for deposit drivers, salary for salary drivers
+    // Right-side value: deposit balance for deposit drivers, salary for salary drivers, remaining contract for lease_to_own
     const typeValueLabel = driverType === 'deposit'
         ? driver.depositAmount && driver.depositAmount > 0
             ? fmt(finance.remainingDeposit)
             : null
-        : driver.monthlySalary && driver.monthlySalary > 0
-            ? fmt(driver.monthlySalary)
-            : null;
+        : driverType === 'salary'
+            ? driver.monthlySalary && driver.monthlySalary > 0
+                ? fmt(driver.monthlySalary)
+                : null
+            : driver.totalContractAmount && driver.totalContractAmount > 0
+                ? fmt(finance.contractRemaining ?? 0)
+                : null;
 
     // Color for the value — amber when deposit is low, teal otherwise
     const valueColor = driverType === 'deposit' && depositWarning
@@ -147,9 +151,11 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-tight ${
                             driverType === 'deposit'
                                 ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600 border border-amber-200'
-                                : isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
+                                : driverType === 'salary'
+                                    ? isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
+                                    : isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700 border border-teal-200'
                         }`}>
-                            {driverType === 'deposit' ? '🏦 Depozit' : '💳 Maosh'}
+                            {driverType === 'deposit' ? '🏦 Depozit' : driverType === 'salary' ? '💳 Maosh' : '🚗 Arenda'}
                         </span>
 
                         {/* Actual deposit balance OR salary — not the car daily plan */}
@@ -164,7 +170,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                             <span className={`text-[9px] font-medium leading-none -mt-1 ${
                                 isDark ? 'text-gray-600' : 'text-gray-400'
                             }`}>
-                                {driverType === 'deposit' ? 'dep. qoldiq' : 'oylik'}
+                                {driverType === 'deposit' ? 'dep. qoldiq' : driverType === 'salary' ? 'oylik' : 'qarz qoldig\'i'}
                             </span>
                         )}
                     </div>

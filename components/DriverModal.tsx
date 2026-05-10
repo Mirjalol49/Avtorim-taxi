@@ -34,9 +34,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [monthlySalary, setMonthlySalary] = useState(0);
-  const [driverType, setDriverType] = useState<'deposit' | 'salary'>('deposit');
+  const [driverType, setDriverType] = useState<'deposit' | 'salary' | 'lease_to_own'>('deposit');
   const [depositAmount, setDepositAmount] = useState(0);
   const [depositWarningThreshold, setDepositWarningThreshold] = useState(1_000_000);
+  const [totalContractAmount, setTotalContractAmount] = useState(0);
+  const [contractDurationMonths, setContractDurationMonths] = useState(36);
+  const [contractStartDate, setContractStartDate] = useState<number>(Date.now());
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -76,6 +79,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setDriverType((editingDriver as any).driverType ?? 'deposit');
       setDepositAmount((editingDriver as any).depositAmount ?? 0);
       setDepositWarningThreshold((editingDriver as any).depositWarningThreshold ?? 1_000_000);
+      setTotalContractAmount((editingDriver as any).totalContractAmount ?? 0);
+      setContractDurationMonths((editingDriver as any).contractDurationMonths ?? 36);
+      setContractStartDate((editingDriver as any).contractStartDate ?? Date.now());
       setSelectedCarId(currentAssignedCar?.id ?? '');
       setDocuments([]);
       // Load documents on-demand (excluded from realtime subscription to save egress)
@@ -93,6 +99,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setDriverType('deposit');
       setDepositAmount(0);
       setDepositWarningThreshold(1_000_000);
+      setTotalContractAmount(0);
+      setContractDurationMonths(36);
+      setContractStartDate(Date.now());
       setSelectedCarId('');
       setError(null);
       setDocError(null);
@@ -152,6 +161,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         driverType,
         depositAmount: driverType === 'deposit' ? depositAmount : 0,
         depositWarningThreshold: driverType === 'deposit' ? depositWarningThreshold : 1_000_000,
+        totalContractAmount: driverType === 'lease_to_own' ? totalContractAmount : undefined,
+        contractDurationMonths: driverType === 'lease_to_own' ? contractDurationMonths : undefined,
+        contractStartDate: driverType === 'lease_to_own' ? contractStartDate : undefined,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
@@ -346,28 +358,30 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           <div>
             <label className={labelClass}>Haydovchi turi</label>
             {/* Toggle */}
-            <div className={`flex rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
-              {(['deposit', 'salary'] as const).map(type => (
+            <div className={`flex flex-wrap sm:flex-nowrap rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
+              {(['deposit', 'salary', 'lease_to_own'] as const).map(type => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setDriverType(type)}
-                  className={`flex-1 py-2.5 text-sm font-bold transition-all ${
+                  className={`flex-1 min-w-[110px] py-2.5 text-xs sm:text-sm font-bold transition-all ${
                     driverType === type
                       ? 'bg-[#0f766e] text-white'
                       : theme === 'dark'
-                        ? 'bg-surface-2 text-gray-400 hover:text-gray-200'
-                        : 'bg-gray-50 text-gray-500 hover:text-gray-700'
+                        ? 'bg-surface-2 text-gray-400 hover:text-gray-200 border-r border-white/[0.04] last:border-0'
+                        : 'bg-gray-50 text-gray-500 hover:text-gray-700 border-r border-gray-200 last:border-0'
                   }`}
                 >
-                  {type === 'deposit' ? '🏦 Depozitchi' : '💳 Maoshli'}
+                  {type === 'deposit' ? '🏦 Depozitchi' : type === 'salary' ? '💳 Maoshli' : '🚗 Arenda (Vikup)'}
                 </button>
               ))}
             </div>
-            <p className={`text-[10px] mt-1.5 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+            <p className={`text-[10px] mt-1.5 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
               {driverType === 'deposit'
-                ? "Haydovchi boshlang'ich depozit beradi, reja bajarilmasa depozitdan ayriladi"
-                : 'Sizdan haydovchiga oylik maosh to\'lanadi, reja bajarilmasa maoshdan ayriladi'}
+                ? "Haydovchi boshlang'ich depozit beradi, reja bajarilmasa depozitdan ayriladi."
+                : driverType === 'salary'
+                  ? "Sizdan haydovchiga oylik maosh to'lanadi, reja bajarilmasa maoshdan ayriladi."
+                  : "Haydovchi mashinani bo'lib to'lash (sotib olish) sharti bilan oladi. Barcha to'lovlar shartnoma summasidan ayirib boriladi."}
             </p>
           </div>
 
@@ -415,7 +429,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               </p>
             </div>
             </>
-          ) : (
+          ) : driverType === 'salary' ? (
             <div>
               <label className={labelClass}>Oylik maosh</label>
               <div className="relative">
@@ -434,6 +448,63 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
                 Har oyda haydovchiga to'lanadigan maosh. Reja bajarilmasa ayiriladi.
               </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>Mashina narxi (Shartnoma jami)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={totalContractAmount > 0 ? totalContractAmount.toLocaleString('uz-UZ') : ''}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      setTotalContractAmount(isNaN(raw) ? 0 : raw);
+                    }}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Muddati (Oy)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={contractDurationMonths || ''}
+                    onChange={e => setContractDurationMonths(parseInt(e.target.value) || 0)}
+                    className={inputClass}
+                    placeholder="36"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Boshlanish sanasi</label>
+                  <input
+                    type="date"
+                    value={new Date(contractStartDate).toISOString().split('T')[0]}
+                    onChange={e => setContractStartDate(e.target.value ? new Date(e.target.value).getTime() : Date.now())}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              {totalContractAmount > 0 && contractDurationMonths > 0 && (
+                <div className={`p-3 rounded-xl mt-2 flex items-start gap-3 ${theme === 'dark' ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'}`}>
+                  <span className="text-xl">💡</span>
+                  <div>
+                    <p className={`text-xs font-bold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>Tavsiya etilgan kunlik reja:</p>
+                    <p className={`text-sm font-mono font-black ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
+                      {(Math.ceil(totalContractAmount / (contractDurationMonths * 30) / 1000) * 1000).toLocaleString('uz-UZ')} UZS
+                    </p>
+                    <p className={`text-[9px] mt-0.5 opacity-80 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>
+                      (Bu summani pastdagi avtomobil qismiga kiritishingiz kerak)
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

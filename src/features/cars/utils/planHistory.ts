@@ -60,7 +60,7 @@ export function getEffectivePlanForDay(car: Car | null | undefined, date: Date):
         const key = toDateKey(date);
         const override = overrides[key];
         if (override) {
-            if (override.type === 'OFF') return 0;
+            if (override.type === 'OFF' || override.type === 'NOT_WORKING') return 0;
             if (override.type === 'DISCOUNT' && override.customPlan !== undefined) {
                 return override.customPlan;
             }
@@ -71,12 +71,12 @@ export function getEffectivePlanForDay(car: Car | null | undefined, date: Date):
 }
 
 /**
- * Checks if a specific date has been explicitly marked as a day off via overrides.
+ * Returns the override type for a specific date, if any.
  */
-export function isDayOverrideOff(car: Car | null | undefined, date: Date): boolean {
-    if (!car || !car.dayOverrides) return false;
+export function getDayOverrideType(car: Car | null | undefined, date: Date): DayOverride['type'] | undefined {
+    if (!car || !car.dayOverrides) return undefined;
     const override = car.dayOverrides[toDateKey(date)];
-    return override?.type === 'OFF';
+    return override?.type;
 }
 
 /**

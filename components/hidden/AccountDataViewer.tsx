@@ -31,13 +31,13 @@ const AccountDataViewer: React.FC<AccountDataViewerProps> = ({ user, onClose }) 
 
             const { data: driversData } = await supabase
                 .from('drivers')
-                .select('*')
+                .select('id,name,status,car,car_number,balance')
                 .eq('fleet_id', fleetId);
             setDrivers(driversData || []);
 
             const { data: txData } = await supabase
                 .from('transactions')
-                .select('*')
+                .select('id,amount,type,description,timestamp_ms,status')
                 .eq('fleet_id', fleetId)
                 .order('timestamp_ms', { ascending: false })
                 .limit(50);

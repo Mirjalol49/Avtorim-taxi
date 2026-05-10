@@ -20,10 +20,11 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
         try {
             const { data, error } = await supabase
                 .from('notes')
-                .select('*')
+                .select('id,fleet_id,title,content,color,is_pinned,created_ms,updated_ms,reminder_at')
                 .eq('fleet_id', fleetId)
                 .order('is_pinned', { ascending: false })
-                .order('updated_ms', { ascending: false });
+                .order('updated_ms', { ascending: false })
+                .limit(200); // cap — no fleet needs more than 200 active notes
             if (error) { callback([], true); return; }
             callback((data ?? []).map(toNote));
         } catch {
@@ -38,7 +39,7 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
         .channel(`notes_${fleetId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, () => fetchNotes())
         .subscribe((status) => {
-            if (status === 'SUBSCRIBED') fetchNotes();
+            // Only re-fetch on error recovery — skip SUBSCRIBED because fetchNotes() fires above already
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchNotes();
         });
 
