@@ -189,7 +189,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     }
   };
 
-  const compressImage = (file: File): Promise<string> => {
+  const compressImageToBlob = (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -202,24 +202,18 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           let height = img.height;
 
           if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
           } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
           }
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality JPEG
+            canvas.toBlob(b => resolve(b ?? file), 'image/jpeg', 0.7);
           } else {
-            resolve(event.target?.result as string); // fallback
+            resolve(file); // fallback
           }
         };
         img.onerror = () => reject(new Error('Image load failed'));
@@ -246,15 +240,17 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     try {
       const promises = files.map(file => new Promise<DriverDocument>(async (resolve, reject) => {
         try {
-          if (file.type.startsWith('image/')) {
-            const compressedDataUrl = await compressImage(file);
-            resolve({ name: file.name, type: 'image/jpeg', data: compressedDataUrl, category });
-          } else {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve({ name: file.name, type: file.type, data: reader.result as string, category });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          }
+          const isImg = file.type.startsWith('image/');
+          const blobToUpload = isImg ? await compressImageToBlob(file) : file;
+          const ext = isImg ? 'jpg' : file.name.split('.').pop() || 'file';
+          const contentType = isImg ? 'image/jpeg' : file.type;
+          const path = `driver-docs/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          
+          const { error } = await supabase.storage.from('car-damages').upload(path, blobToUpload, { upsert: true, contentType });
+          if (error) throw error;
+          
+          const url = supabase.storage.from('car-damages').getPublicUrl(path).data.publicUrl;
+          resolve({ name: file.name, type: contentType, data: url, category });
         } catch (err) {
           reject(err);
         }

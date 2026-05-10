@@ -96,6 +96,22 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const [filterMonth,    setFilterMonth]     = useState<string>('all');
     const [expandedMonths, setExpandedMonths]  = useState<Set<string>>(new Set());
     const [showHistory,    setShowHistory]     = useState(false);
+    const [docs,           setDocs]            = useState<any[]>([]);
+
+    useEffect(() => {
+        if (isOpen && driver?.id) {
+            supabase.from('drivers').select('documents').eq('id', driver.id).single()
+                .then(({ data, error }) => {
+                    if (!error && data?.documents) {
+                        setDocs(data.documents);
+                    } else {
+                        setDocs([]);
+                    }
+                });
+        } else {
+            setDocs([]);
+        }
+    }, [isOpen, driver?.id]);
 
     // Top-up form
     const [showTopUp,    setShowTopUp]    = useState(false);
@@ -208,22 +224,6 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
     if (!isOpen && !visible) return null;
     if (!driver) return null;
-
-    const [docs, setDocs] = useState<any[]>([]);
-    useEffect(() => {
-        if (isOpen && driver?.id) {
-            supabase.from('drivers').select('documents').eq('id', driver.id).single()
-                .then(({ data, error }) => {
-                    if (!error && data?.documents) {
-                        setDocs(data.documents);
-                    } else {
-                        setDocs([]);
-                    }
-                });
-        } else {
-            setDocs([]);
-        }
-    }, [isOpen, driver?.id]);
 
     const dailyPlan  = car?.dailyPlan ?? 0;
     const dt         = driver.driverType ?? 'deposit';
