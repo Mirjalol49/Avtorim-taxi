@@ -198,7 +198,7 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                                             </button>
                                         )}
                                     </div>
-                                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                                    <input ref={fileRef} type="file" accept="image/jpeg, image/png, image/webp" multiple className="hidden"
                                         onChange={e => {
                                             const f = Array.from(e.target.files ?? []).slice(0, 8 - files.length);
                                             e.target.value = '';
@@ -241,26 +241,33 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                             <p className={`text-[14px] max-w-[250px] ${muted}`}>{t('noDamageRecords', "Hozircha hech qanday shikast yozuvlari kiritilmagan.")}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5 items-start">
+                        <div className="flex flex-col gap-5 w-full">
                             {damages.map((d) => {
                                 const { icon } = partDisplay(d.partKey);
                                 const showSevTag = d.severity !== 'minor';
 
+                                // Determine optimal grid layout based on number of images
+                                const len = d.images.length;
+                                let gridCls = 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
+                                if (len === 1) gridCls = 'grid-cols-1 sm:grid-cols-2';
+                                else if (len === 2) gridCls = 'grid-cols-2';
+                                else if (len === 3) gridCls = 'grid-cols-2 sm:grid-cols-3';
+
                                 return (
-                                    <div key={d.id} className={`rounded-[24px] overflow-hidden transition-all flex flex-col group ${card} hover:shadow-lg hover:border-gray-300 dark:hover:border-white/20`}>
+                                    <div key={d.id} className={`w-full rounded-[24px] overflow-hidden transition-all flex flex-col group ${card} hover:shadow-lg hover:border-gray-300 dark:hover:border-white/20`}>
                                         {/* ── image gallery top ── */}
                                         {d.images.length > 0 && (
-                                            <div className="p-2 pb-0">
-                                                <div className={`grid gap-1.5 w-full rounded-[18px] overflow-hidden ${d.images.length === 1 ? 'grid-cols-1 aspect-[4/3]' : 'grid-cols-2'}`}>
+                                            <div className="p-3 pb-0">
+                                                <div className={`grid gap-2 w-full rounded-[18px] overflow-hidden ${gridCls}`}>
                                                     {d.images.map((img, i) => {
                                                         const s = imgSrc(img);
                                                         if (!s) return null;
                                                         return (
                                                             <button key={i} onClick={() => setPreview(s)}
-                                                                className={`relative w-full overflow-hidden focus:outline-none ${d.images.length === 1 ? 'h-full' : 'aspect-square sm:aspect-[4/3]'}`}>
+                                                                className={`relative w-full overflow-hidden focus:outline-none rounded-xl ${len === 1 ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-square sm:aspect-[4/3]'}`}>
                                                                 <img
                                                                     src={s} alt=""
-                                                                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                                                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                                                                     loading="lazy"
                                                                 />
                                                             </button>

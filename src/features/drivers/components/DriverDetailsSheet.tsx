@@ -9,6 +9,7 @@ import {
 } from '../../../../components/Icons';
 import { DriverHistoryPage } from './DriverHistoryPage';
 import { DriverAvatar } from './DriverAvatar';
+import { supabase } from '../../../supabase';
 
 interface Props {
     driver: Driver | null;
@@ -208,7 +209,22 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     if (!isOpen && !visible) return null;
     if (!driver) return null;
 
-    const docs       = driver.documents ?? [];
+    const [docs, setDocs] = useState<any[]>([]);
+    useEffect(() => {
+        if (isOpen && driver?.id) {
+            supabase.from('drivers').select('documents').eq('id', driver.id).single()
+                .then(({ data, error }) => {
+                    if (!error && data?.documents) {
+                        setDocs(data.documents);
+                    } else {
+                        setDocs([]);
+                    }
+                });
+        } else {
+            setDocs([]);
+        }
+    }, [isOpen, driver?.id]);
+
     const dailyPlan  = car?.dailyPlan ?? 0;
     const dt         = driver.driverType ?? 'deposit';
     const remaining  = finance?.remainingDeposit ?? 0;

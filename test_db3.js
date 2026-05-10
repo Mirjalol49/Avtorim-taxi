@@ -13,13 +13,14 @@ const supabaseKey = env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function check() {
-  const { data, error } = await supabase.from('cars').select('id, name, damage').limit(5);
-  console.log("Error:", error);
+  const { data, error } = await supabase.from('cars').select('id, name, damage').limit(20);
   for (const car of data || []) {
      for (const dmg of car.damage || []) {
-        console.log(`Car ${car.name} Damage ${dmg.id}: ${dmg.images.length} images`);
-        if (dmg.images.length > 4) {
-            console.log(JSON.stringify(dmg.images, null, 2));
+        if (dmg.images && dmg.images.length > 4) {
+            console.log(`Car ${car.name} Damage ${dmg.id}:`);
+            dmg.images.forEach((img, i) => {
+               console.log(`Img ${i}: name=${img.name} url=${img.url}`);
+            });
         }
      }
   }
