@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { updateDriver } from '../../../../services/firestoreService';
+import { getEffectivePlanForDriverDay } from '../utils/driverPlanHistory';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
@@ -144,7 +146,8 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
     const monthGroups = useMemo((): MonthGroup[] => {
         if (!driver) return [];
-        const dailyPlan = car?.dailyPlan ?? 0;
+        const fallbackDailyPlan = driver.dailyPlan ?? 0;
+        const dailyPlan = car ? (car.dailyPlan ?? 0) : fallbackDailyPlan;
         const driverTxs = transactions.filter(tx =>
             tx.driverId === driver.id &&
             tx.status !== PaymentStatus.DELETED
@@ -167,11 +170,33 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 const topUps     = sorted.filter(t => t.type === TransactionType.INCOME && t.category === 'deposit_topup').reduce((s,t) => s + Math.abs(t.amount), 0);
                 const expense    = sorted.filter(t => t.type === TransactionType.EXPENSE || t.type === TransactionType.DEBT).reduce((s,t) => s + Math.abs(t.amount), 0);
                 const daysOff    = sorted.filter(t => t.type === TransactionType.DAY_OFF).length;
+                const notWorkingDays = sorted.filter(t => t.type === 'NOT_WORKING').length;
                 const totalDays  = new Date(y, m, 0).getDate();
                 const nowMk      = toMonthKey(new Date());
                 const effectiveDays = mk === nowMk ? new Date().getDate() : totalDays;
-                const workingDays   = Math.max(0, effectiveDays - daysOff);
-                const monthlyTarget = dailyPlan * workingDays;
+                
+                // Working days = elapsed days - days they were officially off or not working
+                const workingDays   = Math.max(0, effectiveDays - daysOff - notWorkingDays);
+
+                let monthlyTarget = 0;
+                for (let d = 1; d <= effectiveDays; d++) {
+                    const dayDate = new Date(y, m - 1, d);
+                    
+                    const isDayOffTx = sorted.some(tx =>
+                        tx.type === TransactionType.DAY_OFF &&
+                        new Date(tx.timestamp).getDate() === d
+                    );
+                    
+                    const isNotWorkingTx = sorted.some(tx =>
+                        tx.type === 'NOT_WORKING' &&
+                        new Date(tx.timestamp).getDate() === d
+                    );
+                    
+                    if (!isDayOffTx && !isNotWorkingTx) {
+                        monthlyTarget += getEffectivePlanForDriverDay(driver, dayDate, car);
+                    }
+                }
+
                 const overpayment   = Math.max(0, planIncome - monthlyTarget);
                 const paidPercent   = monthlyTarget > 0 ? Math.min(100, Math.round((planIncome / monthlyTarget) * 100)) : 0;
                 return {

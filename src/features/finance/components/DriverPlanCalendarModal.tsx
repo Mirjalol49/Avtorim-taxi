@@ -5,8 +5,8 @@ import { XIcon } from '../../../../components/Icons';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { PaymentStatus } from '../../../core/types/transaction.types';
-import { getEffectivePlanForDay, getDayOverrideType } from '../../cars/utils/planHistory';
-import { setDayOverride, clearDayOverride } from '../../../../services/carsService';
+import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../../drivers/utils/driverPlanHistory';
+import { setDriverDayOverride, clearDriverDayOverride } from '../../../../services/firestoreService';
 
 export interface DriverPlanMonthInfo {
     driver: Driver;
@@ -116,8 +116,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             // ── Historically-correct plan for THIS specific day ───────────────────
             // Uses the planHistory snapshot to find what plan was active on `date`,
             // and applies any per-day overrides.
-            const planForDay = getEffectivePlanForDay(monthData.car, date);
-            const overrideType = getDayOverrideType(monthData.car, date);
+            const planForDay = getEffectivePlanForDriverDay(monthData.driver, date, monthData.car);
+            const overrideType = getDriverDayOverrideType(monthData.driver, date, monthData.car);
 
             const sumTushum = transactions
                 .filter(tx =>
@@ -132,12 +132,16 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             const isDayOffTx = transactions.some(tx =>
                 tx.driverId === monthData.driver.id &&
                 tx.type === 'DAY_OFF' &&
+                tx.status !== PaymentStatus.DELETED &&
+                (tx as any).status !== 'DELETED' &&
                 toLocalDateStr(tx.timestamp) === dayStr
             );
 
             const isNotWorkingTx = transactions.some(tx =>
                 tx.driverId === monthData.driver.id &&
                 tx.type === 'NOT_WORKING' &&
+                tx.status !== PaymentStatus.DELETED &&
+                (tx as any).status !== 'DELETED' &&
                 toLocalDateStr(tx.timestamp) === dayStr
             );
 
@@ -151,6 +155,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 status = 'NOT_WORKING';
             } else if (planForDay > 0 && sumTushum >= planForDay) {
                 // Fully paid — show regardless of whether date is future
+                status = 'PAID';
+            } else if (sumTushum > 0 && planForDay === 0) {
+                // If there's no plan but they paid money, treat as a "PAID" overpayment
                 status = 'PAID';
             } else if (sumTushum > 0) {
                 // Partially paid — show regardless of whether date is future
@@ -373,7 +380,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         onClick={() => {
                                             if (isFuture) {
                                                 setOverrideDate(d.date);
-                                                const existingOverride = monthData.car?.dayOverrides?.[d.dayStr];
+                                                const existingOverride = monthData.driver.dayOverrides?.[d.dayStr];
                                                 setCustomPlanStr(existingOverride?.type === 'DISCOUNT' ? String(existingOverride.customPlan || '') : '');
                                             } else if (onDayClick && isClickable) {
                                                 const [year, month] = monthData.monthKey.split('-').map(Number);
@@ -487,9 +494,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 </div>
 
             {/* Day Override Mini-Modal */}
-            {overrideDate && monthData.car && (() => {
+            {overrideDate && (() => {
                 const dKey = `${overrideDate.getFullYear()}-${String(overrideDate.getMonth() + 1).padStart(2, '0')}-${String(overrideDate.getDate()).padStart(2, '0')}`;
-                const carId = monthData.car!.id;
+                const driverId = monthData.driver.id;
 
                 const handleSave = async (fn: () => Promise<void>) => {
                     setOverrideError(null);
@@ -533,7 +540,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 {/* Standard */}
                                 <button
                                     disabled={overrideLoading}
-                                    onClick={() => handleSave(() => clearDayOverride(carId, dKey))}
+                                    onClick={() => handleSave(() => clearDriverDayOverride(driverId, dKey))}
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-white/[0.06] hover:bg-white/10 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
                                 >
                                     <span className="font-semibold flex items-center gap-2">↩️ Standart</span>
@@ -543,7 +550,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 {/* Day off */}
                                 <button
                                     disabled={overrideLoading}
-                                    onClick={() => handleSave(() => setDayOverride(carId, dKey, { type: 'OFF' }))}
+                                    onClick={() => handleSave(() => setDriverDayOverride(driverId, dKey, { type: 'OFF' }))}
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}
                                 >
                                     <span className="font-semibold flex items-center gap-2">🏝️ Dam olish</span>
@@ -553,7 +560,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 {/* Not working */}
                                 <button
                                     disabled={overrideLoading}
-                                    onClick={() => handleSave(() => setDayOverride(carId, dKey, { type: 'NOT_WORKING' }))}
+                                    onClick={() => handleSave(() => setDriverDayOverride(driverId, dKey, { type: 'NOT_WORKING' }))}
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
                                 >
                                     <span className="font-semibold flex items-center gap-2">❌ Ishlamagan</span>
@@ -576,7 +583,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         />
                                         <button
                                             disabled={overrideLoading || !customPlanStr}
-                                            onClick={() => handleSave(() => setDayOverride(carId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) }))}
+                                            onClick={() => handleSave(() => setDriverDayOverride(driverId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) }))}
                                             className="px-4 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold rounded-lg transition-all disabled:opacity-40"
                                         >
                                             {overrideLoading ? '...' : 'Saqlash'}

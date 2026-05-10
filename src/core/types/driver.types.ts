@@ -17,6 +17,17 @@ export interface DriverDocument {
 
 export type DriverPaymentType = 'deposit' | 'salary' | 'lease_to_own';
 
+export interface DriverPlanHistoryEntry {
+    plan: number;
+    effectiveFrom: number;
+    carId?: string | null;
+}
+
+export interface DriverDayOverride {
+    type: 'OFF' | 'NOT_WORKING' | 'DISCOUNT';
+    customPlan?: number;
+}
+
 export interface Driver extends Lockable {
     id: string;
     name: string;
@@ -51,4 +62,8 @@ export interface Driver extends Lockable {
     contractDurationMonths?: number;
     /** Start date of the lease-to-own contract (epoch ms) */
     contractStartDate?: number;
+    /** Historical tracking of daily plan changes for this driver */
+    planHistory?: DriverPlanHistoryEntry[];
+    /** Overrides for specific days (e.g. day off, sick leave, discount) */
+    dayOverrides?: Record<string, DriverDayOverride>;
 }

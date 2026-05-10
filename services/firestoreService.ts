@@ -248,6 +248,8 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         totalContractAmount: r.total_contract_amount ?? undefined,
         contractDurationMonths: r.contract_duration_months ?? undefined,
         contractStartDate: r.contract_start_date ? toMs(r.contract_start_date) : undefined,
+        planHistory: r.plan_history ?? [],
+        dayOverrides: r.day_overrides ?? undefined,
     } as Driver);
 
     let cache: Driver[] = [];
@@ -255,12 +257,12 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
 
     const fetchDrivers = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 5000);
+        const abort = setTimeout(() => controller.abort(), 15000); // Increased to 15s
         try {
             const { data, error } = await supabase
                 .from('drivers')
                 // Exclude documents (base64 scans) — huge, only needed in DriverModal
-                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold,total_contract_amount,contract_duration_months,contract_start_date')
+                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold,total_contract_amount,contract_duration_months,contract_start_date,plan_history,day_overrides')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -395,14 +397,11 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).totalContractAmount !== undefined) payload.total_contract_amount = (driver as any).totalContractAmount;
     if ((driver as any).contractDurationMonths !== undefined) payload.contract_duration_months = (driver as any).contractDurationMonths;
     if ((driver as any).contractStartDate !== undefined) payload.contract_start_date = (driver as any).contractStartDate;
+    if (driver.planHistory !== undefined) payload.plan_history = driver.planHistory;
+    if (driver.dayOverrides !== undefined) payload.day_overrides = driver.dayOverrides;
     
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;
-
-    if (payload.name !== undefined) {
-        await supabase.from('transactions').update({ driver_name: payload.name }).eq('driver_id', id).neq('status', 'DELETED');
-
-    }
 
     if (payload.car !== undefined || payload.car_number !== undefined) {
         const carUpdate: Record<string, unknown> = {};
@@ -427,6 +426,30 @@ export const deleteDriver = async (id: string, auditInfo?: { adminName: string; 
     }
 };
 
+// ==================== DAY OVERRIDES ====================
+
+export const setDriverDayOverride = async (driverId: string, dateKey: string, override: import('../src/core/types/driver.types').DriverDayOverride) => {
+    const { data: current } = await supabase.from('drivers').select('day_overrides').eq('id', driverId).single();
+    if (!current) throw new Error('Driver not found');
+
+    const overrides = current.day_overrides || {};
+    overrides[dateKey] = override;
+
+    const { error } = await supabase.from('drivers').update({ day_overrides: overrides }).eq('id', driverId);
+    if (error) throw error;
+};
+
+export const clearDriverDayOverride = async (driverId: string, dateKey: string) => {
+    const { data: current } = await supabase.from('drivers').select('day_overrides').eq('id', driverId).single();
+    if (!current) throw new Error('Driver not found');
+
+    const overrides = current.day_overrides || {};
+    delete overrides[dateKey];
+
+    const { error } = await supabase.from('drivers').update({ day_overrides: overrides }).eq('id', driverId);
+    if (error) throw error;
+};
+
 // ==================== TRANSACTIONS ====================
 
 export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void, fleetId?: string) => {
@@ -438,7 +461,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     const fetchAll = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 8000);
+        const abort = setTimeout(() => controller.abort(), 15000); // Increased to 15s
         try {
             const { data, error } = await supabase
                 .from('transactions')

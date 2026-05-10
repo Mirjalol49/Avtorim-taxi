@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { Car } from '../src/core/types';
 import { appendPlanChange, buildInitialPlanHistory } from '../src/features/cars/utils/planHistory';
+import { appendDriverPlanChange } from '../src/features/drivers/utils/driverPlanHistory';
 
 const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now());
 
@@ -117,7 +118,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
         // Fetch current plan_history + created_ms to correctly append
         const { data: current } = await supabase
             .from('cars')
-            .select('daily_plan, plan_history, created_ms')
+            .select('daily_plan, plan_history, created_ms, assigned_driver_id')
             .eq('id', id)
             .single();
 
@@ -129,6 +130,20 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
                 toMs(current.created_ms),
             );
             payload.plan_history = newHistory;
+
+            if (current.assigned_driver_id) {
+                const { data: driverData } = await supabase.from('drivers').select('plan_history, created_ms, daily_plan').eq('id', current.assigned_driver_id).single();
+                if (driverData) {
+                    const newDriverHistory = appendDriverPlanChange(
+                        driverData.plan_history ?? [],
+                        car.dailyPlan,
+                        driverData.daily_plan ?? 0,
+                        id,
+                        toMs(driverData.created_ms)
+                    );
+                    await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: car.dailyPlan }).eq('id', current.assigned_driver_id);
+                }
+            }
         }
     }
 
@@ -153,13 +168,49 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
 };
 
 export const assignCar = async (carId: string, driverId: string) => {
+    // 1. Assign the car
     const { error } = await supabase.from('cars').update({ assigned_driver_id: driverId }).eq('id', carId);
     if (error) throw error;
+
+    // 2. Fetch car's current plan
+    const { data: carData } = await supabase.from('cars').select('daily_plan').eq('id', carId).single();
+    const newPlan = carData?.daily_plan ?? 0;
+
+    // 3. Update driver's plan history
+    const { data: driverData } = await supabase.from('drivers').select('plan_history, created_ms, daily_plan').eq('id', driverId).single();
+    if (driverData) {
+        const newHistory = appendDriverPlanChange(
+            driverData.plan_history ?? [],
+            newPlan,
+            driverData.daily_plan ?? 0,
+            carId,
+            toMs(driverData.created_ms)
+        );
+        await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
+    }
 };
 
 export const unassignCar = async (carId: string) => {
+    const { data: carData } = await supabase.from('cars').select('assigned_driver_id').eq('id', carId).single();
+    const driverId = carData?.assigned_driver_id;
+
     const { error } = await supabase.from('cars').update({ assigned_driver_id: null }).eq('id', carId);
     if (error) throw error;
+
+    if (driverId) {
+        // 3. Update driver's plan history to 0
+        const { data: driverData } = await supabase.from('drivers').select('plan_history, created_ms, daily_plan').eq('id', driverId).single();
+        if (driverData) {
+            const newHistory = appendDriverPlanChange(
+                driverData.plan_history ?? [],
+                0,
+                driverData.daily_plan ?? 0,
+                null,
+                toMs(driverData.created_ms)
+            );
+            await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
+        }
+    }
 };
 
 export const deleteCar = async (id: string) => {
