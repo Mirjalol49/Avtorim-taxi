@@ -491,25 +491,7 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick, 
                     </button>
                 )}
 
-                {/* Damage badge — shows count; color indicates highest severity */}
-                <button
-                    onClick={onDamageClick}
-                    className={`absolute flex items-center gap-1 px-2 py-1.5 rounded-[10px] backdrop-blur-md border shadow-sm transition-all active:scale-90 ${
-                        docs.length > 0 ? 'top-12 right-3' : 'top-3 right-3'
-                    } ${
-                        damages.length > 0
-                            ? hasSevere
-                                ? 'bg-red-500/50 hover:bg-red-500/70 border-red-400/40'
-                                : hasModerate
-                                    ? 'bg-orange-500/45 hover:bg-orange-500/65 border-orange-400/40'
-                                    : 'bg-yellow-500/40 hover:bg-yellow-500/60 border-yellow-400/40'
-                            : 'bg-black/30 hover:bg-black/50 border-white/10'
-                    }`}
-                    title="Shikastlar"
-                >
-                    <span className="text-[11px]">💥</span>
-                    <span className="text-white text-[11px] font-bold leading-none">{damages.length}</span>
-                </button>
+
 
                 {/* Admin actions on hover */}
                 {userRole === 'admin' && (

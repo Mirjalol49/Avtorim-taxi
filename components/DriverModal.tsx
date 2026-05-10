@@ -189,23 +189,84 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     }
   };
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>, category: DriverDocument['category']) => {
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality JPEG
+          } else {
+            resolve(event.target?.result as string); // fallback
+          }
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: DriverDocument['category']) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const oversized = files.find(f => f.size > MAX_DOC_SIZE_MB * 1024 * 1024);
+    
+    // We allow larger initial files because we will compress them
+    const oversized = files.find(f => f.size > 20 * 1024 * 1024);
     if (oversized) {
-      setDocError(`Fayl hajmi ${MAX_DOC_SIZE_MB}MB dan oshmasligi kerak`);
+      setDocError(`Fayl hajmi 20MB dan oshmasligi kerak`);
       e.target.value = '';
       return;
     }
+    
     setDocError(null);
-    const promises = files.map(file => new Promise<DriverDocument>(resolve => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve({ name: file.name, type: file.type, data: reader.result as string, category });
-      reader.readAsDataURL(file);
-    }));
-    Promise.all(promises).then(newDocs => setDocuments(prev => [...prev, ...newDocs]));
-    e.target.value = '';
+    try {
+      const promises = files.map(file => new Promise<DriverDocument>(async (resolve, reject) => {
+        try {
+          if (file.type.startsWith('image/')) {
+            const compressedDataUrl = await compressImage(file);
+            resolve({ name: file.name, type: 'image/jpeg', data: compressedDataUrl, category });
+          } else {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ name: file.name, type: file.type, data: reader.result as string, category });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          }
+        } catch (err) {
+          reject(err);
+        }
+      }));
+      
+      const newDocs = await Promise.all(promises);
+      setDocuments(prev => [...prev, ...newDocs]);
+    } catch (err) {
+      setDocError("Faylni qayta ishlashda xatolik yuz berdi");
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const removeDocument = (category: DriverDocument['category'], indexInCategory: number) => {
