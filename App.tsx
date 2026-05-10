@@ -395,6 +395,7 @@ const AppContent: React.FC = () => {
           totalContractAmount: data.driverType === 'lease_to_own' ? (data.totalContractAmount ?? null) : null,
           contractDurationMonths: data.driverType === 'lease_to_own' ? (data.contractDurationMonths ?? null) : null,
           contractStartDate: data.driverType === 'lease_to_own' ? (data.contractStartDate ?? null) : null,
+          documents: data.documents ?? [],
         };
         driverId = await firestoreService.addDriver(newDriver, carsFleetId);
       }

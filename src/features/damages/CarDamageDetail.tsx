@@ -248,25 +248,18 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                                         {/* ── image gallery top ── */}
                                         {d.images.length > 0 && (
                                             <div className="p-2 pb-0">
-                                                <div className={`grid gap-1.5 w-full rounded-[18px] overflow-hidden ${d.images.length === 1 ? 'grid-cols-1 aspect-[4/3]' : 'grid-cols-2 aspect-[4/3]'}`}>
+                                                <div className={`grid gap-1.5 w-full rounded-[18px] overflow-hidden ${d.images.length === 1 ? 'grid-cols-1 aspect-[4/3]' : 'grid-cols-2'}`}>
                                                     {d.images.map((img, i) => {
                                                         const s = imgSrc(img);
                                                         if (!s) return null;
-                                                        const showOverlay = i === 3 && d.images.length > 4;
-                                                        if (i > 3) return null;
                                                         return (
                                                             <button key={i} onClick={() => setPreview(s)}
-                                                                className="relative w-full h-full overflow-hidden focus:outline-none">
+                                                                className={`relative w-full overflow-hidden focus:outline-none ${d.images.length === 1 ? 'h-full' : 'aspect-square sm:aspect-[4/3]'}`}>
                                                                 <img
                                                                     src={s} alt=""
                                                                     className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
                                                                     loading="lazy"
                                                                 />
-                                                                {showOverlay && (
-                                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                                                                        <span className="text-white font-bold text-[20px]">+{d.images.length - 4}</span>
-                                                                    </div>
-                                                                )}
                                                             </button>
                                                         );
                                                     })}
