@@ -148,86 +148,89 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
             </div>
 
             {/* ── BODY ── */}
-            <div className="flex flex-col lg:flex-row gap-4 items-start">
+            <div className="flex flex-col gap-6 w-full">
 
-                {/* ── LEFT: FORM PANEL ── */}
-                {userRole === 'admin' && (
-                    <div className="w-full lg:w-72 xl:w-80 flex-shrink-0">
-                        {!showForm ? (
+                {/* ── HEADER & FORM ── */}
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('damageHistory', 'Shikastlar tarixi')}
+                        </h2>
+                        {userRole === 'admin' && !showForm && (
                             <button onClick={() => setShowForm(true)}
-                                className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-[20px] text-[15px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20' : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'}`}>
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-teal-500/20' : 'bg-teal-200/50'}`}>
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                </div>
-                                <span className="truncate">{t('addNewDamageBtn', "Yangi shikast qo'shish").replace(/^\+\s*/, '')}</span>
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[14px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20' : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'}`}>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                <span>{t('addNewDamageBtn', "Yangi shikast").replace(/^\+\s*/, '')}</span>
                             </button>
-                        ) : (
-                            <div className={`rounded-2xl overflow-hidden shadow-sm ${card}`}>
-                                {/* form header */}
-                                <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                                    <p className={`text-[13px] font-semibold ${bold}`}>💥 {t('newDamageTitle', 'Yangi shikast')}</p>
-                                    <button onClick={() => { reset(); setShowForm(false); }}
-                                        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 ${isDark ? 'text-white/30 hover:text-white/70 hover:bg-white/[0.08]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                </div>
-
-                                <div className="p-4 space-y-4">
-                                    {/* Photo upload — first & prominent */}
-                                    <div>
-                                        <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${label}`}>{t('damagePhotos', 'Rasmlar')} · {files.length}/8</p>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {files.map((f, i) => (
-                                                <div key={i} className="relative aspect-square rounded-xl overflow-hidden group">
-                                                    <img src={f.prev} alt="" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreview(f.prev)} />
-                                                    <button type="button"
-                                                        onClick={() => setFiles(p => { URL.revokeObjectURL(p[i].prev); return p.filter((_, j) => j !== i); })}
-                                                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-lg transition-opacity">
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {files.length < 8 && (
-                                                <button type="button" onClick={() => fileRef.current?.click()}
-                                                    className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${isDark ? 'border-white/10 text-white/20 hover:border-white/25 hover:text-white/50' : 'border-gray-200 text-gray-300 hover:border-gray-400 hover:text-gray-400'}`}>
-                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                                </button>
-                                            )}
-                                        </div>
-                                        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
-                                            onChange={e => {
-                                                const f = Array.from(e.target.files ?? []).slice(0, 8 - files.length);
-                                                e.target.value = '';
-                                                setFiles(p => [...p, ...f.map(x => ({ file: x, prev: URL.createObjectURL(x) }))]);
-                                            }} />
-                                    </div>
-
-                                    {/* Comment */}
-                                    <div>
-                                        <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${label}`}>{t('damageDesc', 'Izoh')} <span className={muted}>({t('optional', 'ixtiyoriy')})</span></p>
-                                        <textarea rows={3}
-                                            placeholder={t('damageShortDesc', 'Shikast haqida yozing…')}
-                                            value={desc}
-                                            onChange={e => setDesc(e.target.value)}
-                                            className={`w-full px-3.5 py-2.5 rounded-xl border text-[13px] outline-none resize-none transition-colors ${inpCls}`} />
-                                    </div>
-
-                                    {/* Save */}
-                                    <button type="button" onClick={save}
-                                        disabled={saving || (!desc.trim() && files.length === 0)}
-                                        className="w-full py-3 rounded-xl text-[14px] font-semibold bg-gray-900 hover:bg-black disabled:opacity-30 text-white transition-all active:scale-[0.98] dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-                                        {saving
-                                            ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('savingProgress', 'Saqlanmoqda…')}</span>
-                                            : t('saveBtnWithIcon', 'Saqlash')
-                                        }
-                                    </button>
-                                </div>
-                            </div>
                         )}
                     </div>
-                )}
 
-                {/* ── RIGHT: DAMAGE LIST ── */}
+                    {userRole === 'admin' && showForm && (
+                        <div className={`w-full lg:max-w-2xl rounded-2xl overflow-hidden shadow-sm ${card}`}>
+                            {/* form header */}
+                            <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                <p className={`text-[13px] font-semibold ${bold}`}>💥 {t('newDamageTitle', 'Yangi shikast')}</p>
+                                <button onClick={() => { reset(); setShowForm(false); }}
+                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 ${isDark ? 'text-white/30 hover:text-white/70 hover:bg-white/[0.08]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+
+                            <div className="p-4 space-y-4">
+                                {/* Photo upload */}
+                                <div>
+                                    <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${label}`}>{t('damagePhotos', 'Rasmlar')} · {files.length}/8</p>
+                                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                                        {files.map((f, i) => (
+                                            <div key={i} className="relative aspect-square rounded-xl overflow-hidden group">
+                                                <img src={f.prev} alt="" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreview(f.prev)} />
+                                                <button type="button"
+                                                    onClick={() => setFiles(p => { URL.revokeObjectURL(p[i].prev); return p.filter((_, j) => j !== i); })}
+                                                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-lg transition-opacity">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {files.length < 8 && (
+                                            <button type="button" onClick={() => fileRef.current?.click()}
+                                                className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${isDark ? 'border-white/10 text-white/20 hover:border-white/25 hover:text-white/50' : 'border-gray-200 text-gray-300 hover:border-gray-400 hover:text-gray-400'}`}>
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                                        onChange={e => {
+                                            const f = Array.from(e.target.files ?? []).slice(0, 8 - files.length);
+                                            e.target.value = '';
+                                            setFiles(p => [...p, ...f.map(x => ({ file: x, prev: URL.createObjectURL(x) }))]);
+                                        }} />
+                                </div>
+
+                                {/* Comment */}
+                                <div>
+                                    <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${label}`}>{t('damageDesc', 'Izoh')} <span className={muted}>({t('optional', 'ixtiyoriy')})</span></p>
+                                    <textarea rows={3}
+                                        placeholder={t('damageShortDesc', 'Shikast haqida yozing…')}
+                                        value={desc}
+                                        onChange={e => setDesc(e.target.value)}
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-[13px] outline-none resize-none transition-colors ${inpCls}`} />
+                                </div>
+
+                                {/* Save */}
+                                <button type="button" onClick={save}
+                                    disabled={saving || (!desc.trim() && files.length === 0)}
+                                    className="w-full sm:w-auto sm:px-10 py-3 rounded-xl text-[14px] font-semibold bg-gray-900 hover:bg-black disabled:opacity-30 text-white transition-all active:scale-[0.98] dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+                                    {saving
+                                        ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('savingProgress', 'Saqlanmoqda…')}</span>
+                                        : t('saveBtnWithIcon', 'Saqlash')
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── DAMAGE LIST ── */}
                 <div className="flex-1 min-w-0 w-full">
                     {damages.length === 0 ? (
                         <div className={`rounded-[24px] border-2 border-dashed flex flex-col items-center justify-center py-16 md:py-28 text-center transition-colors ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-gray-200 bg-gray-50/50'}`}>
@@ -238,7 +241,7 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                             <p className={`text-[14px] max-w-[250px] ${muted}`}>{t('noDamageRecords', "Hozircha hech qanday shikast yozuvlari kiritilmagan.")}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-5 items-start">
+                        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5 items-start">
                             {damages.map((d) => {
                                 const { icon } = partDisplay(d.partKey);
                                 const showSevTag = d.severity !== 'minor';
