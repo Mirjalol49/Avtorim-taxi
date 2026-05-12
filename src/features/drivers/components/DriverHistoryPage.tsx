@@ -117,7 +117,9 @@ const generateDailyTimeline = (
             status = 'DAY_OFF';
         } else {
             dailyDebt = Math.max(0, expectedPlan - paidAmount);
-            if (paidAmount >= expectedPlan) {
+            if (expectedPlan === 0 && paidAmount === 0) {
+                status = 'UNPAID';
+            } else if (paidAmount >= expectedPlan) {
                 status = 'PAID';
             } else if (paidAmount > 0) {
                 status = 'PARTIAL';
