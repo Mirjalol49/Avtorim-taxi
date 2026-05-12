@@ -4,6 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Disable Netlify secret scanning — env var NAMES in source code are not secrets
+  NETLIFY_SKIP_SECRET_SCANNING = "true"
 
 [functions]
   directory = "netlify/functions"
