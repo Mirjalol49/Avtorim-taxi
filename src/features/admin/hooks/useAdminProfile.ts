@@ -102,7 +102,7 @@ export const useAdminProfile = ({
             if (error.message === 'Operation timed out') {
                 addToast('error', t('updateTimeout'));
             } else {
-                addToast('error', t('profileUpdateFailed'));
+                addToast('error', error?.message || t('profileUpdateFailed'));
             }
         } finally {
             setIsUpdating(false);
