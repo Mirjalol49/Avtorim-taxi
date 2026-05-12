@@ -39,7 +39,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
     // Main Stats
     const filteredTx = getDashboardFilteredTransactions;
-    const totalIncome = useMemo(() => filteredTx.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
+    const totalIncome = useMemo(() => filteredTx.filter(t => t.type === TransactionType.INCOME && !(t as any).useDeposit).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
     const totalExpense = useMemo(() => filteredTx.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
     const netProfit = totalIncome - totalExpense;
 
@@ -51,7 +51,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
     // Chart Data
     const chartData = useMemo(() => {
         return nonDeletedDrivers.map(d => {
-            const dIncome = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
+            const dIncome = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME && !(t as any).useDeposit).reduce((sum, t) => sum + t.amount, 0);
             const dExpense = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
             return {
                 id: d.id,
