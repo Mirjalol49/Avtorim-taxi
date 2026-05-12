@@ -325,20 +325,23 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         </button>
                     )}
                 </div>
-                <div className={`flex items-center gap-1 p-1 rounded-xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                    {CATEGORIES.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setCategory(cat)}
-                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
-                                category === cat
-                                    ? 'bg-[#0f766e] text-white'
-                                    : isDark ? 'text-white/50 hover:text-white hover:bg-white/[0.06]' : 'text-black/50 hover:text-black hover:bg-black/[0.05]'
-                            }`}
-                        >
-                            {categoryLabel(cat)}
-                        </button>
-                    ))}
+                <div className={`flex items-center gap-1 p-1 rounded-[14px] border self-start ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+                    {CATEGORIES.map(cat => {
+                        const active = category === cat;
+                        return (
+                            <button
+                                key={cat}
+                                onClick={() => setCategory(cat)}
+                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                    active
+                                        ? isDark ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
+                                        : isDark ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                {categoryLabel(cat)}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

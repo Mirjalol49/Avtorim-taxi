@@ -143,34 +143,35 @@ const DriversPage: React.FC<DriversPageProps> = ({
                 </div>
             </div>
 
-            {/* Filter chips */}
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter chips (Segmented Control) */}
+            <div className={`flex items-center gap-1 p-1 rounded-[14px] border self-start ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
                 {([
                     { key: 'all', label: 'Barchasi', count: rawFiltered.length },
                     { key: 'with-car', label: 'Mashina bor', count: withCarCount },
                     { key: 'no-car', label: "Mashina yo'q", count: noCarCount },
-                ] as { key: CarFilter; label: string; count: number }[]).map(f => (
-                    <button
-                        key={f.key}
-                        onClick={() => { setCarFilter(f.key); }}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold border transition-all ${
-                            carFilter === f.key
-                                ? theme === 'dark'
-                                    ? 'bg-teal-500/15 text-teal-400 border-teal-500/30'
-                                    : 'bg-teal-600 text-white border-teal-600'
-                                : theme === 'dark'
-                                    ? 'bg-surface text-gray-400 border-white/[0.08] hover:border-white/[0.14] hover:text-gray-200'
-                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-800'
-                        }`}
-                    >
-                        {f.label}
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                            carFilter === f.key
-                                ? theme === 'dark' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/20 text-white'
-                                : theme === 'dark' ? 'bg-white/[0.05] text-gray-500' : 'bg-gray-100 text-gray-500'
-                        }`}>{f.count}</span>
-                    </button>
-                ))}
+                ] as { key: CarFilter; label: string; count: number }[]).map(f => {
+                    const active = carFilter === f.key;
+                    return (
+                        <button
+                            key={f.key}
+                            onClick={() => { setCarFilter(f.key); setCurrentPage(1); }}
+                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                active
+                                    ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
+                                    : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {f.label}
+                            <span className={`min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-black flex items-center justify-center ${
+                                active
+                                    ? theme === 'dark' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'
+                                    : theme === 'dark' ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'
+                            }`}>
+                                {f.count}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
 
             {filteredDrivers.length > 0 ? (

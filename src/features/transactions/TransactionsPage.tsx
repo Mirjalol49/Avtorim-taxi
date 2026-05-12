@@ -11,6 +11,7 @@ import { formatNumberSmart } from '../../../utils/formatNumber';
 import NumberTooltip from '../../../components/NumberTooltip';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
+import { forceDownload } from '../../../utils/downloadHelper';
 import DriverFilterModal from '../../../components/DriverFilterModal';
 import {
     TrashIcon,
@@ -847,12 +848,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
                             {/* Controls — always visible, high contrast */}
                             <div className="flex items-center gap-2">
-                                <a
-                                    href={selectedImage}
-                                    download
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={e => e.stopPropagation()}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); forceDownload(selectedImage, 'cheque.jpg'); }}
                                     title="Yuklab olish"
                                     className={`w-10 h-10 flex items-center justify-center rounded-2xl font-semibold transition-all active:scale-90 ${
                                         theme === 'dark'
@@ -863,7 +860,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
-                                </a>
+                                </button>
                                 <button
                                     autoFocus
                                     onClick={() => setSelectedImage(null)}

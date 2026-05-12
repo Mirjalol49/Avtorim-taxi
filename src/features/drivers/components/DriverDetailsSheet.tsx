@@ -12,6 +12,7 @@ import {
 import { DriverHistoryPage } from './DriverHistoryPage';
 import { DriverAvatar } from './DriverAvatar';
 import { supabase } from '../../../../supabase';
+import { forceDownload } from '../../../../utils/downloadHelper';
 
 interface Props {
     driver: Driver | null;
@@ -94,7 +95,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
     const [visible,        setVisible]        = useState(false);
     const [viewingDoc,     setViewingDoc]      = useState<{ name:string; data:string }|null>(null);
-    const [activeTab,      setActiveTab]       = useState<'info'|'history'>('info');
+    const [activeTab,      setActiveTab]       = useState<'info'|'finance'|'history'>('info');
     const [filterMonth,    setFilterMonth]     = useState<string>('all');
     const [expandedMonths, setExpandedMonths]  = useState<Set<string>>(new Set());
     const [showHistory,    setShowHistory]     = useState(false);
@@ -313,200 +314,9 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                         </button>
                     </div>
 
-                    {/* ══ DEPOSIT / SALARY HERO / LEASE HERO ═══════════════════════════════ */}
-                    {dt === 'lease_to_own' ? (
-                        <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl overflow-hidden border ${isDark ? 'border-teal-500/30 bg-teal-500/[0.07]' : 'border-teal-200 bg-teal-50'}`}>
-                            <div className="flex items-start gap-0 divide-x divide-teal-500/[0.12]">
-                                {/* Remaining */}
-                                <div className="flex-1 px-5 py-4">
-                                    <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-teal-400/70' : 'text-teal-700/70'}`}>
-                                        🚗 Shartnoma qoldig'i
-                                    </p>
-                                    <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
-                                        {fmt(finance?.contractRemaining ?? 0)}
-                                    </p>
-                                    <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS</p>
-                                </div>
-
-                                {/* Stats column */}
-                                <div className="flex flex-col divide-y divide-teal-500/[0.10]">
-                                    <div className="px-4 py-2.5 min-w-[130px]">
-                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Jami</p>
-                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(driver.totalContractAmount ?? 0)}</p>
-                                    </div>
-                                    <div className="px-4 py-2.5">
-                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>To'langan</p>
-                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(finance?.contractPaid ?? 0)}</p>
-                                    </div>
-                                    <div className="px-4 py-2.5">
-                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Foizi</p>
-                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
-                                            {driver.totalContractAmount ? Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100) : 0}%
-                                        </p>
-                                    </div>
-                                    {(driver.contractDurationMonths && driver.contractDurationMonths > 0) ? (() => {
-                                        const totalM = driver.contractDurationMonths;
-                                        const startMs = driver.contractStartDate || Date.now();
-                                        const msPassed = Math.max(0, Date.now() - startMs);
-                                        const mPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24 * 30.44));
-                                        
-                                        return (
-                                            <div className="px-4 py-2.5 bg-teal-500/5">
-                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Muddat ({totalM} oy)</p>
-                                                <p className={`text-[13px] font-black mt-0.5 ${isDark ? 'text-teal-400/80' : 'text-teal-700/80'}`}>
-                                                    {mPassed} oy o'tdi
-                                                </p>
-                                                <p className={`text-[10px] font-semibold mt-0.5 ${isDark ? 'text-teal-400/50' : 'text-teal-700/50'}`}>
-                                                    {Math.max(0, totalM - mPassed)} oy qoldi
-                                                </p>
-                                            </div>
-                                        );
-                                    })() : null}
-                                </div>
-                            </div>
-
-                            {/* Progress bar */}
-                            {driver.totalContractAmount && driver.totalContractAmount > 0 ? (
-                                <div className={`px-5 pb-4 mt-2`}>
-                                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-teal-200/60'}`}>
-                                        <div
-                                            className={`h-full rounded-full transition-all duration-700 bg-teal-500`}
-                                            style={{ width: `${Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100)}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                    ) : dt === 'deposit' ? (
-                        <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl overflow-hidden border ${
-                            isLow
-                                ? isDark ? 'border-red-500/30 bg-red-500/[0.07]' : 'border-red-200 bg-red-50'
-                                : isDark ? 'border-amber-500/25 bg-amber-500/[0.07]' : 'border-amber-200 bg-amber-50'
-                        }`}>
-                            <div className="flex items-start gap-0 divide-x divide-amber-500/[0.12]">
-                                {/* Remaining */}
-                                <div className="flex-1 px-5 py-4">
-                                    <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isLow ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400/70' : 'text-amber-700/70')}`}>
-                                        🏦 Depozit qoldig'i
-                                    </p>
-                                    <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${
-                                        isLow ? 'text-red-400' : isDark ? 'text-amber-300' : 'text-amber-700'
-                                    }`}>
-                                        {fmt(Math.max(0, remaining))}
-                                    </p>
-                                    <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS</p>
-                                    {isLow && (
-                                        <p className={`text-[11px] font-bold mt-1.5 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-                                            ⚠ Depozit kam — to'ldiring
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Stats column */}
-                                <div className="flex flex-col divide-y divide-amber-500/[0.10]">
-                                    <div className="px-4 py-2.5 min-w-[130px]">
-                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Boshlang'ich</p>
-                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-amber-400/70' : 'text-amber-600/80'}`}>{fmt(initial)}</p>
-                                    </div>
-                                    <div className="px-4 py-2.5">
-                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Ishlatilgan</p>
-                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500/80'}`}>{fmt(Math.max(0, initial - remaining))}</p>
-                                    </div>
-                                    <div className="px-4 py-2.5">
-                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Foizi</p>
-                                        <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isLow ? 'text-red-400' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{Math.round(depositPct)}%</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Progress bar */}
-                            {initial > 0 && (
-                                <div className={`px-5 pb-3`}>
-                                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-amber-200/60'}`}>
-                                        <div
-                                            className={`h-full rounded-full transition-all duration-700 ${isLow ? 'bg-red-500' : 'bg-amber-500'}`}
-                                            style={{ width: `${depositPct}%` }}
-                                        />
-                                    </div>
-                                    <p className={`text-[10px] mt-1 ${muted}`}>{Math.round(depositPct)}% qoldi</p>
-                                </div>
-                            )}
-
-                            {/* Top-up inline */}
-                            {userRole === 'admin' && onAddTransaction && (
-                                <div className={`border-t ${isDark ? 'border-amber-500/[0.12]' : 'border-amber-200'}`}>
-                                    {showTopUp ? (
-                                        <div className="px-5 py-3 flex flex-col gap-2">
-                                            <p className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-amber-400/60' : 'text-amber-700/60'}`}>Depozit to'ldirish</p>
-                                            <div className="flex gap-2">
-                                                <div className="relative flex-1">
-                                                    <input
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        value={topUpDisplay}
-                                                        onChange={e => { const r = e.target.value.replace(/\D/g,''); setTopUpRaw(r); setTopUpDisplay(fmtDisp(r)); }}
-                                                        placeholder="Miqdor (UZS)"
-                                                        autoFocus
-                                                        className={`w-full px-3 py-2.5 pr-12 rounded-xl text-[14px] font-mono font-bold outline-none border transition-all ${isDark ? 'bg-black/30 border-amber-500/20 text-white placeholder-white/20 focus:border-amber-500/50' : 'bg-white border-amber-300 text-gray-900 placeholder-gray-300 focus:border-amber-500'}`}
-                                                    />
-                                                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold ${isDark ? 'text-amber-500/50' : 'text-amber-600'}`}>UZS</span>
-                                                </div>
-                                                <button
-                                                    onClick={handleTopUpSubmit}
-                                                    disabled={topUpLoading || !topUpRaw}
-                                                    className="px-4 py-2.5 rounded-xl text-[13px] font-bold bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition-colors flex-shrink-0 active:scale-95"
-                                                >
-                                                    {topUpLoading ? '…' : "Qo'sh"}
-                                                </button>
-                                                <button
-                                                    onClick={() => { setShowTopUp(false); setTopUpRaw(''); setTopUpDisplay(''); setTopUpNote(''); }}
-                                                    className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors flex-shrink-0 ${isDark ? 'text-white/30 hover:text-white/60 hover:bg-white/[0.05]' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-                                                >
-                                                    Bekor
-                                                </button>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={topUpNote}
-                                                onChange={e => setTopUpNote(e.target.value)}
-                                                placeholder="Izoh (ixtiyoriy)"
-                                                className={`w-full px-3 py-2 rounded-xl text-[13px] outline-none border transition-all ${isDark ? 'bg-black/20 border-amber-500/10 text-white placeholder-white/20' : 'bg-white border-amber-200 text-gray-900 placeholder-gray-300'}`}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => setShowTopUp(true)}
-                                            className={`w-full py-2.5 text-[12px] font-bold transition-colors ${isDark ? 'text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/[0.08]' : 'text-amber-700 hover:bg-amber-100'}`}
-                                        >
-                                            + Depozit to'ldirish
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        /* Salary hero */
-                        <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl border px-5 py-4 flex items-center justify-between gap-4 ${isDark ? 'border-violet-500/20 bg-violet-500/[0.06]' : 'border-violet-200 bg-violet-50'}`}>
-                            <div>
-                                <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-violet-400/70' : 'text-violet-700/70'}`}>💳 Oylik maosh</p>
-                                <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>
-                                    {fmt(driver.monthlySalary ?? 0)}
-                                </p>
-                                <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS / oy</p>
-                            </div>
-                            {dailyPlan > 0 && (
-                                <div className="text-right">
-                                    <p className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>Kunlik reja</p>
-                                    <p className={`text-[20px] font-black font-mono tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{fmt(dailyPlan)}</p>
-                                    <p className={`text-[11px] ${muted}`}>UZS/kun</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
                     {/* ══ TABS ════════════════════════════════════════════════ */}
                     <div className={`flex-shrink-0 flex gap-0 px-5 pt-4 border-b ${bdr}`}>
-                        {(['info','history'] as const).map(tab => (
+                        {(['info','finance','history'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -516,7 +326,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                         : isDark ? 'text-white/35 border-transparent hover:text-white/60' : 'text-gray-400 border-transparent hover:text-gray-600'
                                 }`}
                             >
-                                {tab === 'info' ? "Ma'lumot" : 'Tarix'}
+                                {tab === 'info' ? "Ma'lumot" : tab === 'finance' ? "Moliya" : 'Tarix'}
                             </button>
                         ))}
                     </div>
@@ -524,7 +334,201 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     {/* ══ SCROLLABLE BODY ═════════════════════════════════════ */}
                     <div className="flex-1 overflow-y-auto">
 
-                    {/* ── INFO TAB ── */}
+                    {/* ── FINANCE TAB ── */}
+                    {activeTab === 'finance' && (
+                        <div className="pb-5">
+                            {/* DEPOSIT / SALARY HERO / LEASE HERO */}
+                            {dt === 'lease_to_own' ? (
+                                <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl overflow-hidden border ${isDark ? 'border-teal-500/30 bg-teal-500/[0.07]' : 'border-teal-200 bg-teal-50'}`}>
+                                    <div className="flex items-start gap-0 divide-x divide-teal-500/[0.12]">
+                                        {/* Remaining */}
+                                        <div className="flex-1 px-5 py-4">
+                                            <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-teal-400/70' : 'text-teal-700/70'}`}>
+                                                🚗 Shartnoma qoldig'i
+                                            </p>
+                                            <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
+                                                {fmt(finance?.contractRemaining ?? 0)}
+                                            </p>
+                                            <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS</p>
+                                        </div>
+
+                                        {/* Stats column */}
+                                        <div className="flex flex-col divide-y divide-teal-500/[0.10]">
+                                            <div className="px-4 py-2.5 min-w-[130px]">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Jami</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(driver.totalContractAmount ?? 0)}</p>
+                                            </div>
+                                            <div className="px-4 py-2.5">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>To'langan</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(finance?.contractPaid ?? 0)}</p>
+                                            </div>
+                                            <div className="px-4 py-2.5">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Foizi</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
+                                                    {driver.totalContractAmount ? Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100) : 0}%
+                                                </p>
+                                            </div>
+                                            {(driver.contractDurationMonths && driver.contractDurationMonths > 0) ? (() => {
+                                                const totalM = driver.contractDurationMonths;
+                                                const startMs = driver.contractStartDate || Date.now();
+                                                const msPassed = Math.max(0, Date.now() - startMs);
+                                                const mPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24 * 30.44));
+                                                
+                                                return (
+                                                    <div className="px-4 py-2.5 bg-teal-500/5">
+                                                        <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Muddat ({totalM} oy)</p>
+                                                        <p className={`text-[13px] font-black mt-0.5 ${isDark ? 'text-teal-400/80' : 'text-teal-700/80'}`}>
+                                                            {mPassed} oy o'tdi
+                                                        </p>
+                                                        <p className={`text-[10px] font-semibold mt-0.5 ${isDark ? 'text-teal-400/50' : 'text-teal-700/50'}`}>
+                                                            {Math.max(0, totalM - mPassed)} oy qoldi
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })() : null}
+                                        </div>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    {driver.totalContractAmount && driver.totalContractAmount > 0 ? (
+                                        <div className={`px-5 pb-4 mt-2`}>
+                                            <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-teal-200/60'}`}>
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-700 bg-teal-500`}
+                                                    style={{ width: `${Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : dt === 'deposit' ? (
+                                <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl overflow-hidden border ${
+                                    isLow
+                                        ? isDark ? 'border-red-500/30 bg-red-500/[0.07]' : 'border-red-200 bg-red-50'
+                                        : isDark ? 'border-amber-500/25 bg-amber-500/[0.07]' : 'border-amber-200 bg-amber-50'
+                                }`}>
+                                    <div className="flex items-start gap-0 divide-x divide-amber-500/[0.12]">
+                                        {/* Remaining */}
+                                        <div className="flex-1 px-5 py-4">
+                                            <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isLow ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400/70' : 'text-amber-700/70')}`}>
+                                                🏦 Depozit qoldig'i
+                                            </p>
+                                            <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${
+                                                isLow ? 'text-red-400' : isDark ? 'text-amber-300' : 'text-amber-700'
+                                            }`}>
+                                                {fmt(Math.max(0, remaining))}
+                                            </p>
+                                            <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS</p>
+                                            {isLow && (
+                                                <p className={`text-[11px] font-bold mt-1.5 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                    ⚠ Depozit kam — to'ldiring
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Stats column */}
+                                        <div className="flex flex-col divide-y divide-amber-500/[0.10]">
+                                            <div className="px-4 py-2.5 min-w-[130px]">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Boshlang'ich</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-amber-400/70' : 'text-amber-600/80'}`}>{fmt(initial)}</p>
+                                            </div>
+                                            <div className="px-4 py-2.5">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Ishlatilgan</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500/80'}`}>{fmt(Math.max(0, initial - remaining))}</p>
+                                            </div>
+                                            <div className="px-4 py-2.5">
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Foizi</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isLow ? 'text-red-400' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{Math.round(depositPct)}%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    {initial > 0 && (
+                                        <div className={`px-5 pb-3`}>
+                                            <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-amber-200/60'}`}>
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-700 ${isLow ? 'bg-red-500' : 'bg-amber-500'}`}
+                                                    style={{ width: `${depositPct}%` }}
+                                                />
+                                            </div>
+                                            <p className={`text-[10px] mt-1 ${muted}`}>{Math.round(depositPct)}% qoldi</p>
+                                        </div>
+                                    )}
+
+                                    {/* Top-up inline */}
+                                    {userRole === 'admin' && onAddTransaction && (
+                                        <div className={`border-t ${isDark ? 'border-amber-500/[0.12]' : 'border-amber-200'}`}>
+                                            {showTopUp ? (
+                                                <div className="px-5 py-3 flex flex-col gap-2">
+                                                    <p className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-amber-400/60' : 'text-amber-700/60'}`}>Depozit to'ldirish</p>
+                                                    <div className="flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                value={topUpDisplay}
+                                                                onChange={e => { const r = e.target.value.replace(/\D/g,''); setTopUpRaw(r); setTopUpDisplay(fmtDisp(r)); }}
+                                                                placeholder="Miqdor (UZS)"
+                                                                autoFocus
+                                                                className={`w-full px-3 py-2.5 pr-12 rounded-xl text-[14px] font-mono font-bold outline-none border transition-all ${isDark ? 'bg-black/30 border-amber-500/20 text-white placeholder-white/20 focus:border-amber-500/50' : 'bg-white border-amber-300 text-gray-900 placeholder-gray-300 focus:border-amber-500'}`}
+                                                            />
+                                                            <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold ${isDark ? 'text-amber-500/50' : 'text-amber-600'}`}>UZS</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={handleTopUpSubmit}
+                                                            disabled={topUpLoading || !topUpRaw}
+                                                            className="px-4 py-2.5 rounded-xl text-[13px] font-bold bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition-colors flex-shrink-0 active:scale-95"
+                                                        >
+                                                            {topUpLoading ? '…' : "Qo'sh"}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setShowTopUp(false); setTopUpRaw(''); setTopUpDisplay(''); setTopUpNote(''); }}
+                                                            className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors flex-shrink-0 ${isDark ? 'text-white/30 hover:text-white/60 hover:bg-white/[0.05]' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                        >
+                                                            Bekor
+                                                        </button>
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        value={topUpNote}
+                                                        onChange={e => setTopUpNote(e.target.value)}
+                                                        placeholder="Izoh (ixtiyoriy)"
+                                                        className={`w-full px-3 py-2 rounded-xl text-[13px] outline-none border transition-all ${isDark ? 'bg-black/20 border-amber-500/10 text-white placeholder-white/20' : 'bg-white border-amber-200 text-gray-900 placeholder-gray-300'}`}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setShowTopUp(true)}
+                                                    className={`w-full py-2.5 text-[12px] font-bold transition-colors ${isDark ? 'text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/[0.08]' : 'text-amber-700 hover:bg-amber-100'}`}
+                                                >
+                                                    + Depozit to'ldirish
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* Salary hero */
+                                <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl border px-5 py-4 flex items-center justify-between gap-4 ${isDark ? 'border-violet-500/20 bg-violet-500/[0.06]' : 'border-violet-200 bg-violet-50'}`}>
+                                    <div>
+                                        <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-violet-400/70' : 'text-violet-700/70'}`}>💳 Oylik maosh</p>
+                                        <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>
+                                            {fmt(driver.monthlySalary ?? 0)}
+                                        </p>
+                                        <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS / oy</p>
+                                    </div>
+                                    {dailyPlan > 0 && (
+                                        <div className="text-right">
+                                            <p className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>Kunlik reja</p>
+                                            <p className={`text-[20px] font-black font-mono tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{fmt(dailyPlan)}</p>
+                                            <p className={`text-[11px] ${muted}`}>UZS/kun</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {activeTab === 'info' && (
                         <div className="p-5 space-y-4">
 
@@ -604,13 +608,13 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                                                     <span className={`absolute bottom-0 left-0 right-0 text-[9px] font-medium text-center py-0.5 bg-black/60 text-white`}>{idx+1}-rasm</span>
                                                                 </button>
                                                             ) : (
-                                                                <a key={idx} href={doc.data} download={doc.name} target="_blank" rel="noreferrer"
+                                                                <button key={idx} onClick={(e) => { e.stopPropagation(); forceDownload(doc.data, doc.name); }}
                                                                     className={`w-20 h-20 rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${isDark ? 'border-red-500/20 bg-red-500/10 hover:bg-red-500/15' : 'border-red-200 bg-red-50 hover:bg-red-100'}`}
                                                                 >
                                                                     <span className="text-2xl">📄</span>
                                                                     <span className="text-[9px] font-bold text-red-400">PDF</span>
                                                                     <span className={`text-[8px] ${muted}`}>{idx+1}-fayl</span>
-                                                                </a>
+                                                                </button>
                                                             );
                                                         })}
                                                     </div>

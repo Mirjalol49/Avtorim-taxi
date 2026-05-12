@@ -109,7 +109,51 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.avatar !== undefined) payload.avatar = car.avatar;
     if (car.documents !== undefined) payload.documents = car.documents;
     if (car.damage !== undefined)    payload.damage = car.damage;
-    if ('assignedDriverId' in car) payload.assigned_driver_id = car.assignedDriverId ?? null;
+    if ('assignedDriverId' in car) {
+        payload.assigned_driver_id = car.assignedDriverId ?? null;
+
+        // Fetch current car state to handle driver assignment changes
+        const { data: current } = await supabase
+            .from('cars')
+            .select('assigned_driver_id, daily_plan')
+            .eq('id', id)
+            .single();
+
+        if (current) {
+            const oldDriverId = current.assigned_driver_id;
+            const newDriverId = car.assignedDriverId;
+
+            // If the car is taken away from an existing driver
+            if (oldDriverId && oldDriverId !== newDriverId) {
+                const { data: oldDriver } = await supabase.from('drivers').select('plan_history, created_ms, daily_plan').eq('id', oldDriverId).single();
+                if (oldDriver) {
+                    const newDriverHistory = appendDriverPlanChange(
+                        oldDriver.plan_history ?? [],
+                        0, // Zero out the plan since they no longer have a car
+                        oldDriver.daily_plan ?? 0,
+                        null,
+                        toMs(oldDriver.created_ms)
+                    );
+                    await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: 0 }).eq('id', oldDriverId);
+                }
+            }
+
+            // If a new driver is being assigned to this car
+            if (newDriverId && oldDriverId !== newDriverId) {
+                const { data: newDriver } = await supabase.from('drivers').select('plan_history, created_ms, daily_plan').eq('id', newDriverId).single();
+                if (newDriver) {
+                    const newDriverHistory = appendDriverPlanChange(
+                        newDriver.plan_history ?? [],
+                        current.daily_plan ?? 0, // Inherit car's daily plan
+                        newDriver.daily_plan ?? 0,
+                        id,
+                        toMs(newDriver.created_ms)
+                    );
+                    await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: current.daily_plan ?? 0 }).eq('id', newDriverId);
+                }
+            }
+        }
+    }
 
     // ── Plan change: append to history instead of just overwriting ──────────
     if (car.dailyPlan !== undefined) {

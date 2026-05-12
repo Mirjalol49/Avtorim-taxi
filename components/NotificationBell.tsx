@@ -123,7 +123,38 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     };
 
     // Split notifications into two buckets
-    const warnings     = useMemo(() => notifications.filter(n => isPlanReminder(n) || isDepositWarning(n) || (!isTransaction(n) && !isPlanReminder(n) && !isDepositWarning(n) && n.type !== 'payment_reminder')), [notifications]);
+    const warnings = useMemo(() => {
+        const rawWarnings = notifications.filter(n => isPlanReminder(n) || isDepositWarning(n) || (!isTransaction(n) && !isPlanReminder(n) && !isDepositWarning(n) && n.type !== 'payment_reminder'));
+        
+        // Deduplicate plan reminders by driverId to remove duplicate generic (triangle) ones
+        const planMap = new Map<string, Notification>();
+        const finalWarnings: Notification[] = [];
+        
+        for (const w of rawWarnings) {
+            if (isPlanReminder(w)) {
+                const dt = (w as any).deliveryTracking || {};
+                const driverId = dt.driverId || w.title;
+                const existing = planMap.get(driverId);
+                
+                if (!existing) {
+                    planMap.set(driverId, w);
+                } else {
+                    // Prefer the notification that has the avatar over the generic one
+                    const existingAvatar = (existing as any).deliveryTracking?.driverAvatar;
+                    const currentAvatar = dt.driverAvatar;
+                    
+                    if (!existingAvatar && currentAvatar) {
+                        planMap.set(driverId, w);
+                    }
+                }
+            } else {
+                finalWarnings.push(w);
+            }
+        }
+        
+        finalWarnings.push(...planMap.values());
+        return finalWarnings.sort((a, b) => b.createdAt - a.createdAt);
+    }, [notifications]);
     const transactions = useMemo(() => notifications.filter(isTransaction), [notifications]);
 
     const unreadWarnings     = warnings.filter(n => !readIds.has(n.id)).length;

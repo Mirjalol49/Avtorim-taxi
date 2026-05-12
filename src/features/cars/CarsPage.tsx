@@ -5,7 +5,7 @@ import { Driver } from '../../core/types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
 import { formatNumberSmart } from '../../../utils/formatNumber';
-import CarDamageSheet from './components/CarDamageSheet';
+import { CarDetailsSheet } from './components/CarDetailsSheet';
 
 interface CarsPageProps {
     cars: Car[];
@@ -73,8 +73,8 @@ function DocViewerModal({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[300] flex flex-col"
-            style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.15s ease-out' }}
+            className="fixed inset-0 z-[300] flex flex-col bg-black/60 backdrop-blur-xl"
+            style={{ animation: 'fadeIn 0.15s ease-out' }}
         >
             {/* ── Top bar ── */}
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-white/[0.08]">
@@ -199,7 +199,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const [page, setPage] = useState(1);
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
     const [docViewer, setDocViewer] = useState<DocViewerState | null>(null);
-    const [damageSheetCar, setDamageSheetCar] = useState<Car | null>(null);
+    const [selectedCarDetails, setSelectedCarDetails] = useState<Car | null>(null);
 
     const getDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId && !d.isDeleted);
 
@@ -352,6 +352,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 driver={getDriver(car)}
                                 userRole={userRole}
                                 isDark={isDark}
+                                onClick={() => setSelectedCarDetails(car)}
                                 onEdit={onEditCar}
                                 onDelete={onDeleteCar}
                                 onDocClick={(index) => openDoc(car, index)}
@@ -397,20 +398,27 @@ const CarsPage: React.FC<CarsPageProps> = ({
                 />
             )}
 
-            {/* ── Car Damage Sheet ── */}
-            {damageSheetCar && (
-                <CarDamageSheet
-                    car={damageSheetCar}
-                    isDark={isDark}
-                    userRole={userRole}
-                    adminName={adminName}
-                    onClose={() => setDamageSheetCar(null)}
-                    onUpdated={(updatedDamage: CarDamage[]) => {
-                        // Optimistically patch the local car object so the badge updates instantly
-                        setDamageSheetCar(prev => prev ? { ...prev, damage: updatedDamage } : null);
-                    }}
-                />
-            )}
+            {/* ── Car Details Sheet ── */}
+            <CarDetailsSheet
+                car={selectedCarDetails}
+                driver={selectedCarDetails ? getDriver(selectedCarDetails) : undefined}
+                theme={theme}
+                userRole={userRole}
+                adminName={adminName}
+                isOpen={!!selectedCarDetails}
+                onClose={() => setSelectedCarDetails(null)}
+                onEdit={(car) => {
+                    setSelectedCarDetails(null);
+                    onEditCar(car);
+                }}
+                onDelete={(id) => {
+                    setSelectedCarDetails(null);
+                    onDeleteCar(id);
+                }}
+                onUpdated={(updatedDamage) => {
+                    setSelectedCarDetails(prev => prev ? { ...prev, damage: updatedDamage } : null);
+                }}
+            />
         </div>
     );
 };
@@ -422,13 +430,14 @@ interface CardProps {
     driver: Driver | undefined;
     userRole: 'admin' | 'viewer';
     isDark: boolean;
+    onClick: () => void;
     onEdit: (car: Car) => void;
     onDelete: (id: string) => void;
     onDocClick: (index: number) => void;
     onDamageClick: () => void;
 }
 
-function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick, onDamageClick }: CardProps) {
+function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onDocClick, onDamageClick }: CardProps) {
     const docs        = car.documents ?? [];
     const damages     = car.damage ?? [];
     const isAssigned  = !!driver;
@@ -436,7 +445,9 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick, 
     const hasModerate = damages.some(d => d.severity === 'moderate');
 
     return (
-        <article className={`group rounded-[20px] overflow-hidden flex flex-col transition-all duration-200 ${
+        <article 
+            onClick={onClick}
+            className={`group rounded-[20px] overflow-hidden flex flex-col transition-all duration-200 cursor-pointer ${
             isDark
                 ? 'bg-surface border border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)]'
                 : 'bg-white border border-gray-200/80 hover:border-gray-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
@@ -482,7 +493,7 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick, 
                 {/* Docs count badge */}
                 {docs.length > 0 && (
                     <button
-                        onClick={() => onDocClick(0)}
+                        onClick={e => { e.stopPropagation(); onDocClick(0); }}
                         className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1.5 rounded-[10px] bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 shadow-sm transition-all active:scale-90"
                         title="Hujjatlarni ko'rish"
                     >
@@ -530,59 +541,6 @@ function CarCard({ car, driver, userRole, isDark, onEdit, onDelete, onDocClick, 
                             </span>
                         ) : null}
                     </div>
-                </div>
-            </div>
-
-            {/* ── Footer ── */}
-            <div className={`px-4 py-3.5 ${isDark ? 'bg-[#111c2d]' : 'bg-white'}`}>
-
-                {/* Driver phone */}
-                {isAssigned ? (
-                    <div className="flex items-center gap-2 mb-3">
-                        <span className={`text-[13px] ${isDark ? 'text-white/25' : 'text-gray-300'}`}>📞</span>
-                        {driver!.phone ? (
-                            <a
-                                href={`tel:${driver!.phone}`}
-                                className={`text-[13px] font-mono font-medium truncate flex-1 hover:underline transition-colors ${isDark ? 'text-white/60 hover:text-teal-400' : 'text-gray-600 hover:text-teal-600'}`}
-                            >
-                                {driver!.phone}
-                            </a>
-                        ) : (
-                            <span className={`text-[13px] flex-1 ${isDark ? 'text-white/20' : 'text-gray-300'}`}>—</span>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[13px]">👤</span>
-                        <span className={`text-[13px] ${isDark ? 'text-white/25' : 'text-gray-400'}`}>Haydovchi biriktirilmagan</span>
-                    </div>
-                )}
-
-                {/* Documents — clickable chips that open the modal */}
-                <div className={`pt-3 border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                    {docs.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                            {docs.map((doc, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => onDocClick(i)}
-                                    title={doc.name}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-[8px] border text-[11px] font-medium transition-all active:scale-95 max-w-[130px] truncate ${
-                                        isDark
-                                            ? 'bg-white/[0.03] border-white/[0.06] text-white/40 hover:text-teal-400 hover:border-teal-500/25 hover:bg-teal-500/[0.06]'
-                                            : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-teal-600 hover:border-teal-300 hover:bg-teal-50'
-                                    }`}
-                                >
-                                    <span className="flex-shrink-0">{doc.type === 'application/pdf' ? '📄' : '🖼️'}</span>
-                                    <span className="truncate">{doc.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className={`text-[12px] ${isDark ? 'text-white/18' : 'text-gray-300'}`}>
-                            Hujjat qo'shilmagan
-                        </p>
-                    )}
                 </div>
             </div>
         </article>

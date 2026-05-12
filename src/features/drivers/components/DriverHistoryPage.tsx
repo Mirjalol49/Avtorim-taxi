@@ -236,13 +236,12 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
     }, [timeline, startDate, endDate]);
 
     const periodSummary = useMemo(() => {
-        if (!startDate && !endDate) return null;
         return filteredTimeline.reduce((acc, g) => {
             acc.totalPaid += g.totalPaid;
             acc.totalDebt += g.totalDebt;
             return acc;
         }, { totalPaid: 0, totalDebt: 0 });
-    }, [filteredTimeline, startDate, endDate]);
+    }, [filteredTimeline]);
 
     // Deposit ledger with running balance (newest first)
     const depositLedger = useMemo(() => {
@@ -393,11 +392,11 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                 {periodSummary && (
                                     <div className={`mt-4 pt-4 border-t flex flex-col sm:flex-row gap-4 justify-between ${isDark ? 'border-[#38383A]' : 'border-[#E5E5EA]'}`}>
                                         <div>
-                                            <p className={`text-[12px] font-medium ${muted}`}>Tanlangan oraliqda to'langan</p>
+                                            <p className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda to'langan" : "Jami to'langan"}</p>
                                             <p className={`text-[18px] font-bold font-mono tracking-tight ${isDark ? 'text-[#30D158]' : 'text-[#34C759]'}`}>+{fmtCompact(periodSummary.totalPaid)} UZS</p>
                                         </div>
                                         <div>
-                                            <p className={`text-[12px] font-medium ${muted}`}>Tanlangan oraliqda qarz</p>
+                                            <p className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda qarz" : "Jami qarz"}</p>
                                             <p className={`text-[18px] font-bold font-mono tracking-tight ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : txt}`}>
                                                 {periodSummary.totalDebt > 0 ? '−' : ''}{fmtCompact(periodSummary.totalDebt)} UZS
                                             </p>

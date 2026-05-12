@@ -133,7 +133,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <stop offset="60%" stopColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
                                         <stop offset="100%" stopColor="#10B981" />
                                     </linearGradient>
-                                    <filter id="glowIncome" x="-50%" y="-50%" width="200%" height="200%">
+                                    <filter id="glowIncome" x="-500%" y="-500%" width="1000%" height="1000%">
                                         <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#10B981" floodOpacity={isDark ? "0.6" : "0.4"}/>
                                     </filter>
                                 </defs>
@@ -175,7 +175,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <stop offset="60%" stopColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
                                         <stop offset="100%" stopColor="#F43F5E" />
                                     </linearGradient>
-                                    <filter id="glowExpense" x="-50%" y="-50%" width="200%" height="200%">
+                                    <filter id="glowExpense" x="-500%" y="-500%" width="1000%" height="1000%">
                                         <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#F43F5E" floodOpacity={isDark ? "0.6" : "0.4"}/>
                                     </filter>
                                 </defs>
@@ -217,7 +217,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         <stop offset="60%" stopColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
                                         <stop offset="100%" stopColor="#3B82F6" />
                                     </linearGradient>
-                                    <filter id="glowProfit" x="-50%" y="-50%" width="200%" height="200%">
+                                    <filter id="glowProfit" x="-500%" y="-500%" width="1000%" height="1000%">
                                         <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#3B82F6" floodOpacity={isDark ? "0.6" : "0.4"}/>
                                     </filter>
                                 </defs>

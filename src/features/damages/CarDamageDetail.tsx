@@ -90,6 +90,16 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
         await updateCar(car.id, { damage: damages.filter(d => d.id !== dmgId) });
     }, [car.id, damages, confirm, t]);
 
+    const removePhoto = useCallback(async (dmgId: string, photoIdx: number) => {
+        if (!await confirm({ title: t('delete', "O'chirish"), message: "Haqiqatan ham bu rasmni o'chirmoqchimisiz?", isDanger: true })) return;
+        const d = damages.find(x => x.id === dmgId);
+        if (!d) return;
+        const newImages = [...d.images];
+        newImages.splice(photoIdx, 1);
+        const next = damages.map(x => x.id === dmgId ? { ...x, images: newImages } : x);
+        await updateCar(car.id, { damage: next });
+    }, [car.id, damages, confirm, t]);
+
     const totalDmg = damages.length;
     const hasSevere = damages.some(d => d.severity === 'severe');
 
@@ -263,14 +273,26 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                                                         const s = imgSrc(img);
                                                         if (!s) return null;
                                                         return (
-                                                            <button key={i} onClick={() => setPreview(s)}
-                                                                className={`relative w-full overflow-hidden focus:outline-none rounded-xl ${len === 1 ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-square sm:aspect-[4/3]'}`}>
-                                                                <img
-                                                                    src={s} alt=""
-                                                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                                                                    loading="lazy"
-                                                                />
-                                                            </button>
+                                                            <div key={i} className={`relative w-full overflow-hidden focus:outline-none rounded-xl group ${len === 1 ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-square sm:aspect-[4/3]'}`}>
+                                                                <button onClick={() => setPreview(s)} className="w-full h-full text-left">
+                                                                    <img
+                                                                        src={s} alt=""
+                                                                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                                                        loading="lazy"
+                                                                    />
+                                                                </button>
+                                                                {userRole === 'admin' && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); removePhoto(d.id, i); }}
+                                                                        title="Rasmni o'chirish"
+                                                                        className="absolute top-2 right-2 w-7 h-7 bg-red-500/90 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all z-10 backdrop-blur-sm"
+                                                                    >
+                                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
