@@ -10,7 +10,7 @@ export const checkAccountValidity = async (accountId: string): Promise<AccountVa
     try {
         const { data, error } = await supabase
             .from('admin_users')
-            .select('id,username,role,active,created_ms')
+            .select('id,username,role,active,created_ms,password,avatar,phone')
             .eq('id', accountId)
             .single();
 
