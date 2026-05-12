@@ -52,7 +52,12 @@ export const useAdminProfile = ({
 
                     await firestoreService.updateAdminUser(adminUser.id, sanitizedUpdates, adminUser.id);
 
-                    setAdminUser(prev => prev ? ({ ...prev, ...sanitizedUpdates }) : null);
+                    setAdminUser(prev => {
+                        if (!prev) return null;
+                        const next = { ...prev, ...sanitizedUpdates };
+                        localStorage.setItem('avtorim_admin_user', JSON.stringify(next));
+                        return next;
+                    });
 
                 } else {
                     // Super Admin — only admin_profile columns: name, role, avatar, password
@@ -76,12 +81,16 @@ export const useAdminProfile = ({
 
                     await firestoreService.updateAdminProfile(profilePayload);
 
-                    setAdminProfile((prev: any) => ({
-                        ...prev,
-                        name:   profilePayload.name   ?? prev.name,
-                        role:   profilePayload.role   ?? prev.role,
-                        avatar: profilePayload.avatar ?? prev.avatar,
-                    }));
+                    setAdminProfile((prev: any) => {
+                        const next = {
+                            ...prev,
+                            name:   profilePayload.name   ?? prev.name,
+                            role:   profilePayload.role   ?? prev.role,
+                            avatar: profilePayload.avatar ?? prev.avatar,
+                        };
+                        localStorage.setItem('avtorim_viewer_profile', JSON.stringify(next));
+                        return next;
+                    });
 
                     if (profileData.password) {
                         localStorage.setItem('avtorim_admin_password', profileData.password);

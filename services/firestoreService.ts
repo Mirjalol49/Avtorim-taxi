@@ -652,8 +652,7 @@ export const deleteTransactionsBatch = async (ids: string[], auditInfo: { adminN
 export const subscribeToAdminProfile = (callback: (admin: any) => void) => {
     const fetch = () =>
         supabase.from('admin_profile')
-            // Exclude avatar (base64) from realtime — load on demand in settings
-            .select('id,name,phone,created_ms,updated_ms')
+            .select('id,name,phone,created_ms,updated_ms,avatar,role')
             .eq('id', 'profile')
             .single()
             .then(({ data }) => { if (data) callback(data); });
