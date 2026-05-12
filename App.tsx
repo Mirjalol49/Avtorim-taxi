@@ -1046,6 +1046,7 @@ const AppContent: React.FC = () => {
                 : <FinancePage
                     transactions={transactions}
                     drivers={drivers}
+                    cars={cars}
                     theme={theme}
                     isMobile={isMobile}
                   />
