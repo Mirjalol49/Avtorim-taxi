@@ -44,12 +44,29 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
         return () => document.removeEventListener('keydown', handler);
     }, [isOpen, onClose]);
 
-    const filtered = drivers
-        .filter(d => !d.isDeleted)
-        .filter(d => d.name.toLowerCase().includes(search.toLowerCase()));
-
     const getDriverCar = (driverId: string) =>
         cars.find(c => c.assignedDriverId === driverId) ?? null;
+
+    const filtered = drivers
+        .filter(d => !d.isDeleted)
+        .filter(d => d.name.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => {
+            const carA = getDriverCar(a.id);
+            const carB = getDriverCar(b.id);
+            
+            // 1. Prioritize drivers with cars
+            if (carA && !carB) return -1;
+            if (!carA && carB) return 1;
+            
+            // 2. Prioritize ACTIVE drivers
+            const isActiveA = a.status === 'ACTIVE';
+            const isActiveB = b.status === 'ACTIVE';
+            if (isActiveA && !isActiveB) return -1;
+            if (!isActiveA && isActiveB) return 1;
+
+            // 3. Alphabetical fallback
+            return a.name.localeCompare(b.name);
+        });
 
     const handleSelect = (id: string) => {
         onSelect(id);
