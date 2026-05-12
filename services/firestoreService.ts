@@ -590,6 +590,21 @@ export const updateTransaction = async (id: string, updates: Partial<Transaction
     if (error) throw error;
 };
 
+/**
+ * Lazily fetch ONLY the cheque_image for a single transaction.
+ * Called on-demand when the user clicks "Chek ko'rish" so we never
+ * pull base64 blobs in the main list query (saves egress).
+ */
+export const fetchTransactionCheque = async (id: string): Promise<string | null> => {
+    const { data, error } = await supabase
+        .from('transactions')
+        .select('cheque_image')
+        .eq('id', id)
+        .single();
+    if (error) throw error;
+    return data?.cheque_image ?? null;
+};
+
 export const deleteTransaction = async (id: string, auditInfo?: { adminName: string; reason?: string; transactionDetails?: any }, fleetId?: string) => {
     const { error } = await supabase.from('transactions').update({ status: 'DELETED' }).eq('id', id);
     if (error) throw error;

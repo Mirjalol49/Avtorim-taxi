@@ -4,11 +4,14 @@ import { Note, NoteColor } from '../../core/types/note.types';
 import { addNote, updateNote, deleteNote } from '../../../services/notesService';
 import { useNotes } from './hooks/useNotes';
 import { useAuth } from '../auth/hooks/useAuth';
-import { useNoteReminders } from '../../../hooks/useNoteReminders';
 
 interface NotesPageProps {
     theme: 'light' | 'dark';
     fleetId?: string;
+    /** Pass from App root to avoid duplicate Supabase realtime subscriptions */
+    initialNotes?: Note[];
+    initialLoading?: boolean;
+    initialTableError?: boolean;
 }
 
 // ─── SQL Setup Banner ─────────────────────────────────────────────────────────
@@ -450,10 +453,15 @@ const SkeletonCard = ({ theme }: { theme: 'light' | 'dark' }) => (
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
+const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, initialLoading, initialTableError }) => {
     const { t } = useTranslation();
     const { adminUser } = useAuth();
-    const { notes: remoteNotes, loading, tableError } = useNotes(fleetId);
+
+    // Use props from App root if available — avoids duplicate Supabase realtime subscription
+    const internalHook = useNotes(initialNotes !== undefined ? undefined : fleetId);
+    const remoteNotes  = initialNotes    !== undefined ? initialNotes    : internalHook.notes;
+    const loading      = initialLoading  !== undefined ? initialLoading  : internalHook.loading;
+    const tableError   = initialTableError !== undefined ? initialTableError : internalHook.tableError;
 
     // Optimistic local state — UI updates instantly, syncs with DB in background
     const [localNotes, setLocalNotes] = useState<Note[]>([]);
@@ -472,15 +480,6 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId }) => {
 
     const notes = localNotes;
 
-    useNoteReminders({
-        notes,
-        adminUserId: adminUser?.id || '',
-        adminUserName: adminUser?.name || '',
-        enabled: !!adminUser?.id,
-        onNoteUpdated: (noteId, updates) => {
-            setLocalNotes(prev => prev.map(n => n.id === noteId ? { ...n, ...updates } : n));
-        },
-    });
 
     const filtered = useMemo(() => {
         let list = notes;

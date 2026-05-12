@@ -4,10 +4,11 @@ import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
 
 interface DatePickerProps {
     label: string;
-    value: Date;
+    value: Date | null;
     onChange: (date: Date) => void;
     theme: 'light' | 'dark';
     labelClassName?: string;
+    placeholder?: string;
 }
 
 const MONTHS = [
@@ -39,15 +40,15 @@ function fmt(d: Date) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
-const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName }) => {
+const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName, placeholder }) => {
+    const today = new Date();
     const [isOpen, setIsOpen] = useState(false);
-    const [month, setMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
+    const [month, setMonth] = useState(new Date(value ? value.getFullYear() : today.getFullYear(), value ? value.getMonth() : today.getMonth(), 1));
     const [pos, setPos] = useState({ top: 0, left: 0 });
 
     const triggerRef = useRef<HTMLButtonElement>(null);
     const calRef = useRef<HTMLDivElement>(null);
     const isDark = theme === 'dark';
-    const today = new Date();
 
     // Position calendar relative to trigger button
     useLayoutEffect(() => {
@@ -97,6 +98,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
 
     const isSelected = (c: { day: number; cur: boolean }) =>
         c.cur &&
+        value &&
         c.day === value.getDate() &&
         month.getMonth() === value.getMonth() &&
         month.getFullYear() === value.getFullYear();
@@ -245,7 +247,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                 }`}
             >
                 <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{fmt(value)}</span>
+                    <span className={`text-sm font-medium ${!value ? (isDark ? 'text-gray-500' : 'text-gray-400') : ''}`}>
+                        {value ? fmt(value) : (placeholder || 'Sanani tanlang')}
+                    </span>
                     <CalendarIcon className={`w-4 h-4 transition-colors ${isOpen ? 'text-[#0f766e]' : isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>
             </button>

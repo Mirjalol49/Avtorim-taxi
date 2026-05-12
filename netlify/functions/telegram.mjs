@@ -4,9 +4,16 @@ const TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT  = process.env.TELEGRAM_ADMIN_CHAT_ID;
 const API         = `https://api.telegram.org/bot${TOKEN}`;
 
+// ── Fail-fast: crash early if critical env vars are missing ─────────────────
+if (!process.env.SUPABASE_URL)              console.error('[TelegramBot] ❌ SUPABASE_URL is not set!');
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) console.error('[TelegramBot] ❌ SUPABASE_SERVICE_ROLE_KEY is not set!');
+if (!TOKEN)                                 console.error('[TelegramBot] ❌ TELEGRAM_BOT_TOKEN is not set!');
+
+// ⚠️  VITE_ variables are Vite build-time only — NOT available in Netlify functions.
+// Use plain env var names and the SERVICE_ROLE key so the bot bypasses RLS.
 const supabase = createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const SUPPORT_PHONE = '+998 93 748 91 41';
@@ -169,11 +176,37 @@ async function findDriverByTelegramId(telegramId) {
     return data;
 }
 
-// ── Get Telegram file public URL ────────────────────────────────────────────
-async function getTelegramFileUrl(fileId) {
-    const res = await tgPost('getFile', { file_id: fileId });
-    if (!res.ok || !res.result?.file_path) return null;
-    return `https://api.telegram.org/file/bot${TOKEN}/${res.result.file_path}`;
+// ── Upload Telegram photo to Supabase Storage (permanent) ──────────────────
+async function uploadChequeToStorage(fileId, driverId) {
+    try {
+        // Step 1: Get the temporary Telegram download URL
+        const res = await tgPost('getFile', { file_id: fileId });
+        if (!res.ok || !res.result?.file_path) return null;
+        const telegramUrl = `https://api.telegram.org/file/bot${TOKEN}/${res.result.file_path}`;
+
+        // Step 2: Download the image binary from Telegram
+        const imgRes = await fetch(telegramUrl);
+        if (!imgRes.ok) return null;
+        const imgBuffer = await imgRes.arrayBuffer();
+
+        // Step 3: Upload to Supabase 'cheques' bucket permanently
+        const fileName = `telegram/${driverId ?? 'unknown'}_${Date.now()}.jpg`;
+        const { data: up, error: upErr } = await supabase.storage
+            .from('cheques')
+            .upload(fileName, imgBuffer, { contentType: 'image/jpeg', upsert: false });
+
+        if (upErr || !up) {
+            console.error('[TelegramBot] Storage upload failed:', JSON.stringify(upErr));
+            return null;
+        }
+
+        // Step 4: Return the permanent public URL
+        const { data: pub } = supabase.storage.from('cheques').getPublicUrl(fileName);
+        return pub.publicUrl ?? null;
+    } catch (e) {
+        console.error('[TelegramBot] uploadChequeToStorage error:', e);
+        return null;
+    }
 }
 
 // ── Save income + notify admin ──────────────────────────────────────────────
@@ -183,8 +216,8 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
     const dateStr = now.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' });
     const fmt = amount.toLocaleString('uz-UZ');
 
-    // Get public URL for the photo
-    const chequeUrl = await getTelegramFileUrl(photoFileId);
+    // Upload cheque to Supabase Storage for permanent storage (never expires)
+    const chequeUrl = await uploadChequeToStorage(photoFileId, driver.id);
 
     // Save to Supabase transactions — exact columns from addTransaction in firestoreService
     const nowMs = Date.now();
@@ -202,7 +235,16 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
         timestamp_ms:   nowMs,
         created_ms:     nowMs,
     });
-    if (txError) console.error('Transaction insert error:', JSON.stringify(txError));
+    if (txError) {
+        console.error('[TelegramBot] ❌ Transaction insert FAILED:', {
+            code:    txError.code,
+            message: txError.message,
+            details: txError.details,
+            hint:    txError.hint,
+        });
+    } else {
+        console.log('[TelegramBot] ✅ Transaction saved for driver:', driver.id, 'amount:', amount, 'cheque:', chequeUrl);
+    }
 
     // Insert in-app notification — must include fleet_id so app sees it
     const { error: notifError } = await supabase.from('notifications').insert({
@@ -229,7 +271,14 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
             chequeImage: chequeUrl ?? null,
         },
     });
-    if (notifError) console.error('Notification insert error:', JSON.stringify(notifError));
+    if (notifError) {
+        console.error('[TelegramBot] ❌ Notification insert FAILED:', {
+            code:    notifError.code,
+            message: notifError.message,
+            details: notifError.details,
+            hint:    notifError.hint,
+        });
+    }
 
     // Forward photo to admin Telegram chat
     if (ADMIN_CHAT) {

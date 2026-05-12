@@ -193,8 +193,8 @@ export const useDailyPlanReminder = ({
                 markDriverSent(today, slot, driver.id);
             }
 
-            // Server-side dedup: check which drivers already have a notification in DB for today.
-            // This prevents multi-tab sends (localStorage is per-tab session, DB is shared).
+            // Server-side dedup: check which drivers already have a daily_plan reminder in DB for today.
+            // This prevents multi-tab/multi-device sends (localStorage is per-browser, DB is shared).
             const todayStartMs = new Date().setHours(0, 0, 0, 0);
             const { data: existing } = await supabase
                 .from('notifications')
@@ -205,6 +205,7 @@ export const useDailyPlanReminder = ({
 
             const alreadySentInDb = new Set<string>(
                 (existing ?? [])
+                    .filter((r: any) => r.delivery_tracking?.reminderType === 'daily_plan')
                     .map((r: any) => r.delivery_tracking?.driverId as string | undefined)
                     .filter(Boolean) as string[]
             );

@@ -26,27 +26,24 @@ export const useNotes = (fleetId?: string) => {
         if (cached.length === 0) setLoading(true);
         setTableError(false);
 
-        const timeout = setTimeout(() => {
-            setLoading(false);
-            setTableError(true);
-        }, 6000);
-
         const { unsubscribe, refetch } = subscribeToNotes((data, error?: boolean) => {
-            clearTimeout(timeout);
             if (error) {
+                // Only show the SQL setup banner when Supabase explicitly says
+                // the table doesn't exist (42P01 / relation does not exist).
+                // Do NOT set tableError on timeouts or network hiccups.
                 setTableError(true);
                 setLoading(false);
                 return;
             }
             setNotes(data);
             setLoading(false);
+            setTableError(false); // clear any stale error
             writeCache(`notes_${fleetId}`, data);
         }, fleetId);
 
         refetchRef.current = refetch;
 
         return () => {
-            clearTimeout(timeout);
             refetchRef.current = null;
             unsubscribe();
         };

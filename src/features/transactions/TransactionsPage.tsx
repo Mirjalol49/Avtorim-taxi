@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Transaction, Driver, TransactionType, PaymentStatus, UserRole, AdminUser, Language, Car } from '../../core/types';
 import { TxPageFilters } from '../../../services/firestoreService';
@@ -226,9 +227,48 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     // ── UI state ──────────────────────────────────────────────────────────────
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [chequeLoading, setChequeLoading] = useState<string | null>(null); // tx.id being loaded
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [driverModalOpen, setDriverModalOpen] = useState(false);
     const [balanceCheckOpen, setBalanceCheckOpen] = useState(false);
+
+    // Lazy-load cheque image for a single transaction on demand
+    const handleViewCheque = useCallback(async (e: React.MouseEvent, tx: Transaction) => {
+        e.stopPropagation();
+        // If already loaded in the tx object, show it immediately
+        if (tx.chequeImage) {
+            // Old Telegram temp URLs expire after 24h — don't open a broken modal
+            if (tx.chequeImage.includes('api.telegram.org')) {
+                addToast('error', '⏰ Bu chek muddati o\'tgan (Telegram 24 soatdan keyin o\'chiradi)');
+                return;
+            }
+            setSelectedImage(tx.chequeImage);
+            return;
+        }
+        setChequeLoading(tx.id);
+        try {
+            const url = await firestoreService.fetchTransactionCheque(tx.id);
+            if (url) {
+                // Old Telegram temp URLs expire after 24h — don't open a broken modal
+                if (url.includes('api.telegram.org')) {
+                    addToast('error', '⏰ Bu chek muddati o\'tgan (Telegram 24 soatdan keyin o\'chiradi)');
+                    return;
+                }
+                // Fix for old migrated cheques that might be raw base64 without prefix
+                if (!url.startsWith('http') && !url.startsWith('data:image/')) {
+                    setSelectedImage(`data:image/jpeg;base64,${url}`);
+                } else {
+                    setSelectedImage(url);
+                }
+            } else {
+                addToast('error', 'Chek topilmadi');
+            }
+        } catch {
+            addToast('error', 'Chekni yuklashda xato');
+        } finally {
+            setChequeLoading(null);
+        }
+    }, [addToast]);
 
     // Clear selection when data reloads (filter change)
     useEffect(() => { setSelectedIds([]); }, [filters]);
@@ -595,19 +635,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             ) : (
                                                                 <span className="font-medium">{descText}</span>
                                                             )}
-                                                            {tx.type !== TransactionType.DAY_OFF && (tx.paymentMethod || tx.chequeImage) && (
+                                                            {tx.type !== TransactionType.DAY_OFF && tx.paymentMethod && (
                                                                 <div className="flex items-center gap-2 mt-1">
-                                                                    {tx.paymentMethod && (
-                                                                        <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
-                                                                            {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
-                                                                        </span>
-                                                                    )}
-                                                                    {tx.chequeImage && (
+                                                                    <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                                                                        {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
+                                                                    </span>
+                                                                    {tx.paymentMethod === 'card' && (
                                                                         <button
-                                                                            onClick={(e) => { e.stopPropagation(); setSelectedImage(tx.chequeImage!); }}
-                                                                            className={`flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full border shadow-sm transition-all hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400 hover:bg-blue-800/50' : 'bg-blue-50 border-blue-200 text-blue-700'}`}
+                                                                            onClick={(e) => handleViewCheque(e, tx)}
+                                                                            disabled={chequeLoading === tx.id}
+                                                                            className={`flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full border shadow-sm transition-all hover:-translate-y-0.5 disabled:opacity-50 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400 hover:bg-blue-800/50' : 'bg-blue-50 border-blue-200 text-blue-700'}`}
                                                                         >
-                                                                            📄 {t('viewReceipt')}
+                                                                            {chequeLoading === tx.id ? '⏳' : '📄'} {t('viewReceipt')}
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -706,8 +745,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                         {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
                                                     </span>
                                                 )}
-                                                {tx.chequeImage && (
-                                                    <button onClick={(e) => { e.stopPropagation(); setSelectedImage(tx.chequeImage!); }} className={`text-[10px] px-2 py-0.5 rounded border shadow-sm transition-all hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>📄 {t('viewReceipt')}</button>
+                                                {tx.paymentMethod === 'card' && (
+                                                    <button
+                                                        onClick={(e) => handleViewCheque(e, tx)}
+                                                        disabled={chequeLoading === tx.id}
+                                                        className={`text-[10px] px-2 py-0.5 rounded border shadow-sm transition-all hover:-translate-y-0.5 disabled:opacity-50 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'}`}
+                                                    >
+                                                        {chequeLoading === tx.id ? '⏳' : '📄'} {t('viewReceipt')}
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -748,51 +793,161 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 )}
             </div>
 
-            {/* Receipt Viewer Modal */}
-            {selectedImage && (
+            {/* ── Receipt Viewer Modal ──────────────────────────────────────────── */}
+            {selectedImage && typeof document !== 'undefined' && createPortal(
                 <div
                     role="dialog"
                     aria-modal="true"
                     aria-label={t('viewReceipt')}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+                    className="fixed inset-0 z-[200] flex items-center justify-center md:pl-64"
+                    style={{
+                        background: 'rgba(0,0,0,0.72)',
+                        backdropFilter: 'blur(8px)',
+                        animation: 'rcFadeIn 0.2s ease-out',
+                    }}
                     onClick={() => setSelectedImage(null)}
                     onKeyDown={e => { if (e.key === 'Escape') setSelectedImage(null); }}
                 >
+                    {/* Card */}
                     <div
-                        className={`relative flex flex-col rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] ${theme === 'dark' ? 'bg-surface border border-white/[0.08]' : 'bg-white border border-gray-200'}`}
+                        className={`relative flex flex-col rounded-3xl shadow-2xl overflow-hidden w-full ${
+                            theme === 'dark' ? 'bg-[#141c2e]' : 'bg-[#f5f5f7]'
+                        }`}
+                        style={{
+                            maxWidth: 420,
+                            maxHeight: 'calc(100vh - 80px)',
+                            animation: 'rcPopUp 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+                            boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
+                        }}
                         onClick={e => e.stopPropagation()}
-                        style={{ animation: 'modalPop 0.2s ease-out' }}
                     >
-                        <div className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100 bg-gray-50'}`} style={theme === 'dark' ? { background: '#222a3d' } : undefined}>
+                        {/* ── Header ── */}
+                        <div
+                            className={`flex items-center justify-between px-5 py-4 flex-shrink-0 border-b ${
+                                theme === 'dark' ? 'border-white/[0.07] bg-[#1a2336]' : 'border-black/[0.07] bg-white'
+                            }`}
+                        >
                             <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
-                                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                    theme === 'dark' ? 'bg-blue-500/15' : 'bg-blue-50'
+                                }`}>
+                                    <svg className="w-4.5 h-4.5 text-blue-500" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
                                 </div>
                                 <div>
-                                    <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('viewReceipt')}</p>
-                                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('paymentCard')}</p>
+                                    <p className={`text-[14px] font-bold leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        {t('viewReceipt')}
+                                    </p>
+                                    <p className={`text-[11px] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        💳 {t('paymentCard')}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                                <a href={selectedImage} download target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}>
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+
+                            {/* Controls — always visible, high contrast */}
+                            <div className="flex items-center gap-2">
+                                <a
+                                    href={selectedImage}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    title="Yuklab olish"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-2xl font-semibold transition-all active:scale-90 ${
+                                        theme === 'dark'
+                                            ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/20'
+                                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                                    }`}
+                                >
+                                    <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
                                 </a>
-                                <button autoFocus onClick={() => setSelectedImage(null)} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.08]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                <button
+                                    autoFocus
+                                    onClick={() => setSelectedImage(null)}
+                                    title="Yopish"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-90 ${
+                                        theme === 'dark'
+                                            ? 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.14] hover:text-white border border-white/[0.10]'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 border border-gray-200'
+                                    }`}
+                                >
+                                    <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
-                        <div className={`overflow-y-auto flex-1 p-4 ${theme === 'dark' ? 'bg-surface-3' : 'bg-surface-2'}`}>
-                            <img src={selectedImage} alt="Payment receipt" className="w-full rounded-xl object-contain shadow-lg" />
+
+                        {/* ── Image area ── */}
+                        <div
+                            className={`flex-1 overflow-y-auto flex items-center justify-center p-4 ${
+                                theme === 'dark' ? 'bg-[#0e1525]' : 'bg-gray-100'
+                            }`}
+                            style={{ minHeight: 200 }}
+                        >
+                            <img
+                                src={selectedImage}
+                                alt="Payment receipt"
+                                className="w-full rounded-2xl object-contain shadow-xl"
+                                style={{ maxHeight: 'calc(100vh - 240px)' }}
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent && !parent.querySelector('.error-msg')) {
+                                        const msg = document.createElement('div');
+                                        msg.className = 'error-msg flex flex-col items-center justify-center p-8 text-center gap-3';
+                                        const isTelegram = selectedImage?.includes('api.telegram.org');
+                                        if (isTelegram) {
+                                            msg.innerHTML = `
+                                                <span class="text-4xl">⏰</span>
+                                                <p class="font-bold text-gray-300 text-sm">Telegram cheki muddati o'tgan</p>
+                                                <p class="text-xs text-gray-500 leading-relaxed max-w-[260px]">
+                                                    Ushbu chek Telegram orqali yuborilgan va Telegram vaqtinchalik havolalari <strong class="text-orange-400">24 soat</strong> dan keyin o'chib ketadi.
+                                                    Yangi yuborilgan cheklarni avtomatik saqlash yoqilgan ✅
+                                                </p>`;
+                                        } else {
+                                            msg.innerHTML = `
+                                                <span class="text-4xl">🖼️</span>
+                                                <p class="font-bold text-gray-300 text-sm">Chek rasmi yuklanmadi</p>
+                                                <p class="text-xs text-gray-500">Internet yoki saqlash xatosi. Qayta urinib ko'ring.</p>`;
+                                        }
+                                        parent.appendChild(msg);
+                                    }
+                                }}
+                            />
                         </div>
-                        <div className={`px-5 py-3 border-t flex items-center justify-between flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+
+                        {/* ── Footer ── */}
+                        <div className={`px-5 py-3.5 flex items-center justify-between flex-shrink-0 border-t ${
+                            theme === 'dark' ? 'border-white/[0.07] bg-[#1a2336]' : 'border-black/[0.07] bg-white'
+                        }`}>
                             <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                                Press <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono mx-0.5 ${theme === 'dark' ? 'bg-white/[0.06] border border-white/[0.08]' : 'bg-gray-100 border border-gray-200'}`}>Esc</kbd> to close
+                                Tashqariga bosing yoki{' '}
+                                <kbd className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
+                                    theme === 'dark' ? 'bg-white/[0.08] border border-white/[0.12] text-gray-400' : 'bg-gray-100 border border-gray-200 text-gray-500'
+                                }`}>Esc</kbd>{' '}
+                                yopish uchun
                             </span>
-                            <button onClick={() => setSelectedImage(null)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.06]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`}>Close</button>
+                            <button
+                                onClick={() => setSelectedImage(null)}
+                                className={`text-[12px] font-semibold px-3.5 py-1.5 rounded-xl transition-all active:scale-95 ${
+                                    theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.08]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                                }`}
+                            >
+                                Yopish
+                            </button>
                         </div>
                     </div>
-                </div>
+
+                    <style>{`
+                        @keyframes rcFadeIn { from { opacity:0 } to { opacity:1 } }
+                        @keyframes rcPopUp  { from { opacity:0; transform:scale(0.92) translateY(12px) } to { opacity:1; transform:scale(1) translateY(0) } }
+                    `}</style>
+                </div>,
+                document.body
             )}
 
             {/* Edit Transaction Modal */}

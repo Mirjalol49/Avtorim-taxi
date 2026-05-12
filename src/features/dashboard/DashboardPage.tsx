@@ -102,343 +102,323 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 ) : (
                     <>
                         {/* Income */}
-                        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300"
-                            style={{
-                                background: 'linear-gradient(145deg, #0a6b62 0%, #0f766e 100%)',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)',
-                            }}
-                        >
-
-                            <div className="relative z-10 flex flex-col gap-3">
+                        <div className={`relative overflow-hidden isolate rounded-[24px] p-6 sm:p-7 border ${isDark ? 'bg-[#0F0F11] border-white/5' : 'bg-white border-black/5'}`} style={{ minHeight: '150px', boxShadow: isDark ? '0 10px 40px -10px rgba(0,0,0,0.5)' : '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
+                            {/* Radial Glow */}
+                            <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full filter blur-[70px] pointer-events-none transition-opacity duration-1000 ${isDark ? 'bg-emerald-500/40 opacity-100 mix-blend-screen' : 'opacity-0'}`} />
+                            
+                            <div className="relative z-10 flex flex-col justify-between h-full">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-2 bg-white/15 rounded-xl border border-white/20 backdrop-blur-sm">
-                                            <TrendingUpIcon className="w-4 h-4 text-white" />
-                                        </div>
-                                        <p className="text-[11px] text-white/70 font-bold uppercase tracking-widest">{t('totalIncome')}</p>
+                                    <p className={`text-[15px] font-medium tracking-wide ${isDark ? 'text-white/70' : 'text-gray-500'}`}>{t('totalIncome')}</p>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-500/10'}`}>
+                                        <TrendingUpIcon className={`w-5 h-5 text-emerald-500`} />
                                     </div>
-                                    <TrendingUpIcon className="w-10 h-10 text-white/10 group-hover:text-white/20 transition-colors" />
                                 </div>
-                                <div>
+                                <div className="mt-8">
                                     <NumberTooltip value={totalIncome} label={t('totalIncome')} theme={theme}>
-                                        <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help">
-                                            {formatNumberSmart(totalIncome, isMobile, currentLanguage)}
+                                        <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            {formatNumberSmart(totalIncome, isMobile, currentLanguage).split(' ')[0]}
+                                            <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                                                {formatNumberSmart(totalIncome, isMobile, currentLanguage).split(' ').slice(1).join(' ')} UZS
+                                            </span>
                                         </h3>
                                     </NumberTooltip>
-                                    <p className="text-[11px] text-white/50 font-semibold mt-2 tracking-wider">UZS</p>
                                 </div>
                             </div>
+
+                            {/* Sparkline */}
+                            <svg className="absolute bottom-0 right-0 w-[55%] h-[60%] pointer-events-none" viewBox="0 0 200 100" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="incomeLine" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
+                                        <stop offset="60%" stopColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
+                                        <stop offset="100%" stopColor="#10B981" />
+                                    </linearGradient>
+                                    <filter id="glowIncome" x="-50%" y="-50%" width="200%" height="200%">
+                                        <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#10B981" floodOpacity={isDark ? "0.6" : "0.4"}/>
+                                    </filter>
+                                </defs>
+                                <path d="M0,80 C30,80 40,50 60,50 C80,50 90,80 120,70 C150,60 160,30 180,40 C190,45 192,45 195,40" fill="none" stroke="url(#incomeLine)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                <circle cx="195" cy="40" r="5" fill="#10B981" filter="url(#glowIncome)" />
+                                <circle cx="195" cy="40" r="2.5" fill={isDark ? "#fff" : "#fff"} />
+                            </svg>
                         </div>
 
                         {/* Expense */}
-                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 border ${
-                            isDark
-                                ? 'bg-surface border-white/[0.10]'
-                                : 'bg-white border-black/[0.08]'
-                        }`} style={{
-                            boxShadow: isDark
-                                ? '0 1px 3px rgba(0,0,0,0.3)'
-                                : '0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)',
-                        }}>
-                            <div className="relative z-10 flex flex-col gap-3">
+                        <div className={`relative overflow-hidden isolate rounded-[24px] p-6 sm:p-7 border ${isDark ? 'bg-[#0F0F11] border-white/5' : 'bg-white border-black/5'}`} style={{ minHeight: '150px', boxShadow: isDark ? '0 10px 40px -10px rgba(0,0,0,0.5)' : '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
+                            {/* Radial Glow */}
+                            <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full filter blur-[70px] pointer-events-none transition-opacity duration-1000 ${isDark ? 'bg-rose-500/40 opacity-100 mix-blend-screen' : 'opacity-0'}`} />
+                            
+                            <div className="relative z-10 flex flex-col justify-between h-full">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`p-2 rounded-xl border ${isDark ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-200 text-red-500'}`}>
-                                            <TrendingDownIcon className="w-4 h-4" />
-                                        </div>
-                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{t('totalExpense')}</p>
+                                    <p className={`text-[15px] font-medium tracking-wide ${isDark ? 'text-white/70' : 'text-gray-500'}`}>{t('totalExpense')}</p>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-rose-500/10' : 'bg-rose-500/10'}`}>
+                                        <TrendingDownIcon className={`w-5 h-5 text-rose-500`} />
                                     </div>
-                                    <TrendingDownIcon className={`w-10 h-10 transition-opacity ${isDark ? 'opacity-[0.06] group-hover:opacity-[0.12] text-white' : 'opacity-[0.12] group-hover:opacity-20 text-gray-700'}`} />
                                 </div>
-                                <div>
+                                <div className="mt-8">
                                     <NumberTooltip value={totalExpense} label={t('totalExpense')} theme={theme}>
-                                        <h3 className={`text-3xl sm:text-4xl font-black tracking-tight leading-none font-mono cursor-help ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                            {formatNumberSmart(totalExpense, isMobile, currentLanguage)}
+                                        <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            {formatNumberSmart(totalExpense, isMobile, currentLanguage).split(' ')[0]}
+                                            <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                                                {formatNumberSmart(totalExpense, isMobile, currentLanguage).split(' ').slice(1).join(' ')} UZS
+                                            </span>
                                         </h3>
                                     </NumberTooltip>
-                                    <p className={`text-[11px] font-semibold mt-2 tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
                                 </div>
                             </div>
+
+                            {/* Sparkline */}
+                            <svg className="absolute bottom-0 right-0 w-[55%] h-[60%] pointer-events-none" viewBox="0 0 200 100" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="expenseLine" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
+                                        <stop offset="60%" stopColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
+                                        <stop offset="100%" stopColor="#F43F5E" />
+                                    </linearGradient>
+                                    <filter id="glowExpense" x="-50%" y="-50%" width="200%" height="200%">
+                                        <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#F43F5E" floodOpacity={isDark ? "0.6" : "0.4"}/>
+                                    </filter>
+                                </defs>
+                                <path d="M0,30 C30,30 40,60 60,60 C80,60 90,30 120,40 C150,50 160,80 180,70 C190,65 192,65 195,70" fill="none" stroke="url(#expenseLine)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                <circle cx="195" cy="70" r="5" fill="#F43F5E" filter="url(#glowExpense)" />
+                                <circle cx="195" cy="70" r="2.5" fill={isDark ? "#fff" : "#fff"} />
+                            </svg>
                         </div>
 
                         {/* Net Profit */}
-                        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 group transition-all duration-300 border sm:col-span-2 lg:col-span-1 ${
-                            isDark
-                                ? 'bg-surface border-white/[0.10]'
-                                : 'bg-white border-black/[0.08]'
-                        }`} style={{
-                            boxShadow: isDark
-                                ? '0 1px 3px rgba(0,0,0,0.3)'
-                                : '0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)',
-                        }}>
-                            <div className="relative z-10 flex flex-col gap-3">
+                        <div className={`relative overflow-hidden isolate rounded-[24px] p-6 sm:p-7 border sm:col-span-2 lg:col-span-1 ${isDark ? 'bg-[#0F0F11] border-white/5' : 'bg-white border-black/5'}`} style={{ minHeight: '150px', boxShadow: isDark ? '0 10px 40px -10px rgba(0,0,0,0.5)' : '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
+                            {/* Radial Glow */}
+                            <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full filter blur-[70px] pointer-events-none transition-opacity duration-1000 ${isDark ? 'bg-blue-500/40 opacity-100 mix-blend-screen' : 'opacity-0'}`} />
+                            
+                            <div className="relative z-10 flex flex-col justify-between h-full">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`p-2 rounded-xl border ${isDark ? 'bg-[#0f766e]/10 border-[#0f766e]/25 text-[#0f766e]' : 'bg-[#0f766e]/10 border-[#0f766e]/25 text-[#0f766e]'}`}>
-                                            <WalletIcon className="w-4 h-4" />
-                                        </div>
-                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{t('netProfit')}</p>
+                                    <p className={`text-[15px] font-medium tracking-wide ${isDark ? 'text-white/70' : 'text-gray-500'}`}>{t('netProfit')}</p>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-500/10' : 'bg-blue-500/10'}`}>
+                                        <WalletIcon className={`w-5 h-5 text-blue-500`} />
                                     </div>
-                                    <WalletIcon className={`w-10 h-10 transition-opacity ${isDark ? 'opacity-[0.06] group-hover:opacity-[0.12] text-white' : 'opacity-[0.12] group-hover:opacity-20 text-gray-700'}`} />
                                 </div>
-                                <div>
+                                <div className="mt-8">
                                     <NumberTooltip value={netProfit} label={t('netProfit')} theme={theme}>
-                                        <h3 className={`text-3xl sm:text-4xl font-black tracking-tight leading-none font-mono cursor-help ${netProfit >= 0 ? isDark ? 'text-emerald-400' : 'text-emerald-600' : isDark ? 'text-red-400' : 'text-red-600'}`}>
-                                            {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, currentLanguage)}
+                                        <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, currentLanguage).split(' ')[0]}
+                                            <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                                                {formatNumberSmart(netProfit, isMobile, currentLanguage).split(' ').slice(1).join(' ')} UZS
+                                            </span>
                                         </h3>
                                     </NumberTooltip>
-                                    <p className={`text-[11px] font-semibold mt-2 tracking-wider ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
                                 </div>
                             </div>
+
+                            {/* Sparkline */}
+                            <svg className="absolute bottom-0 right-0 w-[55%] h-[60%] pointer-events-none" viewBox="0 0 200 100" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="profitLine" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
+                                        <stop offset="60%" stopColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
+                                        <stop offset="100%" stopColor="#3B82F6" />
+                                    </linearGradient>
+                                    <filter id="glowProfit" x="-50%" y="-50%" width="200%" height="200%">
+                                        <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#3B82F6" floodOpacity={isDark ? "0.6" : "0.4"}/>
+                                    </filter>
+                                </defs>
+                                <path d="M0,70 C30,70 50,30 80,40 C110,50 130,80 160,50 C180,30 190,20 195,20" fill="none" stroke="url(#profitLine)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                <circle cx="195" cy="20" r="5" fill="#3B82F6" filter="url(#glowProfit)" />
+                                <circle cx="195" cy="20" r="2.5" fill={isDark ? "#fff" : "#fff"} />
+                            </svg>
                         </div>
                     </>
                 )}
             </div>
 
-            {/* DAILY PAYMENT STATUS */}
-            <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden relative ${isDark ? 'bg-surface border-white/[0.10]' : 'bg-white border-black/[0.07]'}`}
-                style={{ boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.07)' }}
-            >
-
+            {/* DAILY PAYMENT STATUS - NEW LAYOUT */}
+            <div className="mt-8">
                 {/* ── Header ─────────────────────────────────────────────── */}
-                <div className={`px-6 py-5 border-b ${theme === 'dark' ? 'border-white/[0.06]' : 'border-gray-100'}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                        <div>
-                            <p className={`text-[11px] font-semibold uppercase tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                {new Date().getDate()} {months[new Date().getMonth()]}, {weekdays[new Date().getDay()]}
-                            </p>
-                            <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                {t('todayStatus')}
-                            </h3>
-                        </div>
-                        {/* Summary pills */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                                {todayStats.completed.length} {t('paid')}
-                            </span>
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-600'}`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
-                                {todayStats.pending.length} {t('statusPending')}
-                            </span>
-                            {todayStats.dayOff.length > 0 && (
-                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${theme === 'dark' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
-                                    {todayStats.dayOff.length} {t('legendDayOff')}
-                                </span>
-                            )}
-                        </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {t('todayStatus')} - {new Date().getDate()} {months[new Date().getMonth()]}
+                        </h3>
                     </div>
-                    {/* Search — only shown when drivers > STATUS_VISIBLE */}
-                    {(todayStats.completed.length + todayStats.pending.length) > STATUS_VISIBLE && (
-                        <div className="relative">
-                            <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.3)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                            <input
-                                type="text"
-                                value={statusSearch}
-                                onChange={e => {
-                                    setStatusSearch(e.target.value);
-                                    setShowAllCompleted(false);
-                                    setShowAllPending(false);
-                                }}
-                                placeholder={t('searchDriverStatus')}
-                                className={`w-full pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
-                                    ? 'bg-surface-2 border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)] focus:border-[#0d9488]'
-                                    : 'bg-surface-2 border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
-                                }`}
-                            />
-                            {statusSearch && (
-                                <button onClick={() => setStatusSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'}`}>✕</button>
-                            )}
-                        </div>
-                    )}
+                    {/* Summary pills / Search */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {(todayStats.completed.length + todayStats.pending.length) > STATUS_VISIBLE && (
+                            <div className="relative">
+                                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.3)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input
+                                    type="text"
+                                    value={statusSearch}
+                                    onChange={e => {
+                                        setStatusSearch(e.target.value);
+                                        setShowAllCompleted(false);
+                                        setShowAllPending(false);
+                                    }}
+                                    placeholder={t('searchDriverStatus')}
+                                    className={`w-[180px] sm:w-[220px] pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
+                                        ? 'bg-surface border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)] focus:border-[#0d9488]'
+                                        : 'bg-white border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
+                                    }`}
+                                />
+                                {statusSearch && (
+                                    <button onClick={() => setStatusSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'}`}>✕</button>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* ── Two columns ────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.05]">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
-                    {/* COMPLETED */}
-                    <div className="p-6 space-y-1">
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                {t('driversPaidToday')}
-                            </span>
-                        </div>
+                    {/* COMPLETED COLUMN */}
+                    <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-black/[0.06]'}`}>
+                        <h4 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('driversPaidToday')} <span className={`font-medium ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>({todayStats.completed.length} {t('paid')})</span>
+                        </h4>
 
                         {filteredCompleted.length > 0 ? (
-                            <>
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
+                            <div className="space-y-3">
                                 {displayedCompleted.map((driver, i) => {
-                                    const plan = driver.dailyPlan || 1;
-                                    const pct = Math.min(100, Math.round((driver.todayIncome / plan) * 100));
                                     const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-[4px] border-y border-r transition-colors ${isDark ? 'bg-emerald-500/[0.05] border-l-emerald-500 border-y-transparent border-r-transparent' : 'bg-emerald-500/[0.05] border-l-emerald-500 border-y-transparent border-r-transparent'}`}>
                                             {/* Avatar */}
-                                            <div className="relative flex-shrink-0">
-                                                <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-emerald-500/50">
-                                                    {driver.avatar
-                                                        ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                        : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-surface-2 text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
-                                                    }
-                                                </div>
+                                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                                                {driver.avatar
+                                                    ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-white/50 text-emerald-700'}`}>{driver.name?.charAt(0)}</div>
+                                                }
                                             </div>
                                             {/* Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
-                                                    <span className="text-xs font-bold tabular-nums flex-shrink-0 text-emerald-500">
-                                                        +{(driver.todayIncome || 0).toLocaleString()}
-                                                    </span>
-                                                </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <span className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
                                                 {driverCar && (
-                                                    <div className="flex items-center gap-1.5 mt-0.5 mb-1">
-                                                        <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{driverCar.name}</span>
-                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-surface border-white/[0.10] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{driverCar.licensePlate}</span>
                                                     </div>
                                                 )}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
-                                                    <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
-                                                </div>
                                             </div>
-                                            <div className="w-7 h-7 flex-shrink-0">
-                                                <Lottie animationData={badgeAnimation} loop={false} />
+                                            {/* Amount & Check */}
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className={`text-[13px] font-bold tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                    +{(driver.todayIncome || 0).toLocaleString()} UZS
+                                                </span>
+                                                <div className="w-8 h-8 flex items-center justify-center -mr-1">
+                                                    <Lottie animationData={badgeAnimation} loop={false} />
+                                                </div>
                                             </div>
                                         </div>
                                     );
                                 })}
+                                {filteredCompleted.length > STATUS_VISIBLE && (
+                                    <button
+                                        onClick={() => setShowAllCompleted(v => !v)}
+                                        className={`mt-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.6)]'}`}
+                                    >
+                                        {showAllCompleted ? t('collapse') : t('showMore', { count: filteredCompleted.length - STATUS_VISIBLE })}
+                                    </button>
+                                )}
                             </div>
-                            {filteredCompleted.length > STATUS_VISIBLE && (
-                                <button
-                                    onClick={() => setShowAllCompleted(v => !v)}
-                                    className={`mt-2 w-full py-2 rounded-xl text-[12px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.55)]'}`}
-                                >
-                                    {showAllCompleted ? t('collapse') : t('showMore', { count: filteredCompleted.length - STATUS_VISIBLE })}
-                                </button>
-                            )}
-                            </>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
-                                    <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
+                            <div className={`flex flex-col items-center justify-center py-10 rounded-2xl ${isDark ? 'bg-surface-2' : 'bg-gray-50'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}`}>
+                                    <MedalIcon className={`w-6 h-6 ${isDark ? 'text-emerald-500/50' : 'text-emerald-500/50'}`} />
                                 </div>
-                                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('noPaymentsYet')}</p>
+                                <p className={`text-sm font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('noPaymentsYet')}</p>
                             </div>
                         )}
                     </div>
 
-                    {/* PENDING */}
-                    <div className="p-6 space-y-1">
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="w-2 h-2 rounded-full bg-orange-500" />
-                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
-                                {t('pendingPaymentsLabel')}
-                            </span>
-                        </div>
+                    {/* PENDING COLUMN */}
+                    <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-black/[0.06]'}`}>
+                        <h4 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('pendingPaymentsLabel')} <span className={`font-medium ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>({todayStats.pending.length} {t('statusPending')})</span>
+                        </h4>
 
                         {filteredPending.length > 0 ? (
-                            <>
-                            <div className={`rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.08] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
+                            <div className="space-y-3">
                                 {displayedPending.map(driver => {
                                     const plan = driver.dailyPlan || 0;
                                     const paid = driver.todayIncome || 0;
                                     const remaining = Math.max(0, plan - paid);
-                                    const pct = Math.min(100, Math.round((paid / plan) * 100));
-                                    const barColor = pct >= 70 ? 'bg-amber-400' : pct >= 30 ? 'bg-orange-500' : 'bg-red-500';
                                     const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
+                                        <div key={driver.id} className={`flex items-center gap-3 px-2 py-3 border-b transition-colors ${isDark ? 'border-white/[0.05]' : 'border-gray-100'} last:border-b-0`}>
                                             {/* Avatar */}
-                                            <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-orange-500/25 flex-shrink-0">
+                                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
                                                 {driver.avatar
                                                     ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-surface-2 text-[rgba(60,60,67,0.6)]'}`}>{driver.name?.charAt(0)}</div>
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface text-[rgba(235,235,245,0.6)]' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
                                                 }
                                             </div>
                                             {/* Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
-                                                    <span className={`text-xs font-bold tabular-nums flex-shrink-0 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}>
-                                                        −{remaining.toLocaleString()}
-                                                    </span>
-                                                </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <span className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
                                                 {driverCar && (
-                                                    <div className="flex items-center gap-1.5 mt-0.5 mb-1">
-                                                        <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{driverCar.name}</span>
-                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-px rounded border flex-shrink-0 ${theme === 'dark' ? 'bg-surface border-white/[0.10] text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{driverCar.licensePlate}</span>
                                                     </div>
                                                 )}
-                                                <div className={`h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
-                                                    <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
-                                                </div>
+                                            </div>
+                                            {/* Amount */}
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className={`text-[13px] font-bold tabular-nums ${isDark ? 'text-rose-500' : 'text-rose-600'}`}>
+                                                    −{remaining.toLocaleString()} UZS
+                                                </span>
                                             </div>
                                         </div>
                                     );
                                 })}
+                                {filteredPending.length > STATUS_VISIBLE && (
+                                    <button
+                                        onClick={() => setShowAllPending(v => !v)}
+                                        className={`mt-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.6)]'}`}
+                                    >
+                                        {showAllPending ? t('collapse') : t('showMore', { count: filteredPending.length - STATUS_VISIBLE })}
+                                    </button>
+                                )}
                             </div>
-                            {filteredPending.length > STATUS_VISIBLE && (
-                                <button
-                                    onClick={() => setShowAllPending(v => !v)}
-                                    className={`mt-2 w-full py-2 rounded-xl text-[12px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.55)]'}`}
-                                >
-                                    {showAllPending ? t('collapse') : t('showMore', { count: filteredPending.length - STATUS_VISIBLE })}
-                                </button>
-                            )}
-                            </>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${theme === 'dark' ? 'bg-surface-2' : 'bg-surface-2'}`}>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
-                                    <MedalIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-emerald-500' : 'text-emerald-400'}`} />
+                            <div className={`flex flex-col items-center justify-center py-10 rounded-2xl ${isDark ? 'bg-surface-2' : 'bg-gray-50'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}`}>
+                                    <MedalIcon className={`w-6 h-6 ${isDark ? 'text-emerald-500/50' : 'text-emerald-500/50'}`} />
                                 </div>
-                                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('allPaidToday')}</p>
+                                <p className={`text-sm font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('allPaidToday')}</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* ── Day-off section ──────────────────────────────────────── */}
+                {/* ── Day-off section (If any) ────────────────────────────── */}
                 {todayStats.dayOff.length > 0 && (
-                    <div className={`border-t ${theme === 'dark' ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
-                        <div className="px-6 pt-4 pb-2 flex items-center gap-2">
+                    <div className={`mt-6 p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-black/[0.06]'}`}>
+                        <h4 className={`text-base font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
-                            <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`}>
-                                🌙 {t('legendDayOff')}
-                            </span>
-                        </div>
-                        <div className={`mx-6 mb-4 rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.06] bg-surface-2' : 'divide-black/[0.04] bg-surface-2'}`}>
+                            {t('legendDayOff')} <span className={`font-medium ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>({todayStats.dayOff.length})</span>
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {todayStats.dayOff.map(driver => {
                                 const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                 return (
-                                    <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-white'}`}>
-                                        {/* Avatar */}
-                                        <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.4] flex-shrink-0">
+                                    <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                                        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.4] flex-shrink-0">
                                             {driver.avatar
                                                 ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-500'}`}>{driver.name?.charAt(0)}</div>
+                                                : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface text-[rgba(235,235,245,0.6)]' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
                                             }
                                         </div>
-                                        {/* Name + Car */}
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
-                                            {driverCar ? (
-                                                <p className={`text-[11px] font-medium mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                    {driverCar.name}
-                                                    <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide ${theme === 'dark' ? 'bg-white/[0.06] text-gray-400' : 'bg-black/[0.06] text-gray-500'}`}>
-                                                        {driverCar.licensePlate}
-                                                    </span>
-                                                </p>
-                                            ) : (
-                                                <p className={`text-[11px] mt-0.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>{t('carNotAssigned')}</p>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                            <p className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
+                                            {driverCar && (
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                </div>
                                             )}
                                         </div>
-                                        {/* Status badge */}
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${theme === 'dark' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
-                                            {t('legendDayOff')}
-                                        </span>
                                     </div>
                                 );
                             })}

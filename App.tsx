@@ -33,6 +33,9 @@ const HiddenDashboard = React.lazy(() => import('./components/hidden/HiddenDashb
 import { ToastProvider, ToastContainer, useToast } from './components/ToastNotification';
 import { ConfirmProvider } from './components/ConfirmContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import NoteReminderAlert from './components/NoteReminderAlert';
+import { useNotes } from './src/features/notes/hooks/useNotes';
+import { useNoteReminders } from './hooks/useNoteReminders';
 import Skeleton from './components/Skeleton';
 import PageSkeleton from './components/PageSkeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
@@ -174,6 +177,19 @@ const AppContent: React.FC = () => {
     adminUserId:   adminUser?.id   ?? '',
     adminUserName: adminUser?.username ?? 'Admin',
     enabled: isAuthenticated && userRole === 'admin',
+  });
+
+  // ── Note reminders (fires on ANY page, not just NotesPage) ────────────────
+  const notesFleetId = userRole === 'viewer'
+    ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+    : adminUser?.id;
+  const { notes: allNotes, loading: notesLoading, tableError: notesTableError } = useNotes(notesFleetId);
+
+  useNoteReminders({
+    notes: allNotes,
+    adminUserId: adminUser?.id ?? '',
+    adminUserName: adminUser?.username ?? 'Admin',
+    enabled: isAuthenticated && !!adminUser?.id,
   });
 
   const [isLocked, setIsLocked] = useState(false);
@@ -1086,6 +1102,9 @@ const AppContent: React.FC = () => {
                 fleetId={userRole === 'viewer'
                   ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
                   : adminUser?.id}
+                initialNotes={allNotes}
+                initialLoading={notesLoading}
+                initialTableError={notesTableError}
               />
             } />
 
@@ -1152,10 +1171,13 @@ const AppContent: React.FC = () => {
             ? {
               name: adminUser.username,
               role: adminUser.role,
-              avatar: adminUser.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=' + adminUser.username,
+              // Pass the raw saved avatar URL (or undefined). Do NOT fall back to a DiceBear URL here —
+              // AdminModal internally renders initials when avatar is falsy, and hasChanges() compares
+              // the initial value. If we substitute a DiceBear URL, the upload comparison breaks.
+              avatar: adminUser.avatar || undefined,
               password: adminUser.password
             }
-            : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin', password: '' })
+            : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: undefined, password: '' })
         }
         onUpdate={handleUpdateProfile}
         userRole={userRole}
@@ -1184,6 +1206,9 @@ const AppContent: React.FC = () => {
 
       {/* TOAST NOTIFICATIONS */}
       <ToastContainer theme={theme} />
+
+      {/* NOTE REMINDER ALERT — fires as a floating banner on any page when reminder is due */}
+      <NoteReminderAlert theme={theme} onNoteClick={() => navigate('/notes')} />
     </div >
     </ConfirmProvider>
   );

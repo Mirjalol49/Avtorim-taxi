@@ -5,7 +5,6 @@ import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 import { getEffectivePlanForDay } from '../cars/utils/planHistory';
-import { getEffectivePlanForDriverDay } from '../drivers/utils/driverPlanHistory';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -88,20 +87,10 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             (filterDriverId === 'all' || d.id === filterDriverId));
 
         for (const driver of activeDrivers) {
-            const car = cars.find(c => c.assignedDriverId === driver.id) 
-                ?? cars.find(c => c.name === driver.car || (c.name + ' — ' + c.licensePlate) === driver.car || c.id === driver.car) 
-                ?? null;
-            const fallbackDailyPlan = driver.dailyPlan ?? 0;
-            const dailyPlan = car ? (car.dailyPlan ?? 0) : fallbackDailyPlan;
+            const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
+            const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
 
-            const hasActivity = transactions.some(tx => 
-                tx.driverId === driver.id && 
-                months.includes(toMonthKey(new Date(tx.timestamp))) &&
-                tx.status !== PaymentStatus.DELETED &&
-                (tx as any).status !== 'DELETED'
-            );
-
-            if (dailyPlan <= 0 && !hasActivity) continue; // no plan and no activity — skip
+            if (dailyPlan <= 0) continue; // no plan set — skip
 
             for (const mk of months) {
                 const totalDays = daysInMonthForKey(mk);
@@ -135,7 +124,6 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 
                 for (let d = 1; d <= totalDays; d++) {
                     const dayDate = new Date(mkYear, mkMonth - 1, d);
-                    
                     const isDayOffTx = transactions.some(tx =>
                         tx.driverId === driver.id &&
                         tx.type === TransactionType.DAY_OFF &&
@@ -145,18 +133,9 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                         new Date(tx.timestamp).getDate() === d
                     );
                     
-                    const isNotWorkingTx = transactions.some(tx =>
-                        tx.driverId === driver.id &&
-                        tx.type === 'NOT_WORKING' &&
-                        tx.status !== PaymentStatus.DELETED &&
-                        (tx as any).status !== 'DELETED' &&
-                        toMonthKey(new Date(tx.timestamp)) === mk &&
-                        new Date(tx.timestamp).getDate() === d
-                    );
-                    
                     let planForDay = 0;
-                    if (!isDayOffTx && !isNotWorkingTx) {
-                        planForDay = getEffectivePlanForDriverDay(driver, dayDate, car);
+                    if (!isDayOffTx) {
+                        planForDay = getEffectivePlanForDay(car, dayDate);
                     }
                     
                     monthlyTarget += planForDay;

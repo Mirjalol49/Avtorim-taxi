@@ -333,6 +333,20 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                                     </button>
                                 </div>
                             )}
+                            {/* Show tracking start date — so user knows why old txs appear */}
+                            {hasLedger && (
+                                <div className={`flex items-center justify-between mt-3 px-1`}>
+                                    <p className={`text-[11px] ${muted}`}>
+                                        📅 Kuzatish boshlangan: <span className="font-bold">{fmtTime(ledger.startTimestamp)}</span>
+                                    </p>
+                                    <button
+                                        onClick={() => { const next: CardLedger = { startBalance: Math.round(balance), startTimestamp: Date.now(), spending: [] }; setLedger(next); save(next); }}
+                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isDark ? 'text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/10' : 'text-amber-600 hover:bg-amber-50'}`}
+                                    >
+                                        Bugundan boshlash ↺
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className={`border-t ${bdr} flex-shrink-0`} />
 
