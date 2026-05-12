@@ -176,6 +176,18 @@ async function findDriverByTelegramId(telegramId) {
     return data;
 }
 
+// ── Fetch car assigned to a driver ──────────────────────────────────────────
+async function fetchCarForDriver(driver) {
+    const carId = driver.car_id ?? driver.carId ?? null;
+    if (!carId) return null;
+    const { data } = await supabase
+        .from('cars')
+        .select('id, name, car_number, avatar')
+        .eq('id', carId)
+        .maybeSingle();
+    return data ?? null;
+}
+
 // ── Upload Telegram photo to Supabase Storage (permanent) ──────────────────
 async function uploadChequeToStorage(fileId, driverId) {
     try {
@@ -219,6 +231,12 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
     // Upload cheque to Supabase Storage for permanent storage (never expires)
     const chequeUrl = await uploadChequeToStorage(photoFileId, driver.id);
 
+    // Fetch the car assigned to this driver for the notification card
+    const car = await fetchCarForDriver(driver);
+    const carName  = car?.name       ?? null;
+    const carPlate = car?.car_number ?? null;
+    const avatarUrl = driver.avatar  ?? null;
+
     // Save to Supabase transactions — exact columns from addTransaction in firestoreService
     const nowMs = Date.now();
     const { error: txError } = await supabase.from('transactions').insert({
@@ -259,16 +277,16 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
         created_ms:       nowMs,
         expires_at:       nowMs + 7 * 24 * 60 * 60 * 1000,
         delivery_tracking: {
-            sent: nowMs, delivered: [], read: [],
-            driverId:    driver.id,
-            driverName:  driver.name  ?? null,
-            driverAvatar: driver.avatar ?? null,
-            carName:     driver.car        ?? null,
-            carPlate:    driver.car_number ?? null,
-            amount:      Math.abs(amount),
-            txType:      'income',
-            method:      'card',
-            chequeImage: chequeUrl ?? null,
+            sent:         nowMs, delivered: [], read: [],
+            driverId:     driver.id,
+            driverName:   driver.name ?? null,
+            driverAvatar: avatarUrl,
+            carName:      carName,
+            carPlate:     carPlate,
+            amount:       Math.abs(amount),
+            txType:       'income',
+            method:       'card',
+            chequeImage:  chequeUrl ?? null,
         },
     });
     if (notifError) {
