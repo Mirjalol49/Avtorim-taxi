@@ -151,6 +151,7 @@ export const addAdminUser = async (user: any, performedBy: string) => {
         target_id: userId,
         target_name: user.username,
         performed_by: performedBy || null,
+        fleet_id: performedBy || null,
         timestamp_ms: Date.now()
     });
 
@@ -177,6 +178,7 @@ export const updateAdminUser = async (id: string, updates: any, performedBy: str
         action: 'UPDATE_ADMIN_USER',
         target_id: id,
         performed_by: performedBy || null,
+        fleet_id: performedBy || null,
         details: { updates: JSON.stringify(updates) },
         timestamp_ms: Date.now()
     });
@@ -191,24 +193,26 @@ export const deleteAdminUser = async (id: string, username: string, performedBy:
         target_id: id,
         target_name: username,
         performed_by: performedBy || null,
+        fleet_id: performedBy || null,
         timestamp_ms: Date.now()
     });
 };
 
 // ==================== AUDIT LOGS ====================
 
-export const subscribeToAuditLogs = (callback: (logs: any[]) => void) => {
+export const subscribeToAuditLogs = (callback: (logs: any[]) => void, fleetId?: string) => {
     const fetchLogs = () =>
         supabase
             .from('audit_logs')
             .select('id,action,target_id,target_name,performed_by,performed_by_name,details,fleet_id,timestamp_ms')
+            .eq('fleet_id', fleetId ?? '')
             .order('timestamp_ms', { ascending: false })
             .limit(100)
             .then(({ data }) => { if (data) callback(data); });
 
     const channel = supabase
-        .channel('audit_logs_changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, fetchLogs)
+        .channel(`audit_logs_${fleetId ?? 'global'}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `fleet_id=eq.${fleetId}` }, fetchLogs)
         .subscribe((status) => {
             if (status === 'SUBSCRIBED') fetchLogs();
         });
@@ -691,23 +695,27 @@ export const updateAdminProfile = async (admin: any) => {
 
 // ==================== VIEWERS ====================
 
-export const subscribeToViewers = (callback: (viewers: Viewer[]) => void) => {
+export const subscribeToViewers = (callback: (viewers: Viewer[]) => void, fleetId?: string) => {
+    if (!fleetId) return () => {};
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const fetch = () => {
         if (debounce) clearTimeout(debounce);
         debounce = setTimeout(() =>
-            supabase.from('viewers').select('id,username,phone,role,active,created_ms').then(({ data }) => {
-                if (data) callback(data as unknown as Viewer[]);
-            })
+            supabase.from('viewers')
+                .select('id,username,phone,role,active,created_ms,created_by')
+                .eq('created_by', fleetId)
+                .then(({ data }) => {
+                    if (data) callback(data as unknown as Viewer[]);
+                })
         , 300);
     };
 
     fetch();
 
     const channel = supabase
-        .channel('viewers_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'viewers' }, fetch)
-        .subscribe(); // no re-fetch on SUBSCRIBED
+        .channel(`viewers_${fleetId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'viewers', filter: `created_by=eq.${fleetId}` }, fetch)
+        .subscribe();
 
     return () => {
         if (debounce) clearTimeout(debounce);
@@ -715,10 +723,10 @@ export const subscribeToViewers = (callback: (viewers: Viewer[]) => void) => {
     };
 };
 
-export const addViewer = async (viewer: Omit<Viewer, 'id'>) => {
+export const addViewer = async (viewer: Omit<Viewer, 'id'>, fleetId: string) => {
     const { data, error } = await supabase
         .from('viewers')
-        .insert({ ...viewer, created_ms: Date.now() })
+        .insert({ ...viewer, created_by: fleetId, created_ms: Date.now() })
         .select('id')
         .single();
     if (error) throw error;

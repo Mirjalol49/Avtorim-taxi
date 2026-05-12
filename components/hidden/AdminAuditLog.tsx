@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldIcon, SearchIcon, FilterIcon } from '../Icons';
 import { subscribeToAuditLogs } from '../../services/firestoreService';
+import { useAuthContext } from '../../src/features/auth/context/AuthContext';
 
 const AdminAuditLog: React.FC = () => {
+    const { adminUser, adminProfile, userRole } = useAuthContext();
+    const fleetId = userRole === 'viewer'
+        ? (adminProfile as any)?.fleet_id ?? (adminProfile as any)?.created_by
+        : adminUser?.id;
     const [logs, setLogs] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterAction, setFilterAction] = useState('all');
@@ -10,9 +15,9 @@ const AdminAuditLog: React.FC = () => {
     useEffect(() => {
         const unsubscribe = subscribeToAuditLogs((data) => {
             setLogs(data);
-        });
+        }, fleetId);
         return () => unsubscribe();
-    }, []);
+    }, [fleetId]);
 
     const filteredLogs = logs.filter(log => {
         const matchesSearch =
