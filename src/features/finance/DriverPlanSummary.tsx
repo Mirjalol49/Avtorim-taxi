@@ -5,6 +5,7 @@ import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 import { getEffectivePlanForDay } from '../cars/utils/planHistory';
+import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../drivers/utils/driverPlanHistory';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -133,9 +134,18 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                         new Date(tx.timestamp).getDate() === d
                     );
                     
+                    const isNotWorkingTx = transactions.some(tx =>
+                        tx.driverId === driver.id &&
+                        tx.type === 'NOT_WORKING' &&
+                        tx.status !== PaymentStatus.DELETED &&
+                        (tx as any).status !== 'DELETED' &&
+                        toMonthKey(new Date(tx.timestamp)) === mk &&
+                        new Date(tx.timestamp).getDate() === d
+                    );
+
                     let planForDay = 0;
-                    if (!isDayOffTx) {
-                        planForDay = getEffectivePlanForDay(car, dayDate);
+                    if (!isDayOffTx && !isNotWorkingTx) {
+                        planForDay = getEffectivePlanForDriverDay(driver, dayDate, car);
                     }
                     
                     monthlyTarget += planForDay;
