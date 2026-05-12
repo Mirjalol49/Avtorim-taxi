@@ -38,7 +38,11 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
 
-    const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
+    const activeDriversWithCars = drivers.filter(d => {
+        if (d.isDeleted) return false;
+        const car = cars.find(c => c.assignedDriverId === d.id && !c.isDeleted);
+        return !!car;
+    });
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -55,7 +59,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                 <div className="w-full relative">
                     {(() => {
                         const selectedDriver = driverId && driverId !== 'all'
-                            ? nonDeletedDrivers.find(d => d.id === driverId)
+                            ? activeDriversWithCars.find(d => d.id === driverId)
                             : null;
                         const selectedCar = selectedDriver
                             ? cars.find(c => c.assignedDriverId === selectedDriver.id)
@@ -106,7 +110,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                                     onClose={() => setDriverModalOpen(false)}
                                     selectedDriverId={driverId}
                                     onSelect={(val) => setDriverId(val)}
-                                    drivers={nonDeletedDrivers}
+                                    drivers={activeDriversWithCars}
                                     cars={cars}
                                     theme={theme}
                                     allLabel={t('allDrivers') || 'Barcha Haydovchilar'}
