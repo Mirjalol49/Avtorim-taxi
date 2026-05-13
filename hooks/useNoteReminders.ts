@@ -83,8 +83,8 @@ export const useNoteReminders = ({
         for (const note of notes) {
             if (!note.reminderAt) continue;
             const delta = now - note.reminderAt;
-            // Fire if reminder is due within last 2 minutes to handle missed ticks
-            if (delta < 0 || delta > 2 * 60 * 1000) continue;
+            // Fire if reminder is due (past). Handle missed ticks up to 24 hours ago.
+            if (delta < 0 || delta > 24 * 60 * 60 * 1000) continue;
             if (firedRef.current.has(note.id)) continue;
 
             firedRef.current.add(note.id);
@@ -100,32 +100,11 @@ export const useNoteReminders = ({
                 new CustomEvent<NoteReminderFiredDetail>('noteReminderFired', { detail: { note } })
             );
 
-            // 3️⃣  Supabase notification (shows in notification bell)
-            try {
-                await sendNotification(
-                    {
-                        title: `📝 ${title}`,
-                        message: body,
-                        type: 'payment_reminder',
-                        category: NotificationCategory.PAYMENT_REMINDER,
-                        priority: NotificationPriority.HIGH,
-                        targetUsers: 'role:admin',
-                        expiresIn: 24 * 60 * 60 * 1000,
-                    },
-                    adminUserId,
-                    adminUserName
-                );
-            } catch {
-                // notification send failure should not interrupt reminder flow
-            }
+            // 3️⃣  No Supabase notification (removed per user request)
 
-            // 4️⃣  Clear reminder from DB so it doesn't fire again
-            try {
-                await updateNote(note.id, { reminderAt: null } as any);
-                onNoteUpdated?.(note.id, { reminderAt: null });
-            } catch {
-                // silently continue
-            }
+            // 4️⃣  We DO NOT clear reminder from DB automatically anymore.
+            // It remains 'due' until the user manually acknowledges/edits it,
+            // allowing the UI to highlight it and show it in the sidebar badge.
         }
     };
 

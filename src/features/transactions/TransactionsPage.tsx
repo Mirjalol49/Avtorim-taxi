@@ -504,7 +504,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             </div>
 
             {/* Table */}
-            <div className={`rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+            <div className={`rounded-3xl border shadow-xl overflow-hidden ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
 
                 {/* ── Desktop ──────────────────────────────────────────────── */}
                 <div className="hidden md:block overflow-x-auto">

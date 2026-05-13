@@ -38,15 +38,26 @@ export const CarDetailsSheet: React.FC<Props> = ({
     const isDark = theme === 'dark';
 
     const [visible, setVisible] = useState(false);
+    const [shouldRender, setShouldRender] = useState(false);
+    const [internalCar, setInternalCar] = useState<Car | null>(null);
+    const [internalDriver, setInternalDriver] = useState<Driver | undefined>(undefined);
     const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
     const [docs, setDocs] = useState<CarDocument[]>([]);
     const [activeTab, setActiveTab] = useState<'general' | 'damages'>('general');
 
+    useEffect(() => {
+        if (car) setInternalCar(car);
+        if (driver !== undefined) setInternalDriver(driver);
+    }, [car, driver]);
+
+    const activeCar = car || internalCar;
+    const activeDriver = driver !== undefined ? driver : internalDriver;
+
     // Fetch documents on demand
     useEffect(() => {
-        if (isOpen && car?.id) {
+        if (isOpen && activeCar?.id) {
             setActiveTab('general'); // Reset tab when opened
-            supabase.from('cars').select('documents').eq('id', car.id).single()
+            supabase.from('cars').select('documents').eq('id', activeCar.id).single()
                 .then(({ data, error }) => {
                     if (!error && data?.documents) {
                         setDocs(data.documents);
@@ -54,23 +65,27 @@ export const CarDetailsSheet: React.FC<Props> = ({
                         setDocs([]);
                     }
                 });
-        } else {
+        } else if (!isOpen && !shouldRender) {
             setDocs([]);
         }
-    }, [isOpen, car?.id]);
+    }, [isOpen, activeCar?.id, shouldRender]);
 
     // Animate open/close
     useEffect(() => {
         if (isOpen) {
+            setShouldRender(true);
             document.body.style.overflow = 'hidden';
-            requestAnimationFrame(() => setVisible(true));
-        } else {
+            const timer = setTimeout(() => setVisible(true), 10);
+            return () => clearTimeout(timer);
+        } else if (shouldRender) {
             setVisible(false);
-            const timer = setTimeout(() => { document.body.style.overflow = ''; }, 280);
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+                document.body.style.overflow = '';
+            }, 300);
             return () => clearTimeout(timer);
         }
-        return () => { document.body.style.overflow = ''; };
-    }, [isOpen]);
+    }, [isOpen, shouldRender]);
 
     useEffect(() => {
         const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -78,7 +93,7 @@ export const CarDetailsSheet: React.FC<Props> = ({
         return () => document.removeEventListener('keydown', h);
     }, [onClose]);
 
-    if (!isOpen && !visible) return null;
+    if (!shouldRender || !activeCar) return null;
 
     // Theme utility classes
     const bg   = isDark ? 'bg-surface border-l border-white/[0.08]' : 'bg-gray-50 border-l border-gray-200';
@@ -88,8 +103,8 @@ export const CarDetailsSheet: React.FC<Props> = ({
     const muted= isDark ? 'text-gray-500' : 'text-gray-400';
     const bdr  = isDark ? 'border-white/[0.08]' : 'border-gray-200';
 
-    const damages = car?.damage || [];
-    const isAssigned = !!driver;
+    const damages = activeCar?.damage || [];
+    const isAssigned = !!activeDriver;
 
     return createPortal(
         <div className="fixed inset-0 z-[200] flex justify-end" style={{ pointerEvents: isOpen ? 'auto' : 'none' }}>
@@ -108,8 +123,8 @@ export const CarDetailsSheet: React.FC<Props> = ({
                 <div className={`relative flex-shrink-0 border-b ${bdr}`}>
                     {/* Cover image area */}
                     <div className={`h-40 w-full relative overflow-hidden ${isDark ? 'bg-[#0d1829]' : 'bg-gray-100'}`}>
-                        {car?.avatar ? (
-                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                        {activeCar?.avatar ? (
+                            <img src={activeCar.avatar} alt={activeCar.name} className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                                 <CameraIcon className={`w-10 h-10 ${isDark ? 'text-white/10' : 'text-gray-200'}`} />
@@ -120,17 +135,17 @@ export const CarDetailsSheet: React.FC<Props> = ({
 
                         {/* Top action buttons */}
                         <div className="absolute top-4 right-4 flex gap-2">
-                            {userRole === 'admin' && car && (
+                            {userRole === 'admin' && activeCar && (
                                 <>
                                     <button 
-                                        onClick={() => onEdit(car)}
+                                        onClick={() => onEdit(activeCar)}
                                         className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-colors border border-white/10"
                                         title="Tahrirlash"
                                     >
                                         <EditIcon className="w-4 h-4" />
                                     </button>
                                     <button 
-                                        onClick={() => onDelete(car.id)}
+                                        onClick={() => onDelete(activeCar.id)}
                                         className="w-9 h-9 rounded-full bg-red-500/20 hover:bg-red-500/40 backdrop-blur-md flex items-center justify-center text-red-100 transition-colors border border-red-500/30"
                                         title="O'chirish"
                                     >
@@ -149,17 +164,22 @@ export const CarDetailsSheet: React.FC<Props> = ({
                         {/* Car Name & Plate */}
                         <div className="absolute bottom-4 left-5 right-5">
                             <h2 className="text-white text-2xl font-black tracking-tight drop-shadow-md leading-none">
-                                {car?.name}
+                                {activeCar?.name}
                             </h2>
                             <div className="flex items-center gap-2 mt-2">
                                 <span className="px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm border border-white/20 text-white text-[12px] font-mono font-bold tracking-widest leading-none drop-shadow-sm">
-                                    {car?.licensePlate}
+                                    {activeCar?.licensePlate}
                                 </span>
-                                {!isAssigned && (
+                                {activeCar?.inRepair ? (
+                                    <span className="px-2.5 py-1 rounded-lg bg-red-500/80 backdrop-blur-sm border border-red-500/50 text-white text-[12px] font-semibold leading-none flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                        Ta'mirda
+                                    </span>
+                                ) : !isAssigned ? (
                                     <span className="px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm border border-white/15 text-white/80 text-[12px] font-semibold leading-none">
                                         Bo'sh avtomobil
                                     </span>
-                                )}
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -204,9 +224,9 @@ export const CarDetailsSheet: React.FC<Props> = ({
                                 {/* Kunlik reja */}
                                 <div className={`rounded-2xl border px-4 py-3 ${isDark ? 'border-teal-500/15 bg-teal-500/[0.06]' : 'border-teal-200 bg-teal-50'}`}>
                                     <p className={`text-[10px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-teal-500/70' : 'text-teal-600/70'}`}>Kunlik reja</p>
-                                    {car?.dailyPlan && car.dailyPlan > 0 ? (
+                                    {activeCar?.dailyPlan && activeCar.dailyPlan > 0 ? (
                                         <>
-                                            <p className={`text-[18px] font-black font-mono tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{fmt(car.dailyPlan)}</p>
+                                            <p className={`text-[18px] font-black font-mono tabular-nums ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{fmt(activeCar.dailyPlan)}</p>
                                             <p className={`text-[10px] ${muted}`}>UZS / kun</p>
                                         </>
                                     ) : (
@@ -222,20 +242,20 @@ export const CarDetailsSheet: React.FC<Props> = ({
                                             <div className="flex flex-col gap-1.5 mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full overflow-hidden border border-white/20 bg-black/20 flex-shrink-0">
-                                                        {driver!.avatar ? (
-                                                            <img src={driver!.avatar} alt={driver!.name} className="w-full h-full object-cover" />
+                                                        {activeDriver!.avatar ? (
+                                                            <img src={activeDriver!.avatar} alt={activeDriver!.name} className="w-full h-full object-cover" />
                                                         ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-white font-bold">{driver!.name.charAt(0)}</div>
+                                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-white font-bold">{activeDriver!.name.charAt(0)}</div>
                                                         )}
                                                     </div>
-                                                    <p className={`text-[13px] font-bold truncate ${txt}`}>{driver!.name.split(' ')[0]}</p>
+                                                    <p className={`text-[13px] font-bold truncate ${txt}`}>{activeDriver!.name.split(' ')[0]}</p>
                                                 </div>
-                                                {driver!.phone && (
-                                                    <p className={`text-[11px] font-mono font-medium pl-8 ${sub}`}>{driver!.phone}</p>
+                                                {activeDriver!.phone && (
+                                                    <p className={`text-[11px] font-mono font-medium pl-8 ${sub}`}>{activeDriver!.phone}</p>
                                                 )}
                                             </div>
-                                            {driver!.phone && (
-                                                <a href={`tel:${driver!.phone}`} className={`text-[11px] font-bold px-3 py-1 rounded-lg self-start transition-colors ${isDark ? 'bg-white/[0.05] text-white/40 hover:text-white' : 'bg-gray-200 text-gray-500 hover:text-gray-700'}`}>
+                                            {activeDriver!.phone && (
+                                                <a href={`tel:${activeDriver!.phone}`} className={`text-[11px] font-bold px-3 py-1 rounded-lg self-start transition-colors ${isDark ? 'bg-white/[0.05] text-white/40 hover:text-white' : 'bg-gray-200 text-gray-500 hover:text-gray-700'}`}>
                                                     Qo'ng'iroq
                                                 </a>
                                             )}
@@ -296,9 +316,9 @@ export const CarDetailsSheet: React.FC<Props> = ({
                             </div>
                             </div>
                         </div>
-                    ) : car ? (
+                    ) : activeCar ? (
                         <CarDamageTab
-                            car={car}
+                            car={activeCar}
                             isDark={isDark}
                             userRole={userRole}
                             adminName={adminName || 'Admin'}

@@ -35,8 +35,12 @@ export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => v
     // Fire immediately — data shows before WebSocket channel connects
     fetchNotes();
 
+    // Create a unique channel ID so multiple subscribers don't conflict
+    const uniqueId = Math.random().toString(36).substring(7);
+    const channelName = `notes_${fleetId}_${uniqueId}`;
+
     const channel = supabase
-        .channel(`notes_${fleetId}`)
+        .channel(channelName)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, () => fetchNotes())
         .subscribe((status) => {
             // Only re-fetch on error recovery — skip SUBSCRIBED because fetchNotes() fires above already

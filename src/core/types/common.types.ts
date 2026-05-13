@@ -18,4 +18,5 @@ export enum Tab {
     CARS = 'CARS',
     NOTES = 'NOTES',
     MONTHLY_PLAN = 'MONTHLY-PLAN',
+    FINES = 'FINES',
 }

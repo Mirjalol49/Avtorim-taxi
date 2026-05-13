@@ -90,6 +90,8 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const isReadOnly = userRole === 'viewer';
   const isDark = theme === 'dark';
 
+  const [shouldRender, setShouldRender]         = useState(false);
+  const [isClosing, setIsClosing]               = useState(false);
   const [showLogoutModal, setShowLogoutModal]   = useState(false);
   const [name, setName]                         = useState(adminData.name);
   const [avatar, setAvatar]                     = useState(adminData.avatar);
@@ -109,6 +111,9 @@ const AdminModal: React.FC<AdminModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+      document.body.style.overflow = 'hidden';
       setShowLogoutModal(false);
       setName(adminData.name);
       setAvatar(adminData.avatar);
@@ -121,17 +126,25 @@ const AdminModal: React.FC<AdminModalProps> = ({
       setSaveSuccess(false);
       setImageLoading(false);
       setUploadProgress(0);
+    } else if (shouldRender) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+        document.body.style.overflow = '';
+      }, 250);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, adminData]);
+  }, [isOpen, shouldRender, adminData]);
 
   useEffect(() => {
-    if (!isOpen || showLogoutModal) return;
+    if (!shouldRender || showLogoutModal) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isSaving) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, isSaving, onClose, showLogoutModal]);
+  }, [shouldRender, isSaving, onClose, showLogoutModal]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly || isSaving) return;
@@ -180,7 +193,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   const roleLabel = adminData.role === 'super_admin' ? 'Super Admin'
     : adminData.role === 'admin' ? 'Admin'
@@ -194,10 +207,10 @@ const AdminModal: React.FC<AdminModalProps> = ({
     .slice(0, 2);
 
   // Shared styles
-  const inputCls = `w-full rounded-[14px] px-4 py-3 text-[14px] font-medium outline-none transition-all ${
+  const inputCls = `w-full rounded-[14px] px-4 py-3 text-[14px] font-medium outline-none transition-all border ${
     isDark
-      ? 'bg-[#0f1724] text-white placeholder-gray-600 focus:ring-2 focus:ring-teal-500/30'
-      : 'bg-gray-50 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:bg-white'
+      ? 'bg-[#0f1724] border-white/5 text-white placeholder-gray-600 focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20'
+      : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:bg-white'
   }`;
 
   const sectionTitle = `text-[11px] font-bold uppercase tracking-[0.1em] mb-4 ${
@@ -209,7 +222,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
       {/* ── Backdrop ── */}
       <div
         className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px]"
-        style={{ animation: 'fadeIn 0.2s ease-out' }}
+        style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out' }}
         onClick={() => { if (!isSaving && !showLogoutModal) onClose(); }}
       />
 
@@ -218,7 +231,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
         className={`fixed top-0 right-0 bottom-0 z-[110] w-full max-w-[420px] flex flex-col shadow-2xl ${
           isDark ? 'bg-[#111827]' : 'bg-[#f5f5f7]'
         }`}
-        style={{ animation: 'slideInRight 0.25s cubic-bezier(0.32,0.72,0,1)' }}
+        style={{ animation: isClosing ? 'slideOutRight 0.25s cubic-bezier(0.32,0.72,0,1) forwards' : 'slideInRight 0.25s cubic-bezier(0.32,0.72,0,1)' }}
       >
 
         {/* ── Top nav bar ── */}
@@ -250,71 +263,69 @@ const AdminModal: React.FC<AdminModalProps> = ({
               isDark ? 'bg-[#1c2333]' : 'bg-white'
             }`}>
               {/* Teal gradient banner */}
-              <div className="h-20 bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-600 relative">
+              <div className="h-24 bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-600 relative">
                 <div className="absolute inset-0 opacity-30"
                   style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
               </div>
 
               {/* Avatar + info */}
-              <div className="px-5 pb-5">
-                <div className="flex items-end gap-4 -mt-10 mb-0">
-                  {/* Avatar with upload */}
-                  <div className="relative group flex-shrink-0">
-                    <div className={`w-[72px] h-[72px] rounded-[20px] overflow-hidden border-[3px] relative ${
-                      isDark ? 'border-[#1c2333] bg-[#0f1724]' : 'border-white bg-gray-100'
-                    } shadow-md`}>
-                      {(isSaving || imageLoading) && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-[17px]">
-                          <Spinner />
-                        </div>
-                      )}
-                      {avatar ? (
-                        <img
-                          src={avatar}
-                          alt={adminData.name}
-                          className="w-full h-full object-cover"
-                          onError={e => { (e.currentTarget as HTMLImageElement).src = ''; setAvatar(undefined); }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500 to-teal-700">
-                          <span className="text-white text-xl font-black select-none">{initials}</span>
-                        </div>
-                      )}
-                      {!isReadOnly && !isSaving && !imageLoading && (
-                        <label
-                          htmlFor="admin-avatar-upload"
-                          className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-[17px]"
-                        >
-                          <CameraIcon className="text-white w-5 h-5" />
-                        </label>
-                      )}
-                    </div>
-                    <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              <div className="px-5 pb-6 relative z-10 flex flex-col items-center text-center">
+                {/* Avatar with upload */}
+                <div className="relative group flex-shrink-0 -mt-12 mb-3">
+                  <div className={`w-[88px] h-[88px] rounded-[24px] overflow-hidden border-[4px] relative ${
+                    isDark ? 'border-[#1c2333] bg-[#0f1724]' : 'border-white bg-gray-100'
+                  } shadow-lg`}>
+                    {(isSaving || imageLoading) && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-[20px]">
+                        <Spinner />
+                      </div>
+                    )}
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt={adminData.name}
+                        className="w-full h-full object-cover"
+                        onError={e => { (e.currentTarget as HTMLImageElement).src = ''; setAvatar(undefined); }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500 to-teal-700">
+                        <span className="text-white text-[22px] font-black select-none">{initials}</span>
+                      </div>
+                    )}
+                    {!isReadOnly && !isSaving && !imageLoading && (
+                      <label
+                        htmlFor="admin-avatar-upload"
+                        className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-[20px]"
+                      >
+                        <CameraIcon className="text-white w-6 h-6" />
+                      </label>
+                    )}
                   </div>
+                  <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </div>
 
-                  {/* Name + role */}
-                  <div className="pb-1 min-w-0">
-                    <p className={`font-bold text-[17px] leading-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {adminData.name}
-                    </p>
-                    <span className={`mt-1 inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
-                      adminData.role === 'super_admin'
-                        ? isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'
-                        : isDark ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-100 text-teal-700'
-                    }`}>
-                      {roleLabel}
-                    </span>
-                  </div>
+                {/* Name + role */}
+                <div className="min-w-0 max-w-full px-2">
+                  <p className={`font-bold text-[20px] tracking-tight leading-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {adminData.name}
+                  </p>
+                  <span className={`mt-2 inline-flex text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                    adminData.role === 'super_admin'
+                      ? isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'
+                      : isDark ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-100 text-teal-700'
+                  }`}>
+                    {roleLabel}
+                  </span>
                 </div>
 
                 {/* Upload progress */}
                 {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className={`mt-3 w-full h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                  <div className={`mt-4 w-full max-w-[200px] h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                     <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                   </div>
                 )}
                 {imageError && (
-                  <p className="mt-2 text-xs text-red-500">{imageError}</p>
+                  <p className="mt-2 text-xs font-medium text-red-500">{imageError}</p>
                 )}
               </div>
             </div>
@@ -353,8 +364,8 @@ const AdminModal: React.FC<AdminModalProps> = ({
                   <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     Joriy parol
                   </label>
-                  <div className={`flex items-center rounded-[14px] px-4 py-3 font-mono ${
-                    isDark ? 'bg-[#0f1724] text-gray-300' : 'bg-gray-50 text-gray-700'
+                  <div className={`flex items-center rounded-[14px] px-4 py-3 font-mono border ${
+                    isDark ? 'bg-[#0f1724] border-white/5 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'
                   }`}>
                     <span className="flex-1 text-[15px] tracking-[0.15em] select-all">
                       {showCurrentPw
@@ -524,9 +535,17 @@ const AdminModal: React.FC<AdminModalProps> = ({
           from { opacity: 0; }
           to   { opacity: 1; }
         }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
         @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0.5; }
+          from { transform: translateX(100%); opacity: 0; }
           to   { transform: translateX(0);    opacity: 1;   }
+        }
+        @keyframes slideOutRight {
+          from { transform: translateX(0);    opacity: 1;   }
+          to   { transform: translateX(100%); opacity: 0; }
         }
         @keyframes popUp {
           from { transform: scale(0.88) translateY(16px); opacity: 0; }

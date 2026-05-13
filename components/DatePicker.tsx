@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
 
 interface DatePickerProps {
@@ -9,13 +10,20 @@ interface DatePickerProps {
     theme: 'light' | 'dark';
     labelClassName?: string;
     placeholder?: string;
+    hideLabel?: boolean;
 }
 
-const MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-];
-const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+const TODAY_LABELS: Record<string, string> = { uz: 'Bugun', ru: 'Сегодня', en: 'Today' };
+
+const getDayNames = (lang: string) => {
+    const names = [];
+    // 2026-05-04 is a Monday
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(2026, 4, 4 + i);
+        names.push(new Intl.DateTimeFormat(lang, { weekday: 'short' }).format(d));
+    }
+    return names;
+};
 
 function getCalendarDays(year: number, month: number) {
     const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
@@ -40,7 +48,7 @@ function fmt(d: Date) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
-const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName, placeholder }) => {
+const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName, placeholder, hideLabel }) => {
     const today = new Date();
     const [isOpen, setIsOpen] = useState(false);
     const [month, setMonth] = useState(new Date(value ? value.getFullYear() : today.getFullYear(), value ? value.getMonth() : today.getMonth(), 1));
@@ -49,6 +57,14 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
     const triggerRef = useRef<HTMLButtonElement>(null);
     const calRef = useRef<HTMLDivElement>(null);
     const isDark = theme === 'dark';
+
+    const { i18n } = useTranslation();
+    const lang = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz');
+
+    const localizedDays = useMemo(() => getDayNames(lang), [lang]);
+    const currentMonthName = useMemo(() => {
+        return new Intl.DateTimeFormat(lang, { month: 'long' }).format(new Date(month.getFullYear(), month.getMonth(), 1));
+    }, [lang, month]);
 
     // Position calendar relative to trigger button
     useLayoutEffect(() => {
@@ -145,8 +161,8 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                     <ChevronLeftIcon className="w-4 h-4" />
                 </button>
 
-                <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {MONTHS[month.getMonth()]} {month.getFullYear()}
+                <span className={`text-sm font-bold capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {currentMonthName} {month.getFullYear()}
                 </span>
 
                 <button
@@ -163,9 +179,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
             <div className="p-3">
                 {/* Day name headers */}
                 <div className="grid grid-cols-7 mb-1">
-                    {DAYS.map(d => (
-                        <div key={d} className={`text-center text-[10px] font-bold py-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {d}
+                    {localizedDays.map(d => (
+                        <div key={d} className={`text-center text-[10px] font-bold py-1 capitalize ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {d.slice(0, 2)}
                         </div>
                     ))}
                 </div>
@@ -217,7 +233,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
                     }`}
                 >
-                    Today
+                    {TODAY_LABELS[lang] || TODAY_LABELS.uz}
                 </button>
             </div>
         </div>
@@ -226,17 +242,19 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
     return (
         <div className="relative w-full">
             {/* Label */}
-            <div className={`flex items-center gap-2 mb-2 ${labelClassName || (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
-                <CalendarIcon className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
-            </div>
+            {!hideLabel && (
+                <div className={`flex items-center gap-2 mb-2 ${labelClassName || (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
+                    <CalendarIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
+                </div>
+            )}
 
             {/* Trigger button */}
             <button
                 ref={triggerRef}
                 type="button"
                 onClick={() => setIsOpen(o => !o)}
-                className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${
+                className={`w-full ${hideLabel ? 'px-3 py-2' : 'px-4 py-3'} rounded-xl border text-left transition-all ${
                     isOpen
                         ? isDark
                             ? 'bg-surface-2 border-[#0f766e] ring-1 ring-[#0f766e]/40 text-white'

@@ -314,7 +314,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           <label htmlFor={inputId} className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors flex-shrink-0">
             + Qo'shish
           </label>
-          <input id={inputId} type="file" accept="image/*,application/pdf" multiple className="hidden"
+          <input id={inputId} type="file" accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp,application/pdf" multiple className="hidden"
             onChange={(e) => handleDocumentUpload(e, category)} />
         </div>
         {docs.length > 0 ? (
@@ -386,7 +386,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 <label htmlFor="driver-avatar-upload" className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                   <CameraIcon className="w-6 h-6 text-white" />
                 </label>
-                <input id="driver-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input id="driver-avatar-upload" type="file" accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleImageUpload} />
               </div>
             </div>
             <div className="flex-1">

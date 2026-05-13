@@ -117,7 +117,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <NumberTooltip value={totalIncome} label={t('totalIncome')} theme={theme}>
                                         <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                             {formatNumberSmart(totalIncome, isMobile, currentLanguage).split(' ')[0]}
-                                            <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                                            <span className={`text-sm sm:text-base ml-1.5 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {formatNumberSmart(totalIncome, isMobile, currentLanguage).split(' ').slice(1).join(' ')} UZS
                                             </span>
                                         </h3>
@@ -159,7 +159,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <NumberTooltip value={totalExpense} label={t('totalExpense')} theme={theme}>
                                         <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                             {formatNumberSmart(totalExpense, isMobile, currentLanguage).split(' ')[0]}
-                                            <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                                            <span className={`text-sm sm:text-base ml-1.5 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {formatNumberSmart(totalExpense, isMobile, currentLanguage).split(' ').slice(1).join(' ')} UZS
                                             </span>
                                         </h3>
@@ -201,7 +201,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <NumberTooltip value={netProfit} label={t('netProfit')} theme={theme}>
                                         <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                             {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, currentLanguage).split(' ')[0]}
-                                            <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                                            <span className={`text-sm sm:text-base ml-1.5 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {formatNumberSmart(netProfit, isMobile, currentLanguage).split(' ').slice(1).join(' ')} UZS
                                             </span>
                                         </h3>
@@ -236,7 +236,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div>
                         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {t('todayStatus')} - {new Date().getDate()} {months[new Date().getMonth()]}
+                            {t('todayStatus')}
                         </h3>
                     </div>
                     {/* Summary pills / Search */}
@@ -282,7 +282,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 {displayedCompleted.map((driver, i) => {
                                     const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-[4px] border-y border-r transition-colors ${isDark ? 'bg-emerald-500/[0.05] border-l-emerald-500 border-y-transparent border-r-transparent' : 'bg-emerald-500/[0.05] border-l-emerald-500 border-y-transparent border-r-transparent'}`}>
+                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-[4px] border-emerald-500 transition-colors ${isDark ? 'bg-emerald-500/[0.05]' : 'bg-emerald-50/60'}`}>
                                             {/* Avatar */}
                                             <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
                                                 {driver.avatar
@@ -345,7 +345,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     const remaining = Math.max(0, plan - paid);
                                     const driverCar = cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-2 py-3 border-b transition-colors ${isDark ? 'border-white/[0.05]' : 'border-gray-100'} last:border-b-0`}>
+                                        <div key={driver.id} className={`flex items-center gap-3 px-2 py-3 transition-colors`}>
                                             {/* Avatar */}
                                             <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
                                                 {driver.avatar
@@ -365,7 +365,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             </div>
                                             {/* Amount */}
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                                <span className={`text-[13px] font-bold tabular-nums ${isDark ? 'text-rose-500' : 'text-rose-600'}`}>
+                                                <span className={`text-[13px] font-bold tabular-nums text-rose-500`}>
                                                     −{remaining.toLocaleString()} UZS
                                                 </span>
                                             </div>

@@ -97,6 +97,7 @@ export interface Car {
     dayOverrides?: Record<string, DayOverride>;
     isDeleted?: boolean;
     createdAt?: number;
+    inRepair?: boolean;
     /** Scratch / damage history for this car. Persisted as JSONB in the cars table. */
     damage?: CarDamage[];
 }

@@ -313,7 +313,7 @@ export default function CarDamageModal({ isDark, carId, carName, recordedBy, onS
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp"
                             multiple
                             capture="environment"
                             className="hidden"

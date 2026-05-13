@@ -93,7 +93,9 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 }) => {
     const isDark = theme === 'dark';
 
-    const [visible,        setVisible]        = useState(false);
+    const [visible,        setVisible]         = useState(false);
+    const [shouldRender,   setShouldRender]    = useState(false);
+    const [internalDriver, setInternalDriver]  = useState<Driver | null>(null);
     const [viewingDoc,     setViewingDoc]      = useState<{ name:string; data:string }|null>(null);
     const [activeTab,      setActiveTab]       = useState<'info'|'finance'|'history'>('info');
     const [filterMonth,    setFilterMonth]     = useState<string>('all');
@@ -102,8 +104,16 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const [docs,           setDocs]            = useState<any[]>([]);
 
     useEffect(() => {
-        if (isOpen && driver?.id) {
-            supabase.from('drivers').select('documents').eq('id', driver.id).single()
+        if (driver) {
+            setInternalDriver(driver);
+        }
+    }, [driver]);
+
+    const activeDriver = driver || internalDriver;
+
+    useEffect(() => {
+        if (isOpen && activeDriver?.id) {
+            supabase.from('drivers').select('documents').eq('id', activeDriver.id).single()
                 .then(({ data, error }) => {
                     if (!error && data?.documents) {
                         setDocs(data.documents);
@@ -111,10 +121,10 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                         setDocs([]);
                     }
                 });
-        } else {
+        } else if (!isOpen && !shouldRender) {
             setDocs([]);
         }
-    }, [isOpen, driver?.id]);
+    }, [isOpen, activeDriver?.id, shouldRender]);
 
     // Top-up form
     const [showTopUp,    setShowTopUp]    = useState(false);
@@ -125,12 +135,12 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
     const handleTopUpSubmit = async () => {
         const amount = parseInt(topUpRaw, 10);
-        if (!driver || isNaN(amount) || amount <= 0 || !onAddTransaction) return;
+        if (!activeDriver || isNaN(amount) || amount <= 0 || !onAddTransaction) return;
         setTopUpLoading(true);
         try {
             await onAddTransaction({
-                driverId: driver.id,
-                driverName: driver.name,
+                driverId: activeDriver.id,
+                driverName: activeDriver.name,
                 amount,
                 type: TransactionType.INCOME,
                 category: 'deposit_topup',
@@ -146,11 +156,11 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     };
 
     const monthGroups = useMemo((): MonthGroup[] => {
-        if (!driver) return [];
-        const fallbackDailyPlan = driver.dailyPlan ?? 0;
+        if (!activeDriver) return [];
+        const fallbackDailyPlan = activeDriver.dailyPlan ?? 0;
         const dailyPlan = car ? (car.dailyPlan ?? 0) : fallbackDailyPlan;
         const driverTxs = transactions.filter(tx =>
-            tx.driverId === driver.id &&
+            tx.driverId === activeDriver.id &&
             tx.status !== PaymentStatus.DELETED
         );
         if (driverTxs.length === 0) return [];
@@ -194,7 +204,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     );
                     
                     if (!isDayOffTx && !isNotWorkingTx) {
-                        monthlyTarget += getEffectivePlanForDriverDay(driver, dayDate, car);
+                        monthlyTarget += getEffectivePlanForDriverDay(activeDriver, dayDate, car);
                     }
                 }
 
@@ -207,7 +217,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     monthlyTarget, paidPercent,
                 };
             });
-    }, [driver, car, transactions]);
+    }, [activeDriver, car, transactions]);
 
     const prevTab = useRef(activeTab);
     useEffect(() => {
@@ -225,22 +235,27 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const visibleGroups = filterMonth === 'all' ? monthGroups : monthGroups.filter(g => g.monthKey === filterMonth);
 
     const finance = useMemo((): DriverFinanceSummary | null => {
-        if (!driver) return null;
-        return calcDriverFinance(driver, car, transactions);
-    }, [driver, car, transactions]);
+        if (!activeDriver) return null;
+        return calcDriverFinance(activeDriver, car, transactions);
+    }, [activeDriver, car, transactions]);
 
     // Animate open/close
     useEffect(() => {
         if (isOpen) {
+            setShouldRender(true);
             document.body.style.overflow = 'hidden';
-            requestAnimationFrame(() => setVisible(true));
-        } else {
+            // slight delay ensures the initial off-screen state is painted before animating in
+            const timer = setTimeout(() => setVisible(true), 10);
+            return () => clearTimeout(timer);
+        } else if (shouldRender) {
             setVisible(false);
-            const timer = setTimeout(() => { document.body.style.overflow = ''; }, 280);
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+                document.body.style.overflow = '';
+            }, 300);
             return () => clearTimeout(timer);
         }
-        return () => { document.body.style.overflow = ''; };
-    }, [isOpen]);
+    }, [isOpen, shouldRender]);
 
     useEffect(() => {
         const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -248,15 +263,14 @@ export const DriverDetailsSheet: React.FC<Props> = ({
         return () => document.removeEventListener('keydown', h);
     }, [onClose]);
 
-    if (!isOpen && !visible) return null;
-    if (!driver) return null;
+    if (!shouldRender || !activeDriver) return null;
 
     const dailyPlan  = car?.dailyPlan ?? 0;
-    const dt         = driver.driverType ?? 'deposit';
+    const dt         = activeDriver.driverType ?? 'deposit';
     const remaining  = finance?.remainingDeposit ?? 0;
-    const initial    = finance?.depositAmount ?? driver.depositAmount ?? 0;
+    const initial    = finance?.depositAmount ?? activeDriver.depositAmount ?? 0;
     const depositPct = initial > 0 ? Math.max(0, Math.min(100, (remaining / initial) * 100)) : 0;
-    const threshold  = driver.depositWarningThreshold ?? 1_000_000;
+    const threshold  = activeDriver.depositWarningThreshold ?? 1_000_000;
     const isLow      = dt === 'deposit' && remaining <= threshold;
 
     const statusLabel: Record<string,string> = { ACTIVE: 'Faol', OFFLINE: 'Oflayn', BUSY: "Band" };
@@ -293,15 +307,15 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     <div className={`flex-shrink-0 flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b ${bdr}`}>
                         <div className="flex items-center gap-4 min-w-0">
                             <DriverAvatar
-                                src={driver.avatar}
-                                name={driver.name}
+                                src={activeDriver.avatar}
+                                name={activeDriver.name}
                                 size={56}
                                 theme={theme}
                                 rounded="2xl"
                                 className="flex-shrink-0 ring-2 ring-black/10"
                             />
                             <div className="min-w-0">
-                                <h2 className={`text-lg font-bold truncate ${txt}`}>{driver.name}</h2>
+                                <h2 className={`text-lg font-bold truncate ${txt}`}>{activeDriver.name}</h2>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 </div>
                             </div>
@@ -356,7 +370,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                         <div className="flex flex-col divide-y divide-teal-500/[0.10]">
                                             <div className="px-4 py-2.5 min-w-[130px]">
                                                 <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Jami</p>
-                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(driver.totalContractAmount ?? 0)}</p>
+                                                <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400/70' : 'text-teal-600/80'}`}>{fmt(activeDriver.totalContractAmount ?? 0)}</p>
                                             </div>
                                             <div className="px-4 py-2.5">
                                                 <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>To'langan</p>
@@ -365,12 +379,12 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                             <div className="px-4 py-2.5">
                                                 <p className={`text-[9px] font-bold uppercase tracking-wider ${muted}`}>Foizi</p>
                                                 <p className={`text-[15px] font-black font-mono tabular-nums mt-0.5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
-                                                    {driver.totalContractAmount ? Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100) : 0}%
+                                                    {activeDriver.totalContractAmount ? Math.round(((finance?.contractPaid ?? 0) / activeDriver.totalContractAmount) * 100) : 0}%
                                                 </p>
                                             </div>
-                                            {(driver.contractDurationMonths && driver.contractDurationMonths > 0) ? (() => {
-                                                const totalM = driver.contractDurationMonths;
-                                                const startMs = driver.contractStartDate || Date.now();
+                                            {(activeDriver.contractDurationMonths && activeDriver.contractDurationMonths > 0) ? (() => {
+                                                const totalM = activeDriver.contractDurationMonths;
+                                                const startMs = activeDriver.contractStartDate || Date.now();
                                                 const msPassed = Math.max(0, Date.now() - startMs);
                                                 const mPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24 * 30.44));
                                                 
@@ -390,12 +404,12 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                     </div>
 
                                     {/* Progress bar */}
-                                    {driver.totalContractAmount && driver.totalContractAmount > 0 ? (
+                                    {activeDriver.totalContractAmount && activeDriver.totalContractAmount > 0 ? (
                                         <div className={`px-5 pb-4 mt-2`}>
                                             <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-teal-200/60'}`}>
                                                 <div
                                                     className={`h-full rounded-full transition-all duration-700 bg-teal-500`}
-                                                    style={{ width: `${Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100)}%` }}
+                                                    style={{ width: `${Math.round(((finance?.contractPaid ?? 0) / activeDriver.totalContractAmount) * 100)}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -514,7 +528,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                     <div>
                                         <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-violet-400/70' : 'text-violet-700/70'}`}>💳 Oylik maosh</p>
                                         <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>
-                                            {fmt(driver.monthlySalary ?? 0)}
+                                            {fmt(activeDriver.monthlySalary ?? 0)}
                                         </p>
                                         <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>UZS / oy</p>
                                     </div>
@@ -543,15 +557,15 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                     </div>
                                 )}
                                 {/* Phone */}
-                                {driver.phone && (
+                                {activeDriver.phone && (
                                     <div className={`rounded-2xl border px-4 py-3 flex flex-col justify-between ${isDark ? 'border-white/[0.07] bg-white/[0.03]' : 'border-gray-200 bg-gray-50'}`}>
                                         <p className={`text-[10px] font-black uppercase tracking-wider mb-1 ${muted}`}>📞 Telefon</p>
                                         <div>
-                                            <p className={`text-[13px] font-mono font-bold ${sub}`}>{driver.phone}</p>
-                                            {driver.extraPhone && <p className={`text-[11px] font-mono mt-0.5 ${muted}`}>{driver.extraPhone}</p>}
-                                            {driver.telegram && <p className={`text-[11px] font-mono mt-0.5 text-sky-400`}>✈ {driver.telegram}</p>}
+                                            <p className={`text-[13px] font-mono font-bold ${sub}`}>{activeDriver.phone}</p>
+                                            {activeDriver.extraPhone && <p className={`text-[11px] font-mono mt-0.5 ${muted}`}>{activeDriver.extraPhone}</p>}
+                                            {activeDriver.telegram && <p className={`text-[11px] font-mono mt-0.5 text-sky-400`}>✈ {activeDriver.telegram}</p>}
                                         </div>
-                                        <a href={`tel:${driver.phone}`} className={`mt-2 text-[11px] font-bold px-3 py-1 rounded-lg self-start transition-colors ${isDark ? 'bg-white/[0.05] text-white/40 hover:text-white' : 'bg-gray-200 text-gray-500 hover:text-gray-700'}`}>
+                                        <a href={`tel:${activeDriver.phone}`} className={`mt-2 text-[11px] font-bold px-3 py-1 rounded-lg self-start transition-colors ${isDark ? 'bg-white/[0.05] text-white/40 hover:text-white' : 'bg-gray-200 text-gray-500 hover:text-gray-700'}`}>
                                             Qo'ng'iroq
                                         </a>
                                     </div>
@@ -626,12 +640,12 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                             )}
 
                             {/* Notes */}
-                            {(driver as any).notes && (
+                            {(activeDriver as any).notes && (
                                 <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.07]' : 'border-gray-200'}`}>
                                     <div className={`px-4 py-2.5 border-b ${bdr} ${bg2}`}>
                                         <p className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>📝 Izohlar</p>
                                     </div>
-                                    <p className={`px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap ${sub}`}>{(driver as any).notes}</p>
+                                    <p className={`px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap ${sub}`}>{(activeDriver as any).notes}</p>
                                 </div>
                             )}
                         </div>
@@ -707,13 +721,13 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     {userRole === 'admin' && (
                         <div className={`flex-shrink-0 flex gap-3 px-5 py-4 border-t pb-8 sm:pb-4 ${bdr} ${isDark ? '' : 'bg-gray-50'}`}>
                             <button
-                                onClick={() => { onClose(); setTimeout(() => onEdit(driver), 150); }}
+                                onClick={() => { onClose(); setTimeout(() => onEdit(activeDriver), 150); }}
                                 className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 border-teal-500/20' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'}`}
                             >
                                 <EditIcon className="w-4 h-4" /> Tahrirlash
                             </button>
                             <button
-                                onClick={() => { onClose(); setTimeout(() => onDelete(driver.id), 150); }}
+                                onClick={() => { onClose(); setTimeout(() => onDelete(activeDriver.id), 150); }}
                                 className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'}`}
                             >
                                 <TrashIcon className="w-4 h-4" /> O'chirish
@@ -725,14 +739,129 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
             {/* Image lightbox */}
             {viewingDoc && createPortal(
-                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" onClick={() => setViewingDoc(null)}>
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
-                    <div className="relative z-10 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-                        <img src={viewingDoc.data} alt={viewingDoc.name} className="w-full rounded-2xl object-contain max-h-[80vh] shadow-2xl" />
-                        <button onClick={() => setViewingDoc(null)} className="absolute -top-3 -right-3 w-8 h-8 bg-white text-gray-900 rounded-full flex items-center justify-center shadow-lg">
-                            <XIcon className="w-4 h-4" />
-                        </button>
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Hujjat rasmi"
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-10"
+                    style={{
+                        background: 'rgba(0,0,0,0.72)',
+                        backdropFilter: 'blur(8px)',
+                        animation: 'rcFadeIn 0.2s ease-out',
+                    }}
+                    onClick={() => setViewingDoc(null)}
+                    onKeyDown={e => { if (e.key === 'Escape') setViewingDoc(null); }}
+                >
+                    {/* Card */}
+                    <div
+                        className={`relative flex flex-col rounded-3xl shadow-2xl overflow-hidden w-full ${
+                            isDark ? 'bg-[#141c2e]' : 'bg-[#f5f5f7]'
+                        }`}
+                        style={{
+                            maxWidth: 520,
+                            maxHeight: 'calc(100vh - 80px)',
+                            animation: 'rcPopUp 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+                            boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* ── Header ── */}
+                        <div
+                            className={`flex items-center justify-between px-5 py-4 flex-shrink-0 border-b ${
+                                isDark ? 'border-white/[0.07] bg-[#1a2336]' : 'border-black/[0.07] bg-white'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                    isDark ? 'bg-teal-500/15' : 'bg-teal-50'
+                                }`}>
+                                    <svg className="w-4.5 h-4.5 text-teal-500" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5l-2-2H10z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className={`text-[14px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                        {viewingDoc.name}
+                                    </p>
+                                    <p className={`text-[11px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        👤 {activeDriver.name}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); forceDownload(viewingDoc.data, viewingDoc.name); }}
+                                    title="Yuklab olish"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-2xl font-semibold transition-all active:scale-90 ${
+                                        isDark
+                                            ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/20'
+                                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                                    }`}
+                                >
+                                    <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                </button>
+                                <button
+                                    autoFocus
+                                    onClick={() => setViewingDoc(null)}
+                                    title="Yopish"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-90 ${
+                                        isDark
+                                            ? 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.14] hover:text-white border border-white/[0.10]'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 border border-gray-200'
+                                    }`}
+                                >
+                                    <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ── Image area ── */}
+                        <div
+                            className={`flex-1 overflow-y-auto flex items-center justify-center p-4 ${
+                                isDark ? 'bg-[#0e1525]' : 'bg-gray-100'
+                            }`}
+                            style={{ minHeight: 200 }}
+                        >
+                            <img
+                                src={viewingDoc.data}
+                                alt={viewingDoc.name}
+                                className="w-full rounded-2xl object-contain shadow-xl"
+                                style={{ maxHeight: 'calc(100vh - 240px)' }}
+                            />
+                        </div>
+
+                        {/* ── Footer ── */}
+                        <div className={`px-5 py-3.5 flex items-center justify-between flex-shrink-0 border-t ${
+                            isDark ? 'border-white/[0.07] bg-[#1a2336]' : 'border-black/[0.07] bg-white'
+                        }`}>
+                            <span className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                Tashqariga bosing yoki{' '}
+                                <kbd className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
+                                    isDark ? 'bg-white/[0.08] border border-white/[0.12] text-gray-400' : 'bg-gray-100 border border-gray-200 text-gray-500'
+                                }`}>Esc</kbd>{' '}
+                                yopish uchun
+                            </span>
+                            <button
+                                onClick={() => setViewingDoc(null)}
+                                className={`text-[12px] font-semibold px-3.5 py-1.5 rounded-xl transition-all active:scale-95 ${
+                                    isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.08]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                                }`}
+                            >
+                                Yopish
+                            </button>
+                        </div>
                     </div>
+
+                    <style>{`
+                        @keyframes rcFadeIn { from { opacity:0 } to { opacity:1 } }
+                        @keyframes rcPopUp  { from { opacity:0; transform:scale(0.92) translateY(12px) } to { opacity:1; transform:scale(1) translateY(0) } }
+                    `}</style>
                 </div>,
                 document.body
             )}

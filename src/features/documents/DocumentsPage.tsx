@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Document as Doc,
     DocumentCategory,
@@ -36,8 +37,8 @@ function FileTypeIcon({ mimeType, className }: { mimeType: string; className?: s
     return <FileIcon className={className} />;
 }
 
-function categoryLabel(cat: DocumentCategory): string {
-    return { all: 'Barchasi', image: 'Rasmlar', pdf: 'PDF', video: 'Video', other: 'Boshqa' }[cat];
+function categoryLabel(cat: DocumentCategory, t: any): string {
+    return { all: t('all', 'Barchasi'), image: t('images', 'Rasmlar'), pdf: 'PDF', video: 'Video', other: t('other', 'Boshqa') }[cat];
 }
 
 const CATEGORIES: DocumentCategory[] = ['all', 'image', 'pdf', 'other'];
@@ -54,6 +55,7 @@ interface DocumentsPageProps {
 }
 
 export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, userName }) => {
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
 
     const openDoc = (doc: Doc) => {
@@ -285,10 +287,10 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Hujjatlar
+                        {t('documents', 'Hujjatlar')}
                     </h2>
                     <p className={`text-[13px] mt-0.5 ${mutedText}`}>
-                        {docs.length} ta fayl saqlangan
+                        {docs.length} {t('filesSaved', 'ta fayl saqlangan')}
                     </p>
                 </div>
                 <button
@@ -296,13 +298,13 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-[14px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95 shadow-sm"
                 >
                     <UploadCloudIcon className="w-4 h-4" />
-                    <span>Yuklash</span>
+                    <span>{t('upload', 'Yuklash')}</span>
                 </button>
                 <input
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
+                    accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
                     className="hidden"
                     onChange={e => e.target.files && startUpload(e.target.files)}
                 />
@@ -316,7 +318,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         type="text"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        placeholder="Fayl qidirish…"
+                        placeholder={t('searchFile', 'Fayl qidirish…')}
                         className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-[13px] outline-none transition-colors ${inputCls}`}
                     />
                     {search && (
@@ -338,7 +340,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                                         : isDark ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
                                 }`}
                             >
-                                {categoryLabel(cat)}
+                                {categoryLabel(cat, t)}
                             </button>
                         );
                     })}
@@ -362,9 +364,9 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         <FolderOpenIcon className={`w-8 h-8 ${isDark ? 'text-white/30' : 'text-gray-300'}`} />
                     </div>
                     <div className="text-center">
-                        <p className={`font-semibold text-base ${isDark ? 'text-white/60' : 'text-gray-500'}`}>Fayl yo'q</p>
-                        <p className={`text-[13px] mt-1 ${mutedText}`}>Bosing yoki fayllarni bu yerga tashlang</p>
-                        <p className={`text-[11px] mt-1 ${mutedText}`}>Rasm, PDF, Excel, Word · Maks {MAX_FILE_MB} MB</p>
+                        <p className={`font-semibold text-base ${isDark ? 'text-white/60' : 'text-gray-500'}`}>{t('noFiles', 'Fayl yo\'q')}</p>
+                        <p className={`text-[13px] mt-1 ${mutedText}`}>{t('dropFilesHere', 'Bosing yoki fayllarni bu yerga tashlang')}</p>
+                        <p className={`text-[11px] mt-1 ${mutedText}`}>Rasm, PDF, Excel, Word · {t('max', 'Maks')} {MAX_FILE_MB} MB</p>
                     </div>
                 </div>
             ) : (
@@ -388,7 +390,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     ) : filtered.length === 0 ? (
                         <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${isDark ? 'bg-surface border-white/[0.06]' : 'bg-white border-gray-100'}`}>
                             <SearchIcon className={`w-8 h-8 mb-3 ${mutedText}`} />
-                            <p className={`font-medium text-sm ${bodyText}`}>Hech narsa topilmadi</p>
+                            <p className={`font-medium text-sm ${bodyText}`}>{t('noResultsFound', 'Hech narsa topilmadi')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -414,10 +416,10 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
             {uploadModal && (
                 <Modal isDark={isDark} onClose={resetUploadModal}>
                     <h3 className={`text-base font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Fayl yuklash
+                        {t('uploadFile', 'Fayl yuklash')}
                     </h3>
                     <p className={`text-[12px] mb-4 ${mutedText}`}>
-                        {pendingFiles.length > 0 ? `${pendingFiles.length} ta fayl tayyor` : 'Yuklash uchun fayl yo\'q'}
+                        {pendingFiles.length > 0 ? `${pendingFiles.length} ${t('filesReady', 'ta fayl tayyor')}` : t('noFilesToUpload', 'Yuklash uchun fayl yo\'q')}
                     </p>
 
                     {/* Video warning */}
@@ -474,14 +476,14 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                             onClick={resetUploadModal}
                             className={`flex-1 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-white/70' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
                         >
-                            Bekor qilish
+                            {t('cancel', 'Bekor qilish')}
                         </button>
                         {pendingFiles.length > 0 && (
                             <button
                                 onClick={confirmUpload}
                                 className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-colors"
                             >
-                                Yuklash
+                                {t('upload', 'Yuklash')}
                             </button>
                         )}
                     </div>
@@ -504,29 +506,29 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
             {/* ── Edit modal ───────────────────────────────────────────────── */}
             {editDoc && (
                 <Modal isDark={isDark} onClose={() => setEditDoc(null)}>
-                    <h3 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Nomni tahrirlash</h3>
+                    <h3 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('editName', 'Nomni tahrirlash')}</h3>
                     <div className="space-y-3">
                         <input
                             type="text"
                             value={editName}
                             onChange={e => setEditName(e.target.value)}
-                            placeholder="Fayl nomi"
+                            placeholder={t('fileName', 'Fayl nomi')}
                             className={`w-full px-3 py-2.5 rounded-xl border text-[13px] outline-none transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08] text-white placeholder-white/30 focus:border-[#0d9488]' : 'bg-gray-50 border-gray-200 text-black focus:border-[#0f766e]'}`}
                         />
                         <textarea
                             value={editDesc}
                             onChange={e => setEditDesc(e.target.value)}
-                            placeholder="Tavsif (ixtiyoriy)"
+                            placeholder={t('descriptionOptional', 'Tavsif (ixtiyoriy)')}
                             rows={3}
                             className={`w-full px-3 py-2.5 rounded-xl border text-[13px] outline-none transition-colors resize-none ${isDark ? 'bg-surface-2 border-white/[0.08] text-white placeholder-white/30 focus:border-[#0d9488]' : 'bg-gray-50 border-gray-200 text-black focus:border-[#0f766e]'}`}
                         />
                     </div>
                     <div className="flex gap-2 mt-5">
                         <button onClick={() => setEditDoc(null)} className={`flex-1 py-2.5 rounded-xl text-[14px] font-semibold ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-white/70' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
-                            Bekor
+                            {t('cancel', 'Bekor')}
                         </button>
                         <button onClick={handleEditSave} className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-colors">
-                            Saqlash
+                            {t('save', 'Saqlash')}
                         </button>
                     </div>
                 </Modal>
@@ -538,16 +540,16 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
                         <TrashIcon className="w-6 h-6 text-red-500" />
                     </div>
-                    <h3 className={`text-base font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Faylni o'chirish</h3>
+                    <h3 className={`text-base font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('deleteFile', 'Faylni o\'chirish')}</h3>
                     <p className={`text-[13px] mb-5 ${mutedText}`}>
-                        "<span className="font-semibold">{deleteConfirm.name}</span>" o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.
+                        "<span className="font-semibold">{deleteConfirm.name}</span>" {t('confirmFileDelete', 'o\'chirilsinmi? Bu amalni qaytarib bo\'lmaydi.')}
                     </p>
                     <div className="flex gap-2">
                         <button onClick={() => setDeleteConfirm(null)} className={`flex-1 py-2.5 rounded-xl text-[14px] font-semibold ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-white/70' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
-                            Bekor
+                            {t('cancel', 'Bekor')}
                         </button>
                         <button onClick={handleDeleteConfirmed} className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-red-500 hover:bg-red-600 text-white transition-colors">
-                            O'chirish
+                            {t('delete', 'O\'chirish')}
                         </button>
                     </div>
                 </Modal>

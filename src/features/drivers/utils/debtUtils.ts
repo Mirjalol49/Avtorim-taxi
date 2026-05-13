@@ -1,6 +1,7 @@
 import { Driver, DriverPaymentType } from '../../../core/types/driver.types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
+import { getEffectivePlanForDriverDay } from './driverPlanHistory';
 
 export interface ExplicitDebtInfo {
     totalExplicitDebt: number; // Sum of all DEBT transactions
@@ -97,24 +98,30 @@ export function calcDriverDebt(
     const fallbackStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime();
     const trackingStartMs = driver.createdAt ? driver.createdAt : Math.min(earliestTx, fallbackStart);
 
-    // Group elapsed days per month (never exceeds today)
-    const daysPerMonth: Record<string, number> = {};
     let currentMs = trackingStartMs;
     const todayMs = Date.now();
+    
     while (currentMs <= todayMs) {
         const d = new Date(currentMs);
-        const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        daysPerMonth[mk] = (daysPerMonth[mk] || 0) + 1;
+        const loopDateKey = dateKey(currentMs);
+        
+        const isDayOffTx = validTxs.some(tx => 
+            (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) && 
+            dateKey(tx.timestamp) === loopDateKey
+        );
+        
+        let planForDay = 0;
+        if (!isDayOffTx) {
+            planForDay = getEffectivePlanForDriverDay(driver, d, car);
+        }
+        
+        if (planForDay > 0) {
+            workingDays++;
+        }
+        totalAutoDebt += planForDay;
+
         currentMs += 86400000;
     }
-
-    // Use actual DAY_OFF transaction count per month instead of a hardcoded 2
-    Object.entries(daysPerMonth).forEach(([mk, daysInMonth]) => {
-        const offs = dayOffsByMonth[mk] ?? 0;
-        const activeDays = Math.max(0, daysInMonth - offs);
-        workingDays += activeDays;
-        totalAutoDebt += activeDays * dailyPlan;
-    });
 
     const netDebt = (totalAutoDebt + totalExplicitDebt) - totalIncome;
 

@@ -4,6 +4,11 @@ import { Note, NoteColor } from '../../core/types/note.types';
 import { addNote, updateNote, deleteNote } from '../../../services/notesService';
 import { useNotes } from './hooks/useNotes';
 import { useAuth } from '../auth/hooks/useAuth';
+import * as Popover from '@radix-ui/react-popover';
+import { DayPicker } from 'react-day-picker';
+import { format } from 'date-fns';
+import { uz, ru, enUS } from 'date-fns/locale';
+import 'react-day-picker/style.css';
 
 interface NotesPageProps {
     theme: 'light' | 'dark';
@@ -81,16 +86,16 @@ const SqlSetupBanner: React.FC<{ isDark: boolean }> = ({ isDark }) => {
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
 
-const COLOR_MAP: Record<NoteColor, { bg: string; border: string; dot: string; label: string }> = {
-    default: { bg: '', border: '', dot: 'bg-gray-400', label: 'Default' },
-    red:     { bg: 'bg-red-500/10',    border: 'border-red-500/30',    dot: 'bg-red-400',    label: 'Red' },
-    orange:  { bg: 'bg-orange-500/10', border: 'border-orange-500/30', dot: 'bg-orange-400', label: 'Orange' },
-    yellow:  { bg: 'bg-yellow-500/10', border: 'border-yellow-400/30', dot: 'bg-yellow-400', label: 'Yellow' },
-    green:   { bg: 'bg-green-500/10',  border: 'border-green-500/30',  dot: 'bg-green-400',  label: 'Green' },
-    teal:    { bg: 'bg-teal-500/10',   border: 'border-teal-500/30',   dot: 'bg-teal-400',   label: 'Teal' },
-    blue:    { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   dot: 'bg-blue-400',   label: 'Blue' },
-    purple:  { bg: 'bg-purple-500/10', border: 'border-purple-500/30', dot: 'bg-purple-400', label: 'Purple' },
-    pink:    { bg: 'bg-pink-500/10',   border: 'border-pink-500/30',   dot: 'bg-pink-400',   label: 'Pink' },
+const COLOR_MAP: Record<NoteColor, { bg: string; border: string; dot: string; ring: string; label: string }> = {
+    default: { bg: '', border: '', dot: 'bg-gray-400', ring: 'ring-gray-400', label: 'Default' },
+    red:     { bg: 'bg-red-500/10',    border: 'border-red-500/30',    dot: 'bg-red-400',    ring: 'ring-red-400',    label: 'Red' },
+    orange:  { bg: 'bg-orange-500/10', border: 'border-orange-500/30', dot: 'bg-orange-400', ring: 'ring-orange-400', label: 'Orange' },
+    yellow:  { bg: 'bg-yellow-500/10', border: 'border-yellow-400/30', dot: 'bg-yellow-400', ring: 'ring-yellow-400', label: 'Yellow' },
+    green:   { bg: 'bg-green-500/10',  border: 'border-green-500/30',  dot: 'bg-green-400',  ring: 'ring-green-400',  label: 'Green' },
+    teal:    { bg: 'bg-teal-500/10',   border: 'border-teal-500/30',   dot: 'bg-teal-400',   ring: 'ring-teal-400',   label: 'Teal' },
+    blue:    { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   dot: 'bg-blue-400',   ring: 'ring-blue-400',   label: 'Blue' },
+    purple:  { bg: 'bg-purple-500/10', border: 'border-purple-500/30', dot: 'bg-purple-400', ring: 'ring-purple-400', label: 'Purple' },
+    pink:    { bg: 'bg-pink-500/10',   border: 'border-pink-500/30',   dot: 'bg-pink-400',   ring: 'ring-pink-400',   label: 'Pink' },
 };
 
 const ALL_COLORS = Object.keys(COLOR_MAP) as NoteColor[];
@@ -137,7 +142,15 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
     const [showReminder, setShowReminder] = useState(false);
     const [confirmDel, setConfirmDel] = useState(false);
     const contentRef = useRef<HTMLTextAreaElement>(null);
+    const { t, i18n } = useTranslation();
     const isDark = theme === 'dark';
+
+    const getLocale = (lang: string) => {
+        if (lang === 'ru') return ru;
+        if (lang === 'en') return enUS;
+        return uz;
+    };
+    const locale = getLocale(i18n.language);
 
     useEffect(() => {
         if (!note) contentRef.current?.focus();
@@ -155,6 +168,28 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
     const cardBg = isDark ? 'bg-surface' : 'bg-white';
     const cardBorder = isDark ? 'border-white/[0.08]' : 'border-gray-200';
 
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateStr = reminderAt ? (() => { const d = new Date(reminderAt); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; })() : '';
+    const timeStr = reminderAt ? (() => { const d = new Date(reminderAt); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; })() : '';
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (!val) { setReminderAt(null); return; }
+        const [y, m, d] = val.split('-').map(Number);
+        const current = reminderAt ? new Date(reminderAt) : new Date();
+        current.setFullYear(y, m - 1, d);
+        if (!reminderAt) current.setHours(12, 0, 0, 0);
+        setReminderAt(current.getTime());
+    };
+
+    const updateTime = (hStr: string | null, mStr: string | null) => {
+        if (!reminderAt) return;
+        const current = new Date(reminderAt);
+        if (hStr !== null) current.setHours(parseInt(hStr, 10));
+        if (mStr !== null) current.setMinutes(parseInt(mStr, 10));
+        setReminderAt(current.getTime());
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
@@ -168,7 +203,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                             key={c}
                             title={COLOR_MAP[c].label}
                             onClick={() => setColor(c)}
-                            className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? `outline outline-2 outline-offset-2 ${isDark ? 'outline-white' : 'outline-gray-900'} scale-110` : 'opacity-50 hover:opacity-100 hover:scale-110'}`}
+                            className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? `ring-2 ring-offset-2 ${isDark ? 'ring-offset-[#1c1c1e]' : 'ring-offset-white'} ${COLOR_MAP[c].ring} scale-110` : 'opacity-50 hover:opacity-100 hover:scale-110'}`}
                         />
                     ))}
                     <div className="flex-1" />
@@ -221,18 +256,18 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17H9m10.659-9.338A8 8 0 1 0 4.341 16.66M18 8V4m0 0l-2 2m2-2l2 2" />
                             </svg>
                             {reminderAt
-                                ? new Date(reminderAt).toLocaleString('uz-UZ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                                : "Eslatma qo'shish"}
+                                ? new Date(reminderAt).toLocaleString(i18n.language === 'en' ? 'en-US' : i18n.language === 'ru' ? 'ru-RU' : 'uz-UZ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                : t('addReminder', 'Eslatma qo\'shish')}
                         </button>
                     ) : (
-                        <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-surface-2 border-white/[0.07]' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-surface-2' : 'bg-slate-50'}`}>
                             {/* Header */}
-                            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+                            <div className={`flex items-center justify-between px-4 py-3`}>
                                 <div className="flex items-center gap-2">
                                     <svg className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17H9m10.659-9.338A8 8 0 1 0 4.341 16.66M18 8V4m0 0l-2 2m2-2l2 2" />
                                     </svg>
-                                    <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Eslatma vaqti</span>
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('reminderTime', 'Eslatma vaqti')}</span>
                                 </div>
                                 <button
                                     type="button"
@@ -247,13 +282,13 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
                             {/* Quick picks */}
                             <div className="px-4 pt-3 pb-2">
-                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Tezkor tanlash</p>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('quickPick', 'Tezkor tanlash')}</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {[
-                                        { label: '30 daqiqa', mins: 30 },
-                                        { label: '1 soat',    mins: 60 },
-                                        { label: '3 soat',    mins: 180 },
-                                        { label: 'Ertaga',    mins: 1440 },
+                                        { label: t('30mins', '30 daqiqa'), mins: 30 },
+                                        { label: t('1hour', '1 soat'),    mins: 60 },
+                                        { label: t('3hours', '3 soat'),    mins: 180 },
+                                        { label: t('tomorrow', 'Ertaga'),    mins: 1440 },
                                     ].map(({ label, mins }) => {
                                         const ts = Date.now() + mins * 60_000;
                                         const active = reminderAt !== null && Math.abs((reminderAt ?? 0) - ts) < 60_000;
@@ -264,10 +299,10 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                                 onClick={() => setReminderAt(ts)}
                                                 className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-all ${
                                                     active
-                                                        ? 'bg-[#0f766e] text-white shadow-sm'
+                                                        ? 'bg-[#0f766e]/10 text-[#0f766e]'
                                                         : isDark
                                                             ? 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.10] hover:text-white'
-                                                            : 'bg-white text-gray-600 border border-gray-200 hover:border-[#0f766e] hover:text-[#0f766e]'
+                                                            : 'bg-white shadow-sm text-gray-600 hover:bg-gray-50'
                                                 }`}
                                             >
                                                 {label}
@@ -279,26 +314,135 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
                             {/* Custom datetime */}
                             <div className="px-4 pb-4 pt-2">
-                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Aniq vaqt</p>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('exactTime', 'Aniq vaqt')}</p>
                                 <div className="flex items-center gap-2">
-                                    <input
-                                        type="datetime-local"
-                                        value={toInputValue(reminderAt)}
-                                        min={toInputValue(Date.now())}
-                                        onChange={e => setReminderAt(e.target.value ? new Date(e.target.value).getTime() : null)}
-                                        className={`flex-1 text-xs px-3 py-2.5 rounded-xl border outline-none focus:ring-2 focus:ring-[#0f766e]/40 focus:border-[#0f766e] transition-all font-medium ${
-                                            isDark
-                                                ? 'bg-surface-3 border-white/[0.08] text-white [color-scheme:dark]'
-                                                : 'bg-white border-gray-200 text-gray-900'
-                                        }`}
-                                    />
+                                    <Popover.Root>
+                                        <Popover.Trigger asChild>
+                                            <button type="button" className={`flex-1 flex items-center justify-start gap-2.5 px-3.5 py-2.5 text-[13px] font-semibold rounded-xl border shadow-sm transition-all outline-none ${isDark ? 'bg-surface-3 border-white/[0.08] text-white hover:bg-white/[0.06] focus:ring-2 focus:ring-[#0f766e]/40' : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50 focus:ring-2 focus:ring-[#0f766e]/20'}`}>
+                                                <svg className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                {reminderAt ? format(new Date(reminderAt), 'PPP', { locale }) : t('selectDay', 'Kunni tanlang')}
+                                            </button>
+                                        </Popover.Trigger>
+                                        <Popover.Portal>
+                                            <Popover.Content
+                                                align="start"
+                                                sideOffset={8}
+                                                className={`z-[60] p-3 rounded-2xl shadow-xl outline-none border ${isDark ? 'bg-[#1c1c1e] border-white/[0.08] text-white' : 'bg-white border-gray-100 text-gray-900'}`}
+                                            >
+                                                <style>
+                                                    {`
+                                                    .rdp-root {
+                                                        --rdp-accent-color: #0f766e;
+                                                        --rdp-background-color: ${isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'};
+                                                        margin: 0;
+                                                    }
+                                                    .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover {
+                                                        color: white;
+                                                        background-color: #0f766e;
+                                                    }
+                                                    .rdp-day_today:not(.rdp-day_selected) {
+                                                        font-weight: bold;
+                                                        color: #0f766e;
+                                                        background-color: ${isDark ? 'rgba(15, 118, 110, 0.15)' : 'rgba(15, 118, 110, 0.1)'};
+                                                        border: 2px solid ${isDark ? 'rgba(15, 118, 110, 0.5)' : 'rgba(15, 118, 110, 0.3)'};
+                                                        border-radius: 100%;
+                                                    }
+                                                    `}
+                                                </style>
+                                                <DayPicker
+                                                    locale={locale}
+                                                    mode="single"
+                                                    selected={reminderAt ? new Date(reminderAt) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (!date) return;
+                                                        const d = new Date(date);
+                                                        if (reminderAt) {
+                                                            const current = new Date(reminderAt);
+                                                            d.setHours(current.getHours(), current.getMinutes(), 0, 0);
+                                                        } else {
+                                                            const now = new Date();
+                                                            let h = now.getHours();
+                                                            let m = Math.ceil(now.getMinutes() / 5) * 5;
+                                                            if (m === 60) { m = 0; h += 1; }
+                                                            d.setHours(h, m, 0, 0);
+                                                        }
+                                                        setReminderAt(d.getTime());
+                                                    }}
+                                                />
+                                            </Popover.Content>
+                                        </Popover.Portal>
+                                    </Popover.Root>
+
+                                    <Popover.Root>
+                                        <Popover.Trigger asChild>
+                                            <button 
+                                                type="button" 
+                                                disabled={!reminderAt}
+                                                className={`relative w-[110px] flex items-center justify-start gap-2.5 px-3.5 py-2.5 text-[13px] font-semibold rounded-xl border shadow-sm transition-all outline-none disabled:opacity-50 ${isDark ? 'bg-surface-3 border-white/[0.08] text-white hover:bg-white/[0.06] focus:ring-2 focus:ring-[#0f766e]/40' : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50 focus:ring-2 focus:ring-[#0f766e]/20'}`}
+                                            >
+                                                <svg className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                {reminderAt ? timeStr : '--:--'}
+                                            </button>
+                                        </Popover.Trigger>
+                                        <Popover.Portal>
+                                            <Popover.Content
+                                                align="center"
+                                                sideOffset={8}
+                                                className={`z-[60] flex p-1.5 rounded-2xl shadow-xl outline-none border ${isDark ? 'bg-[#1c1c1e] border-white/[0.08] text-white' : 'bg-white border-gray-100 text-gray-900'}`}
+                                            >
+                                                <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+                                                <div className="flex h-56">
+                                                    <div className="overflow-y-auto px-1 no-scrollbar border-r border-gray-100 dark:border-white/[0.08]">
+                                                        <div className={`text-[10px] font-bold text-center mb-1 text-gray-400 sticky top-0 py-1 z-10 ${isDark ? 'bg-[#1c1c1e]' : 'bg-white'}`}>{t('hourUpper', 'SOAT')}</div>
+                                                        {Array.from({ length: 24 }, (_, i) => pad(i)).map(h => {
+                                                            const isActive = timeStr.split(':')[0] === h;
+                                                            return (
+                                                                <button 
+                                                                    key={h} 
+                                                                    ref={isActive ? (el) => el && setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'instant' }), 10) : null}
+                                                                    type="button" 
+                                                                    onClick={() => updateTime(h, null)} 
+                                                                    className={`w-12 h-9 flex items-center justify-center rounded-lg text-sm font-semibold transition-all mb-0.5 ${isActive ? 'bg-[#0f766e] text-white shadow-sm' : isDark ? 'hover:bg-white/[0.06] text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
+                                                                >
+                                                                    {h}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    <div className="overflow-y-auto px-1 no-scrollbar">
+                                                        <div className={`text-[10px] font-bold text-center mb-1 text-gray-400 sticky top-0 py-1 z-10 ${isDark ? 'bg-[#1c1c1e]' : 'bg-white'}`}>{t('minuteUpper', 'DAQIQA')}</div>
+                                                        {Array.from({ length: 12 }, (_, i) => pad(i * 5)).map(m => {
+                                                            const isActive = timeStr.split(':')[1] === m;
+                                                            return (
+                                                                <button 
+                                                                    key={m} 
+                                                                    ref={isActive ? (el) => el && setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'instant' }), 10) : null}
+                                                                    type="button" 
+                                                                    onClick={() => updateTime(null, m)} 
+                                                                    className={`w-12 h-9 flex items-center justify-center rounded-lg text-sm font-semibold transition-all mb-0.5 ${isActive ? 'bg-[#0f766e] text-white shadow-sm' : isDark ? 'hover:bg-white/[0.06] text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
+                                                                >
+                                                                    {m}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </Popover.Content>
+                                        </Popover.Portal>
+                                    </Popover.Root>
+
                                     {reminderAt && (
                                         <button
                                             type="button"
                                             onClick={() => setReminderAt(null)}
-                                            className={`flex-shrink-0 text-xs px-3 py-2.5 rounded-xl font-semibold transition-all border ${isDark ? 'border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-200 bg-red-50 text-red-500 hover:bg-red-100'}`}
+                                            className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-all ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                                            title="Bekor qilish"
                                         >
-                                            Bekor
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
                                     )}
                                 </div>
@@ -320,7 +464,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                         {onDelete && !confirmDel && (
                             <button
                                 onClick={() => setConfirmDel(true)}
-                                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}
+                                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
                             >
                                 {labels.delete}
                             </button>
@@ -365,6 +509,12 @@ const PinIcon = ({ pinned, className }: { pinned?: boolean; className?: string }
     </svg>
 );
 
+const BellOutlineIcon = ({ className }: { className?: string }) => (
+    <svg className={className ?? ''} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17H9m10.659-9.338A8 8 0 1 0 4.341 16.66M18 8V4m0 0l-2 2m2-2l2 2" />
+    </svg>
+);
+
 // ─── Note Card ────────────────────────────────────────────────────────────────
 
 interface NoteCardProps {
@@ -372,20 +522,23 @@ interface NoteCardProps {
     theme: 'light' | 'dark';
     onClick: () => void;
     onTogglePin: () => void;
+    onDismissReminder: () => void;
 }
 
-const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }) => {
+const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, onDismissReminder }) => {
     const isDark = theme === 'dark';
     const colorCfg = COLOR_MAP[note.color];
+    const isDue = note.reminderAt && note.reminderAt <= Date.now();
     
-    // Always use plain white/dark background
     const bg = isDark ? 'bg-surface hover:bg-surface-2' : 'bg-white hover:bg-gray-50';
-    const border = isDark ? 'border-white/[0.08]' : 'border-gray-200';
+    
+    const borderBase = isDark ? 'border-white/[0.08]' : 'border-gray-200';
+    const borderDue = isDue ? 'border-l-[4px] border-l-red-500 shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : '';
 
     return (
         <div
             onClick={onClick}
-            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${bg} ${border}`}
+            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col h-full ${bg} ${borderBase} ${borderDue}`}
         >
             <div className="flex items-start justify-between gap-3 mb-2">
                 <h3 className={`font-semibold text-lg leading-snug line-clamp-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -402,6 +555,20 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
                     {note.color !== 'default' && (
                         <div className={`w-3 h-3 rounded-full ${colorCfg.dot}`} />
                     )}
+                    {/* Overdue Action Checkbox */}
+                    {isDue && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDismissReminder(); }}
+                            className="group/check flex items-center justify-center w-6 h-6 rounded-full transition-colors ml-1"
+                            title="O'qildi (Eslatmani o'chirish)"
+                        >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isDark ? 'border-gray-500 group-hover/check:border-red-400 group-hover/check:bg-red-500/20' : 'border-gray-300 group-hover/check:border-red-500 group-hover/check:bg-red-50'}`}>
+                                <svg className="w-3 h-3 text-red-500 opacity-0 group-hover/check:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -413,28 +580,46 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin }
             )}
 
             {/* Footer */}
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex justify-between items-center mt-auto w-full pt-4">
+                <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {timeAgo(note.updatedMs)}
+                </span>
+                
                 <div className="flex items-center gap-2">
-                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
-                        {timeAgo(note.updatedMs)}
-                    </span>
-                    {note.reminderAt && note.reminderAt > Date.now() && (
-                        <span className={`text-[10px] font-semibold flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} title={`Eslatma: ${new Date(note.reminderAt).toLocaleString()}`}>
-                            🔔 {new Date(note.reminderAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                    {note.reminderAt && (
+                        <span 
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                                isDue 
+                                    ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.2)] dark:shadow-[inset_0_0_0_1px_rgba(239,68,68,0.1)]' 
+                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 shadow-[inset_0_0_0_1px_rgba(217,119,6,0.2)] dark:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.1)]'
+                            }`} 
+                            title={`Eslatma: ${new Date(note.reminderAt).toLocaleString()}`}
+                        >
+                            {isDue ? (
+                                <>
+                                    <BellOutlineIcon className="w-3 h-3 animate-bounce origin-bottom opacity-80" />
+                                    <span className="uppercase tracking-wider">Vaqti keldi</span>
+                                </>
+                            ) : (
+                                <>
+                                    <BellOutlineIcon className="w-3 h-3 opacity-80" />
+                                    {new Date(note.reminderAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                </>
+                            )}
                         </span>
                     )}
+                    <button
+                        onClick={e => { e.stopPropagation(); onTogglePin(); }}
+                        className={`w-7 h-7 flex items-center justify-center flex-shrink-0 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                            note.isPinned
+                                ? 'text-amber-400 hover:bg-amber-400/10'
+                                : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.08]' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                        title={note.isPinned ? 'Unpin' : 'Pin'}
+                    >
+                        <PinIcon pinned={note.isPinned} />
+                    </button>
                 </div>
-                <button
-                    onClick={e => { e.stopPropagation(); onTogglePin(); }}
-                    className={`w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
-                        note.isPinned
-                            ? 'text-amber-400 hover:bg-amber-400/10'
-                            : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.08]' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                    }`}
-                    title={note.isPinned ? 'Unpin' : 'Pin'}
-                >
-                    <PinIcon pinned={note.isPinned} />
-                </button>
             </div>
         </div>
     );
@@ -491,8 +676,18 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, ini
         return list;
     }, [notes, search, filterColor]);
 
-    const pinned   = filtered.filter(n => n.isPinned);
-    const unpinned = filtered.filter(n => !n.isPinned);
+    const sortNotes = (list: Note[]) => {
+        const now = Date.now();
+        return [...list].sort((a, b) => {
+            const aDue = a.reminderAt && a.reminderAt <= now ? 1 : 0;
+            const bDue = b.reminderAt && b.reminderAt <= now ? 1 : 0;
+            if (aDue !== bDue) return bDue - aDue; // Due notes first (1 before 0)
+            return b.updatedMs - a.updatedMs; // Then by most recently updated
+        });
+    };
+
+    const pinned   = useMemo(() => sortNotes(filtered.filter(n => n.isPinned)), [filtered]);
+    const unpinned = useMemo(() => sortNotes(filtered.filter(n => !n.isPinned)), [filtered]);
 
     const openNew = () => {
         setEditingNote(null);
@@ -580,6 +775,17 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, ini
         }));
         try {
             await updateNote(note.id, { isPinned: updated.isPinned });
+        } catch {
+            setLocalNotes(remoteNotes); // rollback
+        }
+    };
+
+    const handleDismissReminder = async (note: Note) => {
+        const updated = { ...note, reminderAt: null, updatedMs: Date.now() };
+        // Optimistic update
+        setLocalNotes(prev => prev.map(n => n.id === note.id ? updated : n));
+        try {
+            await updateNote(note.id, { reminderAt: null });
         } catch {
             setLocalNotes(remoteNotes); // rollback
         }
@@ -727,6 +933,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, ini
                                     theme={theme}
                                     onClick={() => openEdit(note)}
                                     onTogglePin={() => handleTogglePin(note)}
+                                    onDismissReminder={() => handleDismissReminder(note)}
                                 />
                             ))}
                         </div>
@@ -749,6 +956,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, ini
                                     theme={theme}
                                     onClick={() => openEdit(note)}
                                     onTogglePin={() => handleTogglePin(note)}
+                                    onDismissReminder={() => handleDismissReminder(note)}
                                 />
                             ))}
                         </div>

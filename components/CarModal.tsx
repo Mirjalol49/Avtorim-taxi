@@ -31,6 +31,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const [docError,     setDocError]     = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
+  const [inRepair,     setInRepair]     = useState(false);
   const avatarFileRef = useRef<File | null>(null); // raw File — uploaded to Storage on submit
 
   const isDark = theme === 'dark';
@@ -43,19 +44,20 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       setName(editingCar.name);
       setLicensePlate(editingCar.licensePlate);
       setDailyPlan(editingCar.dailyPlan ? editingCar.dailyPlan.toLocaleString() : '');
+      setAvatar(editingCar.avatar ?? '');
       setError(null);
       setDocError(null);
+      setInRepair(editingCar.inRepair ?? false);
 
-      // Load avatar + documents on-demand (not included in realtime subscription to save egress)
+      // Load documents on-demand (not included in realtime subscription to save egress)
       if (editingCar.id) {
         supabase
           .from('cars')
-          .select('avatar,documents')
+          .select('documents')
           .eq('id', editingCar.id)
           .single()
           .then(({ data }) => {
             if (data) {
-              setAvatar(data.avatar ?? '');
               setDocuments(data.documents ?? []);
             }
           });
@@ -68,6 +70,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       setDocuments([]);
       setError(null);
       setDocError(null);
+      setInRepair(false);
     }
   }, [isOpen, editingCar?.id]);
 
@@ -100,7 +103,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
         avatarFileRef.current = null;
       }
 
-      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar: finalAvatar, dailyPlan: planValue, documents });
+      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar: finalAvatar, dailyPlan: planValue, documents, inRepair });
       onClose();
     } catch (err: any) {
       setError(err?.message || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
@@ -326,6 +329,23 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
               className={inputClass}
               placeholder="750,000"
             />
+          </div>
+
+          {/* ── Status ── */}
+          <div className={`p-4 rounded-xl border flex items-center justify-between ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+            <div>
+              <p className={`text-sm font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Ta'mirda (In Repair)</p>
+              <p className={`text-[11px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Avtomobil ta'mirlanayotganligini belgilash</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={inRepair} onChange={e => setInRepair(e.target.checked)} />
+              <div className={`w-11 h-6 rounded-full peer transition-colors ${
+                isDark ? 'bg-black/40 peer-checked:bg-red-500/80' : 'bg-gray-300 peer-checked:bg-red-500'
+              }`}></div>
+              <div className={`absolute left-[2px] top-[2px] w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full ${
+                isDark ? 'bg-white/80 peer-checked:bg-white' : 'bg-white'
+              }`}></div>
+            </label>
           </div>
 
           {/* ── Documents ── */}

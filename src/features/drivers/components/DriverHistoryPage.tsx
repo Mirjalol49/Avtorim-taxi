@@ -71,7 +71,15 @@ const generateDailyTimeline = (
     today.setHours(0, 0, 0, 0);
     
     // Determine start date
-    let start = new Date(driver.createdAt || (Date.now() - 30 * 24 * 60 * 60 * 1000));
+    let startMs = driver.createdAt;
+    if (!startMs) {
+        if (planTxs.length > 0) {
+            startMs = Math.min(...planTxs.map(t => t.timestamp));
+        } else {
+            startMs = Date.now();
+        }
+    }
+    let start = new Date(startMs);
     start.setHours(0, 0, 0, 0);
     
     const daysArr: DailyHistory[] = [];
@@ -97,13 +105,8 @@ const generateDailyTimeline = (
         
         const overrideType = getDriverDayOverrideType(driver, current, fallbackCar);
         let expectedPlan = getEffectivePlanForDriverDay(driver, current, fallbackCar);
-        // Fallback: if driver's own plan resolves to 0 but the car has a real plan, use the car's
-        if (expectedPlan === 0 && fallbackCar) {
-            const carPlan = getEffectivePlanForDay(fallbackCar, current);
-            if (carPlan > 0) expectedPlan = carPlan;
-        }
         
-        const hasDayOffTx = dayTxs.some(t => t.type === TransactionType.DAY_OFF);
+        const hasDayOffTx = dayTxs.some(t => t.type === TransactionType.DAY_OFF || t.type === TransactionType.NOT_WORKING);
         const isDayOff = overrideType === 'OFF' || overrideType === 'NOT_WORKING' || hasDayOffTx;
         
         const paidAmount = dayTxs
@@ -243,18 +246,44 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
         }, { totalPaid: 0, totalDebt: 0 });
     }, [filteredTimeline]);
 
+    const globalBalance = useMemo(() => {
+        const totalExpected = timeline.reduce((sum, month) => sum + month.totalExpected, 0);
+        const totalPaid = timeline.reduce((sum, month) => sum + month.totalPaid, 0);
+        const explicitDebt = allDriverTxs.filter(t => t.type === TransactionType.DEBT).reduce((s, t) => s + Math.abs(t.amount), 0);
+        
+        const netDebt = (totalExpected + explicitDebt) - totalPaid;
+        return -netDebt;
+    }, [timeline, allDriverTxs]);
+
     // Deposit ledger with running balance (newest first)
     const depositLedger = useMemo(() => {
         const initial = driver.depositAmount ?? 0;
-        const sorted = [...depositTxs].sort((a,b) => a.timestamp - b.timestamp);
-        let bal = initial;
+        
+        // Include a synthetic transaction for the initial deposit if it exists
+        const txsToProcess = [...depositTxs];
+        if (initial > 0) {
+            txsToProcess.push({
+                id: 'synthetic_initial_deposit',
+                driverId: driver.id,
+                driverName: driver.name,
+                amount: initial,
+                type: TransactionType.INCOME,
+                category: 'deposit_topup',
+                description: "Boshlang'ich depozit",
+                timestamp: driver.createdAt || 0, // Fallback to 0 so it's the very first
+                status: PaymentStatus.ACTIVE,
+            } as Transaction);
+        }
+
+        const sorted = txsToProcess.sort((a,b) => a.timestamp - b.timestamp);
+        let bal = 0; // We start from 0 because the synthetic transaction will add the initial amount
         const rows = sorted.map(tx => {
             const prev = bal;
             bal = tx.category === 'deposit_topup' ? bal + Math.abs(tx.amount) : bal - Math.abs(tx.amount);
             return { tx, prevBal: prev, newBal: bal };
         });
         return rows.reverse();
-    }, [depositTxs, driver.depositAmount]);
+    }, [depositTxs, driver]);
 
     // ── Styles ───────────────────────────────────────────────────────────────
     const bg      = isDark ? '#000000' : '#F2F2F7'; // True iOS backgrounds
@@ -270,7 +299,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
         { id: 'daily_history', icon: '📅', label: 'Tarix', count: 0 },
     ];
     if (!isSalary) {
-        TABS.push({ id: 'deposit', icon: '🏦', label: 'Depozit', count: depositTxs.length });
+        TABS.push({ id: 'deposit', icon: '🏦', label: 'Depozit', count: depositLedger.length });
     } else {
         TABS.push({ id: 'salary', icon: '💳', label: 'Maosh', count: salaryTxs.length });
     }
@@ -303,31 +332,32 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                 </div>
 
                 {/* Hero Section */}
-                <div className="px-6 pb-6 pt-2 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full overflow-hidden mb-3 border-2 border-white/10 shadow-lg">
-                        {driver.avatar
-                            ? <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover"/>
-                            : <div className={`w-full h-full flex items-center justify-center text-3xl font-bold ${isDark ? 'bg-[#2C2C2E] text-white/40' : 'bg-gray-200 text-gray-500'}`}>{driver.name.charAt(0)}</div>
-                        }
-                    </div>
-                    <h1 className={`text-[22px] font-bold tracking-tight mb-1 ${txt}`}>{driver.name}</h1>
-                    <div className={`flex items-center justify-center flex-wrap gap-2 text-[15px] ${muted}`}>
-                        <span className="truncate">{driver.carModel || 'Noma\'lum avto'}</span>
-                        <span>•</span>
-                        <span className="font-mono">{driver.licensePlate}</span>
-                    </div>
-
-                    {/* Global Balance Widget */}
-                    <div className="mt-5 w-full max-w-md">
-                        <div className={`rounded-2xl p-4 flex items-center justify-between shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                <div className="px-6 pb-6 pt-2 flex flex-col items-center w-full max-w-md mx-auto">
+                    <div className={`w-full rounded-2xl shadow-sm border p-6 flex flex-col items-center ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-white border-gray-100'}`}>
+                        <div className="w-16 h-16 rounded-full overflow-hidden mb-3 ring-2 ring-gray-100 dark:ring-white/10">
+                            {driver.avatar
+                                ? <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover"/>
+                                : <div className={`w-full h-full flex items-center justify-center text-2xl font-bold ${isDark ? 'bg-surface-2 text-white/40' : 'bg-gray-100 text-gray-500'}`}>{driver.name.charAt(0)}</div>
+                            }
+                        </div>
+                        <h1 className={`text-xl font-bold tracking-tight mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h1>
+                        <div className={`flex items-center justify-center flex-wrap gap-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <span className="truncate">{driver.carModel || 'Noma\'lum avto'}</span>
+                            <span>•</span>
+                            <span className="font-mono">{driver.licensePlate}</span>
+                        </div>
+                        
+                        <div className={`w-full h-px my-5 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />
+                        
+                        <div className="w-full flex items-center justify-between">
                             <div className="flex flex-col">
-                                <span className={`text-[13px] font-medium ${muted}`}>Umumiy Qarz / Balans</span>
-                                <span className={`text-[24px] font-bold tracking-tight font-mono ${driver.balance < 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : (driver.balance > 0 ? (isDark ? 'text-[#30D158]' : 'text-[#34C759]') : txt)}`}>
-                                    {driver.balance > 0 ? '+' : ''}{fmtCompact(driver.balance)} UZS
+                                <span className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Umumiy Qarz / Balans</span>
+                                <span className={`text-lg font-bold tracking-tight ${globalBalance < 0 ? 'text-rose-600 dark:text-rose-500' : (globalBalance > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-white' : 'text-gray-900'))}`}>
+                                    {globalBalance > 0 ? '+' : ''}{fmtCompact(globalBalance)} UZS
                                 </span>
                             </div>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${driver.balance < 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-                                <WalletIcon className={`w-6 h-6 ${driver.balance < 0 ? 'text-red-500' : 'text-emerald-500'}`} />
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${globalBalance < 0 ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
+                                <WalletIcon className={`w-5 h-5 ${globalBalance < 0 ? 'text-rose-500' : 'text-emerald-500'}`} />
                             </div>
                         </div>
                     </div>
@@ -359,50 +389,58 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                     {tab === 'daily_history' && (
                         <div className="space-y-6">
                             {/* Filter Section */}
-                            <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
-                                <div className="flex flex-col sm:flex-row gap-4 items-end">
-                                    <div className="flex-1 w-full relative z-20">
-                                        <DatePicker 
-                                            label="Boshlanish sanasi" 
-                                            value={startDate} 
-                                            onChange={setStartDate} 
-                                            theme={theme} 
-                                            placeholder="dd/mm/yyyy" 
-                                        />
-                                    </div>
-                                    <div className="flex-1 w-full relative z-10">
-                                        <DatePicker 
-                                            label="Tugash sanasi" 
-                                            value={endDate} 
-                                            onChange={setEndDate} 
-                                            theme={theme} 
-                                            placeholder="dd/mm/yyyy" 
-                                        />
-                                    </div>
-                                    {(startDate || endDate) && (
-                                        <button 
-                                            onClick={() => { setStartDate(null); setEndDate(null); }}
-                                            className={`px-4 py-2 rounded-xl text-[13px] font-bold h-[46px] ${isDark ? 'bg-white/10 hover:bg-white/15 text-white' : 'bg-black/5 hover:bg-black/10 text-black'}`}
-                                        >
-                                            Tozalash
-                                        </button>
-                                    )}
-                                </div>
-                                
+                            {/* Inline Filter Section */}
+                            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between px-2">
                                 {periodSummary && (
-                                    <div className={`mt-4 pt-4 border-t flex flex-col sm:flex-row gap-4 justify-between ${isDark ? 'border-[#38383A]' : 'border-[#E5E5EA]'}`}>
-                                        <div>
-                                            <p className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda to'langan" : "Jami to'langan"}</p>
-                                            <p className={`text-[18px] font-bold font-mono tracking-tight ${isDark ? 'text-[#30D158]' : 'text-[#34C759]'}`}>+{fmtCompact(periodSummary.totalPaid)} UZS</p>
+                                    <div className="flex gap-6 items-center w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+                                        <div className="flex flex-col flex-shrink-0">
+                                            <span className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami"} to'langan</span>
+                                            <span className={`text-[15px] font-bold font-mono tracking-tight ${isDark ? 'text-[#30D158]' : 'text-[#34C759]'}`}>+{fmtCompact(periodSummary.totalPaid)} UZS</span>
                                         </div>
-                                        <div>
-                                            <p className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda qarz" : "Jami qarz"}</p>
-                                            <p className={`text-[18px] font-bold font-mono tracking-tight ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : txt}`}>
+                                        <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
+                                        <div className="flex flex-col flex-shrink-0">
+                                            <span className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami"} qarz</span>
+                                            <span className={`text-[15px] font-bold font-mono tracking-tight ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : txt}`}>
                                                 {periodSummary.totalDebt > 0 ? '−' : ''}{fmtCompact(periodSummary.totalDebt)} UZS
-                                            </p>
+                                            </span>
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="flex items-center gap-2 relative z-20 self-end sm:self-auto w-full sm:w-auto">
+                                    <div className={`flex items-center p-1 rounded-xl shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-white border-gray-200'}`}>
+                                        <div className="w-32">
+                                            <DatePicker 
+                                                label="Boshlanish"
+                                                value={startDate} 
+                                                onChange={setStartDate} 
+                                                theme={theme} 
+                                                placeholder="Boshlanish" 
+                                                hideLabel
+                                            />
+                                        </div>
+                                        <span className={`px-2 ${muted}`}>-</span>
+                                        <div className="w-32">
+                                            <DatePicker 
+                                                label="Tugash"
+                                                value={endDate} 
+                                                onChange={setEndDate} 
+                                                theme={theme} 
+                                                placeholder="Tugash" 
+                                                hideLabel
+                                            />
+                                        </div>
+                                        {(startDate || endDate) && (
+                                            <button 
+                                                onClick={() => { setStartDate(null); setEndDate(null); }}
+                                                className={`p-2 ml-1 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                                                title="Tozalash"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {filteredTimeline.length === 0 ? (
@@ -443,48 +481,57 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                         {(expandedMonths[group.monthKey] || (startDate || endDate)) && (
                                             <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA] shadow-sm'} animate-in fade-in slide-in-from-top-2 duration-200`}>
                                             <div className={`divide-y ${divider}`}>
-                                                {group.days.map(day => (
-                                                    <div key={day.dateKey} className={`flex flex-col sm:flex-row sm:items-center p-3 sm:p-4 gap-3 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/50'} transition-colors`}>
+                                                {group.days.map(day => {
+                                                    const isReducedRate = day.expectedPlan > 0 && day.expectedPlan < (driver.contractDailyPlan || car?.dailyPlan || 0);
+                                                    const rowBg = isReducedRate ? (isDark ? 'bg-white/[0.03]' : 'bg-slate-50') : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/50');
+                                                    
+                                                    return (
+                                                    <div key={day.dateKey} className={`flex flex-col sm:flex-row sm:items-center p-3 sm:p-4 gap-3 ${rowBg} transition-colors`}>
                                                         
                                                         {/* Left: Date */}
-                                                        <div className={`flex-shrink-0 w-[52px] h-[52px] rounded-xl flex flex-col items-center justify-center ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
-                                                            <span className={`text-[11px] font-semibold uppercase tracking-wider ${muted}`}>{MONTH_SHORT[day.dateObj.getMonth()]}</span>
-                                                            <span className={`text-[20px] font-bold leading-none mt-0.5 ${txt}`}>{day.dateObj.getDate()}</span>
+                                                        <div className="flex-shrink-0 w-[52px] flex flex-col items-center">
+                                                            <div className={`w-full h-[52px] rounded-xl flex flex-col items-center justify-center relative ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
+                                                                <span className={`text-[11px] font-semibold uppercase tracking-wider ${muted}`}>{MONTH_SHORT[day.dateObj.getMonth()]}</span>
+                                                                <span className={`text-[20px] font-bold leading-none mt-0.5 ${txt}`}>{day.dateObj.getDate()}</span>
+                                                                
+                                                                {/* Status Dot Badge */}
+                                                                {day.status === 'UNPAID' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white dark:border-[#1C1C1E]" title="To'lanmadi" />}
+                                                                {day.status === 'PARTIAL' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white dark:border-[#1C1C1E]" title="Qisman to'landi" />}
+                                                                {day.status === 'PAID' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1C1C1E]" title="To'liq to'landi" />}
+                                                                {day.status === 'DAY_OFF' && <div className="absolute -top-2 -right-2 text-[12px] leading-none z-10" title="Dam olish">🏝️</div>}
+                                                            </div>
                                                         </div>
 
-                                                        {/* Center: Status & Car */}
+                                                        {/* Center: Transactions Details */}
                                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                                {day.status === 'PAID' && <span className="px-2 py-0.5 rounded-[5px] text-[11px] font-bold bg-[#34C759]/15 text-[#34C759]">To'landi</span>}
-                                                                {day.status === 'PARTIAL' && <span className="px-2 py-0.5 rounded-[5px] text-[11px] font-bold bg-[#FF9500]/15 text-[#FF9500]">Qisman</span>}
-                                                                {day.status === 'UNPAID' && <span className="px-2 py-0.5 rounded-[5px] text-[11px] font-bold bg-[#FF3B30]/15 text-[#FF3B30]">To'lanmadi</span>}
-                                                                {day.status === 'DAY_OFF' && <span className="px-2 py-0.5 rounded-[5px] text-[11px] font-bold bg-[#0A84FF]/15 text-[#0A84FF]">🏝️ Dam olish</span>}
-                                                            </div>
-                                                            <div className={`text-[14px] font-medium truncate ${txt}`}>
-                                                                {day.carName}
-                                                            </div>
-                                                            {day.transactions.filter(t => t.description && t.type !== TransactionType.DAY_OFF).map(t => (
-                                                                <div key={t.id} className={`text-[12px] truncate mt-0.5 ${muted}`}>
+                                                            {day.transactions.filter(t => t.description && t.type !== TransactionType.DAY_OFF).map((t, idx) => (
+                                                                <div key={t.id} className={`text-[13px] truncate ${idx > 0 ? 'mt-1' : ''} ${txt}`}>
                                                                     ↳ {t.description}
                                                                 </div>
                                                             ))}
+                                                            {day.transactions.filter(t => t.description && t.type !== TransactionType.DAY_OFF).length === 0 && (
+                                                                <div className={`text-[13px] italic ${muted}`}>Izohsiz</div>
+                                                            )}
                                                         </div>
 
                                                         {/* Right: Financials */}
                                                         <div className="flex-shrink-0 text-left sm:text-right min-w-[110px] mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-transparent sm:border-t-0" style={{ borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                                                             {!day.isDayOff && (
                                                                 <>
-                                                                    <div className={`text-[12px] font-medium mb-0.5 flex sm:block justify-between ${muted}`}>
-                                                                        <span>Reja:</span> <span>{fmtCompact(day.expectedPlan)}</span>
+                                                                    <div className={`text-[17px] font-bold tracking-tight mb-0.5 flex sm:block justify-between ${day.paidAmount > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-white' : 'text-gray-900')}`}>
+                                                                        <span className="sm:hidden text-sm font-medium">To'lov:</span> 
+                                                                        <span>{day.paidAmount > 0 ? '+' : ''}{fmtCompact(day.paidAmount)}</span>
                                                                     </div>
-                                                                    <div className={`text-[16px] font-bold font-mono tracking-tight flex sm:block justify-between ${day.paidAmount > 0 ? (isDark ? 'text-[#30D158]' : 'text-[#34C759]') : muted}`}>
-                                                                        <span>To'lov:</span> <span>{day.paidAmount > 0 ? '+' : ''}{fmtCompact(day.paidAmount)}</span>
-                                                                    </div>
-                                                                    {day.dailyDebt > 0 && (
-                                                                        <div className={`text-[12px] font-bold mt-1 flex sm:block justify-between ${isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]'}`}>
-                                                                            <span>Qarz:</span> <span>−{fmtCompact(day.dailyDebt)}</span>
+                                                                    <div className="flex sm:flex-col sm:items-end justify-between gap-1 sm:gap-0 mt-1">
+                                                                        <div className="text-[12px] font-medium text-gray-400">
+                                                                            <span className="sm:hidden">Reja: </span><span>{fmtCompact(day.expectedPlan)}</span>
                                                                         </div>
-                                                                    )}
+                                                                        {day.dailyDebt > 0 && (
+                                                                            <div className="text-[12px] font-medium text-rose-500 mt-0.5 sm:mt-0">
+                                                                                <span className="sm:hidden">Qarz: </span><span>−{fmtCompact(day.dailyDebt)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </>
                                                             )}
                                                             {day.isDayOff && (
@@ -494,7 +541,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                             )}
                                                         </div>
                                                     </div>
-                                                ))}
+                                                )})}
                                             </div>
                                         </div>
                                         )}
@@ -511,10 +558,10 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                             <div className={`rounded-2xl border px-6 py-5 ${isDark ? 'border-[#FF9F0A]/20 bg-[#FF9F0A]/10' : 'border-[#FF9500]/20 bg-[#FF9500]/10'}`}>
                                 <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-[#FF9F0A]/80' : 'text-[#FF9500]/80'}`}>🏦 Joriy depozit</p>
                                 <p className={`text-[32px] font-bold tracking-tight font-mono ${isDark ? 'text-[#FF9F0A]' : 'text-[#FF9500]'}`}>{fmt(driver.depositAmount ?? 0)}</p>
-                                <p className={`text-[13px] font-medium mt-1 ${muted}`}>{depositTxs.length} ta harakat</p>
+                                <p className={`text-[13px] font-medium mt-1 ${muted}`}>{depositLedger.length} ta harakat</p>
                             </div>
 
-                            {depositTxs.length === 0 ? (
+                            {depositLedger.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center py-16 gap-3 ${muted}`}>
                                     <span className="text-4xl">🏦</span>
                                     <p className="text-[15px] font-medium">Depozit harakatlari yo'q</p>

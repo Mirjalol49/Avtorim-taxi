@@ -27,8 +27,12 @@ export function getPlanForDriverDate(driver: Driver | null | undefined, date: Da
         }
     }
 
-    if (effective) return effective.plan;
+    if (effective) {
+        if (effective.carId === null) return 0;
+        return effective.plan;
+    }
 
+    if (history[0].carId === null) return 0;
     return history[0].plan;
 }
 
@@ -84,11 +88,12 @@ export function appendDriverPlanChange(
     newPlan: number,
     currentPlan: number,
     carId?: string | null,
-    driverCreatedAt?: number
+    driverCreatedAt?: number,
+    legacyCarId?: string | null
 ): DriverPlanHistoryEntry[] {
     const base: DriverPlanHistoryEntry[] = (existing && existing.length > 0)
         ? [...existing]
-        : [{ plan: currentPlan, effectiveFrom: driverCreatedAt ?? Date.now(), carId: null }];
+        : [{ plan: currentPlan, effectiveFrom: driverCreatedAt ?? Date.now(), carId: legacyCarId ?? null }];
 
     const last = base[base.length - 1];
     // If plan and carId are the same, don't append

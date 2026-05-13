@@ -12,7 +12,6 @@ import NotificationBell from './components/NotificationBell';
 import DriverModal from './components/DriverModal';
 import CarModal from './components/CarModal';
 import CarsPage from './src/features/cars/CarsPage';
-import DamagesPage from './src/features/damages/DamagesPage';
 import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar } from './services/carsService';
 import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
@@ -47,6 +46,7 @@ import { TransactionsPage } from './src/features/transactions/TransactionsPage';
 import { FinancePage } from './src/features/finance/FinancePage';
 import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
 import { PayrollPage } from './src/features/finance/PayrollPage';
+import FinesPage from './src/features/fines/FinesPage';
 import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
 import { TRANSLATIONS } from './translations';
@@ -114,6 +114,8 @@ const AppContent: React.FC = () => {
     setNotifications,
     setReadNotificationIds,
     setUnreadCount,
+    dismissNotification,
+    dismissReadNotifications,
     loading: contextDataLoading,
   } = useDataContext();
 
@@ -542,7 +544,15 @@ const AppContent: React.FC = () => {
 
 
   // --- RENDER HELPERS ---
-  const renderSidebarItem = (path: string, label: string, Icon: React.FC<any>) => {
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  useEffect(() => {
+      const timer = setInterval(() => setCurrentTime(Date.now()), 30000);
+      return () => clearInterval(timer);
+  }, []);
+
+  const dueNotesCount = allNotes.filter(n => n.reminderAt && n.reminderAt <= currentTime).length;
+
+  const renderSidebarItem = (path: string, label: string, Icon: React.FC<any>, badgeCount?: number) => {
     const isActive = location.pathname === path;
     return (
       <button
@@ -560,7 +570,12 @@ const AppContent: React.FC = () => {
           ? theme === 'dark' ? 'text-[#0d9488]' : 'text-[#0f766e]'
           : theme === 'dark' ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'
           }`} />
-        <span className="font-medium text-sm">{label}</span>
+        <span className="font-medium text-sm flex-1 text-left">{label}</span>
+        {!!badgeCount && badgeCount > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse">
+            {badgeCount}
+          </span>
+        )}
       </button>
     );
   };
@@ -619,7 +634,7 @@ const AppContent: React.FC = () => {
   }
 
   // Check if current URL matches any valid route
-  const validPaths = ['/dashboard', '/drivers', '/cars', '/damages', '/transactions', '/finance', '/monthly-plan', '/payroll', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
+  const validPaths = ['/dashboard', '/drivers', '/cars', '/transactions', '/finance', '/monthly-plan', '/payroll', '/fines', '/notes', '/documents', '/pdf-viewer', '/', '/mirjalol49'];
   const is404 = !validPaths.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   // Render 404 page fullscreen if path doesn't match
@@ -666,12 +681,12 @@ const AppContent: React.FC = () => {
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
           {renderSidebarItem('/cars', t.cars, CarIcon)}
-          {renderSidebarItem('/damages', 'Shikastlar', AlertTriangleIcon)}
           {renderSidebarItem('/monthly-plan', t.monthlyPlan, CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
           {renderSidebarItem('/payroll', t.salaryManagement || 'Ish Haqi', WalletIcon)}
-          {renderSidebarItem('/notes', t.notes, NotesIcon)}
+          {renderSidebarItem('/fines', t.fines || 'Jarimalar', AlertTriangleIcon)}
+          {renderSidebarItem('/notes', t.notes, NotesIcon, dueNotesCount)}
           {renderSidebarItem('/documents', t.documents || 'Hujjatlar', FolderOpenIcon)}
 
           {/* Super Admin — only visible to the super admin account */}
@@ -939,15 +954,12 @@ const AppContent: React.FC = () => {
               }}
               onDeleteNotification={async (id) => {
                 const userId = adminUser?.id || 'global';
-                setNotifications(prev => prev.filter(n => n.id !== id));
-                if (!readNotificationIds.has(id)) {
-                  setUnreadCount(prev => Math.max(0, prev - 1));
-                }
+                dismissNotification(id);
                 await deleteNotification(id, userId);
               }}
               onClearAllRead={async () => {
                 const userId = adminUser?.id || 'global';
-                setNotifications(prev => prev.filter(n => !readNotificationIds.has(n.id)));
+                dismissReadNotifications(readNotificationIds);
                 await clearAllReadNotifications(userId);
               }}
             />
@@ -1028,17 +1040,6 @@ const AppContent: React.FC = () => {
               />
             } />
 
-            {/* DAMAGES */}
-            <Route path="/damages" element={
-              <DamagesPage
-                cars={cars}
-                isDataLoading={carsLoading}
-                userRole={userRole}
-                adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
-                theme={theme}
-              />
-            } />
-
             {/* FINANCE (ANALYTICS) COMPONENT */}
             <Route path="/finance" element={
               txLoading
@@ -1095,6 +1096,9 @@ const AppContent: React.FC = () => {
                 theme={theme}
               />
             } />
+
+            {/* FINES */}
+            <Route path="/fines" element={<FinesPage drivers={nonDeletedDrivers} cars={cars} />} />
 
             {/* NOTES */}
             <Route path="/notes" element={

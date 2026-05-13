@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transaction, TransactionType, PaymentStatus } from '../../../core/types';
+import { Transaction, TransactionType, PaymentStatus, Driver, Car } from '../../../core/types';
+import { getEffectivePlanForDriverDay } from '../../drivers/utils/driverPlanHistory';
 
 interface FinanceFilters {
     startDate: string;
@@ -10,7 +11,7 @@ interface FinanceFilters {
     paymentMethod: string;
 }
 
-export const useFinanceStats = (transactions: Transaction[]) => {
+export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], drivers: Driver[] = []) => {
     const { i18n } = useTranslation();
     const language = i18n.language; // Use i18n language
 
@@ -180,6 +181,204 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         return Array.from(yearsFromData).sort((a, b) => b - a);
     }, [transactions]);
 
+    // Advanced Analytics based on filtered transactions
+    const advancedStats = useMemo(() => {
+        const incomeByCategory: Record<string, number> = {};
+        const expenseByCategory: Record<string, number> = {};
+        const paymentMethods: Record<string, number> = { cash: 0, card: 0, transfer: 0 };
+        const driverIncome: Record<string, { id: string; name: string; amount: number }> = {};
+        
+        const getExpenseCat = (desc: string): string => {
+            const d = (desc || '').trim();
+            const lower = d.toLowerCase();
+            if (lower.includes('ta\'mir') || lower.includes('ehtiyot')) return "Ta'mirlash";
+            if (lower.includes('jarima')) return "Jarimalar";
+            if (lower.includes('kommunal') || lower.includes('ijara') || lower.includes('ofis') || lower.includes('xarid')) return 'Ofis';
+            if (lower.includes('maosh')) return 'Maosh';
+            return 'Boshqa';
+        };
+
+        const highCostCarsObj: Record<string, { id: string; name: string; amount: number; avatar?: string; latestComment?: string }> = {};
+
+        filteredTransactions.forEach(tx => {
+            if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.DELETED) return;
+
+            // Payment Methods (for bar widget)
+            if (tx.amount > 0 && (tx as any).paymentMethod) {
+                const pm = (tx as any).paymentMethod as string;
+                paymentMethods[pm] = (paymentMethods[pm] || 0) + tx.amount;
+            }
+
+            if (tx.type === TransactionType.INCOME && (tx as any).category !== 'deposit_topup') {
+                const pm = ((tx as any).paymentMethod as string) || 'cash';
+                incomeByCategory[pm] = (incomeByCategory[pm] || 0) + tx.amount;
+                const did = (tx as any).driverId;
+                const dname = (tx as any).driverName;
+                if (did && dname) {
+                    if (!driverIncome[did]) driverIncome[did] = { id: did, name: dname, amount: 0 };
+                    driverIncome[did].amount += tx.amount;
+                }
+            } else if (tx.type === TransactionType.EXPENSE) {
+                const cat = (tx as any).category === 'salary_payment'
+                    ? 'Maosh'
+                    : getExpenseCat((tx as any).description || '');
+                expenseByCategory[cat] = (expenseByCategory[cat] || 0) + tx.amount;
+                
+                // Track repair costs for cars
+                if (cat === "Ta'mirlash") {
+                    let cid = (tx as any).carId;
+                    let cName = (tx as any).carName;
+
+                    if (!cid && tx.driverId) {
+                        const driver = drivers.find(d => d.id === tx.driverId);
+                        if (driver?.carId) {
+                            cid = driver.carId;
+                        }
+                    }
+
+                    if (cid) {
+                        const car = cars.find(c => c.id === cid);
+                        if (!cName) {
+                            cName = car ? car.name : 'Noma\'lum avto';
+                        }
+                        if (!highCostCarsObj[cid]) {
+                            highCostCarsObj[cid] = { id: cid, name: cName, amount: 0, avatar: car?.avatar, latestComment: tx.description };
+                        } else if (!highCostCarsObj[cid].latestComment && tx.description) {
+                            // If we encounter a description later and didn't have one, save it
+                            highCostCarsObj[cid].latestComment = tx.description;
+                        }
+                        highCostCarsObj[cid].amount += tx.amount;
+                    }
+                }
+            }
+        });
+
+        const topEarners = Object.values(driverIncome)
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 5);
+
+        const highCostCars = Object.values(highCostCarsObj)
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 3);
+
+        // Format for Recharts — top 6 slices, merge rest into 'Boshqa'
+        const formatForPie = (data: Record<string, number>) => {
+            const sorted = Object.entries(data)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+            if (sorted.length <= 6) return sorted;
+            const top = sorted.slice(0, 5);
+            const otherVal = sorted.slice(5).reduce((s, e) => s + e.value, 0);
+            if (otherVal > 0) top.push({ name: 'Boshqa', value: otherVal });
+            return top;
+        };
+
+        let totalPlanTarget = 0;
+        let totalPlanIncome = 0;
+        let totalActualDebt = 0;
+        
+        const fStart = new Date(filters.startDate);
+        const fEnd = new Date(filters.endDate);
+        const today = new Date();
+        const endDay = fEnd > today ? today : fEnd;
+
+        if (fStart <= endDay) {
+            const driversToProcess = filters.driverId !== 'all'
+                ? drivers.filter(d => !d.isDeleted && d.id === filters.driverId)
+                : drivers.filter(d => !d.isDeleted);
+
+            driversToProcess.forEach(driver => {
+                const car = cars.find(c => c.assignedDriverId === driver.id) || null;
+                
+                let driverTarget = 0;
+                let d = new Date(fStart);
+                d.setHours(0,0,0,0);
+                const endDateMidnight = new Date(endDay);
+                endDateMidnight.setHours(23,59,59,999);
+                
+                while (d <= endDateMidnight) {
+                    const dateKeyStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    const isDayOffTx = transactions.some(tx => 
+                        tx.driverId === driver.id && 
+                        (tx.type === TransactionType.DAY_OFF || (tx.type as string) === 'NOT_WORKING') && 
+                        tx.status !== PaymentStatus.DELETED &&
+                        (() => {
+                            const td = new Date(tx.timestamp);
+                            return `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, '0')}-${String(td.getDate()).padStart(2, '0')}` === dateKeyStr;
+                        })()
+                    );
+
+                    if (!isDayOffTx) {
+                        driverTarget += getEffectivePlanForDriverDay(driver, d, car);
+                    }
+                    d.setDate(d.getDate() + 1);
+                }
+
+                let driverIncome = 0;
+                filteredTransactions.forEach(tx => {
+                    if (tx.driverId === driver.id && tx.type === TransactionType.INCOME && tx.status !== PaymentStatus.REVERSED && tx.status !== PaymentStatus.REFUNDED && tx.status !== PaymentStatus.DELETED) {
+                        driverIncome += tx.amount;
+                    }
+                });
+
+                totalPlanTarget += driverTarget;
+                totalPlanIncome += driverIncome;
+                if (driverTarget > driverIncome) {
+                    totalActualDebt += (driverTarget - driverIncome);
+                }
+            });
+
+            let otherIncome = 0;
+            filteredTransactions.forEach(tx => {
+                if (tx.type === TransactionType.INCOME && tx.status !== PaymentStatus.REVERSED && tx.status !== PaymentStatus.REFUNDED && tx.status !== PaymentStatus.DELETED) {
+                    const isCounted = driversToProcess.some(d => d.id === tx.driverId);
+                    if (!isCounted) {
+                        otherIncome += tx.amount;
+                    }
+                }
+            });
+            totalPlanIncome += otherIncome;
+        }
+        
+        const planFulfillment = {
+            target: totalPlanTarget,
+            income: totalPlanIncome,
+            actualDebt: totalActualDebt,
+            percentage: totalPlanTarget > 0 ? Math.min(100, Math.round((totalPlanIncome / totalPlanTarget) * 100)) : 0
+        };
+
+        // --- Fleet Utilization ---
+        let activeCount = 0;
+        let idleCount = 0;
+        let repairCount = 0;
+        
+        cars.forEach(car => {
+            if (car.isDeleted) return;
+            if (car.inRepair) {
+                repairCount++;
+            } else if (car.assignedDriverId) {
+                activeCount++;
+            } else {
+                idleCount++;
+            }
+        });
+        
+        const fleetStats = { activeCount, idleCount, repairCount, total: activeCount + idleCount + repairCount };
+
+        return {
+            incomeByCategory: formatForPie(incomeByCategory),
+            expenseByCategory: formatForPie(expenseByCategory),
+            paymentMethods: Object.entries(paymentMethods)
+                .filter(([, v]) => v > 0)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value),
+            topEarners,
+            highCostCars,
+            planFulfillment,
+            fleetStats
+        };
+    }, [filteredTransactions]);
+
     return {
         filters, setFilters,
         analyticsYear, setAnalyticsYear,
@@ -192,6 +391,7 @@ export const useFinanceStats = (transactions: Transaction[]) => {
         yearlyAnalyticsTotals,
         filteredTransactionsCount: filteredTransactions.length,
         filteredTransactions,
-        itemsPerPage
+        itemsPerPage,
+        advancedStats
     };
 };

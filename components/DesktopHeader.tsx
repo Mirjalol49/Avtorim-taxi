@@ -88,6 +88,8 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         return t('notes');
       case Tab.MONTHLY_PLAN:
         return t('monthlyPlan');
+      case Tab.FINES:
+        return t('fines') || 'Jarimalar';
       default:
         return t('overview');
     }

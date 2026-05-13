@@ -18,6 +18,8 @@ interface DataContextType {
     setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
     setReadNotificationIds: React.Dispatch<React.SetStateAction<Set<string>>>;
     setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+    dismissNotification: (id: string) => void;
+    dismissReadNotifications: (readIds: Set<string>) => void;
     loading: boolean;
     triggerRefresh: () => void;
 }
@@ -51,7 +53,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         readNotificationIds,
         setNotifications,
         setReadNotificationIds,
-        setUnreadCount
+        setUnreadCount,
+        dismissNotification,
+        dismissReadNotifications,
     } = useNotifications(adminUser, userRole);
 
     // Safety valve: if any loading state hasn't resolved, unblock the UI.
@@ -85,6 +89,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setNotifications,
             setReadNotificationIds,
             setUnreadCount,
+            dismissNotification,
+            dismissReadNotifications,
             loading: effectiveDriversLoading || effectiveTxLoading,
             triggerRefresh
         }}>

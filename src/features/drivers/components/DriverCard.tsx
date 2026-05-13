@@ -71,14 +71,14 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     return (
         <div
             onClick={() => onCardClick?.(driver)}
-            className={`group relative rounded-[20px] border cursor-pointer transition-all duration-200 overflow-hidden ${
+            className={`group relative rounded-[20px] border cursor-pointer transition-all duration-200 overflow-hidden hover:-translate-y-1 hover:shadow-md ${
                 depositWarning
                     ? isDark
                         ? 'bg-surface border-amber-500/25 hover:shadow-[0_8px_40px_rgba(245,158,11,0.14)]'
                         : 'bg-white border-amber-200 hover:shadow-[0_8px_32px_rgba(245,158,11,0.12)]'
                     : isDark
                         ? 'bg-surface border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)]'
-                        : 'bg-white border-gray-200/80 hover:border-gray-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
+                        : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
             }`}
         >
             {/* ── Low-deposit warning banner ── */}
@@ -120,11 +120,9 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             )}
 
             {/* ── Card body ── */}
-            <div className="p-4">
-
+            <div className={`p-4 ${isDark ? 'bg-surface' : 'bg-white'}`}>
                 {/* Row 1: Avatar · Name/Phone · Type badge + real balance */}
                 <div className="flex items-center gap-3.5">
-
                     {/* Round avatar */}
                     <DriverAvatar
                         src={driver.avatar}
@@ -145,82 +143,68 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         </p>
                     </div>
 
-                    {/* Type badge + real financial value */}
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0 pr-1">
-                        {/* Driver type badge */}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-tight ${
-                            driverType === 'deposit'
-                                ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600 border border-amber-200'
-                                : driverType === 'salary'
-                                    ? isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700 border border-violet-200'
-                                    : isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700 border border-teal-200'
-                        }`}>
-                            {driverType === 'deposit' ? '🏦 Depozit' : driverType === 'salary' ? '💳 Maosh' : '🚗 Arenda'}
-                        </span>
-
-                        {/* Actual deposit balance OR salary — not the car daily plan */}
-                        {typeValueLabel && (
-                            <span className={`text-[12px] font-bold tabular-nums ${valueColor}`}>
-                                {typeValueLabel}
+                    {/* Clean textual financial metric */}
+                    <div className="flex flex-col items-end justify-center pr-1">
+                        {driverType === 'deposit' ? (
+                            <span className={`text-[11px] font-medium tracking-wide ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-emerald-400' : 'text-emerald-600')}`}>
+                                Depozit: {finance.remainingDeposit > 0 ? fmt(finance.remainingDeposit) : '0 UZS'}
                             </span>
-                        )}
-
-                        {/* Sub-label so admin knows what the number represents */}
-                        {typeValueLabel && (
-                            <span className={`text-[9px] font-medium leading-none -mt-1 ${
-                                isDark ? 'text-gray-600' : 'text-gray-400'
-                            }`}>
-                                {driverType === 'deposit' ? 'dep. qoldiq' : driverType === 'salary' ? 'oylik' : 'qarz qoldig\'i'}
+                        ) : driverType === 'salary' ? (
+                            <span className={`text-[11px] font-medium tracking-wide ${!driver.monthlySalary || driver.monthlySalary <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-violet-400' : 'text-violet-600')}`}>
+                                Maosh: {driver.monthlySalary > 0 ? fmt(driver.monthlySalary) : '0 UZS'}
                             </span>
-                        )}
-                    </div>
-                </div>
-
-                {/* Thin divider */}
-                <div className={`my-3.5 h-px ${isDark ? 'bg-white/[0.05]' : 'bg-gray-100'}`} />
-
-                {/* Row 2: Car info — iOS table cell style */}
-                <div className="flex items-center gap-3">
-                    {/* Car thumbnail */}
-                    <div className={`w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ${
-                        isDark ? 'bg-[#1a2840] border border-white/[0.06]' : 'bg-gray-100 border border-gray-200'
-                    }`}>
-                        {car?.avatar ? (
-                            <DriverAvatar
-                                src={car.avatar}
-                                name={car.name}
-                                size={36}
-                                theme={theme}
-                                rounded="xl"
-                            />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                            </div>
+                            <span className={`text-[11px] font-medium tracking-wide ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-teal-400' : 'text-teal-600')}`}>
+                                Qarz: {finance.contractRemaining && finance.contractRemaining > 0 ? fmt(finance.contractRemaining) : '0 UZS'}
+                            </span>
                         )}
                     </div>
-
-                    {/* Car name + plate */}
-                    {car ? (
-                        <div className="flex-1 min-w-0">
-                            <p className={`text-[12px] font-semibold truncate leading-tight ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {car.name}
-                            </p>
-                            <p className={`text-[10px] font-mono tracking-widest mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                {car.licensePlate}
-                            </p>
-                        </div>
-                    ) : (
-                        <span className={`flex-1 text-[12px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                            {t('carNotAssigned')}
-                        </span>
-                    )}
-
-                    {/* Chevron hint */}
-                    <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${
-                        isDark ? 'text-gray-700' : 'text-gray-300'
-                    }`} />
                 </div>
+            </div>
+
+            {/* ── Car info section (Inset) ── */}
+            <div className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
+                {/* Car thumbnail */}
+                <div className={`w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ${
+                    isDark ? 'bg-[#1a2840] border border-white/[0.06]' : 'bg-white border border-gray-200/60 shadow-sm'
+                }`}>
+                    {car?.avatar ? (
+                        <DriverAvatar
+                            src={car.avatar}
+                            name={car.name}
+                            size={36}
+                            theme={theme}
+                            rounded="xl"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                        </div>
+                    )}
+                </div>
+
+                {/* Car name + plate or subtle action button */}
+                {car ? (
+                    <div className="flex-1 min-w-0">
+                        <p className={`text-[12px] font-semibold truncate leading-tight ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {car.name}
+                        </p>
+                        <p className={`text-[10px] font-mono tracking-widest mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                            {car.licensePlate}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex-1">
+                        <button onClick={(e) => { e.stopPropagation(); onEdit(driver); }} className={`px-3 py-1 rounded-full border border-dashed text-[11px] font-semibold transition-colors ${isDark ? 'border-teal-500/30 text-teal-400 hover:bg-teal-500/10' : 'border-teal-200 text-teal-600 hover:bg-teal-50'}`}>
+                            + Biriktirish
+                        </button>
+                    </div>
+                )}
+
+                {/* Chevron hint */}
+                <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${
+                    isDark ? 'text-gray-700' : 'text-gray-300'
+                }`} />
             </div>
         </div>
     );

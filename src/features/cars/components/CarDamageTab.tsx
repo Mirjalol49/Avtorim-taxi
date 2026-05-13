@@ -172,8 +172,11 @@ export default function CarDamageTab({ car, isDark, userRole, adminName, onUpdat
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-300">
             {/* ── Summary chips (Segmented Control) ── */}
-            <div className={`px-5 py-3 border-b flex items-center gap-2 flex-wrap flex-shrink-0 ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
-                <div className={`flex items-center gap-1 p-1 rounded-[14px] border self-start ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+            <div className={`px-4 sm:px-5 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0 ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                <div 
+                    className={`flex items-center gap-1 p-1 rounded-[14px] border w-full sm:w-auto overflow-x-auto [&::-webkit-scrollbar]:hidden ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}
+                    style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                >
                     {([ 'all', 'minor', 'moderate', 'severe' ] as const).map(s => {
                         const count = s === 'all' ? records.length : severityCounts[s];
                         const active = filterSev === s;
@@ -182,7 +185,7 @@ export default function CarDamageTab({ car, isDark, userRole, adminName, onUpdat
                             <button
                                 key={s}
                                 onClick={() => setFilterSev(s)}
-                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                className={`flex-shrink-0 whitespace-nowrap flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-[10px] text-[11px] sm:text-[12px] font-bold transition-all ${
                                     active
                                         ? isDark ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
                                         : isDark ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
@@ -190,7 +193,7 @@ export default function CarDamageTab({ car, isDark, userRole, adminName, onUpdat
                             >
                                 {s !== 'all' && <span className={`w-1.5 h-1.5 rounded-full ${active ? meta!.dot : isDark ? 'bg-white/20' : 'bg-gray-300'}`} />}
                                 {s === 'all' ? 'Barchasi' : meta!.label}
-                                <span className={`min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-black flex items-center justify-center ${
+                                <span className={`min-w-[16px] h-[16px] px-1 rounded-md text-[9px] font-black flex items-center justify-center ${
                                     active
                                         ? isDark ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'
                                         : isDark ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'
@@ -205,7 +208,7 @@ export default function CarDamageTab({ car, isDark, userRole, adminName, onUpdat
                 {userRole === 'admin' && (
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-[9px] text-[11px] font-bold bg-red-500 hover:bg-red-400 text-white transition-all active:scale-95 shadow-sm"
+                        className="self-end sm:self-auto flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-[11px] font-bold bg-red-500 hover:bg-red-400 text-white transition-all active:scale-95 shadow-sm"
                     >
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

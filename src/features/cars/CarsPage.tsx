@@ -447,14 +447,14 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
     return (
         <article 
             onClick={onClick}
-            className={`group rounded-[20px] overflow-hidden flex flex-col transition-all duration-200 cursor-pointer ${
+            className={`group rounded-2xl overflow-hidden flex flex-col transition-all duration-200 cursor-pointer shadow-sm ${
             isDark
                 ? 'bg-surface border border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)]'
-                : 'bg-white border border-gray-200/80 hover:border-gray-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
+                : 'bg-white border border-gray-100/50 hover:border-gray-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
         }`}>
 
             {/* ── Image zone ── */}
-            <div className={`relative aspect-[16/10] overflow-hidden ${isDark ? 'bg-[#0d1829]' : 'bg-gray-100'}`}>
+            <div className={`relative h-40 w-full overflow-hidden flex-shrink-0 ${isDark ? 'bg-[#0d1829]' : 'bg-gray-100'}`}>
                 {car.avatar ? (
                     <img
                         src={car.avatar}
@@ -464,31 +464,19 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
                     />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                        <CameraIcon className={`w-10 h-10 ${isDark ? 'text-white/10' : 'text-gray-200'}`} />
-                        <span className={`text-xs ${isDark ? 'text-white/15' : 'text-gray-300'}`}>Rasm yo'q</span>
+                        <CameraIcon className={`w-8 h-8 ${isDark ? 'text-white/10' : 'text-gray-300'}`} />
                     </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/25 pointer-events-none" />
-
-                {/* Driver pill / Bo'sh */}
-                <div className="absolute top-3 left-3">
-                    {isAssigned ? (
-                        <div className="flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/15 shadow-sm max-w-[160px]">
-                            <div className="w-5 h-5 rounded-full overflow-hidden border border-white/20 flex-shrink-0 bg-white/10">
-                                {driver!.avatar
-                                    ? <img src={driver!.avatar} alt={driver!.name} className="w-full h-full object-cover" />
-                                    : <div className="w-full h-full flex items-center justify-center text-[9px] text-white font-bold">{driver!.name.charAt(0)}</div>
-                                }
-                            </div>
-                            <span className="text-white text-[12px] font-semibold truncate leading-none">{driver!.name.split(' ')[0]}</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/15">
-                            <span className="text-white/70 text-[11px] font-semibold">Bo'sh</span>
-                        </div>
-                    )}
-                </div>
+                {/* Ta'mirda badge */}
+                {car.inRepair && (
+                    <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/90 backdrop-blur-md border border-rose-400/50 shadow-sm">
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-white text-[10px] font-bold uppercase tracking-wider">Ta'mirda</span>
+                    </div>
+                )}
 
                 {/* Docs count badge */}
                 {docs.length > 0 && (
@@ -502,45 +490,75 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
                     </button>
                 )}
 
-
-
                 {/* Admin actions on hover */}
                 {userRole === 'admin' && (
                     <div className={`absolute flex gap-1.5 transition-all duration-200 opacity-0 translate-y-[-4px] group-hover:opacity-100 group-hover:translate-y-0 ${
-                        docs.length > 0 ? 'top-[88px] right-3' : 'top-[52px] right-3'
+                        docs.length > 0 ? 'top-12 right-3' : 'top-3 right-3'
                     }`}>
                         <button
                             onClick={e => { e.stopPropagation(); onEdit(car); }}
-                            className="w-8 h-8 rounded-[10px] bg-white/15 backdrop-blur-md border border-white/20 text-white hover:bg-white/30 active:scale-90 transition-all flex items-center justify-center shadow-sm"
+                            className="w-8 h-8 rounded-[10px] bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 active:scale-90 transition-all flex items-center justify-center shadow-sm"
                             title="Tahrirlash"
                         >
                             <EditIcon className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={e => { e.stopPropagation(); onDelete(car.id); }}
-                            className="w-8 h-8 rounded-[10px] bg-red-500/35 backdrop-blur-md border border-red-400/25 text-white hover:bg-red-500/70 active:scale-90 transition-all flex items-center justify-center shadow-sm"
+                            className="w-8 h-8 rounded-[10px] bg-red-500/80 backdrop-blur-md border border-red-400/25 text-white hover:bg-red-500 active:scale-90 transition-all flex items-center justify-center shadow-sm"
                             title="O'chirish"
                         >
                             <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 )}
+            </div>
 
-                {/* Car name + plate + plan */}
-                <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-10">
-                    <h3 className="text-white font-extrabold text-[18px] tracking-tight truncate leading-tight">
-                        {car.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1.5">
-                        <span className="px-2 py-0.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 text-white text-[11px] font-mono font-bold tracking-widest">
+            {/* ── Asset Data (Middle Section) ── */}
+            <div className="p-4 flex flex-col flex-1">
+                <div className="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 className={`text-lg font-bold font-mono tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             {car.licensePlate}
-                        </span>
-                        {car.dailyPlan && car.dailyPlan > 0 ? (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-500/25 backdrop-blur-sm border border-teal-400/20 text-teal-200 text-[11px] font-bold">
-                                📅 {formatNumberSmart(car.dailyPlan)} so'm
-                            </span>
-                        ) : null}
+                        </h3>
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {car.name}
+                        </p>
                     </div>
+                    {!isAssigned && !car.inRepair && (
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                            Bo'sh
+                        </span>
+                    )}
+                </div>
+
+                {/* Driver Assignment */}
+                {isAssigned ? (
+                    <div className="flex items-center gap-2 mt-auto">
+                        <div className={`w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border ${isDark ? 'border-white/10 bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
+                            {driver!.avatar ? (
+                                <img src={driver!.avatar} alt={driver!.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${isDark ? 'text-white/70' : 'text-gray-600'}`}>
+                                    {driver!.name.charAt(0)}
+                                </div>
+                            )}
+                        </div>
+                        <span className={`text-sm font-medium truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {driver!.name}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="mt-auto h-6" /> // spacer to keep height consistent if no driver
+                )}
+
+                {/* Financial Footer */}
+                <div className={`mt-3 pt-3 flex items-center justify-between border-t ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
+                    <span className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Kunlik reja
+                    </span>
+                    <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
+                        {car.dailyPlan && car.dailyPlan > 0 ? `${formatNumberSmart(car.dailyPlan)} UZS` : 'Belgilanmagan'}
+                    </span>
                 </div>
             </div>
         </article>

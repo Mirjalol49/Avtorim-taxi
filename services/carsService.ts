@@ -18,7 +18,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 .from('cars')
                 // ⚠️ documents can be large base64 blobs — excluded, loaded on demand in CarModal.
                 // avatar IS included — it's shown throughout the UI (car cards, damage page, etc.).
-                .select('id,fleet_id,name,license_plate,assigned_driver_id,daily_plan,plan_history,day_overrides,is_deleted,created_ms,damage,avatar')
+                .select('id,fleet_id,name,license_plate,assigned_driver_id,daily_plan,plan_history,day_overrides,is_deleted,created_ms,damage,avatar,in_repair')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -37,6 +37,7 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 dayOverrides: r.day_overrides ?? undefined,
                 isDeleted: r.is_deleted,
                 createdAt: toMs(r.created_ms),
+                inRepair: r.in_repair ?? false,
                 damage: r.damage ?? [],
             } as Car)));
         } catch (err: any) {
@@ -95,6 +96,7 @@ export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {
             // day_overrides omitted — handled by DB DEFAULT '{}' after migration
             is_deleted: false,
             created_ms: createdAt,
+            in_repair: car.inRepair ?? false,
         })
         .select('id')
         .single();
@@ -109,6 +111,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.avatar !== undefined) payload.avatar = car.avatar;
     if (car.documents !== undefined) payload.documents = car.documents;
     if (car.damage !== undefined)    payload.damage = car.damage;
+    if (car.inRepair !== undefined)  payload.in_repair = car.inRepair;
     if ('assignedDriverId' in car) {
         payload.assigned_driver_id = car.assignedDriverId ?? null;
 
@@ -132,7 +135,8 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
                         0, // Zero out the plan since they no longer have a car
                         oldDriver.daily_plan ?? 0,
                         null,
-                        toMs(oldDriver.created_ms)
+                        toMs(oldDriver.created_ms),
+                        id
                     );
                     await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: 0 }).eq('id', oldDriverId);
                 }
@@ -181,9 +185,10 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
                     const newDriverHistory = appendDriverPlanChange(
                         driverData.plan_history ?? [],
                         car.dailyPlan,
-                        driverData.daily_plan ?? 0,
+                        current.daily_plan ?? 0,
                         id,
-                        toMs(driverData.created_ms)
+                        toMs(driverData.created_ms),
+                        id
                     );
                     await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: car.dailyPlan }).eq('id', current.assigned_driver_id);
                 }

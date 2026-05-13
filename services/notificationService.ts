@@ -203,11 +203,15 @@ export const markAllNotificationsAsRead = async (notificationIds: string[], user
 };
 
 export const deleteNotification = async (notificationId: string, userId: string): Promise<void> => {
+    // Hard-delete the row from the notifications table (permanent — row is gone from DB)
+    await supabase.from('notifications').delete().eq('id', notificationId);
+    // Also insert into notification_deletes as a belt-and-suspenders guard
+    // (covers edge cases where the row is owned by another fleet and can't be hard-deleted)
     await supabase.from('notification_deletes').insert({
         notification_id: notificationId,
         user_id: userId,
         deleted_at: Date.now()
-    });
+    }).maybeSingle(); // ignore duplicate key errors
 };
 
 export const clearAllReadNotifications = async (userId: string): Promise<void> => {
@@ -218,6 +222,10 @@ export const clearAllReadNotifications = async (userId: string): Promise<void> =
     const readIds = (reads ?? []).map(r => r.notification_id);
     if (readIds.length === 0) return;
 
+    // Hard-delete all read notification rows permanently
+    await supabase.from('notifications').delete().in('id', readIds);
+
+    // Also record in notification_deletes as fallback
     const { data: deletes } = await supabase
         .from('notification_deletes')
         .select('notification_id')

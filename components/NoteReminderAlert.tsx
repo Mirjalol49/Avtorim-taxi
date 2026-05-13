@@ -63,21 +63,21 @@ const NoteReminderAlert: React.FC<NoteReminderAlertProps> = ({ theme, onNoteClic
                     <div
                         className={`rounded-2xl border shadow-2xl overflow-hidden ${
                             isDark
-                                ? 'bg-[#1a2236] border-amber-500/30'
-                                : 'bg-white border-amber-300'
+                                ? 'bg-[#1a2236] border-red-500/30'
+                                : 'bg-white border-red-300'
                         }`}
                         style={{ boxShadow: isDark
-                            ? '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(245,158,11,0.2)'
-                            : '0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(245,158,11,0.3)' }}
+                            ? '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(239,68,68,0.2)'
+                            : '0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(239,68,68,0.3)' }}
                     >
-                        {/* Amber accent stripe at the top */}
-                        <div className="h-1 w-full bg-gradient-to-r from-amber-400 to-orange-400" />
+                        {/* Red accent stripe at the top */}
+                        <div className="h-1 w-full bg-gradient-to-r from-red-500 to-rose-500" />
 
                         <div className="px-4 py-3.5">
                             <div className="flex items-start gap-3">
                                 {/* Bell icon */}
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                                    isDark ? 'bg-amber-500/15' : 'bg-amber-50'
+                                    isDark ? 'bg-red-500/15' : 'bg-red-50'
                                 }`}>
                                     <span className="text-lg">🔔</span>
                                 </div>
@@ -97,7 +97,7 @@ const NoteReminderAlert: React.FC<NoteReminderAlertProps> = ({ theme, onNoteClic
                                         </p>
                                     )}
                                     <p className={`text-[10px] font-semibold mt-1.5 uppercase tracking-wider ${
-                                        isDark ? 'text-amber-500' : 'text-amber-600'
+                                        isDark ? 'text-red-500' : 'text-red-600'
                                     }`}>
                                         Eslatma vaqti keldi
                                     </p>

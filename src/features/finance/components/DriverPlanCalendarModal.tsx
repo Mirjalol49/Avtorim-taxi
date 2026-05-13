@@ -195,31 +195,36 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
     const cardStyle = (status: DayStatus, isToday: boolean): string => {
         if (isToday) {
             return isDark
-                ? 'bg-surface-2 border-2 border-blue-500 shadow-[0_0_0_2px_rgba(59,130,246,0.15)]'
-                : 'bg-white border-2 border-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.10)]';
+                ? 'bg-surface-2 shadow-md ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#0b1326]'
+                : 'bg-white shadow-md ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-50';
         }
         if (status === 'FUTURE' || status === 'FUTURE_DISCOUNT') {
             return isDark
-                ? 'bg-surface border border-white/[0.04] opacity-50 hover:opacity-100 hover:border-white/[0.12]'
-                : 'bg-gray-50/70 border border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300';
+                ? 'bg-surface border border-white/[0.04] opacity-50 hover:opacity-100'
+                : 'bg-gray-50/70 border-transparent opacity-60 hover:opacity-100';
         }
-        if (status === 'DAY_OFF' || status === 'FUTURE_OFF' || status === 'NOT_WORKING') {
+        if (status === 'NOT_WORKING') {
+            return isDark
+                ? 'bg-surface-3 border-transparent'
+                : 'bg-gray-50 border-transparent text-gray-400';
+        }
+        if (status === 'DAY_OFF' || status === 'FUTURE_OFF') {
             return isDark
                 ? 'bg-surface-2 border border-blue-500/20'
-                : 'bg-slate-50 border border-slate-200';
+                : 'bg-white border border-transparent shadow-sm';
         }
         return isDark
-            ? 'bg-surface-2 border border-white/[0.06] hover:border-white/[0.12]'
-            : 'bg-white border border-gray-200 hover:border-gray-300';
+            ? 'bg-surface-2 border border-white/[0.06] hover:bg-surface-3'
+            : 'bg-white border-transparent shadow-sm hover:shadow-md';
     };
 
     return createPortal(
         <div className={`fixed inset-0 z-[100] flex flex-col overflow-y-auto animate-in slide-in-from-bottom-8 duration-300 ${
-            isDark ? 'bg-[#0b1326]' : 'bg-[#faf8ff]'
+            isDark ? 'bg-[#0b1326]' : 'bg-slate-50'
         }`}>
             {/* ── Top Navigation Bar ── */}
             <div className={`sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 h-16 border-b backdrop-blur-xl flex-shrink-0 ${
-                isDark ? 'bg-[#0b1326]/80 border-white/[0.06]' : 'bg-[#faf8ff]/80 border-gray-200'
+                isDark ? 'bg-[#0b1326]/80 border-white/[0.06]' : 'bg-slate-50/80 border-slate-200/50'
             }`}>
                 <button
                     onClick={onClose}
@@ -241,8 +246,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             {/* ── Content Container ── */}
             <div className="w-full max-w-6xl mx-auto px-4 py-6 sm:px-6 space-y-6 sm:space-y-8 flex-1">
                 {/* ── Profile Header ── */}
-                <div className={`flex items-center justify-between gap-4 p-3 sm:p-4 rounded-2xl border ${
-                    isDark ? 'bg-surface border-white/[0.06] shadow-sm' : 'bg-white border-slate-200 shadow-sm'
+                <div className={`flex items-center justify-between gap-4 p-3 sm:p-4 rounded-2xl ${
+                    isDark ? 'bg-surface border border-white/[0.06] shadow-sm' : 'bg-white border-transparent shadow-sm'
                 }`}>
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full">
                         {monthData.driver.avatar ? (
@@ -268,7 +273,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 </div>
 
                 {/* ── Dashboard (Stats + Progress) ── */}
-                <div className={`p-4 sm:p-5 rounded-3xl border flex flex-col gap-6 ${isDark ? 'bg-surface border-white/[0.06]' : 'bg-white border-slate-200'}`}>
+                <div className={`p-4 sm:p-5 rounded-3xl flex flex-col gap-6 ${isDark ? 'bg-surface border border-white/[0.06]' : 'bg-white border-transparent shadow-sm'}`}>
                     {/* Stats grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                         {/* Monthly plan */}
@@ -318,12 +323,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('incomeProgress') ?? 'Tushum progressi'}</span>
                             <span className={isDark ? 'text-white' : 'text-slate-900'}>{monthData.paidPercent}%</span>
                         </div>
-                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-surface-3' : 'bg-slate-100'}`}>
+                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-surface-3' : 'bg-slate-100'}`}>
                             <div
-                                className={`h-full rounded-full transition-all duration-700 ease-out ${
-                                    monthData.paidPercent >= 100 ? 'bg-emerald-500'
-                                    : 'bg-blue-500'
-                                }`}
+                                className={`h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-teal-500 to-emerald-400`}
                                 style={{ width: `${Math.min(100, monthData.paidPercent)}%` }}
                             />
                         </div>
@@ -369,9 +371,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 <div key={`pad-${i}`} className="min-h-[72px] sm:min-h-[90px] md:min-h-[110px]" />
                             ))}
 
-                            {days.map((d) => {
+                            {days.map((d, i) => {
                                 const isToday = d.dayStr === todayStr;
                                 const isFuture = d.status.startsWith('FUTURE');
+                                const isSunday = (padDays + i) % 7 === 6;
+                                const isReducedRate = d.planForDay > 0 && d.planForDay < monthData.dailyPlan;
                                 const isClickable = true; // all days clickable now
 
                                 return (
@@ -389,7 +393,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         }}
                                         className={`relative flex flex-col min-h-[72px] sm:min-h-[90px] md:min-h-[110px] rounded-xl sm:rounded-2xl p-2 sm:p-3 transition-all duration-150 ${
                                             isClickable ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md' : 'cursor-default'
-                                        } ${cardStyle(d.status, isToday)}`}
+                                        } ${cardStyle(d.status, isToday)} ${isReducedRate && d.status !== 'DAY_OFF' && d.status !== 'NOT_WORKING' ? (isDark ? 'bg-indigo-500/5' : 'bg-indigo-50/50') : ''}`}
                                     >
                                         {/* Day number */}
                                         <div className="flex items-center justify-between mb-auto">
@@ -425,9 +429,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                 )}
                                             </div>
                                         ) : d.status === 'NOT_WORKING' ? (
-                                            <div className="flex flex-col items-center justify-center flex-1 gap-0.5 mt-1">
-                                                <span className="text-sm sm:text-xl leading-none">❌</span>
-                                                <span className={`hidden sm:inline-block text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
+                                            <div className="flex flex-col items-center justify-center flex-1 gap-0.5 mt-1 opacity-60">
+                                                <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
                                                     Ishlamagan
                                                 </span>
                                                 {d.income > 0 && (
