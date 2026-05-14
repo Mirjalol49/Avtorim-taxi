@@ -5,11 +5,10 @@ import { useAuthContext } from '../auth/context/AuthContext';
 import { useUIContext } from '../shared/context/UIContext';
 import { addFine, updateFine, deleteFine } from '../../../services/finesService';
 import FineModal from './components/FineModal';
-import { addTransaction } from '../../../services/firestoreService';
-import { TransactionType } from '../../core/types/transaction.types';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import Skeleton from '../../../components/Skeleton';
 import { useToast } from '../../../components/ToastNotification';
+import { useConfirm } from '../../../components/ConfirmContext';
 import { Driver, Car } from '../../../types';
 import { AlertTriangleIcon, CheckCircleIcon, PlusIcon, SearchIcon, TrashIcon, EditIcon } from '../../../components/Icons';
 import { format } from 'date-fns';
@@ -24,6 +23,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
     const { userRole, adminUser, adminProfile } = useAuthContext();
     const { theme } = useUIContext();
     const { addToast } = useToast();
+    const confirm = useConfirm();
     const isDark = theme === 'dark';
 
     const fleetId = userRole === 'admin'
@@ -38,57 +38,48 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
     const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNPAID' | 'PAID'>('ALL');
 
     const handleSaveFine = async (data: any) => {
+        if (!fleetId) {
+            addToast('error', 'Foydalanuvchi aniqlanmadi. Sahifani yangilang.');
+            return;
+        }
         try {
-            let shouldDeduct = false;
-            let fineAmount = data.amount;
-
             if (data.id) {
-                const oldFine = fines.find(f => f.id === data.id);
                 const { id, ...updates } = data;
                 await updateFine(id, updates);
-                
-                // If it wasn't paid before, and now it is PAID
-                if (oldFine && oldFine.status === 'UNPAID' && updates.status === 'PAID') {
-                    shouldDeduct = true;
-                }
                 addToast('success', "Jarima yangilandi");
             } else {
                 await addFine({ ...data, fleetId });
-                // If a new fine is created directly as PAID
-                if (data.status === 'PAID') {
-                    shouldDeduct = true;
-                }
                 addToast('success', "Yangi jarima qo'shildi");
             }
-
             if (refetch) refetch();
-
-            if (shouldDeduct) {
-                const driver = drivers.find(d => d.id === data.driverId);
-                const car = cars.find(c => c.id === data.carId);
-                
-                await addTransaction({
-                    driverId: data.driverId,
-                    driverName: driver?.name,
-                    carId: data.carId || undefined,
-                    carName: car ? `${car.name} — ${car.licensePlate}` : undefined,
-                    amount: fineAmount,
-                    type: TransactionType.EXPENSE,
-                    description: `Jarima: ${data.description || 'Sababsiz'}`,
-                    timestamp: Date.now(),
-                    category: 'Jarima',
-                }, fleetId);
-                addToast('success', "Jarima summasi haydovchi balansidan yechildi");
-            }
-
         } catch (error: any) {
             addToast('error', error.message || "Xatolik yuz berdi");
-            throw error;
+        }
+    };
+
+
+    const handleToggleStatus = async (fine: Fine) => {
+        const newStatus = fine.status === 'PAID' ? 'UNPAID' : 'PAID';
+        try {
+            await updateFine(fine.id, { status: newStatus });
+            addToast('success', `Holat: ${newStatus === 'PAID' ? "To'langan" : "To'lanmagan"}`);
+            if (refetch) refetch();
+        } catch (error: any) {
+            addToast('error', "Holatni o'zgartirishda xatolik");
         }
     };
 
     const handleDeleteFine = async (id: string) => {
-        if (!window.confirm("Jarimani o'chirishni tasdiqlaysizmi?")) return;
+        const confirmed = await confirm({
+            title: "Jarimani o'chirish",
+            message: "Ushbu jarimani o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.",
+            isDanger: true,
+            confirmLabel: "O'chirish",
+            cancelLabel: "Bekor qilish"
+        });
+        
+        if (!confirmed) return;
+
         try {
             await deleteFine(id);
             addToast('success', "Jarima o'chirildi");
@@ -215,13 +206,26 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                                             {fine.carName && <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fine.carName}</p>}
                                         </div>
                                     </div>
-                                    <div className={`px-2.5 py-1.5 rounded-xl flex flex-shrink-0 items-center gap-1.5 text-[10px] font-bold tracking-wider ${
-                                        fine.status === 'UNPAID' 
-                                            ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400'
-                                            : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
-                                    }`}>
-                                        {fine.status === 'PAID' ? <CheckCircleIcon className="w-3.5 h-3.5" /> : <AlertTriangleIcon className="w-3.5 h-3.5" />}
-                                        <span className="hidden sm:inline">{fine.status === 'UNPAID' ? "TO'LANMAGAN" : "TO'LANGAN"}</span>
+                                    <div className="flex items-center gap-2.5">
+                                        <span className={`text-[10px] font-bold tracking-wider hidden sm:block ${
+                                            fine.status === 'UNPAID' ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-500 dark:text-emerald-400'
+                                        }`}>
+                                            {fine.status === 'UNPAID' ? "TO'LANMAGAN" : "TO'LANGAN"}
+                                        </span>
+                                        <button 
+                                            onClick={() => handleToggleStatus(fine)}
+                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none active:scale-95 ${
+                                                fine.status === 'PAID' 
+                                                    ? 'bg-emerald-500 hover:bg-emerald-600' 
+                                                    : 'bg-rose-500 hover:bg-rose-600'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                    fine.status === 'PAID' ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
                                     </div>
                                 </div>
                                 

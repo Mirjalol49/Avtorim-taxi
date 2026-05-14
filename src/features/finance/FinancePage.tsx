@@ -23,6 +23,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
+import { MetricCard } from '../../../components/MetricCard';
 
 
 interface FinancePageProps {
@@ -212,130 +213,10 @@ export const FinancePage: React.FC<FinancePageProps> = ({
 
             {/* Yearly Stats Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {/* Yearly Income */}
-                <div className={`relative overflow-hidden isolate rounded-[24px] p-6 sm:p-7 border ${theme === 'dark' ? 'bg-[#0F0F11] border-white/5' : 'bg-white border-black/5'}`} style={{ minHeight: '150px', boxShadow: theme === 'dark' ? '0 10px 40px -10px rgba(0,0,0,0.5)' : '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
-                    {/* Radial Glow */}
-                    <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full filter blur-[70px] pointer-events-none transition-opacity duration-1000 ${theme === 'dark' ? 'bg-emerald-500/40 opacity-100 mix-blend-screen' : 'opacity-0'}`} />
-                    
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="flex items-center justify-between">
-                            <p className={`text-[15px] font-medium tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-gray-500'}`}>{analyticsYear} {t('totalIncome')}</p>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-500/10'}`}>
-                                <TrendingUpIcon className={`w-5 h-5 text-emerald-500`} />
-                            </div>
-                        </div>
-                        <div className="mt-8">
-                            <NumberTooltip value={yearlyAnalyticsTotals.income} label={`${analyticsYear} ${t('totalIncome')}`} theme={theme}>
-                                <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                    {formatNumberSmart(yearlyAnalyticsTotals.income, isMobile, language).split(' ')[0]}
-                                    <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
-                                        {formatNumberSmart(yearlyAnalyticsTotals.income, isMobile, language).split(' ').slice(1).join(' ')} UZS
-                                    </span>
-                                </h3>
-                            </NumberTooltip>
-                        </div>
-                    </div>
-
-                    {/* Sparkline */}
-                    <svg className="absolute bottom-0 right-0 w-[55%] h-[60%] pointer-events-none" viewBox="0 0 200 100" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="financeIncomeLine" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stopColor={theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
-                                <stop offset="60%" stopColor={theme === 'dark' ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
-                                <stop offset="100%" stopColor="#10B981" />
-                            </linearGradient>
-                            <filter id="financeGlowIncome" x="-500%" y="-500%" width="1000%" height="1000%">
-                                <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#10B981" floodOpacity={theme === 'dark' ? "0.6" : "0.4"}/>
-                            </filter>
-                        </defs>
-                        <path d="M0,80 C30,80 40,50 60,50 C80,50 90,80 120,70 C150,60 160,30 180,40 C190,45 192,45 195,40" fill="none" stroke="url(#financeIncomeLine)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                        <circle cx="195" cy="40" r="5" fill="#10B981" filter="url(#financeGlowIncome)" />
-                        <circle cx="195" cy="40" r="2.5" fill="#fff" />
-                    </svg>
-                </div>
-
-                {/* Yearly Expense */}
-                <div className={`relative overflow-hidden isolate rounded-[24px] p-6 sm:p-7 border ${theme === 'dark' ? 'bg-[#0F0F11] border-white/5' : 'bg-white border-black/5'}`} style={{ minHeight: '150px', boxShadow: theme === 'dark' ? '0 10px 40px -10px rgba(0,0,0,0.5)' : '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
-                    {/* Radial Glow */}
-                    <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full filter blur-[70px] pointer-events-none transition-opacity duration-1000 ${theme === 'dark' ? 'bg-rose-500/40 opacity-100 mix-blend-screen' : 'opacity-0'}`} />
-                    
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="flex items-center justify-between">
-                            <p className={`text-[15px] font-medium tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-gray-500'}`}>{analyticsYear} {t('totalExpense')}</p>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-rose-500/10' : 'bg-rose-500/10'}`}>
-                                <TrendingDownIcon className={`w-5 h-5 text-rose-500`} />
-                            </div>
-                        </div>
-                        <div className="mt-8">
-                            <NumberTooltip value={yearlyAnalyticsTotals.expense} label={`${analyticsYear} ${t('totalExpense')}`} theme={theme}>
-                                <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                    {formatNumberSmart(yearlyAnalyticsTotals.expense, isMobile, language).split(' ')[0]}
-                                    <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
-                                        {formatNumberSmart(yearlyAnalyticsTotals.expense, isMobile, language).split(' ').slice(1).join(' ')} UZS
-                                    </span>
-                                </h3>
-                            </NumberTooltip>
-                        </div>
-                    </div>
-
-                    {/* Sparkline */}
-                    <svg className="absolute bottom-0 right-0 w-[55%] h-[60%] pointer-events-none" viewBox="0 0 200 100" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="financeExpenseLine" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stopColor={theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
-                                <stop offset="60%" stopColor={theme === 'dark' ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
-                                <stop offset="100%" stopColor="#F43F5E" />
-                            </linearGradient>
-                            <filter id="financeGlowExpense" x="-500%" y="-500%" width="1000%" height="1000%">
-                                <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#F43F5E" floodOpacity={theme === 'dark' ? "0.6" : "0.4"}/>
-                            </filter>
-                        </defs>
-                        <path d="M0,30 C30,30 40,60 60,60 C80,60 90,30 120,40 C150,50 160,80 180,70 C190,65 192,65 195,70" fill="none" stroke="url(#financeExpenseLine)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                        <circle cx="195" cy="70" r="5" fill="#F43F5E" filter="url(#financeGlowExpense)" />
-                        <circle cx="195" cy="70" r="2.5" fill="#fff" />
-                    </svg>
-                </div>
-
-                {/* Yearly Net Profit */}
-                <div className={`relative overflow-hidden isolate rounded-[24px] p-6 sm:p-7 border sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#0F0F11] border-white/5' : 'bg-white border-black/5'}`} style={{ minHeight: '150px', boxShadow: theme === 'dark' ? '0 10px 40px -10px rgba(0,0,0,0.5)' : '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
-                    {/* Radial Glow */}
-                    <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full filter blur-[70px] pointer-events-none transition-opacity duration-1000 ${theme === 'dark' ? 'bg-blue-500/40 opacity-100 mix-blend-screen' : 'opacity-0'}`} />
-                    
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="flex items-center justify-between">
-                            <p className={`text-[15px] font-medium tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-gray-500'}`}>{analyticsYear} {t('netProfit')}</p>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-500/10'}`}>
-                                <WalletIcon className={`w-5 h-5 text-blue-500`} />
-                            </div>
-                        </div>
-                        <div className="mt-8">
-                            <NumberTooltip value={yearlyAnalyticsTotals.netProfit} label={`${analyticsYear} ${t('netProfit')}`} theme={theme}>
-                                <h3 className={`text-4xl sm:text-[42px] font-bold tracking-tight cursor-help leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                    {yearlyAnalyticsTotals.netProfit > 0 ? '+' : ''}{formatNumberSmart(yearlyAnalyticsTotals.netProfit, isMobile, language).split(' ')[0]}
-                                    <span className={`text-xl sm:text-2xl ml-1.5 font-bold ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
-                                        {formatNumberSmart(yearlyAnalyticsTotals.netProfit, isMobile, language).split(' ').slice(1).join(' ')} UZS
-                                    </span>
-                                </h3>
-                            </NumberTooltip>
-                        </div>
-                    </div>
-
-                    {/* Sparkline */}
-                    <svg className="absolute bottom-0 right-0 w-[55%] h-[60%] pointer-events-none" viewBox="0 0 200 100" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="financeProfitLine" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stopColor={theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
-                                <stop offset="60%" stopColor={theme === 'dark' ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} />
-                                <stop offset="100%" stopColor="#3B82F6" />
-                            </linearGradient>
-                            <filter id="financeGlowProfit" x="-500%" y="-500%" width="1000%" height="1000%">
-                                <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#3B82F6" floodOpacity={theme === 'dark' ? "0.6" : "0.4"}/>
-                            </filter>
-                        </defs>
-                        <path d="M0,70 C30,70 50,30 80,40 C110,50 130,80 160,50 C180,30 190,20 195,20" fill="none" stroke="url(#financeProfitLine)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                        <circle cx="195" cy="20" r="5" fill="#3B82F6" filter="url(#financeGlowProfit)" />
-                        <circle cx="195" cy="20" r="2.5" fill="#fff" />
-                    </svg>
+                <MetricCard title={`${analyticsYear} ${t('totalIncome')}`} value={yearlyAnalyticsTotals.income} type="income" icon={TrendingUpIcon} isDark={theme === 'dark'} />
+                <MetricCard title={`${analyticsYear} ${t('totalExpense')}`} value={yearlyAnalyticsTotals.expense} type="expense" icon={TrendingDownIcon} isDark={theme === 'dark'} />
+                <div className="sm:col-span-2 lg:col-span-1">
+                    <MetricCard title={`${analyticsYear} ${t('netProfit')}`} value={yearlyAnalyticsTotals.netProfit} type="profit" icon={WalletIcon} isDark={theme === 'dark'} showPlusSign />
                 </div>
             </div>
 

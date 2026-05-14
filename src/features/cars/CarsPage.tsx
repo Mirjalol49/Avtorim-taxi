@@ -2,10 +2,12 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Car, CarDocument, CarDamage } from '../../core/types';
 import { Driver } from '../../core/types';
-import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon } from '../../../components/Icons';
+import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { CarDetailsSheet } from './components/CarDetailsSheet';
+import { ShieldAlert as ShieldAlertIcon, Wrench as WrenchIcon, SunDim as SunDimIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { updateCar } from '../../../services/carsService';
 
 interface CarsPageProps {
     cars: Car[];
@@ -200,6 +202,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
     const [docViewer, setDocViewer] = useState<DocViewerState | null>(null);
     const [selectedCarDetails, setSelectedCarDetails] = useState<Car | null>(null);
+    const [clearedWarnings, setClearedWarnings] = useState<Set<string>>(new Set());
 
     const getDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId && !d.isDeleted);
 
@@ -213,6 +216,40 @@ const CarsPage: React.FC<CarsPageProps> = ({
         return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cars, search, filterTab, drivers]);
+
+    const globalWarnings = useMemo(() => {
+        const MS_IN_DAY = 1000 * 60 * 60 * 24;
+        const now = Date.now();
+        
+        type ExpiryDoc = { docName: string; docType: 'insurance' | 'tech' | 'tinting'; days: number };
+        const grouped: { id: string; carName: string; plate: string; docs: ExpiryDoc[] }[] = [];
+
+        cars.forEach(car => {
+            if (car.isDeleted) return;
+            const docs: ExpiryDoc[] = [];
+
+            const check = (ms: number | undefined, name: string, type: 'insurance' | 'tech' | 'tinting') => {
+                if (!ms) return;
+                const days = Math.ceil((ms - now) / MS_IN_DAY);
+                if (days <= 3) {
+                    if (!clearedWarnings.has(`${car.id}-${type}`)) {
+                        docs.push({ docName: name, docType: type, days });
+                    }
+                }
+            };
+            
+            check(car.insuranceExpiryMs, "Sug'urta (OSAGO)", 'insurance');
+            check(car.techInspectionExpiryMs, "Texnik ko'rik", 'tech');
+            check(car.tintingExpiryMs, "Tanirovka", 'tinting');
+            
+            if (docs.length > 0) {
+                docs.sort((a, b) => a.days - b.days);
+                grouped.push({ id: car.id, carName: car.name, plate: car.licensePlate, docs });
+            }
+        });
+        
+        return grouped.sort((a, b) => a.docs[0].days - b.docs[0].days);
+    }, [cars, clearedWarnings]);
 
     const totalPages    = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
     const paginated     = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -231,8 +268,114 @@ const CarsPage: React.FC<CarsPageProps> = ({
         setDocViewer({ docs, index, carName: car.name });
     };
 
+    const handleClearWarning = async (e: React.MouseEvent, carId: string, docType: 'insurance' | 'tech' | 'tinting') => {
+        e.stopPropagation(); // prevent modal opening
+        
+        // Optimistic UI Update: instantly hide it
+        const warningKey = `${carId}-${docType}`;
+        setClearedWarnings(prev => new Set(prev).add(warningKey));
+        
+        try {
+            const updates: any = {};
+            if (docType === 'insurance') updates.insuranceExpiryMs = null;
+            if (docType === 'tech') updates.techInspectionExpiryMs = null;
+            if (docType === 'tinting') updates.tintingExpiryMs = null;
+            
+            await updateCar(carId, updates);
+        } catch (err) {
+            console.error('Error clearing warning:', err);
+            // Revert optimistic update on failure
+            setClearedWarnings(prev => {
+                const next = new Set(prev);
+                next.delete(warningKey);
+                return next;
+            });
+        }
+    };
+
     return (
         <div className="space-y-5">
+        
+            {/* ── Expiration Warnings Banner ── */}
+            {globalWarnings.length > 0 && (
+                <div className="bg-rose-50/40 border border-rose-100/60 dark:bg-rose-500/10 dark:border-rose-500/20 rounded-2xl p-5 mb-6 backdrop-blur-sm shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center mb-4">
+                        <AlertTriangleIcon className="w-[18px] h-[18px] text-rose-500 mr-2" />
+                        <h3 className="text-[13px] font-semibold text-rose-800 dark:text-rose-400 tracking-wide uppercase">
+                            Diqqat: Hujjatlar muddati tugamoqda!
+                        </h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {globalWarnings.map(group => {
+                            const car = cars.find(c => c.id === group.id);
+                            return (
+                                <div 
+                                    key={group.id} 
+                                    onClick={() => car && onEditCar(car)}
+                                    className="bg-white dark:bg-surface-2 rounded-xl p-4 border border-slate-100 dark:border-white/[0.05] shadow-sm hover:shadow-md hover:border-rose-300 dark:hover:border-rose-500/50 transition-all duration-200 flex flex-col group cursor-pointer active:scale-[0.98] relative overflow-hidden"
+                                >
+                                    {/* Action Hint Overlay */}
+                                    <div className="absolute right-3 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-6 h-6 rounded-full bg-rose-50 text-rose-500">
+                                        <ChevronRightIcon className="w-4 h-4" />
+                                    </div>
+
+                                    <div className="flex items-center mb-3 pr-8">
+                                        <span className="text-[15px] font-bold text-slate-800 dark:text-gray-100 truncate">{group.carName}</span>
+                                        <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 bg-slate-100 dark:bg-white/[0.08] px-1.5 py-0.5 rounded-md ml-2 flex-shrink-0">
+                                            {group.plate}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        {group.docs.map((doc, idx) => {
+                                            const Icon = doc.docType === 'insurance' ? ShieldAlertIcon : doc.docType === 'tech' ? WrenchIcon : SunDimIcon;
+                                            
+                                            // Dynamic Icon Colors
+                                            const iconColor = doc.days <= 0 
+                                                ? 'text-rose-400 group-hover:text-rose-500 dark:text-rose-400' 
+                                                : doc.days === 1 
+                                                ? 'text-amber-500 group-hover:text-amber-600 dark:text-amber-400' 
+                                                : 'text-slate-500 group-hover:text-slate-700 dark:text-gray-400 dark:group-hover:text-gray-200';
+
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between py-1.5 group/item">
+                                                    <div className="flex items-center min-w-0 pr-2">
+                                                        <div className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md bg-slate-100/70 dark:bg-white/[0.04] ring-1 ring-slate-200/50 dark:ring-white/[0.05] mr-2.5 transition-colors duration-200 group-hover/item:bg-white dark:group-hover/item:bg-white/[0.08] ${iconColor}`}>
+                                                            <Icon size={14} strokeWidth={2.5} />
+                                                        </div>
+                                                        <span className="text-[13px] font-medium text-slate-600 dark:text-gray-300 truncate transition-colors duration-200 group-hover/item:text-slate-800 dark:group-hover/item:text-white">
+                                                            {doc.docName}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        {doc.days <= 0 ? (
+                                                            <div className="bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0">
+                                                                {doc.days < 0 ? "O'tgan" : "Bugun"}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">
+                                                                {doc.days} kun qoldi
+                                                            </div>
+                                                        )}
+                                                        {/* Quick Dismiss Checkmark */}
+                                                        <button
+                                                            onClick={(e) => handleClearWarning(e, group.id, doc.docType)}
+                                                            className="flex-shrink-0 flex items-center justify-center w-[22px] h-[22px] rounded-[6px] bg-white dark:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.1] text-slate-400 dark:text-gray-500 hover:bg-[#34C759] hover:border-[#34C759] hover:text-white hover:shadow-sm hover:scale-110 active:scale-90 transition-all duration-200 opacity-0 group-hover/item:opacity-100 ml-1.5"
+                                                            title="Ogohlantirishni o'chirish (Bajarildi)"
+                                                        >
+                                                            <CheckIcon size={14} strokeWidth={3.5} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* ── Toolbar ── */}
             <div className="flex flex-col gap-3">
@@ -441,8 +584,21 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
     const docs        = car.documents ?? [];
     const damages     = car.damage ?? [];
     const isAssigned  = !!driver;
-    const hasSevere   = damages.some(d => d.severity === 'severe');
-    const hasModerate = damages.some(d => d.severity === 'moderate');
+
+    const expiryWarnings = useMemo(() => {
+        const MS_IN_DAY = 1000 * 60 * 60 * 24;
+        const now = Date.now();
+        const warnings: string[] = [];
+        const check = (ms: number | undefined, name: string) => {
+            if (!ms) return;
+            const days = Math.ceil((ms - now) / MS_IN_DAY);
+            if (days <= 3) warnings.push(name);
+        };
+        check(car.insuranceExpiryMs, "Sug'urta");
+        check(car.techInspectionExpiryMs, "Tex. ko'rik");
+        check(car.tintingExpiryMs, "Tanirovka");
+        return warnings;
+    }, [car.insuranceExpiryMs, car.techInspectionExpiryMs, car.tintingExpiryMs]);
 
     return (
         <article 
@@ -482,10 +638,14 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
                 {docs.length > 0 && (
                     <button
                         onClick={e => { e.stopPropagation(); onDocClick(0); }}
-                        className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1.5 rounded-[10px] bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 shadow-sm transition-all active:scale-90"
-                        title="Hujjatlarni ko'rish"
+                        className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1.5 rounded-[10px] backdrop-blur-md border shadow-sm transition-all active:scale-90 ${
+                            expiryWarnings.length > 0 
+                                ? 'bg-rose-500/90 hover:bg-rose-600/90 border-rose-400/50 animate-pulse' 
+                                : 'bg-black/40 hover:bg-black/60 border-white/10'
+                        }`}
+                        title={expiryWarnings.length > 0 ? `Ogohlantirish: ${expiryWarnings.join(', ')}` : "Hujjatlarni ko'rish"}
                     >
-                        <span className="text-[11px]">📄</span>
+                        <span className="text-[11px]">{expiryWarnings.length > 0 ? '⚠️' : '📄'}</span>
                         <span className="text-white text-[11px] font-bold leading-none">{docs.length}</span>
                     </button>
                 )}
@@ -527,6 +687,11 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
                     {!isAssigned && !car.inRepair && (
                         <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                             Bo'sh
+                        </span>
+                    )}
+                    {expiryWarnings.length > 0 && isAssigned && !car.inRepair && (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400">
+                            ⚠️ Hujjat
                         </span>
                     )}
                 </div>

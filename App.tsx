@@ -13,6 +13,7 @@ import DriverModal from './components/DriverModal';
 import CarModal from './components/CarModal';
 import CarsPage from './src/features/cars/CarsPage';
 import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar } from './services/carsService';
+import { AvatarWithFallback } from './components/AvatarWithFallback';
 import { Car } from './src/core/types';
 import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
@@ -552,6 +553,23 @@ const AppContent: React.FC = () => {
 
   const dueNotesCount = allNotes.filter(n => n.reminderAt && n.reminderAt <= currentTime).length;
 
+  const expiringCarsCount = useMemo(() => {
+    let count = 0;
+    const MS_IN_DAY = 1000 * 60 * 60 * 24;
+    const now = Date.now();
+    cars.forEach(car => {
+      if (car.isDeleted) return;
+      const days1 = car.insuranceExpiryMs ? Math.ceil((car.insuranceExpiryMs - now) / MS_IN_DAY) : Infinity;
+      const days2 = car.techInspectionExpiryMs ? Math.ceil((car.techInspectionExpiryMs - now) / MS_IN_DAY) : Infinity;
+      const days3 = car.tintingExpiryMs ? Math.ceil((car.tintingExpiryMs - now) / MS_IN_DAY) : Infinity;
+      
+      if (days1 <= 3 || days2 <= 3 || days3 <= 3) {
+        count++;
+      }
+    });
+    return count;
+  }, [cars, currentTime]); // added currentTime to refresh dynamically if needed
+
   const renderSidebarItem = (path: string, label: string, Icon: React.FC<any>, badgeCount?: number) => {
     const isActive = location.pathname === path;
     return (
@@ -680,7 +698,7 @@ const AppContent: React.FC = () => {
             }`}>{t.menu}</div>
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
-          {renderSidebarItem('/cars', t.cars, CarIcon)}
+          {renderSidebarItem('/cars', t.cars, CarIcon, expiringCarsCount)}
           {renderSidebarItem('/monthly-plan', t.monthlyPlan, CalendarIcon)}
           {renderSidebarItem('/transactions', t.transactions, ListIcon)}
           {renderSidebarItem('/finance', t.financialReports, BanknoteIcon)}
@@ -773,20 +791,12 @@ const AppContent: React.FC = () => {
                   }`}>
                   {adminUser ? (
                     <>
-                      {adminUser.avatar && adminUser.avatar.length > 20 ? (
-                        <img
-                          src={adminUser.avatar}
-                          className="w-9 h-9 rounded-full object-cover"
-                          alt={adminUser.username}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(adminUser.username)}`;
-                          }}
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-[#0f766e] flex items-center justify-center text-white text-sm font-semibold">
-                          {adminUser.username.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <AvatarWithFallback
+                        src={adminUser.avatar}
+                        alt={adminUser.username}
+                        fallbackSeed={adminUser.username}
+                        className="w-9 h-9 rounded-full object-cover"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className={`text-[15px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
                           }`}>{adminUser.username}</p>
@@ -796,12 +806,11 @@ const AppContent: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <img src={adminProfile?.avatar}
-                        className="w-9 h-9 rounded-full object-cover"
+                      <AvatarWithFallback
+                        src={adminProfile?.avatar}
                         alt="Admin"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(adminProfile?.name || 'Admin')}`;
-                        }}
+                        fallbackSeed={adminProfile?.name || 'Admin'}
+                        className="w-9 h-9 rounded-full object-cover"
                       />
                       <div className="flex-1 min-w-0">
                         <p className={`text-[15px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'

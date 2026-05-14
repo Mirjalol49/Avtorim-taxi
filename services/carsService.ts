@@ -16,9 +16,8 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
         try {
             const { data, error } = await supabase
                 .from('cars')
-                // ⚠️ documents can be large base64 blobs — excluded, loaded on demand in CarModal.
                 // avatar IS included — it's shown throughout the UI (car cards, damage page, etc.).
-                .select('id,fleet_id,name,license_plate,assigned_driver_id,daily_plan,plan_history,day_overrides,is_deleted,created_ms,damage,avatar,in_repair')
+                .select('id,fleet_id,name,license_plate,assigned_driver_id,daily_plan,plan_history,day_overrides,is_deleted,created_ms,damage,avatar,in_repair,insurance_expiry_ms,tech_inspection_expiry_ms,tinting_expiry_ms')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -39,6 +38,9 @@ export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: strin
                 createdAt: toMs(r.created_ms),
                 inRepair: r.in_repair ?? false,
                 damage: r.damage ?? [],
+                insuranceExpiryMs: r.insurance_expiry_ms ? toMs(r.insurance_expiry_ms) : undefined,
+                techInspectionExpiryMs: r.tech_inspection_expiry_ms ? toMs(r.tech_inspection_expiry_ms) : undefined,
+                tintingExpiryMs: r.tinting_expiry_ms ? toMs(r.tinting_expiry_ms) : undefined,
             } as Car)));
         } catch (err: any) {
             clearTimeout(abort);
@@ -97,6 +99,9 @@ export const addCar = async (car: Omit<Car, 'id'>, fleetId: string) => {
             is_deleted: false,
             created_ms: createdAt,
             in_repair: car.inRepair ?? false,
+            insurance_expiry_ms: car.insuranceExpiryMs ?? null,
+            tech_inspection_expiry_ms: car.techInspectionExpiryMs ?? null,
+            tinting_expiry_ms: car.tintingExpiryMs ?? null,
         })
         .select('id')
         .single();
@@ -112,6 +117,9 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     if (car.documents !== undefined) payload.documents = car.documents;
     if (car.damage !== undefined)    payload.damage = car.damage;
     if (car.inRepair !== undefined)  payload.in_repair = car.inRepair;
+    if (car.insuranceExpiryMs !== undefined) payload.insurance_expiry_ms = car.insuranceExpiryMs;
+    if (car.techInspectionExpiryMs !== undefined) payload.tech_inspection_expiry_ms = car.techInspectionExpiryMs;
+    if (car.tintingExpiryMs !== undefined) payload.tinting_expiry_ms = car.tintingExpiryMs;
     if ('assignedDriverId' in car) {
         payload.assigned_driver_id = car.assignedDriverId ?? null;
 

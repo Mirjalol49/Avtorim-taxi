@@ -100,4 +100,10 @@ export interface Car {
     inRepair?: boolean;
     /** Scratch / damage history for this car. Persisted as JSONB in the cars table. */
     damage?: CarDamage[];
+    /** Insurance (OSAGO) expiration date in epoch ms. */
+    insuranceExpiryMs?: number;
+    /** Technical inspection expiration date in epoch ms. */
+    techInspectionExpiryMs?: number;
+    /** Tinting (Tanirovka) expiration date in epoch ms. */
+    tintingExpiryMs?: number;
 }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { XIcon, CameraIcon } from './Icons';
+import { XIcon, CameraIcon, InfoIcon } from './Icons';
 import { Car, CarDocument } from '../src/core/types';
 import { supabase } from '../supabase';
 import { uploadAvatarToStorage } from '../services/storageService';
+import DatePicker from './DatePicker';
 
 interface CarModalProps {
   isOpen: boolean;
@@ -32,6 +33,12 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [inRepair,     setInRepair]     = useState(false);
+  
+  // Document Expirations
+  const [insuranceExpiry, setInsuranceExpiry] = useState<Date | null>(null);
+  const [techInspectionExpiry, setTechInspectionExpiry] = useState<Date | null>(null);
+  const [tintingExpiry, setTintingExpiry] = useState<Date | null>(null);
+
   const avatarFileRef = useRef<File | null>(null); // raw File — uploaded to Storage on submit
 
   const isDark = theme === 'dark';
@@ -48,6 +55,10 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       setError(null);
       setDocError(null);
       setInRepair(editingCar.inRepair ?? false);
+
+      setInsuranceExpiry(editingCar.insuranceExpiryMs ? new Date(editingCar.insuranceExpiryMs) : null);
+      setTechInspectionExpiry(editingCar.techInspectionExpiryMs ? new Date(editingCar.techInspectionExpiryMs) : null);
+      setTintingExpiry(editingCar.tintingExpiryMs ? new Date(editingCar.tintingExpiryMs) : null);
 
       // Load documents on-demand (not included in realtime subscription to save egress)
       if (editingCar.id) {
@@ -71,6 +82,9 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
       setError(null);
       setDocError(null);
       setInRepair(false);
+      setInsuranceExpiry(null);
+      setTechInspectionExpiry(null);
+      setTintingExpiry(null);
     }
   }, [isOpen, editingCar?.id]);
 
@@ -103,7 +117,18 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
         avatarFileRef.current = null;
       }
 
-      await onSubmit({ id: editingCar?.id, name, licensePlate, avatar: finalAvatar, dailyPlan: planValue, documents, inRepair });
+      await onSubmit({ 
+        id: editingCar?.id, 
+        name, 
+        licensePlate, 
+        avatar: finalAvatar, 
+        dailyPlan: planValue, 
+        documents, 
+        inRepair,
+        insuranceExpiryMs: insuranceExpiry?.getTime(),
+        techInspectionExpiryMs: techInspectionExpiry?.getTime(),
+        tintingExpiryMs: tintingExpiry?.getTime()
+      });
       onClose();
     } catch (err: any) {
       setError(err?.message || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
@@ -157,30 +182,60 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
     });
   };
 
-  const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${
+  const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 shadow-sm border ${
     isDark
-      ? 'bg-surface-2 border-white/[0.08] text-white focus:border-[#0f766e] placeholder-gray-500'
-      : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'
+      ? 'bg-surface-2 border-white/[0.08] text-white focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 placeholder-gray-500'
+      : 'bg-white border-slate-200 text-gray-900 focus:border-slate-300 focus:ring-4 focus:ring-slate-100 placeholder-slate-400'
   }`;
 
-  const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${
-    isDark ? 'text-gray-400' : 'text-gray-500'
+  const labelClass = `block text-[11px] font-semibold tracking-wider uppercase mb-1.5 ${
+    isDark ? 'text-gray-400' : 'text-slate-500'
   }`;
+
+  const ModernDatePicker = ({ label, value, onChange, theme }: any) => {
+    return (
+      <div className="flex flex-col relative group">
+        <label className={labelClass}>{label}</label>
+        <div className="relative">
+          <DatePicker
+            label={label}
+            hideLabel
+            value={value}
+            onChange={onChange}
+            theme={theme}
+            placeholder="Kun/Oy/Yil"
+          />
+          {value && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onChange(null); }}
+              className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 transition-colors cursor-pointer z-10"
+              title="Tozalash"
+            >
+              <XIcon className="w-[14px] h-[14px]" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const DocBox = ({ category, label }: { category: CarDocument['category']; label: string }) => {
     const docs = documents.filter(d => d.category === category);
     return (
-      <div className={`rounded-xl border p-3 ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+      <div className={`rounded-xl border p-4 transition-all ${isDark ? 'bg-surface-2/50 border-white/[0.08]' : 'bg-white border-slate-200 shadow-sm hover:shadow-md'}`}>
         <div className="flex items-center justify-between mb-2">
           <div>
-            <p className={`text-xs font-semibold ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
+            <p className={`text-[13px] font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{label}</p>
             {docs.length > 0 && (
-              <p className={`text-[10px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{docs.length} ta fayl</p>
+              <p className={`text-[11px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>{docs.length} ta fayl</p>
             )}
           </div>
           <label
             htmlFor={`car-doc-${category}`}
-            className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors flex-shrink-0"
+            className={`cursor-pointer px-4 py-2 text-[13px] font-medium rounded-xl transition-colors flex-shrink-0 ${
+              isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+            }`}
           >
             + Qo'shish
           </label>
@@ -194,7 +249,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
           />
         </div>
         {docs.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mt-3">
             {docs.map((doc, idx) => (
               <div key={idx} className="relative group">
                 {doc.type.startsWith('image/') ? (
@@ -202,12 +257,12 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
                     <img
                       src={doc.data}
                       alt={doc.name}
-                      className={`w-14 h-14 rounded-lg object-cover cursor-pointer border ${isDark ? 'border-white/[0.10]' : 'border-gray-200'}`}
+                      className={`w-14 h-14 rounded-xl object-cover cursor-pointer border transition-transform group-hover:scale-105 ${isDark ? 'border-white/[0.10]' : 'border-slate-200 shadow-sm'}`}
                     />
                   </a>
                 ) : (
                   <a href={doc.data} download={doc.name} target="_blank" rel="noreferrer">
-                    <div className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer border ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
+                    <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer border transition-transform group-hover:scale-105 ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
                       <span className="text-lg">📄</span>
                       <span className="text-[9px] font-bold text-red-400">PDF</span>
                     </div>
@@ -216,15 +271,15 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
                 <button
                   type="button"
                   onClick={() => removeDoc(category, idx)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                  className="absolute -top-2 -right-2 w-[22px] h-[22px] bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md hover:scale-110 hover:bg-red-600"
                 >
-                  <XIcon className="w-2.5 h-2.5" />
+                  <XIcon className="w-3 h-3" />
                 </button>
               </div>
             ))}
           </div>
         ) : (
-          <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          <p className={`text-[12px] mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
             Oldi-orqa tomonlarni yoki bir nechta sahifalarni yuklash mumkin
           </p>
         )}
@@ -262,20 +317,19 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
           )}
 
           {/* ── Photo + Fields ── */}
-          <div className="flex items-start gap-5">
-            <div className="flex-shrink-0">
-              <label className={labelClass}>Rasm</label>
-              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08] hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            <div className="flex-shrink-0 sm:mt-6">
+              <div className={`relative group w-24 h-24 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-all shadow-sm ${isDark ? 'bg-surface-2 border-white/[0.08] hover:border-emerald-500/50' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
                 {avatar ? (
                   <img src={avatar} alt="Car" className="w-full h-full object-cover" />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-surface-2/50' : 'bg-gray-100'}`}>
-                    <CameraIcon className={`w-7 h-7 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                  <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-surface-2/50' : 'bg-slate-100'}`}>
+                    <CameraIcon className={`w-7 h-7 ${isDark ? 'text-gray-500' : 'text-slate-400'}`} />
                   </div>
                 )}
                 <label
                   htmlFor="car-avatar-upload"
-                  className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
                 >
                   <CameraIcon className="w-6 h-6 text-white" />
                 </label>
@@ -288,7 +342,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
                 />
               </div>
             </div>
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 w-full space-y-5">
               <div>
                 <label className={labelClass}>Avtomobil nomi <span className="text-red-500">*</span></label>
                 <input
@@ -318,7 +372,7 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
           <div>
             <label className={labelClass}>
               Kunlik reja (UZS){' '}
-              <span className={`normal-case font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span className={`normal-case font-medium tracking-normal ml-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
                 — haydovchi topishi kerak bo'lgan miqdor
               </span>
             </label>
@@ -332,31 +386,49 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
           </div>
 
           {/* ── Status ── */}
-          <div className={`p-4 rounded-xl border flex items-center justify-between ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+          <div className={`p-6 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'bg-surface-2 border border-white/[0.05]' : 'bg-slate-50/70 border border-slate-100 shadow-sm'}`}>
             <div>
-              <p className={`text-sm font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Ta'mirda (In Repair)</p>
-              <p className={`text-[11px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Avtomobil ta'mirlanayotganligini belgilash</p>
+              <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Ta'mirda (In Repair)</p>
+              <p className={`text-[13px] mt-1 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>Avtomobil ta'mirlanayotganligini belgilash</p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex items-center cursor-pointer group">
               <input type="checkbox" className="sr-only peer" checked={inRepair} onChange={e => setInRepair(e.target.checked)} />
-              <div className={`w-11 h-6 rounded-full peer transition-colors ${
-                isDark ? 'bg-black/40 peer-checked:bg-red-500/80' : 'bg-gray-300 peer-checked:bg-red-500'
+              <div className={`w-[50px] h-[30px] rounded-[15px] peer transition-all duration-300 shadow-inner ${
+                isDark ? 'bg-black/40 peer-checked:bg-[#34C759]' : 'bg-slate-200 peer-checked:bg-[#34C759]'
               }`}></div>
-              <div className={`absolute left-[2px] top-[2px] w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full ${
-                isDark ? 'bg-white/80 peer-checked:bg-white' : 'bg-white'
+              <div className={`absolute left-[2px] top-[2px] w-[26px] h-[26px] rounded-full transition-all duration-300 shadow-sm peer-checked:translate-x-[20px] ${
+                isDark ? 'bg-white/90 peer-checked:bg-white' : 'bg-white'
               }`}></div>
             </label>
           </div>
 
+          {/* ── Document Expiration Reminders ── */}
+          <div className={`p-6 rounded-2xl transition-all ${isDark ? 'bg-surface-2 border border-white/[0.05]' : 'bg-slate-50/70 border border-slate-100 shadow-sm'}`}>
+            <p className={`text-[15px] font-semibold mb-5 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+              ⏳ Hujjatlar muddati (Ixtiyoriy)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <ModernDatePicker label="Sug'urta (OSAGO)" value={insuranceExpiry} onChange={setInsuranceExpiry} theme={theme} />
+              <ModernDatePicker label="Texnik ko'rik" value={techInspectionExpiry} onChange={setTechInspectionExpiry} theme={theme} />
+              <div className="sm:col-span-2">
+                <ModernDatePicker label="Tanirovka" value={tintingExpiry} onChange={setTintingExpiry} theme={theme} />
+              </div>
+            </div>
+            <p className={`text-[13px] flex items-center gap-2 mt-5 font-medium ${isDark ? 'text-gray-400' : 'text-slate-400'}`}>
+              <InfoIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-slate-400'}`} />
+              Kiritilgan muddat tugashiga 3 kun qolganda tizim sizni ogohlantiradi.
+            </p>
+          </div>
+
           {/* ── Documents ── */}
-          <div className={`border-t pt-4 ${isDark ? 'border-white/[0.08]' : 'border-gray-200'}`}>
-            <p className={`text-sm font-bold mb-3 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+          <div className={`p-6 rounded-2xl transition-all ${isDark ? 'bg-surface-2 border border-white/[0.05]' : 'bg-slate-50/70 border border-slate-100 shadow-sm'}`}>
+            <p className={`text-[15px] font-semibold mb-5 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
               🗂️ Hujjatlar
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {DOC_SLOTS.map(s => <DocBox key={s.category} {...s} />)}
             </div>
-            {docError && <p className="text-xs text-red-500 mt-2">{docError}</p>}
+            {docError && <p className="text-[13px] font-semibold text-red-500 mt-3">{docError}</p>}
           </div>
 
           {/* ── Actions ── */}

@@ -538,7 +538,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
     return (
         <div
             onClick={onClick}
-            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col h-full ${bg} ${borderBase} ${borderDue}`}
+            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col ${bg} ${borderBase} ${borderDue}`}
         >
             <div className="flex items-start justify-between gap-3 mb-2">
                 <h3 className={`font-semibold text-lg leading-snug line-clamp-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -574,7 +574,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
 
             {/* Content preview */}
             {note.content && (
-                <p className={`text-sm leading-relaxed line-clamp-4 whitespace-pre-wrap ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
                     {note.content}
                 </p>
             )}
@@ -925,7 +925,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, ini
                         <p className={`text-[11px] font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'}`}>
                             📌 {t('pinnedSection')}
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
                             {pinned.map(note => (
                                 <NoteCard
                                     key={note.id}
@@ -948,7 +948,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ theme, fleetId, initialNotes, ini
                                 {t('othersSection')}
                             </p>
                         )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
                             {unpinned.map(note => (
                                 <NoteCard
                                     key={note.id}
