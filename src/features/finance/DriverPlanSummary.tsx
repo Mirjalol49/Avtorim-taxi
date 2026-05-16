@@ -6,6 +6,7 @@ import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 import { getEffectivePlanForDay } from '../cars/utils/planHistory';
 import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../drivers/utils/driverPlanHistory';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ interface DriverPlanSummaryProps {
 
 const fmt = (n: number) =>
     `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
+
+const fmtCompact = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
 
 const toMonthKey = (d: Date): string => {
     const y = d.getFullYear();
@@ -196,169 +199,117 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 
     return (
         <div className="flex flex-col gap-6">
-            <div className={`flex flex-wrap items-center justify-between gap-4 px-2`}>
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">📅</span>
-                    <div>
-                        <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthDisplayLabel(currentMonthKey, monthNames)}</h3>
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('overallReport')}</p>
-                    </div>
+            {/* Top Summary Banner */}
+            <div className={`flex flex-wrap items-center justify-between p-6 rounded-[24px] shadow-sm border ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-slate-100/60'}`}>
+                <div className="flex flex-col">
+                    <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        Jami Reja
+                    </span>
+                    <span className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        {fmt(totalTarget)}
+                    </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-6">
-                    <div className="flex flex-col items-end">
-                        <span className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPlanTarget')}</span>
-                        <span className={`font-bold font-mono text-lg ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fmt(totalTarget)}</span>
-                    </div>
-                    <div className={`flex flex-col items-end`}>
-                        <span className={`text-[10px] uppercase font-bold tracking-wider ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {totalRemaining <= 0 ? t('surplusIncome') : t('remainingLabel')}
-                        </span>
-                        <span className={`font-black font-mono text-lg ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                <div className="flex flex-col">
+                    <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        Hali Qolgan
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className={`text-3xl font-medium tracking-tight ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {totalRemaining <= 0 ? `+${fmt(-totalRemaining)}` : `-${fmt(totalRemaining)}`}
                         </span>
+                        {totalRemaining > 0 && <span className="text-3xl font-light text-rose-500">→</span>}
                     </div>
                 </div>
             </div>
 
+            {/* Grid */}
             <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {rows.map(row => (
-                                <div
-                                    key={row.driver.id}
-                                    onClick={() => setSelectedKey({ driverId: row.driver.id, monthKey: row.monthKey })}
-                                    className={`relative p-5 rounded-[24px] border transition-all duration-200 cursor-pointer active:scale-[0.98] group overflow-hidden hover:-translate-y-1 hover:shadow-md ${
-                                        row.isFutureMonth
-                                        ? isDark
-                                            ? 'border-white/[0.05] opacity-60 hover:opacity-80'
-                                            : 'border-gray-200/50 opacity-60 hover:opacity-80'
-                                        : isDark
-                                        ? 'border-white/[0.07] shadow-sm hover:border-white/[0.14]'
-                                        : 'bg-white border-gray-100 shadow-sm hover:border-gray-200'
-                                    }`}
-                                    style={{ background: isDark ? 'var(--color-surface)' : undefined }}
-                                >
-                                    {/* Future month overlay pattern */}
-                                    {row.isFutureMonth && (
-                                        <div className="absolute inset-0 rounded-3xl pointer-events-none"
-                                            style={{
-                                                backgroundImage: `repeating-linear-gradient(
-                                                    -45deg,
-                                                    transparent,
-                                                    transparent 12px,
-                                                    rgba(255,255,255,0.015) 12px,
-                                                    rgba(255,255,255,0.015) 13px
-                                                )`
-                                            }}
-                                        />
-                                    )}
-
-                                    {/* Inner Glow Pseudo-element */}
-                                    <div className="absolute inset-0 rounded-3xl border-[0.5px] border-white/10 dark:border-white/5 pointer-events-none" />
-
-                                    {/* Top row: driver info */}
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="flex items-center gap-3.5">
-                                            {row.driver.avatar ? (
-                                                <img
-                                                    src={row.driver.avatar}
-                                                    alt={row.driver.name}
-                                                    className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-white/[0.06]' : 'border-gray-200/50 shadow-sm'} ${row.isFutureMonth ? 'grayscale' : ''}`}
-                                                />
-                                            ) : (
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-surface-2 text-gray-300 border-white/[0.08]' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                                    {row.driver.name.charAt(0)}
-                                                </div>
-                                            )}
-                                            <div className="flex flex-col">
-                                                <p className={`font-semibold text-base tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                                    {row.driver.name}
-                                                </p>
-                                                <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                    {row.car ? `${row.car.name} · ${row.car.licensePlate}` : t('noCar')}
-                                                </p>
-                                            </div>
-                                        </div>
+                        <div
+                            key={row.driver.id}
+                            onClick={() => setSelectedKey({ driverId: row.driver.id, monthKey: row.monthKey })}
+                            className={`p-5 sm:p-6 rounded-[24px] transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                                isDark
+                                ? 'bg-surface border border-white/[0.07] hover:border-white/[0.14] hover:shadow-lg'
+                                : 'bg-white border border-transparent shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]'
+                            }`}
+                        >
+                            {/* Header: Avatar, Name, Car Info */}
+                            <div className="flex items-center gap-4">
+                                {row.driver.avatar ? (
+                                    <img src={row.driver.avatar} alt={row.driver.name} className={`w-[46px] h-[46px] rounded-full object-cover flex-shrink-0 ${isDark ? 'border border-white/10' : ''}`} />
+                                ) : (
+                                    <div className={`w-[46px] h-[46px] rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 ${isDark ? 'bg-surface-2 text-gray-300 border border-white/10' : 'bg-slate-100 text-slate-700'}`}>
+                                        {row.driver.name.charAt(0)}
                                     </div>
-
-                                    <div className="mb-4" />
-
-                                    {/* Primary Mini-Stats */}
-                                    {row.isFutureMonth ? (
-                                        /* Future month: show daily plan as the only meaningful number */
-                                        <div className="flex flex-col gap-1 mb-6">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('dailyPlan')}</p>
-                                            <p className={`text-lg font-black tracking-tight ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                {fmt(row.dailyPlan)} <span className="text-sm font-normal">/ {t('dailyPlanUnit')}</span>
-                                            </p>
-                                        </div>
+                                )}
+                                <div className="flex flex-col min-w-0">
+                                    <span className={`text-[15px] font-bold tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {row.driver.name}
+                                    </span>
+                                    {row.car ? (
+                                        <span className={`text-[12px] truncate mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                            {row.car.name} &bull; {row.car.licensePlate}
+                                        </span>
                                     ) : (
-                                        <div className="grid grid-cols-2 gap-4 mb-6">
-                                            <div className="flex flex-col gap-1">
-                                                <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('monthlyPlan')}</p>
-                                                <p className={`text-lg font-medium tracking-tight ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fmt(row.monthlyTarget)}</p>
-                                            </div>
-                                            <div className="flex flex-col gap-1 items-start">
-                                                <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-emerald-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPaidAmount')}</p>
-                                                <p className={`text-xl font-bold tracking-tight ${row.actualIncome >= row.monthlyTarget ? 'text-emerald-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Progress bar */}
-                                    <div className="relative z-10">
-                                        {row.isFutureMonth ? (
-                                            /* Dashed empty bar for future months */
-                                            <div>
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className={`text-xs font-semibold ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                        — % {t('completedPercent')}
-                                                    </span>
-                                                    <span className={`text-xs font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                        {t('waitingToStart') ?? 'Kutilmoqda'}
-                                                    </span>
-                                                </div>
-                                                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-gray-100'}`}
-                                                    style={{ backgroundImage: `repeating-linear-gradient(90deg, ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} 0px, ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} 6px, transparent 6px, transparent 12px)` }}
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        {row.paidPercent}% {t('completedPercent')}
-                                                    </span>
-                                                    <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}
-                                                    >
-                                                        {row.remaining > 0
-                                                            ? `${t('remainingShort')}: ${fmt(row.remaining)}`
-                                                            : `+${fmt(-row.remaining)}`}
-                                                    </span>
-                                                </div>
-                                                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-gray-200'}`}>
-                                                    <div
-                                                        className="h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                                                        style={{
-                                                            width: `${Math.min(100, row.paidPercent)}%`,
-                                                            background: row.paidPercent >= 60
-                                                                ? '#22c55e'
-                                                                : row.paidPercent >= 30
-                                                                ? 'hsl(208, 100%, 45%)'
-                                                                : 'deeppink'
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Subtle Background Glow */}
-                                    {!row.isFutureMonth && (
-                                        <div className={`absolute bottom-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none transition-opacity duration-700 ease-in-out mix-blend-screen opacity-0 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-400' : 'bg-blue-400'}`} />
+                                        <span className={`text-[12px] truncate mt-0.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                            Mashina yo'q
+                                        </span>
                                     )}
                                 </div>
-                            ))}
+                            </div>
+
+                            {/* Stats: Oylik Reja & Jami To'ladi */}
+                            <div className="grid grid-cols-2 gap-4 mt-6">
+                                <div className="flex flex-col">
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                        Oylik Reja
+                                    </span>
+                                    <span className={`text-[16px] sm:text-[17px] font-semibold tracking-tight ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
+                                        {fmt(row.monthlyTarget)}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                        Jami To'ladi
+                                    </span>
+                                    <span className={`text-[17px] sm:text-[18px] font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {fmt(row.actualIncome)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Progress */}
+                            <div className="mt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                        {row.paidPercent}% bajarildi
+                                    </span>
+                                    <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                        Qoldi: {fmt(Math.max(0, row.remaining))}
+                                    </span>
+                                </div>
+                                {(() => {
+                                    const isLow = row.paidPercent < 60;
+                                    const fillColor = isLow ? 'bg-[#3b82f6]' : 'bg-[#10b981]';
+                                    const trackColor = isLow ? (isDark ? 'bg-blue-900/30' : 'bg-blue-100/60') : (isDark ? 'bg-emerald-900/20' : 'bg-emerald-50/80');
+                                    
+                                    return (
+                                        <div className={`w-full h-2 rounded-full overflow-hidden ${trackColor}`}>
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-1000 ease-out ${fillColor}`}
+                                                style={{ width: `${Math.min(100, row.paidPercent)}%` }}
+                                            />
+                                        </div>
+                                    );
+                                })()}
+                            </div>
                         </div>
-                    </div>
+                    ))}
+                </div>
+            </div>
+
             {/* Modal — liveModalData is re-derived from reactive rows on every tx change */}
             <DriverPlanCalendarModal 
                 isOpen={selectedKey !== null}

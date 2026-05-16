@@ -5,6 +5,7 @@ import { updateCar } from '../../../../services/carsService';
 import CarDamageModal from './CarDamageModal';
 import { forceDownload } from '../../../../utils/downloadHelper';
 import { useConfirm } from '../../../../components/ConfirmContext';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
 interface Props {
     car: Car;
     isDark: boolean;
@@ -334,9 +335,9 @@ export default function CarDamageTab({ car, isDark, userRole, adminName, onUpdat
                                     <p className={`text-[14px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                         Shikast rasmi
                                     </p>
-                                    <p className={`text-[11px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        🚗 {car.licensePlate}
-                                    </p>
+                                    <div className="mt-1">
+                                        <LicensePlate plate={car.licensePlate || ''} size="sm" />
+                                    </div>
                                 </div>
                             </div>
 

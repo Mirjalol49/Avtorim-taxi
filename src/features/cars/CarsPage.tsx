@@ -8,6 +8,7 @@ import { formatNumberSmart } from '../../../utils/formatNumber';
 import { CarDetailsSheet } from './components/CarDetailsSheet';
 import { ShieldAlert as ShieldAlertIcon, Wrench as WrenchIcon, SunDim as SunDimIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { updateCar } from '../../../services/carsService';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 interface CarsPageProps {
     cars: Car[];
@@ -17,6 +18,7 @@ interface CarsPageProps {
     adminName?: string;
     onAddCar: () => void;
     onEditCar: (car: Car) => void;
+    onSaveCar: (car: Car) => void;
     onDeleteCar: (id: string) => void;
     theme: 'light' | 'dark';
 }
@@ -191,10 +193,10 @@ function DocViewerModal({
     );
 }
 
-// ─── Cars Page ────────────────────────────────────────────────────────────────
+import ConfirmModal from '../../../components/ConfirmModal';
 
 const CarsPage: React.FC<CarsPageProps> = ({
-    cars, drivers = [], isDataLoading, userRole, adminName = 'Admin', onAddCar, onEditCar, onDeleteCar, theme
+    cars, drivers = [], isDataLoading, userRole, adminName = 'Admin', onAddCar, onEditCar, onSaveCar, onDeleteCar, theme
 }) => {
     const isDark = theme === 'dark';
     const [search, setSearch] = useState('');
@@ -203,6 +205,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const [docViewer, setDocViewer] = useState<DocViewerState | null>(null);
     const [selectedCarDetails, setSelectedCarDetails] = useState<Car | null>(null);
     const [clearedWarnings, setClearedWarnings] = useState<Set<string>>(new Set());
+    const [repairConfirm, setRepairConfirm] = useState<{ isOpen: boolean; car: Car | null; targetRepairState: boolean }>({ isOpen: false, car: null, targetRepairState: false });
 
     const getDriver = (car: Car) => drivers.find(d => d.id === car.assignedDriverId && !d.isDeleted);
 
@@ -322,9 +325,9 @@ const CarsPage: React.FC<CarsPageProps> = ({
 
                                     <div className="flex items-center mb-3 pr-8">
                                         <span className="text-[15px] font-bold text-slate-800 dark:text-gray-100 truncate">{group.carName}</span>
-                                        <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 bg-slate-100 dark:bg-white/[0.08] px-1.5 py-0.5 rounded-md ml-2 flex-shrink-0">
-                                            {group.plate}
-                                        </span>
+                                        <div className="flex-shrink-0 ml-3">
+                                            <LicensePlate plate={group.plate} size="sm" />
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         {group.docs.map((doc, idx) => {
@@ -497,9 +500,10 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 isDark={isDark}
                                 onClick={() => setSelectedCarDetails(car)}
                                 onEdit={onEditCar}
+                                onRepairConfirm={(car, targetStatus) => setRepairConfirm({ isOpen: true, car, targetRepairState: targetStatus })}
                                 onDelete={onDeleteCar}
                                 onDocClick={(index) => openDoc(car, index)}
-                                onDamageClick={() => setDamageSheetCar(car)}
+                                onDamageClick={() => setSelectedCarDetails(car)}
                             />
                         ))}
                     </div>
@@ -554,6 +558,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                     setSelectedCarDetails(null);
                     onEditCar(car);
                 }}
+                onSaveCar={onSaveCar}
                 onDelete={(id) => {
                     setSelectedCarDetails(null);
                     onDeleteCar(id);
@@ -561,6 +566,24 @@ const CarsPage: React.FC<CarsPageProps> = ({
                 onUpdated={(updatedDamage) => {
                     setSelectedCarDetails(prev => prev ? { ...prev, damage: updatedDamage } : null);
                 }}
+            />
+
+            {/* ── Confirm Modal for Grid Actions ── */}
+            <ConfirmModal
+                isOpen={repairConfirm.isOpen}
+                title={repairConfirm.targetRepairState ? "Ta'mirga yuborish" : "Ta'mirdan chiqarish"}
+                message={repairConfirm.targetRepairState ? "Haqiqatan ham avtomobilni ta'mirga yubormoqchimisiz? Haydovchi uchun kunlik reja to'xtatiladi." : "Haqiqatan ham avtomobilni ta'mirdan chiqarmoqchimisiz? Kunlik reja hisoblanishi davom etadi."}
+                confirmLabel="Tasdiqlash"
+                cancelLabel="Bekor qilish"
+                theme={theme}
+                isDanger={repairConfirm.targetRepairState}
+                onConfirm={() => {
+                    if (repairConfirm.car) {
+                        onSaveCar({ ...repairConfirm.car, inRepair: repairConfirm.targetRepairState });
+                    }
+                    setRepairConfirm({ isOpen: false, car: null, targetRepairState: false });
+                }}
+                onCancel={() => setRepairConfirm({ isOpen: false, car: null, targetRepairState: false })}
             />
         </div>
     );
@@ -575,12 +598,13 @@ interface CardProps {
     isDark: boolean;
     onClick: () => void;
     onEdit: (car: Car) => void;
+    onRepairConfirm: (car: Car, targetStatus: boolean) => void;
     onDelete: (id: string) => void;
     onDocClick: (index: number) => void;
     onDamageClick: () => void;
 }
 
-function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onDocClick, onDamageClick }: CardProps) {
+function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfirm, onDelete, onDocClick, onDamageClick }: CardProps) {
     const docs        = car.documents ?? [];
     const damages     = car.damage ?? [];
     const isAssigned  = !!driver;
@@ -603,128 +627,144 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onDelete, onD
     return (
         <article 
             onClick={onClick}
-            className={`group rounded-2xl overflow-hidden flex flex-col transition-all duration-200 cursor-pointer shadow-sm ${
+            className={`group rounded-[24px] overflow-hidden flex flex-col transition-all duration-300 cursor-pointer ${
             isDark
-                ? 'bg-surface border border-white/[0.07] hover:border-white/[0.13] hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)]'
-                : 'bg-white border border-gray-100/50 hover:border-gray-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
+                ? 'bg-surface border border-white/[0.07] hover:border-white/[0.15] hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
+                : 'bg-white border border-slate-100/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_-10px_rgba(0,0,0,0.12)] hover:border-slate-200'
         }`}>
 
-            {/* ── Image zone ── */}
-            <div className={`relative h-40 w-full overflow-hidden flex-shrink-0 ${isDark ? 'bg-[#0d1829]' : 'bg-gray-100'}`}>
+            {/* ── Image Zone ── */}
+            <div className={`relative w-full h-[230px] flex-shrink-0 overflow-hidden ${isDark ? 'bg-surface/30' : 'bg-slate-100'}`}>
                 {car.avatar ? (
                     <img
                         src={car.avatar}
                         alt={car.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                        loading="lazy"
+                        className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                     />
                 ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                        <CameraIcon className={`w-8 h-8 ${isDark ? 'text-white/10' : 'text-gray-300'}`} />
+                    <div className={`w-full h-full flex flex-col items-center justify-center gap-2 ${isDark ? 'bg-[#0d1829]' : 'bg-slate-50'}`}>
+                        <CameraIcon className={`w-12 h-12 ${isDark ? 'text-white/10' : 'text-slate-200'}`} />
                     </div>
                 )}
+                
+                {/* Status Badge (Top Right) */}
+                <div className="absolute top-4 right-4 z-20">
+                    {car.inRepair ? (
+                        <div className="relative inline-flex">
+                            <div className="absolute inset-0 bg-red-400/40 dark:bg-red-500/50 blur-[8px] rounded-full"></div>
+                            <span className="relative px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[9px] font-black tracking-widest border border-red-200/50 dark:border-red-500/30">
+                                TA'MIRDA
+                            </span>
+                        </div>
+                    ) : isAssigned ? (
+                        <div className="relative inline-flex">
+                            <div className="absolute inset-0 bg-emerald-400/30 dark:bg-emerald-500/40 blur-[8px] rounded-full"></div>
+                            <span className="relative px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-widest border border-emerald-200/50 dark:border-emerald-500/30">
+                                BIRIKTIRILGAN
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="relative inline-flex">
+                            <div className="absolute inset-0 bg-blue-400/40 dark:bg-blue-500/50 blur-[8px] rounded-full"></div>
+                            <span className="relative px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[9px] font-black tracking-widest border border-blue-200/50 dark:border-blue-500/30">
+                                BO'SH
+                            </span>
+                        </div>
+                    )}
+                </div>
 
-                {/* Ta'mirda badge */}
-                {car.inRepair && (
-                    <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/90 backdrop-blur-md border border-rose-400/50 shadow-sm">
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <span className="text-white text-[10px] font-bold uppercase tracking-wider">Ta'mirda</span>
-                    </div>
-                )}
-
-                {/* Docs count badge */}
+                {/* Docs count badge (Top Left) */}
                 {docs.length > 0 && (
                     <button
                         onClick={e => { e.stopPropagation(); onDocClick(0); }}
-                        className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1.5 rounded-[10px] backdrop-blur-md border shadow-sm transition-all active:scale-90 ${
+                        className={`absolute top-4 left-4 z-20 flex items-center gap-1 px-2 py-1.5 rounded-[10px] backdrop-blur-md border shadow-sm transition-all active:scale-90 ${
                             expiryWarnings.length > 0 
                                 ? 'bg-rose-500/90 hover:bg-rose-600/90 border-rose-400/50 animate-pulse' 
-                                : 'bg-black/40 hover:bg-black/60 border-white/10'
+                                : isDark ? 'bg-black/50 hover:bg-black/70 border-white/20' : 'bg-white/80 hover:bg-white border-slate-200/60 text-slate-800'
                         }`}
                         title={expiryWarnings.length > 0 ? `Ogohlantirish: ${expiryWarnings.join(', ')}` : "Hujjatlarni ko'rish"}
                     >
                         <span className="text-[11px]">{expiryWarnings.length > 0 ? '⚠️' : '📄'}</span>
-                        <span className="text-white text-[11px] font-bold leading-none">{docs.length}</span>
+                        <span className={`text-[11px] font-bold leading-none ${expiryWarnings.length > 0 ? 'text-white' : isDark ? 'text-white' : 'text-slate-800'}`}>
+                            {docs.length}
+                        </span>
                     </button>
                 )}
 
-                {/* Admin actions on hover */}
+                {/* Admin actions overlay (Hover in center) */}
                 {userRole === 'admin' && (
-                    <div className={`absolute flex gap-1.5 transition-all duration-200 opacity-0 translate-y-[-4px] group-hover:opacity-100 group-hover:translate-y-0 ${
-                        docs.length > 0 ? 'top-12 right-3' : 'top-3 right-3'
-                    }`}>
-                        <button
-                            onClick={e => { e.stopPropagation(); onEdit(car); }}
-                            className="w-8 h-8 rounded-[10px] bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 active:scale-90 transition-all flex items-center justify-center shadow-sm"
-                            title="Tahrirlash"
-                        >
-                            <EditIcon className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                            onClick={e => { e.stopPropagation(); onDelete(car.id); }}
-                            className="w-8 h-8 rounded-[10px] bg-red-500/80 backdrop-blur-md border border-red-400/25 text-white hover:bg-red-500 active:scale-90 transition-all flex items-center justify-center shadow-sm"
-                            title="O'chirish"
-                        >
-                            <TrashIcon className="w-3.5 h-3.5" />
-                        </button>
+                    <div className="absolute inset-0 m-auto flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30 pointer-events-none">
+                        <div className="pointer-events-auto flex gap-3">
+                            <button
+                                onClick={e => { e.stopPropagation(); onEdit(car); }}
+                                className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform ${isDark ? 'bg-white/10 text-white backdrop-blur-md border border-white/20 hover:bg-white/20' : 'bg-white text-slate-700 border border-slate-100 hover:bg-slate-50'}`}
+                                title="Tahrirlash"
+                            >
+                                <EditIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={e => { e.stopPropagation(); onDelete(car.id); }}
+                                className="w-10 h-10 rounded-full bg-rose-500/90 shadow-lg text-white flex items-center justify-center hover:bg-rose-500 hover:scale-110 transition-transform backdrop-blur-md"
+                                title="O'chirish"
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* ── Asset Data (Middle Section) ── */}
-            <div className="p-4 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-3">
-                    <div>
-                        <h3 className={`text-lg font-bold font-mono tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {car.licensePlate}
-                        </h3>
-                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {car.name}
-                        </p>
-                    </div>
-                    {!isAssigned && !car.inRepair && (
-                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-                            Bo'sh
-                        </span>
-                    )}
-                    {expiryWarnings.length > 0 && isAssigned && !car.inRepair && (
-                        <span className="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400">
-                            ⚠️ Hujjat
-                        </span>
-                    )}
+            {/* ── Metadata Zone ── */}
+            <div className="px-5 pt-4 pb-1 w-full flex items-end justify-between z-20">
+                {/* License Plate & Model */}
+                <div className="flex flex-col items-start gap-1.5">
+                    <LicensePlate plate={car.licensePlate} size="lg" />
+                    <span className={`text-[12px] font-semibold leading-none ml-0.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                        {car.name}
+                    </span>
                 </div>
 
-                {/* Driver Assignment */}
-                {isAssigned ? (
-                    <div className="flex items-center gap-2 mt-auto">
-                        <div className={`w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border ${isDark ? 'border-white/10 bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
-                            {driver!.avatar ? (
-                                <img src={driver!.avatar} alt={driver!.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${isDark ? 'text-white/70' : 'text-gray-600'}`}>
-                                    {driver!.name.charAt(0)}
-                                </div>
-                            )}
+                {/* Driver Profile */}
+                <div className="flex items-center gap-2.5 mb-1">
+                    {isAssigned ? (
+                        <>
+                            <span className={`text-[12px] font-bold ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                                {driver!.name.split(' ')[0]}
+                            </span>
+                            <div className={`w-7 h-7 rounded-full overflow-hidden flex-shrink-0 shadow-sm border-2 ${isDark ? 'border-surface-2 bg-surface-3' : 'border-white bg-slate-100'}`}>
+                                {driver!.avatar ? (
+                                    <img src={driver!.avatar} alt={driver!.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
+                                        {driver!.name.charAt(0)}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-1.5 opacity-60">
+                            <span className={`text-[11px] font-semibold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                Biriktirilmagan
+                            </span>
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                                <PlusIcon className={`w-3 h-3 ${isDark ? 'text-gray-400' : 'text-slate-500'}`} />
+                            </div>
                         </div>
-                        <span className={`text-sm font-medium truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            {driver!.name}
-                        </span>
-                    </div>
-                ) : (
-                    <div className="mt-auto h-6" /> // spacer to keep height consistent if no driver
-                )}
-
-                {/* Financial Footer */}
-                <div className={`mt-3 pt-3 flex items-center justify-between border-t ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
-                    <span className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Kunlik reja
-                    </span>
-                    <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
-                        {car.dailyPlan && car.dailyPlan > 0 ? `${formatNumberSmart(car.dailyPlan)} UZS` : 'Belgilanmagan'}
-                    </span>
+                    )}
                 </div>
+            </div>
+
+            {/* Separator line */}
+            <div className={`mx-5 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+            {/* Financial Footer */}
+            <div className="px-5 py-4 flex items-center justify-between mt-auto">
+                <span className={`text-[12px] font-medium tracking-wide ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                    Kunlik Reja
+                </span>
+                <span className={`text-[14px] font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {car.dailyPlan && car.dailyPlan > 0 ? `${formatNumberSmart(car.dailyPlan)} UZS` : '0 UZS'}
+                </span>
             </div>
         </article>
     );

@@ -203,41 +203,58 @@ export const markAllNotificationsAsRead = async (notificationIds: string[], user
 };
 
 export const deleteNotification = async (notificationId: string, userId: string): Promise<void> => {
-    // Hard-delete the row from the notifications table (permanent — row is gone from DB)
-    await supabase.from('notifications').delete().eq('id', notificationId);
-    // Also insert into notification_deletes as a belt-and-suspenders guard
-    // (covers edge cases where the row is owned by another fleet and can't be hard-deleted)
-    await supabase.from('notification_deletes').insert({
-        notification_id: notificationId,
-        user_id: userId,
-        deleted_at: Date.now()
-    }).maybeSingle(); // ignore duplicate key errors
+    try {
+        // Hard-delete the row from the notifications table (permanent — row is gone from DB)
+        const { error: delError } = await supabase.from('notifications').delete().eq('id', notificationId);
+        
+        // If there was an error (e.g. RLS blocked it), we fallback to soft-delete
+        if (delError) {
+            console.warn('Hard delete failed, falling back to soft delete:', delError);
+            await supabase.from('notification_deletes').insert({
+                notification_id: notificationId,
+                user_id: userId,
+                deleted_at: Date.now()
+            }).maybeSingle(); // ignore duplicate key errors
+        }
+    } catch (err) {
+        console.error('Failed to delete notification:', err);
+    }
 };
 
 export const clearAllReadNotifications = async (userId: string): Promise<void> => {
-    const { data: reads } = await supabase
-        .from('notification_reads')
-        .select('notification_id')
-        .eq('user_id', userId);
-    const readIds = (reads ?? []).map(r => r.notification_id);
-    if (readIds.length === 0) return;
+    try {
+        const { data: reads } = await supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', userId);
+        const readIds = (reads ?? []).map(r => r.notification_id);
+        if (readIds.length === 0) return;
 
-    // Hard-delete all read notification rows permanently
-    await supabase.from('notifications').delete().in('id', readIds);
+        // Try to hard-delete all read notification rows permanently
+        await supabase.from('notifications').delete().in('id', readIds);
 
-    // Also record in notification_deletes as fallback
-    const { data: deletes } = await supabase
-        .from('notification_deletes')
-        .select('notification_id')
-        .eq('user_id', userId);
-    const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
+        // Check which ones STILL exist (failed to hard-delete due to RLS)
+        const { data: remaining } = await supabase.from('notifications').select('id').in('id', readIds);
+        const remainingIds = new Set((remaining ?? []).map(r => r.id));
 
-    const toInsert = readIds
-        .filter(id => !deletedIds.has(id))
-        .map(id => ({ notification_id: id, user_id: userId, deleted_at: Date.now() }));
+        if (remainingIds.size === 0) return; // All deleted successfully!
 
-    if (toInsert.length > 0) {
-        await supabase.from('notification_deletes').insert(toInsert);
+        // Also record in notification_deletes as fallback for the ones that couldn't be hard-deleted
+        const { data: deletes } = await supabase
+            .from('notification_deletes')
+            .select('notification_id')
+            .eq('user_id', userId);
+        const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
+
+        const toInsert = Array.from(remainingIds)
+            .filter(id => !deletedIds.has(id))
+            .map(id => ({ notification_id: id, user_id: userId, deleted_at: Date.now() }));
+
+        if (toInsert.length > 0) {
+            await supabase.from('notification_deletes').insert(toInsert);
+        }
+    } catch (err) {
+        console.error('Failed to clear read notifications:', err);
     }
 };
 

@@ -46,6 +46,18 @@ function toDateKey(date: Date): string {
 export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, date: Date, fallbackCar?: Car | null): number {
     if (!driver) return 0;
     
+    // Automatic suspension: If the car is currently in repair, pause the plan for today and the future.
+    // Past days rely on explicit historical overrides (added at the time of repair).
+    if (fallbackCar?.inRepair === true) {
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        const targetDateMidnight = new Date(date);
+        targetDateMidnight.setHours(0, 0, 0, 0);
+        if (targetDateMidnight.getTime() >= todayMidnight.getTime()) {
+            return 0;
+        }
+    }
+
     const overrides = driver.dayOverrides;
     // Fallback: If the driver has absolutely no overrides, we should respect the car's legacy overrides if they exist
     // This is ONLY for backward compatibility before the migration
@@ -64,7 +76,7 @@ export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, 
         const key = toDateKey(date);
         const override = overrides[key];
         if (override) {
-            if (override.type === 'OFF' || override.type === 'NOT_WORKING') return 0;
+            if (override.type === 'OFF' || override.type === 'NOT_WORKING' || override.type === 'REPAIR') return 0;
             if (override.type === 'DISCOUNT' && override.customPlan !== undefined) {
                 return override.customPlan;
             }
@@ -76,6 +88,18 @@ export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, 
 
 export function getDriverDayOverrideType(driver: Driver | null | undefined, date: Date, fallbackCar?: Car | null): DriverDayOverride['type'] | undefined {
     if (!driver) return undefined;
+    
+    // Automatic suspension override: Treat as REPAIR if car is currently broken
+    if (fallbackCar?.inRepair === true) {
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        const targetDateMidnight = new Date(date);
+        targetDateMidnight.setHours(0, 0, 0, 0);
+        if (targetDateMidnight.getTime() >= todayMidnight.getTime()) {
+            return 'REPAIR';
+        }
+    }
+
     const overrides = driver.dayOverrides;
     if (!overrides || Object.keys(overrides).length === 0) {
         if (fallbackCar) return getDayOverrideType(fallbackCar, date);

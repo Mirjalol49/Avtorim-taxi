@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DayOff, addDayOff, removeDayOff, countUsedThisMonth, MONTHLY_ALLOWANCE, toDateKey, toMonthKey } from '../../../../services/daysOffService';
+import Lottie from 'lottie-react';
+import restAnimation from '../../../../Images/rest.json';
 
 interface DayOffPanelProps {
     driver: { id: string; name: string; fleetId: string };
@@ -83,8 +85,11 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                 {/* Header */}
                 <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-gray-100'}`}>
                     <div>
-                        <h2 className={`font-bold text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            🏖️ {t('dayOffDays')}
+                        <h2 className={`font-bold text-base flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <div className="w-5 h-5 flex items-center justify-center">
+                                <Lottie animationData={restAnimation} loop={true} />
+                            </div>
+                            {t('dayOffDays')}
                         </h2>
                         <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.name}</p>
                     </div>
@@ -185,7 +190,9 @@ export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme
                                             }`}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className="text-base">🏖️</span>
+                                                <div className="w-6 h-6 flex items-center justify-center">
+                                                    <Lottie animationData={restAnimation} loop={true} />
+                                                </div>
                                                 <div>
                                                     <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                         {dateLabel(d.dateKey)}

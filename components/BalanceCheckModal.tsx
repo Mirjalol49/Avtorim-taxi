@@ -16,6 +16,8 @@ import { createPortal } from 'react-dom';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/transaction.types';
 import { Driver } from '../src/core/types/driver.types';
 import { XIcon, CheckIcon, TrashIcon } from './Icons';
+import Lottie from 'lottie-react';
+import cardAnimation from '../Images/card.json';
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 
@@ -235,7 +237,7 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                             </button>
                         )}
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${isDark ? 'bg-amber-500/15' : 'bg-amber-50'}`}>
-                            💳
+                            <div className="w-6 h-6 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                         </div>
                         <div>
                             <h3 className={`font-bold text-[15px] ${txt}`}>
@@ -302,14 +304,15 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                                         minHeight: 190,
                                     }}
                                 >
-                                    <span className="text-5xl">💳</span>
+                                    <div className="w-16 h-16 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                                     <p className="text-[14px] font-bold text-white/70">Hali balans kiritilmagan</p>
                                     <p className="text-[12px] text-white/35 text-center px-8">Kartangizdagi summani kiriting — keyin avtomatik kuzatiladi</p>
                                     <button
                                         onClick={() => setView('setup')}
-                                        className="mt-2 px-5 py-2.5 rounded-xl text-[13px] font-bold bg-amber-500 hover:bg-amber-400 text-white transition-all active:scale-95 shadow-lg"
+                                        className="mt-2 px-5 py-2.5 rounded-xl text-[13px] font-bold bg-amber-500 hover:bg-amber-400 text-white transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
                                     >
-                                        💳 Balansni kiriting
+                                        <div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                        Balansni kiriting
                                     </button>
                                 </div>
                             )}
@@ -363,7 +366,9 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                                         {feed.map((item, i) => {
                                             if (item.kind === 'start') return (
                                                 <div key="start" className={`flex items-center gap-3 px-5 py-3.5 ${s2}`}>
-                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${isDark ? 'bg-amber-500/15' : 'bg-amber-50'}`}>💳</div>
+                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${isDark ? 'bg-amber-500/15' : 'bg-amber-50'}`}>
+                                                        <div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                                    </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className={`text-[12px] font-bold ${sub}`}>Boshlang'ich balans</p>
                                                         <p className={`text-[11px] mt-0.5 ${muted}`}>{fmtTime(item.ts)}</p>

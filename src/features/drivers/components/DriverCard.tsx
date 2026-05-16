@@ -6,6 +6,7 @@ import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CarIcon, ChevronRightIcon } from '../../../../components/Icons';
 import { calcDriverFinance } from '../utils/debtUtils';
 import { DriverAvatar } from './DriverAvatar';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
 
 interface DriverCardProps {
     driver: Driver;
@@ -71,7 +72,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
     return (
         <div
             onClick={() => onCardClick?.(driver)}
-            className={`group relative rounded-[20px] border cursor-pointer transition-all duration-200 overflow-hidden hover:-translate-y-1 hover:shadow-md ${
+            className={`group relative rounded-[28px] border cursor-pointer transition-all duration-200 overflow-hidden hover:-translate-y-1 hover:shadow-md ${
                 depositWarning
                     ? isDark
                         ? 'bg-surface border-amber-500/25 hover:shadow-[0_8px_40px_rgba(245,158,11,0.14)]'
@@ -85,11 +86,11 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             {depositWarning && (
                 <div className={`flex items-center gap-2 px-4 py-2 text-[11px] font-semibold border-b ${
                     isDark
-                        ? 'bg-amber-500/[0.08] border-amber-500/15 text-amber-400'
-                        : 'bg-amber-50 border-amber-100 text-amber-600'
+                        ? 'bg-amber-500/20 border-amber-500/30 text-amber-400'
+                        : 'bg-[#fff8e1] border-amber-200 text-amber-700'
                 }`}>
-                    <span>⚠️</span>
-                    <span>Depozit past: {fmt(depositWarning.remaining)} UZS qoldi</span>
+                    <span className="opacity-80">⚠️</span>
+                    <span>Low Deposit Warning: {fmt(depositWarning.remaining)} remaining</span>
                 </div>
             )}
 
@@ -120,7 +121,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
             )}
 
             {/* ── Card body ── */}
-            <div className={`p-4 ${isDark ? 'bg-surface' : 'bg-white'}`}>
+            <div className="p-4 bg-transparent">
                 {/* Row 1: Avatar · Name/Phone · Type badge + real balance */}
                 <div className="flex items-center gap-3.5">
                     {/* Round avatar */}
@@ -144,67 +145,85 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     </div>
 
                     {/* Clean textual financial metric */}
-                    <div className="flex flex-col items-end justify-center pr-1">
+                    <div className="flex flex-col items-end justify-center">
                         {driverType === 'deposit' ? (
-                            <span className={`text-[11px] font-medium tracking-wide ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-emerald-400' : 'text-emerald-600')}`}>
-                                Depozit: {finance.remainingDeposit > 0 ? fmt(finance.remainingDeposit) : '0 UZS'}
-                            </span>
+                            <div className={`flex flex-col items-start px-3 py-1.5 rounded-[10px] min-w-[125px] ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'bg-white/5' : 'bg-gray-100') : depositWarning ? (isDark ? 'bg-red-500/10' : 'bg-red-50') : (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50')}`}>
+                                <div className="flex items-center justify-between w-full">
+                                    <span className={`text-[11px] font-medium ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-500') : depositWarning ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+                                        Depozit:
+                                    </span>
+                                    {finance.remainingDeposit > 0 && !depositWarning && (
+                                        <svg className={`w-3 h-3 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H9M17 7v8" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <span className={`text-[14px] font-bold mt-0.5 leading-none ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-400' : 'text-gray-600') : depositWarning ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+                                    {finance.remainingDeposit > 0 ? fmt(finance.remainingDeposit) : '0 UZS'}
+                                </span>
+                            </div>
                         ) : driverType === 'salary' ? (
-                            <span className={`text-[11px] font-medium tracking-wide ${!driver.monthlySalary || driver.monthlySalary <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-violet-400' : 'text-violet-600')}`}>
-                                Maosh: {driver.monthlySalary > 0 ? fmt(driver.monthlySalary) : '0 UZS'}
-                            </span>
+                            <div className={`flex flex-col items-start px-3 py-1.5 rounded-[10px] min-w-[125px] ${!driver.monthlySalary || driver.monthlySalary <= 0 ? (isDark ? 'bg-white/5' : 'bg-gray-100') : (isDark ? 'bg-violet-500/15' : 'bg-violet-100')}`}>
+                                <span className={`text-[11px] font-medium ${!driver.monthlySalary || driver.monthlySalary <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-500') : (isDark ? 'text-violet-400' : 'text-violet-700')}`}>
+                                    Maosh:
+                                </span>
+                                <span className={`text-[14px] font-bold mt-0.5 leading-none ${!driver.monthlySalary || driver.monthlySalary <= 0 ? (isDark ? 'text-gray-400' : 'text-gray-600') : (isDark ? 'text-violet-400' : 'text-violet-700')}`}>
+                                    {driver.monthlySalary > 0 ? fmt(driver.monthlySalary) : '0 UZS'}
+                                </span>
+                            </div>
                         ) : (
-                            <span className={`text-[11px] font-medium tracking-wide ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-teal-400' : 'text-teal-600')}`}>
-                                Qarz: {finance.contractRemaining && finance.contractRemaining > 0 ? fmt(finance.contractRemaining) : '0 UZS'}
-                            </span>
+                            <div className={`flex flex-col items-start px-3 py-1.5 rounded-[10px] min-w-[125px] ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'bg-white/5' : 'bg-gray-100') : (isDark ? 'bg-teal-500/15' : 'bg-teal-50')}`}>
+                                <span className={`text-[11px] font-medium ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-500') : (isDark ? 'text-teal-400' : 'text-teal-700')}`}>
+                                    Qarz:
+                                </span>
+                                <span className={`text-[14px] font-bold mt-0.5 leading-none ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'text-gray-400' : 'text-gray-600') : (isDark ? 'text-teal-400' : 'text-teal-700')}`}>
+                                    {finance.contractRemaining && finance.contractRemaining > 0 ? fmt(finance.contractRemaining) : '0 UZS'}
+                                </span>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
 
             {/* ── Car info section (Inset) ── */}
-            <div className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
+            <div className={`px-4 py-3.5 flex items-center gap-3.5 border-t bg-transparent ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
                 {/* Car thumbnail */}
-                <div className={`w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ${
-                    isDark ? 'bg-[#1a2840] border border-white/[0.06]' : 'bg-white border border-gray-200/60 shadow-sm'
+                <div className={`w-[44px] h-[44px] rounded-[10px] overflow-hidden flex-shrink-0 ${
+                    isDark ? 'bg-[#1a2840] border border-[#2a3850]' : 'bg-[#f4f7fa] border border-[#e2e8f0]'
                 }`}>
                     {car?.avatar ? (
                         <DriverAvatar
                             src={car.avatar}
                             name={car.name}
-                            size={36}
+                            size={44}
                             theme={theme}
-                            rounded="xl"
+                            rounded="10px"
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                            <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                            <CarIcon className={`w-5 h-5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
                         </div>
                     )}
                 </div>
 
                 {/* Car name + plate or subtle action button */}
                 {car ? (
-                    <div className="flex-1 min-w-0">
-                        <p className={`text-[12px] font-semibold truncate leading-tight ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5">
+                        <p className={`text-[14px] font-bold truncate leading-none mb-1.5 ${isDark ? 'text-gray-200' : 'text-[#1e293b]'}`}>
                             {car.name}
                         </p>
-                        <p className={`text-[10px] font-mono tracking-widest mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                            {car.licensePlate}
-                        </p>
+                        <div>
+                            <LicensePlate plate={car.licensePlate} size="sm" />
+                        </div>
                     </div>
                 ) : (
                     <div className="flex-1">
-                        <button onClick={(e) => { e.stopPropagation(); onEdit(driver); }} className={`px-3 py-1 rounded-full border border-dashed text-[11px] font-semibold transition-colors ${isDark ? 'border-teal-500/30 text-teal-400 hover:bg-teal-500/10' : 'border-teal-200 text-teal-600 hover:bg-teal-50'}`}>
-                            + Biriktirish
+                        <button onClick={(e) => { e.stopPropagation(); onEdit(driver); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold transition-colors ${isDark ? 'bg-[#1a2840] border-white/[0.08] text-gray-300 hover:text-white' : 'bg-white border-gray-200 text-gray-700 hover:text-gray-900 shadow-sm'}`}>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Biriktirish
                         </button>
                     </div>
                 )}
-
-                {/* Chevron hint */}
-                <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${
-                    isDark ? 'text-gray-700' : 'text-gray-300'
-                }`} />
             </div>
         </div>
     );

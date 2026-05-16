@@ -5,6 +5,32 @@ import { appendDriverPlanChange } from '../src/features/drivers/utils/driverPlan
 
 const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now());
 
+const endCarAssignment = async (carId: string, driverId: string) => {
+    const { data } = await supabase
+        .from('car_assignments_history')
+        .select('id')
+        .eq('car_id', carId)
+        .eq('driver_id', driverId)
+        .is('end_ms', null)
+        .order('start_ms', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (data) {
+        await supabase.from('car_assignments_history').update({ end_ms: Date.now() }).eq('id', data.id);
+    }
+};
+
+const startCarAssignment = async (carId: string, driverId: string) => {
+    const { data } = await supabase.from('cars').select('fleet_id').eq('id', carId).single();
+    if (!data?.fleet_id) return;
+    await supabase.from('car_assignments_history').insert({
+        car_id: carId,
+        driver_id: driverId,
+        fleet_id: data.fleet_id,
+        start_ms: Date.now()
+    });
+};
+
 export const subscribeToCars = (callback: (cars: Car[]) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
@@ -148,6 +174,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
                     );
                     await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: 0 }).eq('id', oldDriverId);
                 }
+                await endCarAssignment(id, oldDriverId);
             }
 
             // If a new driver is being assigned to this car
@@ -163,6 +190,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
                     );
                     await supabase.from('drivers').update({ plan_history: newDriverHistory, daily_plan: current.daily_plan ?? 0 }).eq('id', newDriverId);
                 }
+                await startCarAssignment(id, newDriverId);
             }
         }
     }
@@ -245,6 +273,9 @@ export const assignCar = async (carId: string, driverId: string) => {
         );
         await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
     }
+
+    // 4. Record history
+    await startCarAssignment(carId, driverId);
 };
 
 export const unassignCar = async (carId: string) => {
@@ -267,10 +298,17 @@ export const unassignCar = async (carId: string) => {
             );
             await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
         }
+        await endCarAssignment(carId, driverId);
     }
 };
 
 export const deleteCar = async (id: string) => {
+    // End assignment if any
+    const { data: carData } = await supabase.from('cars').select('assigned_driver_id').eq('id', id).single();
+    if (carData?.assigned_driver_id) {
+        await endCarAssignment(id, carData.assigned_driver_id);
+    }
+    
     const { error } = await supabase.from('cars').update({ is_deleted: true, assigned_driver_id: null }).eq('id', id);
     if (error) throw error;
 };
@@ -295,4 +333,73 @@ export const clearDayOverride = async (carId: string, dateKey: string) => {
 
     const { error } = await supabase.from('cars').update({ day_overrides: overrides }).eq('id', carId);
     if (error) throw error;
+};
+
+export const getDriverForCarOnDate = async (carId: string, timestampMs: number) => {
+    // 1. First, try the official history tracking
+    const { data } = await supabase
+        .from('car_assignments_history')
+        .select('driver_id')
+        .eq('car_id', carId)
+        .lte('start_ms', timestampMs)
+        .or(`end_ms.is.null,end_ms.gte.${timestampMs}`)
+        .order('start_ms', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+    if (data?.driver_id) return data.driver_id;
+
+    // 2. Fallback for legacy records or missing history
+    // Fetch car details to get license plate
+    const { data: car } = await supabase.from('cars').select('license_plate, fleet_id, assigned_driver_id').eq('id', carId).single();
+    if (!car) return null;
+
+    const normalizePlate = (p: string) => p ? p.replace(/\s+/g, '').toUpperCase().replace(/O/g, '0') : '';
+    const carPlate = normalizePlate(car.license_plate);
+
+    // Fetch all drivers in this fleet to find legacy matches
+    const { data: drivers } = await supabase.from('drivers')
+        .select('id, car_number, start_date, quit_date, is_deleted')
+        .eq('fleet_id', car.fleet_id);
+
+    if (drivers) {
+        // Find all drivers who have this car number typed in their profile
+        const matchingDrivers = drivers.filter(d => normalizePlate(d.car_number) === carPlate);
+
+        // Filter those who were active on the given timestamp
+        const activeMatches = matchingDrivers.filter(d => {
+            const start = typeof d.start_date === 'number' ? d.start_date : 0;
+            const quit = typeof d.quit_date === 'number' ? d.quit_date : Infinity;
+            return timestampMs >= start && timestampMs <= quit;
+        });
+
+        if (activeMatches.length === 1) return activeMatches[0].id;
+        
+        if (activeMatches.length > 1) {
+            // Sort by priority:
+            // 1. Explicit start and quit dates (most specific)
+            // 2. Explicit start date only
+            // 3. Fallback to start_date descending
+            const sorted = [...activeMatches].sort((a, b) => {
+                const aExplicit = (a.start_date !== null ? 1 : 0) + (a.quit_date !== null ? 1 : 0);
+                const bExplicit = (b.start_date !== null ? 1 : 0) + (b.quit_date !== null ? 1 : 0);
+                
+                if (aExplicit !== bExplicit) {
+                    return bExplicit - aExplicit; // higher explicit score comes first
+                }
+                
+                const startA = a.start_date || 0;
+                const startB = b.start_date || 0;
+                return startB - startA; // most recent start date wins
+            });
+            
+            return sorted[0].id;
+        }
+
+        // If no strict active match, but there is exactly one driver who ever had this car, return them
+        if (matchingDrivers.length === 1) return matchingDrivers[0].id;
+    }
+
+    // 3. Final fallback: If all else fails and it currently has a driver, just return the current driver
+    return car.assigned_driver_id || null;
 };

@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Lottie from 'lottie-react';
+import cardAnimation from '../../../../Images/card.json';
+import { FileViewer } from '../../../../components/ui/FileViewer';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
 import { updateDriver } from '../../../../services/firestoreService';
+import { unassignCar } from '../../../../services/carsService';
 import { getEffectivePlanForDriverDay } from '../utils/driverPlanHistory';
-import { Driver } from '../../../core/types';
+import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
 import { calcDriverFinance, DriverFinanceSummary } from '../utils/debtUtils';
 import {
-    XIcon, EditIcon, TrashIcon, PhoneIcon, CarIcon, NotesIcon,
+    XIcon, EditIcon, TrashIcon, PhoneIcon, CarIcon, NotesIcon, LogOutIcon,
 } from '../../../../components/Icons';
 import { DriverHistoryPage } from './DriverHistoryPage';
 import { DriverAvatar } from './DriverAvatar';
@@ -101,6 +106,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
     const [filterMonth,    setFilterMonth]     = useState<string>('all');
     const [expandedMonths, setExpandedMonths]  = useState<Set<string>>(new Set());
     const [showHistory,    setShowHistory]     = useState(false);
+    const [showTerminate,  setShowTerminate]   = useState(false);
     const [docs,           setDocs]            = useState<any[]>([]);
 
     useEffect(() => {
@@ -123,6 +129,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                 });
         } else if (!isOpen && !shouldRender) {
             setDocs([]);
+            setShowTerminate(false);
         }
     }, [isOpen, activeDriver?.id, shouldRender]);
 
@@ -526,7 +533,10 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                 /* Salary hero */
                                 <div className={`flex-shrink-0 mx-5 mt-4 rounded-2xl border px-5 py-4 flex items-center justify-between gap-4 ${isDark ? 'border-violet-500/20 bg-violet-500/[0.06]' : 'border-violet-200 bg-violet-50'}`}>
                                     <div>
-                                        <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 ${isDark ? 'text-violet-400/70' : 'text-violet-700/70'}`}>💳 Oylik maosh</p>
+                                        <p className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1 flex items-center gap-1 ${isDark ? 'text-violet-400/70' : 'text-violet-700/70'}`}>
+                                            <div className="w-3 h-3 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                            Oylik maosh
+                                        </p>
                                         <p className={`text-[28px] font-black font-mono leading-none tabular-nums ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>
                                             {fmt(activeDriver.monthlySalary ?? 0)}
                                         </p>
@@ -572,6 +582,56 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                 )}
                             </div>
 
+                            {/* Employment Info */}
+                            <div className={`rounded-2xl border px-4 py-3 flex flex-col justify-between ${isDark ? 'border-white/[0.07] bg-white/[0.03]' : 'border-gray-200 bg-gray-50'}`}>
+                                <p className={`text-[10px] font-black uppercase tracking-wider mb-2 ${muted}`}>🏢 Ish staji (Faoliyat tarixi)</p>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-[12px] font-semibold ${sub}`}>Boshladi:</span>
+                                        <span className={`text-[12px] font-bold ${txt}`}>
+                                            {(() => {
+                                                const dMs = activeDriver.startDate || activeDriver.createdAt;
+                                                if (!dMs) return 'Noma\'lum';
+                                                const d = new Date(dMs);
+                                                return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
+                                            })()}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-[12px] font-semibold ${sub}`}>Holati:</span>
+                                        {activeDriver.quitDate ? (
+                                            <span className={`text-[12px] font-bold text-red-500`}>
+                                                Bo'shatilgan ({(() => {
+                                                    const d = new Date(activeDriver.quitDate);
+                                                    return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
+                                                })()})
+                                            </span>
+                                        ) : (
+                                            <span className={`text-[12px] font-bold text-emerald-500`}>Hali ishlamoqda</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between pt-1 border-t border-black/5 dark:border-white/5">
+                                        <span className={`text-[12px] font-semibold ${sub}`}>Jami muddat:</span>
+                                        <span className={`text-[12px] font-black ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                                            {(() => {
+                                                const start = activeDriver.startDate || activeDriver.createdAt || Date.now();
+                                                const end = activeDriver.quitDate || Date.now();
+                                                const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+                                                if (diffDays <= 0) return '0 kun';
+                                                const years = Math.floor(diffDays / 365);
+                                                const months = Math.floor((diffDays % 365) / 30);
+                                                const days = (diffDays % 365) % 30;
+                                                let res = [];
+                                                if (years > 0) res.push(`${years} yil`);
+                                                if (months > 0) res.push(`${months} oy`);
+                                                if (days > 0 && years === 0) res.push(`${days} kun`);
+                                                return res.join(' ') || '0 kun';
+                                            })()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Vehicle */}
                             {car && (
                                 <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/[0.07]' : 'border-gray-200'}`}>
@@ -587,9 +647,9 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                         </div>
                                         <div>
                                             <p className={`text-[15px] font-bold ${txt}`}>{car.name}</p>
-                                            <span className={`inline-block mt-1 text-[11px] font-mono font-bold tracking-widest px-2.5 py-0.5 rounded-lg border ${isDark ? 'border-white/[0.08] bg-surface text-white/40' : 'border-gray-200 bg-white text-gray-500'}`}>
-                                                {car.licensePlate}
-                                            </span>
+                                            <div className="mt-1.5">
+                                                <LicensePlate plate={car.licensePlate} size="sm" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -695,7 +755,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                                     className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-[0.98] ${isDark ? 'border-violet-500/20 bg-violet-500/[0.06] hover:bg-violet-500/10' : 'border-violet-200 bg-violet-50 hover:bg-violet-100'}`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <span className="text-2xl">💳</span>
+                                        <div className="w-8 h-8 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                                         <div className="text-left">
                                             <p className={`text-[14px] font-black ${isDark ? 'text-violet-400' : 'text-violet-700'}`}>Maosh tarixi</p>
                                             <p className={`text-[11px] ${muted}`}>Oylik maosh to'lovlari</p>
@@ -719,16 +779,38 @@ export const DriverDetailsSheet: React.FC<Props> = ({
 
                     {/* ══ FOOTER ══════════════════════════════════════════════ */}
                     {userRole === 'admin' && (
-                        <div className={`flex-shrink-0 flex gap-3 px-5 py-4 border-t pb-8 sm:pb-4 ${bdr} ${isDark ? '' : 'bg-gray-50'}`}>
+                        <div className={`flex-shrink-0 flex gap-2 px-5 py-4 border-t pb-8 sm:pb-4 ${bdr} ${isDark ? '' : 'bg-gray-50'}`}>
                             <button
                                 onClick={() => { onClose(); setTimeout(() => onEdit(activeDriver), 150); }}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 border-teal-500/20' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'}`}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 border-teal-500/20' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'}`}
                             >
                                 <EditIcon className="w-4 h-4" /> Tahrirlash
                             </button>
+                            {activeDriver.quitDate ? (
+                                <button
+                                    onClick={async () => {
+                                        const now = Date.now();
+                                        setInternalDriver(prev => prev ? { ...prev, quitDate: null, status: DriverStatus.ACTIVE } : null);
+                                        await updateDriver(activeDriver.id, {
+                                            quitDate: null,
+                                            status: DriverStatus.ACTIVE
+                                        } as any, 'system');
+                                    }}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200'}`}
+                                >
+                                    <EditIcon className="w-4 h-4" /> Qayta ishga olish
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setShowTerminate(true)}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border-orange-500/20' : 'bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-200'}`}
+                                >
+                                    <LogOutIcon className="w-4 h-4" /> Bo'shatish
+                                </button>
+                            )}
                             <button
                                 onClick={() => { onClose(); setTimeout(() => onDelete(activeDriver.id), 150); }}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'}`}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-bold transition-all active:scale-95 border ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'}`}
                             >
                                 <TrashIcon className="w-4 h-4" /> O'chirish
                             </button>
@@ -736,6 +818,43 @@ export const DriverDetailsSheet: React.FC<Props> = ({
                     )}
                 </div>
             </div>
+
+            {/* Terminate Modal */}
+            {showTerminate && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.12s ease-out' }}>
+                    <div className={`w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl border ${isDark ? 'bg-[#1a2236] border-white/[0.08]' : 'bg-white border-gray-200'}`} style={{ animation: 'popUp 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}>
+                        <div className="flex flex-col items-center pt-8 pb-2 px-6 text-center">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isDark ? 'bg-orange-500/15' : 'bg-orange-50'}`}>
+                                <LogOutIcon className="w-7 h-7 text-orange-500" />
+                            </div>
+                            <h3 className={`text-[18px] font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Ishdan bo'shatish</h3>
+                            <p className={`text-[13px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <b>{activeDriver.name}</b>ni ishdan bo'shatmoqchimisiz?<br />
+                                {car && "Unga biriktirilgan mashina avtomatik ravishda olinadi va "}Holati oflayn qilinadi.
+                            </p>
+                        </div>
+                        <div className={`mx-6 mt-6 mb-0 h-px ${isDark ? 'bg-white/[0.06]' : 'bg-gray-100'}`} />
+                        <div className="flex">
+                            <button onClick={() => setShowTerminate(false)} className={`flex-1 py-4 text-[15px] font-semibold transition-colors border-r ${isDark ? 'text-gray-300 hover:bg-white/[0.04] border-white/[0.06]' : 'text-gray-700 hover:bg-gray-50 border-gray-100'}`}>Bekor</button>
+                            <button
+                                onClick={async () => {
+                                    setShowTerminate(false);
+                                    if (car) await unassignCar(car.id);
+                                    const now = Date.now();
+                                    setInternalDriver(prev => prev ? { ...prev, quitDate: now, status: DriverStatus.OFFLINE } : null);
+                                    await updateDriver(activeDriver.id, {
+                                        quitDate: now,
+                                        status: DriverStatus.OFFLINE
+                                    } as any, 'system');
+                                }}
+                                className="flex-1 py-4 text-[15px] font-bold text-orange-500 hover:bg-orange-500/[0.06] transition-colors active:scale-[0.98]"
+                            >
+                                Bo'shatish
+                            </button>
+                        </div>
+                    </div>
+                </div>, document.body
+            )}
 
             {/* Image lightbox */}
             {viewingDoc && createPortal(

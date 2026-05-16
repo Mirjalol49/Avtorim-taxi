@@ -5,6 +5,7 @@ import { useAuthContext } from '../auth/context/AuthContext';
 import { useUIContext } from '../shared/context/UIContext';
 import { addFine, updateFine, deleteFine } from '../../../services/finesService';
 import FineModal from './components/FineModal';
+import FineDriverDetectorModal from './components/FineDriverDetectorModal';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import Skeleton from '../../../components/Skeleton';
 import { useToast } from '../../../components/ToastNotification';
@@ -33,6 +34,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
     const { fines, loading, refetch } = useFines(fleetId);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDetectorOpen, setIsDetectorOpen] = useState(false);
     const [editingFine, setEditingFine] = useState<Fine | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNPAID' | 'PAID'>('ALL');
@@ -117,15 +119,26 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                     </p>
                 </div>
 
-                <button
-                    onClick={() => { setEditingFine(null); setIsModalOpen(true); }}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold shadow-md transition-all active:scale-95 ${
-                        isDark ? 'bg-[#0f766e] text-white hover:bg-[#0d9488]' : 'bg-[#0f766e] text-white hover:bg-[#0d9488]'
-                    }`}
-                >
-                    <PlusIcon className="w-5 h-5" />
-                    <span>Yangi jarima</span>
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsDetectorOpen(true)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 shadow-sm border ${
+                            isDark ? 'bg-surface-2 border-white/[0.08] text-gray-300 hover:bg-white/[0.06] hover:text-white' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                    >
+                        <span>🔍</span>
+                        <span className="hidden sm:inline">Kim haydagan?</span>
+                    </button>
+                    <button
+                        onClick={() => { setEditingFine(null); setIsModalOpen(true); }}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold shadow-md transition-all active:scale-95 ${
+                            isDark ? 'bg-[#0f766e] text-white hover:bg-[#0d9488]' : 'bg-[#0f766e] text-white hover:bg-[#0d9488]'
+                        }`}
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">Yangi jarima</span>
+                    </button>
+                </div>
             </div>
 
             {/* Stats Header */}
@@ -265,6 +278,13 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                 onClose={() => { setIsModalOpen(false); setEditingFine(null); }}
                 onSubmit={handleSaveFine}
                 editingFine={editingFine}
+                drivers={drivers}
+                cars={cars}
+            />
+            
+            <FineDriverDetectorModal 
+                isOpen={isDetectorOpen}
+                onClose={() => setIsDetectorOpen(false)}
                 drivers={drivers}
                 cars={cars}
             />

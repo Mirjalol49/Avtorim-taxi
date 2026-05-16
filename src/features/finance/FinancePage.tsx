@@ -24,6 +24,7 @@ import {
     PieChart, Pie, Cell
 } from 'recharts';
 import { MetricCard } from '../../../components/MetricCard';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 
 interface FinancePageProps {
@@ -118,45 +119,55 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                 : null;
                             return (
                                 <>
-                                    <div className={`flex items-center gap-2 mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                        <UsersIcon className="w-4 h-4" />
-                                        <span className="text-xs font-bold uppercase tracking-wider">
-                                            {t('driver') || 'Haydovchi'}
-                                        </span>
-                                    </div>
                                     <button
                                         type="button"
                                         onClick={() => setDriverModalOpen(true)}
-                                        className={`w-full py-2.5 px-4 rounded-xl border text-left transition-all flex items-center gap-3 ${
+                                        className={`w-full h-[48px] px-3 sm:px-4 rounded-full border text-left transition-all flex items-center justify-between gap-3 ${
                                             driverModalOpen
                                                 ? theme === 'dark'
-                                                    ? 'bg-surface-2 border-[#0f766e] ring-1 ring-[#0f766e]/40'
-                                                    : 'bg-white border-[#0f766e] ring-1 ring-[#0f766e]/20'
+                                                    ? 'bg-surface-2 border-teal-500 ring-1 ring-teal-500/40'
+                                                    : 'bg-white border-teal-500 ring-1 ring-teal-500/20 shadow-md'
                                                 : theme === 'dark'
                                                     ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12]'
-                                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                                                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
                                         }`}
                                     >
-                                        {selectedDriver ? (
-                                            <>
-                                                <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 border border-gray-600">
-                                                    {selectedDriver.avatar
-                                                        ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
-                                                        : <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold ${theme === 'dark' ? 'bg-surface-2 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
-                                                    }
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className={`text-sm font-medium truncate leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</div>
-                                                    {selectedCar && <div className={`text-[10px] truncate leading-tight mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{selectedCar.name}</div>}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className={`text-sm font-medium flex-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-900'}`}>{t('allDrivers') || 'Barcha Haydovchilar'}</span>
-                                            </>
-                                        )}
-                                        <svg className={`w-4 h-4 ml-auto flex-shrink-0 transition-transform duration-300 ${driverModalOpen ? 'transform rotate-180 text-[#0f766e]' : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            {selectedDriver ? (
+                                                <>
+                                                    <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-slate-200 dark:border-surface-3">
+                                                        {selectedDriver.avatar
+                                                            ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
+                                                            : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-surface-2 text-gray-300' : 'bg-slate-100 text-slate-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                                                        }
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 pr-2">
+                                                        <div className={`text-[13px] sm:text-[14px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{selectedDriver.name}</div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center -space-x-2.5 flex-shrink-0">
+                                                        {nonDeletedDrivers.slice(0, 3).map((d, i) => (
+                                                            <div key={d.id} className="w-7 h-7 rounded-full overflow-hidden border-2 border-white dark:border-surface bg-slate-100 shadow-sm" style={{ zIndex: 3 - i }}>
+                                                                {d.avatar ? (
+                                                                    <img src={d.avatar} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-600">
+                                                                        {d.name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <span className={`text-[13px] sm:text-[14px] font-medium truncate ${theme === 'dark' ? 'text-gray-300' : 'text-slate-700'}`}>
+                                                        {t('allDrivers') || 'Barcha Haydovchilar'}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <svg className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 ${driverModalOpen ? 'transform rotate-180 text-teal-600' : theme === 'dark' ? 'text-gray-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
                                     <DriverFilterModal
@@ -536,10 +547,9 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                                 </div>
                                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                     <p className={`text-sm font-bold truncate leading-none mb-1.5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
-                                                    <div className={`flex items-center gap-1.5 text-[11px] font-medium leading-none ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                    <div className={`flex items-center gap-2 text-[11px] font-medium leading-none ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                                         <span className="truncate max-w-[80px]">{carModel}</span>
-                                                        <span className="w-1 h-1 rounded-full bg-current opacity-30 flex-shrink-0"></span>
-                                                        <span className={`px-1.5 py-[2px] rounded border font-mono font-bold tracking-wider text-[9px] flex-shrink-0 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>{plate}</span>
+                                                        <LicensePlate plate={plate} size="sm" />
                                                     </div>
                                                 </div>
                                                 <NumberTooltip value={-item.debt} label={t('debt', 'Qarz')} align="right" theme={theme}>
@@ -593,9 +603,11 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col gap-1 mt-0.5">
                                                             <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{carModel}</span>
-                                                            <span className={`text-[10px] font-mono tracking-widest ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{plate}</span>
+                                                            <div>
+                                                                <LicensePlate plate={plate} size="sm" />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className={`text-sm font-black ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>

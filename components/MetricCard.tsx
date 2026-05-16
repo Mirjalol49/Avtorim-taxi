@@ -54,7 +54,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, type, icon
             </div>
 
             {/* Whimsical Glow Orb */}
-            <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none ${config.orbColor}`} />
+            {isDark && (
+                <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none ${config.orbColor}`} />
+            )}
         </div>
     );
 };

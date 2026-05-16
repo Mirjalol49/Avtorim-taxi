@@ -7,7 +7,7 @@ interface DriverAvatarProps {
     size?: number;          // pixel size, default 40
     className?: string;
     theme?: 'light' | 'dark';
-    rounded?: 'full' | 'xl' | '2xl';
+    rounded?: 'full' | 'xl' | '2xl' | '10px' | 'none';
 }
 
 /**
@@ -31,7 +31,7 @@ export const DriverAvatar: React.FC<DriverAvatarProps> = ({
         setImgError(false);
     }, [src]);
 
-    const roundedClass = rounded === 'full' ? 'rounded-full' : rounded === 'xl' ? 'rounded-xl' : 'rounded-2xl';
+    const roundedClass = rounded === 'full' ? 'rounded-full' : rounded === 'xl' ? 'rounded-xl' : rounded === '10px' ? 'rounded-[10px]' : rounded === 'none' ? 'rounded-none' : 'rounded-2xl';
     const showImage = src && !imgError;
 
     return (

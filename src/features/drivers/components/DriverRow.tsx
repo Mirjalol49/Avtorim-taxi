@@ -6,6 +6,7 @@ import { Transaction } from '../../../core/types/transaction.types';
 import { EditIcon, TrashIcon, CameraIcon, XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
 import { DriverAvatar } from './DriverAvatar';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
@@ -76,7 +77,9 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                         </div>
                         <div>
                             <p className={`font-medium text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{car.name}</p>
-                            <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{car.licensePlate}</p>
+                            <div className="mt-1">
+                                <LicensePlate plate={car.licensePlate} size="sm" />
+                            </div>
                         </div>
                     </div>
                 ) : (

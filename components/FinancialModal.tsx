@@ -8,13 +8,16 @@ import { PaymentStatus } from '../src/core/types/transaction.types';
 import { useToast } from './ToastNotification';
 import { toDateKey } from '../services/daysOffService';
 import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
+import Lottie from 'lottie-react';
+import cardAnimation from '../Images/card.json';
+import restAnimation from '../Images/rest.json';
 
 type PaymentMethod = 'cash' | 'card';
 type ExpenseTarget = 'driver' | 'car' | 'other';
 
-const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
+const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: any }[] = [
   { id: 'cash', label: 'Naqd',  icon: '💵' },
-  { id: 'card', label: 'Karta', icon: '💳' },
+  { id: 'card', label: 'Karta', icon: <div className="w-8 h-8 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> },
 ];
 
 const OTHER_CATEGORIES = [
@@ -318,7 +321,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           >
             <div className="flex items-center gap-3">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
-                {type === TransactionType.INCOME ? '💰' : type === TransactionType.DAY_OFF ? '🏖' : type === TransactionType.NOT_WORKING ? '❌' : '💸'}
+                {type === TransactionType.INCOME ? '💰' : type === TransactionType.DAY_OFF ? <div className="w-6 h-6"><Lottie animationData={restAnimation} loop={true} /></div> : type === TransactionType.NOT_WORKING ? '❌' : '💸'}
               </div>
               <div>
                 <h3 className={`font-bold text-base leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -341,7 +344,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               {[
                 { v: TransactionType.INCOME,  label: 'Kirim',     emoji: '💰' },
                 { v: TransactionType.EXPENSE, label: 'Chiqim',    emoji: '💸' },
-                { v: TransactionType.DAY_OFF, label: 'Dam olish', emoji: '🏖' },
+                { v: TransactionType.DAY_OFF, label: 'Dam olish', emoji: <div className="w-4 h-4"><Lottie animationData={restAnimation} loop={true} /></div> },
                 { v: TransactionType.NOT_WORKING, label: 'Ishlamagan', emoji: '❌' },
               ].map(item => (
                 <button key={item.v} type="button"
@@ -707,7 +710,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Day off info */}
             {type === TransactionType.DAY_OFF && (
               <div className={`rounded-2xl p-6 border flex flex-col items-center gap-3 text-center ${isDark ? 'border-blue-500/30 bg-blue-500/8' : 'border-blue-200 bg-blue-50'}`}>
-                <span className="text-5xl">🏖</span>
+                <div className="w-16 h-16"><Lottie animationData={restAnimation} loop={true} /></div>
                 <p className={`text-base font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Dam olish kuni</p>
                 <p className={`text-sm leading-relaxed max-w-xs ${isDark ? 'text-blue-400/80' : 'text-blue-600/80'}`}>
                   <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> kuni haydovchidan pul undirilmaydi.

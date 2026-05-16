@@ -64,6 +64,7 @@ import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsA
 
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
+
 const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
     <img
         src="/images/taksapark-logo.png"
@@ -102,6 +103,8 @@ const AppContent: React.FC = () => {
     isSidebarOpen,
     setIsSidebarOpen
   } = useUIContext();
+
+  const isDark = theme === 'dark';
 
   const {
     drivers,
@@ -383,6 +386,9 @@ const AppContent: React.FC = () => {
           updateData.contractDurationMonths = null;
           updateData.contractStartDate = null;
         }
+        if (updateData.quitDate === null || updateData.quitDate === undefined) {
+          updateData.quitDate = null;
+        }
         await firestoreService.updateDriver(id, updateData, carsFleetId);
         driverId = id;
       } else {
@@ -414,6 +420,8 @@ const AppContent: React.FC = () => {
           totalContractAmount: data.driverType === 'lease_to_own' ? (data.totalContractAmount ?? null) : null,
           contractDurationMonths: data.driverType === 'lease_to_own' ? (data.contractDurationMonths ?? null) : null,
           contractStartDate: data.driverType === 'lease_to_own' ? (data.contractStartDate ?? null) : null,
+          startDate: data.startDate ?? Date.now(),
+          quitDate: data.quitDate ?? null,
           documents: data.documents ?? [],
         };
         driverId = await firestoreService.addDriver(newDriver, carsFleetId);
@@ -511,7 +519,15 @@ const AppContent: React.FC = () => {
 
   // Finance Data Filtering Logic - REMOVED (Moved to useFinanceStats hook)
 
-  const handleSaveCar = async (data: Partial<Car>) => {
+  // Repair prompt state — shows a beautiful in-app modal instead of window.confirm
+  const [repairPrompt, setRepairPrompt] = useState<{
+    isOpen: boolean;
+    pendingCarData: Partial<Car> | null;
+    driverName: string;
+    driverId: string;
+  }>({ isOpen: false, pendingCarData: null, driverName: '', driverId: '' });
+
+  const _doSaveCar = async (data: Partial<Car>) => {
     if (!adminUser?.id) return;
     if (data.id) {
       const { id, ...rest } = data;
@@ -520,6 +536,56 @@ const AppContent: React.FC = () => {
       await addCar(data as Omit<Car, 'id'>, adminUser.id);
     }
   };
+
+  const handleSaveCar = async (data: Partial<Car>) => {
+    if (!adminUser?.id) return;
+
+    // Smart Prompt: If "inRepair" was toggled ON for an assigned car
+    if (data.id) {
+      const oldCar = cars.find(c => c.id === data.id);
+      if (oldCar && !oldCar.inRepair && data.inRepair && oldCar.assignedDriverId) {
+        const targetDriver = drivers.find(d => d.id === oldCar.assignedDriverId);
+        if (targetDriver) {
+          setRepairPrompt({
+            isOpen: true,
+            pendingCarData: data,
+            driverName: targetDriver.name,
+            driverId: targetDriver.id,
+          });
+          return; // Wait for the user's choice in the modal
+        }
+      }
+    }
+
+    await _doSaveCar(data);
+  };
+
+  const handleRepairPromptPause = async () => {
+    const { pendingCarData, driverId } = repairPrompt;
+    setRepairPrompt({ isOpen: false, pendingCarData: null, driverName: '', driverId: '' });
+    if (!pendingCarData) return;
+
+    // Add today as a Day Off override for the driver
+    const targetDriver = drivers.find(d => d.id === driverId);
+    if (targetDriver) {
+      const d = new Date();
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const overrides = targetDriver.dayOverrides ? { ...targetDriver.dayOverrides } : {};
+      overrides[dateStr] = { type: 'REPAIR' };
+      await firestoreService.updateDriver(targetDriver.id, { dayOverrides: overrides } as any, carsFleetId);
+      addToast('success', t.repairPlanPaused.replace('{{name}}', targetDriver.name));
+    }
+
+    await _doSaveCar(pendingCarData);
+  };
+
+  const handleRepairPromptContinue = async () => {
+    const { pendingCarData } = repairPrompt;
+    setRepairPrompt({ isOpen: false, pendingCarData: null, driverName: '', driverId: '' });
+    if (pendingCarData) await _doSaveCar(pendingCarData);
+  };
+
+
 
   const handleDeleteCar = (id: string) => {
     setConfirmModal({
@@ -575,22 +641,22 @@ const AppContent: React.FC = () => {
     return (
       <button
         onClick={() => { navigate(path); setIsSidebarOpen(false); }}
-        className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all mb-0.5 text-[15px] font-medium ${isActive
+        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-200 cursor-pointer mb-1 group ${isActive
           ? theme === 'dark'
-            ? 'bg-white/[0.1] text-[#0d9488]'
-            : 'bg-[#0f766e]/[0.10] text-[#0f766e]'
+            ? 'bg-emerald-500/10 text-emerald-400'
+            : 'bg-emerald-50/70 text-emerald-700'
           : theme === 'dark'
-            ? 'text-[rgba(235,235,245,0.55)] hover:bg-white/[0.06] hover:text-[rgba(235,235,245,0.85)]'
-            : 'text-[rgba(60,60,67,0.55)] hover:bg-black/[0.04] hover:text-black'
+            ? 'text-white/60 hover:text-white hover:bg-white/5'
+            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
           }`}
       >
-        <Icon className={`w-5 h-5 flex-shrink-0 ${isActive
-          ? theme === 'dark' ? 'text-[#0d9488]' : 'text-[#0f766e]'
-          : theme === 'dark' ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'
-          }`} />
-        <span className="font-medium text-sm flex-1 text-left">{label}</span>
+        <Icon className={`w-5 h-5 flex-shrink-0 stroke-[1.5] transition-colors ${isActive
+          ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+          : theme === 'dark' ? 'text-white/40 group-hover:text-white/70' : 'text-slate-400 group-hover:text-slate-600'
+        }`} />
+        <span className="font-medium flex-1 text-left">{label}</span>
         {!!badgeCount && badgeCount > 0 && (
-          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto ${theme === 'dark' ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-100 text-rose-600'}`}>
             {badgeCount}
           </span>
         )}
@@ -683,19 +749,17 @@ const AppContent: React.FC = () => {
     >
       {/* SIDEBAR */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 border-r flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-black/[0.08]'}`}
-        style={{ background: theme === 'dark' ? 'var(--color-sidebar)' : undefined }}
+        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col transform transition-all duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${theme === 'dark' ? 'bg-[#0b1326] border-r border-white/[0.08]' : 'bg-white border-r border-slate-100 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.02)]'}`}
       >
         <div className="absolute top-4 right-4 md:hidden">
-          <button onClick={() => setIsSidebarOpen(false)} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}><XIcon className="w-6 h-6" /></button>
+          <button onClick={() => setIsSidebarOpen(false)} className={`${theme === 'dark' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}><XIcon className="w-6 h-6" /></button>
         </div>
         <div className="p-5 flex justify-center relative overflow-hidden">
           <TaksaparkLogo theme={theme} />
         </div>
         <nav className="flex-1 px-4 overflow-y-auto">
-          <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 px-3 ${theme === 'dark' ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.4)]'
-            }`}>{t.menu}</div>
+          <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 px-3 ${theme === 'dark' ? 'text-white/40' : 'text-slate-400'}`}>{t.menu}</div>
           {renderSidebarItem('/dashboard', t.dashboard, LayoutDashboardIcon)}
           {renderSidebarItem('/drivers', t.driversList, UsersIcon)}
           {renderSidebarItem('/cars', t.cars, CarIcon, expiringCarsCount)}
@@ -711,10 +775,10 @@ const AppContent: React.FC = () => {
           {(adminUser?.username === 'mirjalol' || adminUser?.role === 'super_admin') && (
             <button
               onClick={() => setIsSuperAdminOpen(true)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-medium transition-all mt-1 ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-200 cursor-pointer mt-1 group ${
                 theme === 'dark'
-                  ? 'bg-[rgba(255,159,10,0.12)] text-[#FF9F0A] hover:bg-[rgba(255,159,10,0.18)]'
-                  : 'bg-[rgba(255,149,0,0.10)] text-[#8A6000] hover:bg-[rgba(255,149,0,0.16)]'
+                  ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
               }`}
             >
               <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -730,19 +794,19 @@ const AppContent: React.FC = () => {
           {/* Theme Toggle - Mobile */}
           <button
             onClick={toggleTheme}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
-              ? 'bg-white/[0.06] hover:bg-white/[0.1] text-[rgba(235,235,245,0.7)]'
-              : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.7)]'
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-white/5 hover:bg-white/10 text-white/70'
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
               }`}
           >
             <div className="flex items-center gap-3">
               {theme === 'dark'
                 ? <SunIcon className="w-4 h-4 text-[#FF9F0A]" />
-                : <MoonIcon className="w-4 h-4" />
+                : <MoonIcon className="w-4 h-4 text-slate-500" />
               }
-              <span className="font-medium text-[15px]">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+              <span className="font-medium text-[14px]">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
             </div>
-            <div className={`w-10 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-[rgba(60,60,67,0.4)]' : 'bg-[#0f766e]'}`}>
+            <div className={`w-10 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-white/20' : 'bg-slate-200'}`}>
               <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${theme === 'dark' ? 'left-0.5' : 'translate-x-[18px]'}`} />
             </div>
           </button>
@@ -750,33 +814,29 @@ const AppContent: React.FC = () => {
           {/* Language Selector - Mobile Only */}
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${theme === 'dark'
-              ? 'bg-white/[0.06] hover:bg-white/[0.1] text-[rgba(235,235,245,0.7)]'
-              : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.7)]'
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${theme === 'dark'
+              ? 'bg-white/5 hover:bg-white/10 text-white/70'
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
               }`}
           >
             <div className="flex items-center gap-3">
               <GlobeIcon className="w-4 h-4" />
-              <span className="font-medium text-[15px]">{t.uiLanguage}</span>
+              <span className="font-medium text-[14px]">{t.uiLanguage}</span>
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wide">{language}</span>
+            <span className="text-xs font-bold uppercase tracking-wide">{language}</span>
           </button>
-          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-surface-2' : 'bg-black/[0.04]'}`}>
-            <button onClick={() => { handleSetLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>O'zbek</button>
-            <button onClick={() => { handleSetLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>Русский</button>
-            <button onClick={() => { handleSetLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[15px] ${theme === 'dark' ? 'hover:bg-white/[0.06] text-[rgba(235,235,245,0.8)]' : 'hover:bg-black/[0.05] text-[rgba(60,60,67,0.85)]'}`}>English</button>
+          <div className={`rounded-xl overflow-hidden ${theme === 'dark' ? 'bg-black/20' : 'bg-slate-50'}`}>
+            <button onClick={() => { handleSetLanguage('uz'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[14px] font-medium transition-colors ${theme === 'dark' ? 'hover:bg-white/10 text-white/80' : 'hover:bg-slate-100 text-slate-600'}`}>O'zbek</button>
+            <button onClick={() => { handleSetLanguage('ru'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[14px] font-medium transition-colors ${theme === 'dark' ? 'hover:bg-white/10 text-white/80' : 'hover:bg-slate-100 text-slate-600'}`}>Русский</button>
+            <button onClick={() => { handleSetLanguage('en'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 text-[14px] font-medium transition-colors ${theme === 'dark' ? 'hover:bg-white/10 text-white/80' : 'hover:bg-slate-100 text-slate-600'}`}>English</button>
           </div>
         </div>
-        <div className={`p-4 border-t space-y-2 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-black/[0.06]'
-          }`}>
+        <div className={`p-4 border-t space-y-1 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-slate-100'}`}>
           {userRole === 'admin' && (
             <>
               {(!adminProfile && !adminUser) ? (
                 // Skeleton loading state
-                <div className={`rounded-xl p-3 flex items-center gap-3 ${theme === 'dark'
-                  ? 'bg-white/[0.06]'
-                  : 'bg-black/[0.04]'
-                  }`}>
+                <div className={`rounded-xl p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50 border border-slate-100'}`}>
                   <Skeleton variant="circular" width={36} height={36} theme="dark" />
                   <div className="flex-1 space-y-2">
                     <Skeleton variant="text" width="60%" height={14} theme="dark" />
@@ -785,51 +845,25 @@ const AppContent: React.FC = () => {
                 </div>
               ) : (
                 // Actual admin profile
-                <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark'
-                  ? 'bg-white/[0.06] hover:bg-white/[0.1]'
-                  : 'bg-black/[0.04] hover:bg-black/[0.07]'
-                  }`}>
-                  {adminUser ? (
-                    <>
-                      <AvatarWithFallback
-                        src={adminUser.avatar}
-                        alt={adminUser.username}
-                        fallbackSeed={adminUser.username}
-                        className="w-9 h-9 rounded-full object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[15px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
-                          }`}>{adminUser.username}</p>
-                        <p className={`text-[12px] truncate ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
-                          }`}>{t[adminUser.role as keyof typeof t] || adminUser.role}</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <AvatarWithFallback
-                        src={adminProfile?.avatar}
-                        alt="Admin"
-                        fallbackSeed={adminProfile?.name || 'Admin'}
-                        className="w-9 h-9 rounded-full object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[15px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-black'
-                          }`}>{adminProfile?.name}</p>
-                        <p className={`text-[12px] truncate ${theme === 'dark' ? 'text-[rgba(235,235,245,0.45)]' : 'text-[rgba(60,60,67,0.5)]'
-                          }`}>{t[adminProfile?.role as keyof typeof t] || adminProfile?.role}</p>
-                      </div>
-                    </>
-                  )}
-                  <EditIcon className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity ${theme === 'dark' ? 'text-white' : 'text-black'
-                    }`} />
+                <div onClick={() => setIsAdminModalOpen(true)} className={`rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all group ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-50 border border-slate-100 hover:border-slate-200'}`}>
+                  <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center font-bold flex-shrink-0 ${theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {(adminUser?.avatar || adminProfile?.avatar) ? (
+                      <img src={adminUser?.avatar || adminProfile?.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      (adminUser?.username || adminProfile?.name || "A")[0].toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[14px] font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                      {adminUser?.username || adminProfile?.name || "Admin"}
+                    </p>
+                  </div>
+                  <EditIcon className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity ${theme === 'dark' ? 'text-white' : 'text-slate-400'}`} />
                 </div>
               )}
             </>
           )}
-          <button onClick={() => { playLockSound(); setIsLocked(true); }} className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all text-[13px] font-semibold ${theme === 'dark'
-            ? 'bg-[rgba(255,59,48,0.12)] hover:bg-[rgba(255,59,48,0.18)] text-[#FF453A]'
-            : 'bg-[rgba(255,59,48,0.08)] hover:bg-[rgba(255,59,48,0.14)] text-[#FF3B30]'
-            }`}>
+          <button onClick={() => { playLockSound(); setIsLocked(true); }} className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm font-medium transition-colors mt-2 ${theme === 'dark' ? 'text-white/40 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}>
             <LogOutIcon className="w-4 h-4" />
             <span>{t.lockSystem}</span>
           </button>
@@ -1044,6 +1078,7 @@ const AppContent: React.FC = () => {
                 adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
                 onAddCar={() => { setEditingCar(null); setIsCarModalOpen(true); }}
                 onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
+                onSaveCar={handleSaveCar}
                 onDeleteCar={handleDeleteCar}
                 theme={theme}
               />
@@ -1176,6 +1211,62 @@ const AppContent: React.FC = () => {
         adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
         theme={theme}
       />
+
+      {/* ── Repair Prompt Modal (Apple iOS Native Style) ── */}
+      {repairPrompt.isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-[2px]" 
+            style={{ animation: 'fadeIn 0.25s ease-out forwards' }}
+            onClick={handleRepairPromptContinue} 
+          />
+
+          {/* iOS Alert Card */}
+          <div 
+            className={`relative w-[320px] flex flex-col items-center rounded-[18px] overflow-hidden shadow-[0_20px_60px_rgb(0,0,0,0.25)] ${
+              isDark ? 'bg-[#1e1e1e]/85 backdrop-blur-2xl border border-white/10' : 'bg-[#f2f2f2]/90 backdrop-blur-2xl border border-black/5'
+            }`}
+            style={{ animation: 'modalPop 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards' }}
+          >
+            {/* Content Area */}
+            <div className="pt-6 px-5 pb-5 text-center">
+              {/* Title */}
+              <h3 className={`text-[19px] leading-[24px] font-bold tracking-tight mb-[6px] ${isDark ? 'text-white' : 'text-black'}`}>
+                Ta'mirga yuborildi
+              </h3>
+
+              {/* Message */}
+              <p className={`text-[15px] leading-[20px] tracking-tight ${isDark ? 'text-white/80' : 'text-black/80'}`}>
+                Bu avtomobil <span className={`font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{repairPrompt.driverName}</span> ga biriktirilgan. Mashina ta'mirdaligi sababli, uning bugungi kunlik rejasini to'xtatib qo'yishni xohlaysizmi?
+              </p>
+            </div>
+
+            {/* Buttons Area */}
+            <div className="w-full flex flex-col">
+              <div className={`w-full h-[0.5px] ${isDark ? 'bg-white/15' : 'bg-black/10'}`} />
+              <button
+                onClick={handleRepairPromptPause}
+                className={`w-full h-[50px] text-[17px] tracking-tight font-semibold transition-colors active:bg-black/10 ${
+                  isDark ? 'text-[#0a84ff]' : 'text-[#007aff]'
+                }`}
+              >
+                Ha, to'xtatish
+              </button>
+              
+              <div className={`w-full h-[0.5px] ${isDark ? 'bg-white/15' : 'bg-black/10'}`} />
+              <button
+                onClick={handleRepairPromptContinue}
+                className={`w-full h-[50px] text-[17px] tracking-tight transition-colors active:bg-black/10 ${
+                  isDark ? 'text-[#0a84ff]' : 'text-[#007aff]'
+                }`}
+              >
+                Yo'q, davom etsin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AdminModal
         isOpen={isAdminModalOpen}

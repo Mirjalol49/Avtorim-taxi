@@ -7,6 +7,7 @@ import { Transaction, TransactionType } from '../../core/types/transaction.types
 import { CarIcon, XIcon } from '../../../components/Icons';
 import { calcDriverFinance } from '../drivers/utils/debtUtils';
 import { exportDriversToExcel } from '../../../utils/exportToExcel';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 interface PayrollPageProps {
     drivers: Driver[];
@@ -671,9 +672,9 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                                 <div className="min-w-0">
                                                     <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
                                                     {car ? (
-                                                        <div className="flex items-center gap-1 mt-0.5">
-                                                            <CarIcon className={`w-3 h-3 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                                                            <span className={`text-[11px] font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{car.licensePlate}</span>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <CarIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                                                            <LicensePlate plate={car.licensePlate} size="sm" />
                                                         </div>
                                                     ) : (
                                                         <span className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('noCar')}</span>

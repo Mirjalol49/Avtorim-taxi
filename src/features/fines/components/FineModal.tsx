@@ -5,6 +5,8 @@ import { Driver, Car } from '../../../../types';
 import { useUIContext } from '../../shared/context/UIContext';
 import DatePicker from '../../../../components/DatePicker';
 import { ChevronDownIcon, SearchIcon, CheckIcon, CarIcon, XIcon, AlertTriangleIcon } from '../../../../components/Icons';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
+import { getDriverForCarOnDate } from '../../../../services/carsService';
 
 interface FineModalProps {
     isOpen: boolean;
@@ -51,6 +53,25 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, editin
             }
         }
     }, [isOpen, editingFine]);
+
+    const [isAutoDetecting, setIsAutoDetecting] = useState(false);
+    useEffect(() => {
+        let active = true;
+        const autoDetect = async () => {
+            if (isOpen && !editingFine && carId && fineDate) {
+                setIsAutoDetecting(true);
+                const assignedDriver = await getDriverForCarOnDate(carId, fineDate.getTime());
+                if (active) {
+                    if (assignedDriver) {
+                        setDriverId(assignedDriver);
+                    }
+                    setIsAutoDetecting(false);
+                }
+            }
+        };
+        autoDetect();
+        return () => { active = false; };
+    }, [carId, fineDate, isOpen, editingFine]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -155,7 +176,10 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, editin
 
                         {/* Driver Selector */}
                         <div className="relative">
-                            <label className={labelClass}>Haydovchi</label>
+                            <label className={labelClass}>
+                                Haydovchi
+                                {isAutoDetecting && <span className="ml-2 lowercase text-teal-500 normal-case font-medium">(Avto-qidirilmoqda...)</span>}
+                            </label>
                             {!isDriverOpen && selectedDriver ? (
                                 <div onClick={() => setIsDriverOpen(true)}
                                     className={`cursor-pointer p-4 rounded-2xl border transition-all group active:scale-[0.99] ${isDark ? 'bg-surface-2/60 border-white/[0.08] hover:border-white/[0.12]' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
@@ -166,9 +190,10 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, editin
                                         }
                                         <div className="flex-1 min-w-0">
                                             <p className={`font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</p>
-                                            <p className={`text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                {selectedDriver.carModel || '—'} · <span className="font-mono">{selectedDriver.licensePlate || ''}</span>
-                                            </p>
+                                            <div className={`text-xs mt-1.5 flex items-center gap-2 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                <span className="truncate">{selectedDriver.carModel || '—'}</span>
+                                                {selectedDriver.licensePlate && <LicensePlate plate={selectedDriver.licensePlate} size="sm" />}
+                                            </div>
                                         </div>
                                         <ChevronDownIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                                     </div>
@@ -199,7 +224,10 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, editin
                                                 }
                                                 <div className="flex-1 min-w-0">
                                                     <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{d.name}</p>
-                                                    <p className={`text-[11px] truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{d.carModel} · {d.licensePlate}</p>
+                                                    <div className={`text-[11px] mt-1 flex items-center gap-2 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                        <span className="truncate">{d.carModel || '—'}</span>
+                                                        {d.licensePlate && <LicensePlate plate={d.licensePlate} size="sm" />}
+                                                    </div>
                                                 </div>
                                                 {driverId === d.id && <CheckIcon className="w-4 h-4 text-[#0f766e] flex-shrink-0" />}
                                             </div>
@@ -229,7 +257,9 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, editin
                                         }
                                         <div className="flex-1 min-w-0">
                                             <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name}</p>
-                                            <p className={`text-xs font-mono mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{selectedCar.licensePlate}</p>
+                                            <div className="mt-1">
+                                                <LicensePlate plate={selectedCar.licensePlate} size="sm" />
+                                            </div>
                                         </div>
                                         <ChevronDownIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                                     </div>
@@ -265,7 +295,9 @@ const FineModal: React.FC<FineModalProps> = ({ isOpen, onClose, onSubmit, editin
                                                 {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}><CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>}
                                                 <div className="flex-1 min-w-0">
                                                     <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name}</p>
-                                                    <p className={`text-[11px] font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{c.licensePlate}</p>
+                                                    <div className="mt-1">
+                                                        <LicensePlate plate={c.licensePlate} size="sm" />
+                                                    </div>
                                                 </div>
                                                 {carId === c.id && <CheckIcon className="w-4 h-4 text-[#0f766e] flex-shrink-0" />}
                                             </div>

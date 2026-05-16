@@ -7,6 +7,9 @@ import { Car } from '../src/core/types';
 import { decodeHtml } from '../utils/textUtils';
 import { supabase } from '../supabase';
 import { uploadAvatarToStorage } from '../services/storageService';
+import Lottie from 'lottie-react';
+import cardAnimation from '../Images/card.json';
+import DatePicker from './DatePicker';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -40,6 +43,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [totalContractAmount, setTotalContractAmount] = useState(0);
   const [contractDurationMonths, setContractDurationMonths] = useState(36);
   const [contractStartDate, setContractStartDate] = useState<number>(Date.now());
+  const [startDate, setStartDate] = useState<number>(Date.now());
+  const [quitDate, setQuitDate] = useState<number | null>(null);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -82,6 +87,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setTotalContractAmount((editingDriver as any).totalContractAmount ?? 0);
       setContractDurationMonths((editingDriver as any).contractDurationMonths ?? 36);
       setContractStartDate((editingDriver as any).contractStartDate ?? Date.now());
+      setStartDate((editingDriver as any).startDate ?? editingDriver.createdAt ?? Date.now());
+      setQuitDate((editingDriver as any).quitDate ?? null);
       setSelectedCarId(currentAssignedCar?.id ?? '');
       setDocuments([]);
       // Load documents on-demand (excluded from realtime subscription to save egress)
@@ -102,6 +109,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setTotalContractAmount(0);
       setContractDurationMonths(36);
       setContractStartDate(Date.now());
+      setStartDate(Date.now());
+      setQuitDate(null);
       setSelectedCarId('');
       setError(null);
       setDocError(null);
@@ -164,6 +173,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         totalContractAmount: driverType === 'lease_to_own' ? totalContractAmount : undefined,
         contractDurationMonths: driverType === 'lease_to_own' ? contractDurationMonths : undefined,
         contractStartDate: driverType === 'lease_to_own' ? contractStartDate : undefined,
+        startDate,
+        quitDate: quitDate || null,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
@@ -411,6 +422,30 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder="Haydovchi haqida qo'shimcha ma'lumot..."></textarea>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Ish boshlagan sana</label>
+              <DatePicker
+                label="Ish boshlagan sana"
+                hideLabel
+                value={startDate ? new Date(startDate) : new Date()}
+                onChange={(d: Date) => setStartDate(d.getTime())}
+                theme={theme}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Ishdan ketgan sana</label>
+              <DatePicker
+                label="Ishdan ketgan sana"
+                hideLabel
+                isClearable
+                value={quitDate ? new Date(quitDate) : null}
+                onChange={(d: Date | null) => setQuitDate(d ? d.getTime() : null)}
+                theme={theme}
+              />
+            </div>
+          </div>
+
           {/* Driver payment type */}
           <div>
             <label className={labelClass}>Haydovchi turi</label>
@@ -421,7 +456,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   key={type}
                   type="button"
                   onClick={() => setDriverType(type)}
-                  className={`flex-1 min-w-[110px] py-2.5 text-xs sm:text-sm font-bold transition-all ${
+                  className={`flex-1 min-w-[110px] py-2.5 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold transition-all ${
                     driverType === type
                       ? 'bg-[#0f766e] text-white'
                       : theme === 'dark'
@@ -429,7 +464,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                         : 'bg-gray-50 text-gray-500 hover:text-gray-700 border-r border-gray-200 last:border-0'
                   }`}
                 >
-                  {type === 'deposit' ? '🏦 Depozitchi' : type === 'salary' ? '💳 Maoshli' : '🚗 Arenda (Vikup)'}
+                  {type === 'deposit' ? (
+                    <>🏦 Depozitchi</>
+                  ) : type === 'salary' ? (
+                    <><div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> Maoshli</>
+                  ) : (
+                    <>🚗 Arenda (Vikup)</>
+                  )}
                 </button>
               ))}
             </div>
@@ -539,11 +580,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 </div>
                 <div>
                   <label className={labelClass}>Boshlanish sanasi</label>
-                  <input
-                    type="date"
-                    value={new Date(contractStartDate).toISOString().split('T')[0]}
-                    onChange={e => setContractStartDate(e.target.value ? new Date(e.target.value).getTime() : Date.now())}
-                    className={inputClass}
+                  <DatePicker
+                    label="Boshlanish sanasi"
+                    hideLabel
+                    value={contractStartDate ? new Date(contractStartDate) : new Date()}
+                    onChange={(d: Date) => setContractStartDate(d.getTime())}
+                    theme={theme}
                   />
                 </div>
               </div>

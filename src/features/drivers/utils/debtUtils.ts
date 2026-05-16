@@ -227,8 +227,30 @@ export function calcDriverFinance(
         const { planIncome, topUps, expenses, debts, daysOff, depositUsed, salaryAdvance } = byMonth.get(mk)!;
         // Future months: no working days, no debt (only record actual income/topups)
         const isFutureMonth = mk > todayMk;
-        const workingDays   = isFutureMonth ? 0 : Math.max(0, effectiveDays - daysOff);
-        const monthlyTarget = dailyPlan * workingDays;
+        
+        // Sum the actual effective plan for each day of the month up to effectiveDays
+        let monthlyTarget = 0;
+        let workingDaysCount = 0;
+        
+        for (let d = 1; d <= effectiveDays; d++) {
+            const dayDate = new Date(y, m - 1, d);
+            const isDayOffTx = validTxs.some(tx => 
+                (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) && 
+                dateKey(tx.timestamp) === dateKey(dayDate.getTime())
+            );
+            
+            if (!isDayOffTx) {
+                const planForDay = getEffectivePlanForDriverDay(driver, dayDate, car);
+                monthlyTarget += planForDay;
+                if (planForDay > 0) workingDaysCount++;
+            }
+        }
+        
+        // Future months: no working days
+        const workingDays = isFutureMonth ? 0 : workingDaysCount;
+        if (isFutureMonth) {
+            monthlyTarget = 0;
+        }
 
         const shortfall    = Math.max(0, monthlyTarget - planIncome);
         const overpayment  = Math.max(0, planIncome - monthlyTarget);

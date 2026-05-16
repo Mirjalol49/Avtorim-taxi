@@ -24,7 +24,7 @@ export interface DriverPlanHistoryEntry {
 }
 
 export interface DriverDayOverride {
-    type: 'OFF' | 'NOT_WORKING' | 'DISCOUNT';
+    type: 'OFF' | 'NOT_WORKING' | 'DISCOUNT' | 'REPAIR';
     customPlan?: number;
 }
 
@@ -66,4 +66,8 @@ export interface Driver extends Lockable {
     planHistory?: DriverPlanHistoryEntry[];
     /** Overrides for specific days (e.g. day off, sick leave, discount) */
     dayOverrides?: Record<string, DriverDayOverride>;
+    /** When the driver officially started working */
+    startDate?: number;
+    /** When the driver quit or was terminated */
+    quitDate?: number;
 }

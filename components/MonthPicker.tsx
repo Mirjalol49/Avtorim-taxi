@@ -59,14 +59,19 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${theme === 'dark'
-                    ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12] text-white'
-                    : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
-                    }`}
+                className={`w-full h-[52px] px-3 sm:px-4 rounded-[10px] border text-left transition-all flex items-center justify-between gap-3 ${
+                    isOpen
+                        ? theme === 'dark'
+                            ? 'bg-surface-2 border-teal-500 ring-1 ring-teal-500/40'
+                            : 'bg-white border-teal-500 ring-1 ring-teal-500/20 shadow-md'
+                        : theme === 'dark'
+                            ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12]'
+                            : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
+                }`}
             >
-                <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{formatMonthYear(value)}</span>
-                    <CalendarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                <div className="w-full flex items-center justify-between">
+                    <span className="text-sm font-medium pr-3">{formatMonthYear(value)}</span>
+                    <CalendarIcon className={`flex-shrink-0 w-4 h-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>
             </button>
 
@@ -78,7 +83,7 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
 
                     {/* Month Grid */}
                     <div
-                        className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
+                        className={`absolute top-full left-0 mt-2 w-64 p-3 rounded-xl border shadow-xl z-50 ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
                         style={theme === 'dark' ? { background: '#171f33' } : undefined}
                     >
                         {/* Year Header */}

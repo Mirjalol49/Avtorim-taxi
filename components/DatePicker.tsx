@@ -11,6 +11,7 @@ interface DatePickerProps {
     labelClassName?: string;
     placeholder?: string;
     hideLabel?: boolean;
+    isClearable?: boolean;
 }
 
 const TODAY_LABELS: Record<string, string> = { uz: 'Bugun', ru: 'Сегодня', en: 'Today' };
@@ -48,7 +49,7 @@ function fmt(d: Date) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
-const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName, placeholder, hideLabel }) => {
+const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName, placeholder, hideLabel, isClearable }) => {
     const today = new Date();
     const [isOpen, setIsOpen] = useState(false);
     const [month, setMonth] = useState(new Date(value ? value.getFullYear() : today.getFullYear(), value ? value.getMonth() : today.getMonth(), 1));
@@ -62,8 +63,16 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
     const lang = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz');
 
     const localizedDays = useMemo(() => getDayNames(lang), [lang]);
+    
+    const MONTH_NAMES = {
+        uz: ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'],
+        ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+        en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    };
+
     const currentMonthName = useMemo(() => {
-        return new Intl.DateTimeFormat(lang, { month: 'long' }).format(new Date(month.getFullYear(), month.getMonth(), 1));
+        const m = month.getMonth();
+        return (MONTH_NAMES[lang as keyof typeof MONTH_NAMES] || MONTH_NAMES.uz)[m];
     }, [lang, month]);
 
     // Position calendar relative to trigger button
@@ -223,14 +232,27 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
             </div>
 
             {/* Footer */}
-            <div className={`px-3 pb-3`}>
+            <div className={`px-3 pb-3 flex gap-2`}>
+                {isClearable && (
+                    <button
+                        type="button"
+                        onClick={() => { onChange(null as any); setIsOpen(false); }}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            isDark
+                                ? 'bg-surface-2 text-gray-400 hover:bg-white/[0.06] hover:text-white'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
+                        }`}
+                    >
+                        {lang === 'en' ? 'Clear' : lang === 'ru' ? 'Очистить' : 'Tozalash'}
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={goToday}
-                    className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         isDark
-                            ? 'bg-surface-2 text-gray-400 hover:bg-white/[0.06] hover:text-white'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
+                            ? (isClearable ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20' : 'bg-surface-2 text-gray-400 hover:bg-white/[0.06] hover:text-white')
+                            : (isClearable ? 'bg-teal-50 text-teal-600 hover:bg-teal-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900')
                     }`}
                 >
                     {TODAY_LABELS[lang] || TODAY_LABELS.uz}

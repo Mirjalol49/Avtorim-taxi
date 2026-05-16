@@ -13,6 +13,7 @@ import { Car } from '../../core/types/car.types';
 import Lottie from 'lottie-react';
 import badgeAnimation from '../../../Images/badge.json';
 import { MetricCard } from '../../../components/MetricCard';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 interface DashboardPageProps {
     transactions: Transaction[];
@@ -177,7 +178,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 {driverCar && (
                                                     <div className="flex items-center gap-1.5 mt-0.5">
                                                         <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
-                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                        <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                     </div>
                                                 )}
                                             </div>
@@ -240,7 +241,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 {driverCar && (
                                                     <div className="flex items-center gap-1.5 mt-0.5">
                                                         <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
-                                                        <span className={`text-[10px] font-mono font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                        <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                     </div>
                                                 )}
                                             </div>
@@ -296,7 +297,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             {driverCar && (
                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                     <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
-                                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{driverCar.licensePlate}</span>
+                                                    <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                 </div>
                                             )}
                                         </div>

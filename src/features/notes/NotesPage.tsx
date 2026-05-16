@@ -515,6 +515,13 @@ const BellOutlineIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+const ClockOutlineIcon = ({ className }: { className?: string }) => (
+    <svg className={className ?? ''} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <circle cx="12" cy="12" r="9.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 3" />
+    </svg>
+);
+
 // ─── Note Card ────────────────────────────────────────────────────────────────
 
 interface NoteCardProps {
@@ -597,13 +604,24 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
                         >
                             {isDue ? (
                                 <>
-                                    <BellOutlineIcon className="w-3 h-3 animate-bounce origin-bottom opacity-80" />
+                                    <BellOutlineIcon className="w-3.5 h-3.5 animate-bounce origin-bottom opacity-80" />
                                     <span className="uppercase tracking-wider">Vaqti keldi</span>
                                 </>
                             ) : (
                                 <>
-                                    <BellOutlineIcon className="w-3 h-3 opacity-80" />
-                                    {new Date(note.reminderAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                    <ClockOutlineIcon className="w-3.5 h-3.5 opacity-80" />
+                                    {(() => {
+                                        const d = new Date(note.reminderAt as number);
+                                        const now = new Date();
+                                        const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                                        const tomorrow = new Date(now);
+                                        tomorrow.setDate(tomorrow.getDate() + 1);
+                                        const isTomorrow = d.getDate() === tomorrow.getDate() && d.getMonth() === tomorrow.getMonth() && d.getFullYear() === tomorrow.getFullYear();
+                                        const time = format(d, 'HH:mm');
+                                        if (isToday) return time;
+                                        if (isTomorrow) return `Ertaga ${time}`;
+                                        return format(d, 'd MMM HH:mm', { locale: uz });
+                                    })()}
                                 </>
                             )}
                         </span>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Car } from '../../core/types/car.types';
 import CarDamageDetail from './CarDamageDetail';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 interface Props {
     cars: Car[];
@@ -141,9 +142,7 @@ export default function DamagesPage({ cars, isDataLoading, userRole, adminName, 
 
                                     {/* plate over gradient */}
                                     <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-3.5">
-                                        <p className="text-white font-mono font-black text-[17px] tracking-[0.2em] drop-shadow-lg">
-                                            {car.licensePlate}
-                                        </p>
+                                        <LicensePlate plate={car.licensePlate} size="sm" />
                                     </div>
 
                                     {/* severe pulse */}

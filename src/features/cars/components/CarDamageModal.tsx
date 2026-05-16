@@ -315,7 +315,6 @@ export default function CarDamageModal({ isDark, carId, carName, recordedBy, onS
                             type="file"
                             accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp"
                             multiple
-                            capture="environment"
                             className="hidden"
                             onChange={handleFileAdd}
                         />

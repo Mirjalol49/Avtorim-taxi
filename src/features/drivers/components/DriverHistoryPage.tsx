@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Driver } from '../../../core/types';
@@ -7,6 +7,10 @@ import { Transaction, TransactionType, PaymentStatus } from '../../../core/types
 import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../utils/driverPlanHistory';
 import { getEffectivePlanForDay } from '../../cars/utils/planHistory';
 import DatePicker from '../../../../components/DatePicker';
+import Lottie from 'lottie-react';
+import cardAnimation from '../../../../Images/card.json';
+import restAnimation from '../../../../Images/rest.json';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
 
 interface Props {
     driver: Driver;
@@ -344,7 +348,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                         <div className={`flex items-center justify-center flex-wrap gap-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             <span className="truncate">{driver.carModel || 'Noma\'lum avto'}</span>
                             <span>•</span>
-                            <span className="font-mono">{driver.licensePlate}</span>
+                            <LicensePlate plate={driver.licensePlate || ''} size="sm" />
                         </div>
                         
                         <div className={`w-full h-px my-5 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />
@@ -498,7 +502,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                                 {day.status === 'UNPAID' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white dark:border-[#1C1C1E]" title="To'lanmadi" />}
                                                                 {day.status === 'PARTIAL' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white dark:border-[#1C1C1E]" title="Qisman to'landi" />}
                                                                 {day.status === 'PAID' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1C1C1E]" title="To'liq to'landi" />}
-                                                                {day.status === 'DAY_OFF' && <div className="absolute -top-2 -right-2 text-[12px] leading-none z-10" title="Dam olish">🏝️</div>}
+                                                                {day.status === 'DAY_OFF' && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 z-10" title="Dam olish"><Lottie animationData={restAnimation} loop={true} /></div>}
                                                             </div>
                                                         </div>
 
@@ -604,14 +608,17 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                         <div className="space-y-6">
                             {/* Hero */}
                             <div className={`rounded-2xl border px-6 py-5 ${isDark ? 'border-[#BF5AF2]/20 bg-[#BF5AF2]/10' : 'border-[#AF52DE]/20 bg-[#AF52DE]/10'}`}>
-                                <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-[#BF5AF2]/80' : 'text-[#AF52DE]/80'}`}>💳 Oylik maosh</p>
+                                <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1 ${isDark ? 'text-[#BF5AF2]/80' : 'text-[#AF52DE]/80'}`}>
+                                    <div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                    Oylik maosh
+                                </p>
                                 <p className={`text-[32px] font-bold tracking-tight font-mono ${isDark ? 'text-[#BF5AF2]' : 'text-[#AF52DE]'}`}>{fmt(driver.monthlySalary ?? 0)}</p>
                                 <p className={`text-[13px] font-medium mt-1 ${muted}`}>UZS / oy • {salaryTxs.length} ta to'lov</p>
                             </div>
 
                             {salaryTxs.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center py-16 gap-3 ${muted}`}>
-                                    <span className="text-4xl">💳</span>
+                                    <div className="w-10 h-10 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                                     <p className="text-[15px] font-medium">Maosh to'lovlari yo'q</p>
                                 </div>
                             ) : (
@@ -619,7 +626,9 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                     <div className={`divide-y ${divider}`}>
                                         {salaryTxs.map(tx => (
                                             <div key={tx.id} className={`flex items-center gap-3 px-4 py-3.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/70'} transition-colors`}>
-                                                <div className={`flex-shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center text-lg ${isDark ? 'bg-[#BF5AF2]/15' : 'bg-[#AF52DE]/10'}`}>💳</div>
+                                                <div className={`flex-shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center text-lg ${isDark ? 'bg-[#BF5AF2]/15' : 'bg-[#AF52DE]/10'}`}>
+                                                    <div className="w-6 h-6 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                                </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className={`text-[14px] font-semibold ${txt}`}>Maosh to'lovi</p>
                                                     {tx.description && <p className={`text-[12px] truncate mt-0.5 ${muted}`}>{tx.description}</p>}

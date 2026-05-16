@@ -6,6 +6,7 @@ import { updateCar } from '../../../services/carsService';
 import { supabase } from '../../../supabase';
 import { useConfirm } from '../../../components/ConfirmContext';
 import { useToast } from '../../../components/ToastNotification';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 
 interface Props {
     car: Car;
@@ -144,9 +145,9 @@ export default function CarDamageDetail({ car, allCars, userRole, adminName, the
                         <p className="text-white/60 text-[11px] font-bold uppercase tracking-[0.25em] mb-1.5 drop-shadow-md">{t('carLabel', 'Avtomobil')}</p>
                         <h1 className="text-white font-extrabold text-[32px] leading-none tracking-tight drop-shadow-lg">{car.name}</h1>
                         <div className="mt-3 flex items-center gap-3">
-                            <span className="inline-block px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white font-mono font-bold text-[14px] tracking-[0.2em] shadow-sm border border-white/10">
-                                {car.licensePlate}
-                            </span>
+                            <div>
+                                <LicensePlate plate={car.licensePlate} size="md" />
+                            </div>
                             {totalDmg === 0 && (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-[13px] font-semibold">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />🛡️ Toza

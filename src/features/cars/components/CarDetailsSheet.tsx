@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Car, CarDocument, CAR_PARTS } from '../../../core/types/car.types';
+import { Car, CarDocument, CAR_PARTS, CarDamage } from '../../../core/types/car.types';
 import { Driver } from '../../../core/types/driver.types';
 import { XIcon, EditIcon, TrashIcon, PhoneIcon, CameraIcon } from '../../../../components/Icons';
+import { Wrench as WrenchIcon } from 'lucide-react';
 import { supabase } from '../../../../supabase';
 import { forceDownload } from '../../../../utils/downloadHelper';
 import CarDamageTab from './CarDamageTab';
+import ConfirmModal from '../../../../components/ConfirmModal';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
 
 interface Props {
     car: Car | null;
@@ -16,6 +19,7 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     onEdit: (car: Car) => void;
+    onSaveCar: (car: Car) => void;
     onDelete: (id: string) => void;
     onUpdated: (updatedDamage: CarDamage[]) => void;
 }
@@ -33,7 +37,7 @@ function getFriendlyDocName(doc: CarDocument): string {
 }
 
 export const CarDetailsSheet: React.FC<Props> = ({
-    car, driver, theme, userRole, adminName, isOpen, onClose, onEdit, onDelete, onUpdated
+    car, driver, theme, userRole, adminName, isOpen, onClose, onEdit, onSaveCar, onDelete, onUpdated
 }) => {
     const isDark = theme === 'dark';
 
@@ -44,6 +48,7 @@ export const CarDetailsSheet: React.FC<Props> = ({
     const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
     const [docs, setDocs] = useState<CarDocument[]>([]);
     const [activeTab, setActiveTab] = useState<'general' | 'damages'>('general');
+    const [repairConfirm, setRepairConfirm] = useState<{ isOpen: boolean; targetStatus: boolean }>({ isOpen: false, targetStatus: false });
 
     useEffect(() => {
         if (car) setInternalCar(car);
@@ -167,19 +172,43 @@ export const CarDetailsSheet: React.FC<Props> = ({
                                 {activeCar?.name}
                             </h2>
                             <div className="flex items-center gap-2 mt-2">
-                                <span className="px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm border border-white/20 text-white text-[12px] font-mono font-bold tracking-widest leading-none drop-shadow-sm">
-                                    {activeCar?.licensePlate}
-                                </span>
+                                <div>
+                                    <LicensePlate plate={activeCar?.licensePlate || ''} size="md" />
+                                </div>
                                 {activeCar?.inRepair ? (
-                                    <span className="px-2.5 py-1 rounded-lg bg-red-500/80 backdrop-blur-sm border border-red-500/50 text-white text-[12px] font-semibold leading-none flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => {
+                                            if (userRole === 'admin' && activeCar) {
+                                                setRepairConfirm({ isOpen: true, targetStatus: false });
+                                            }
+                                        }}
+                                        disabled={userRole !== 'admin'}
+                                        className={`px-2.5 py-1.5 rounded-lg bg-red-500/80 hover:bg-red-500/90 active:scale-95 transition-all backdrop-blur-sm border border-red-500/50 text-white text-[12px] font-semibold leading-none flex items-center gap-1.5 shadow-sm ${userRole !== 'admin' ? 'cursor-default active:scale-100' : ''}`}
+                                    >
                                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                         Ta'mirda
-                                    </span>
-                                ) : !isAssigned ? (
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            if (userRole === 'admin' && activeCar) {
+                                                setRepairConfirm({ isOpen: true, targetStatus: true });
+                                            }
+                                        }}
+                                        disabled={userRole !== 'admin'}
+                                        className={`px-2.5 py-1.5 rounded-lg transition-all active:scale-95 text-[12px] font-semibold leading-none flex items-center gap-1.5 border shadow-sm ${
+                                            isDark ? 'bg-black/40 hover:bg-black/60 border-white/10 text-gray-300 backdrop-blur-sm' : 'bg-white/80 hover:bg-white border-gray-200/50 text-gray-700 backdrop-blur-sm'
+                                        } ${userRole !== 'admin' ? 'cursor-default active:scale-100 hidden' : ''}`}
+                                    >
+                                        <WrenchIcon className="w-3 h-3" />
+                                        Ta'mirga yuborish
+                                    </button>
+                                )}
+                                {!isAssigned && (
                                     <span className="px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm border border-white/15 text-white/80 text-[12px] font-semibold leading-none">
                                         Bo'sh avtomobil
                                     </span>
-                                ) : null}
+                                )}
                             </div>
                         </div>
                     </div>
@@ -348,6 +377,23 @@ export const CarDetailsSheet: React.FC<Props> = ({
                     />
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={repairConfirm.isOpen}
+                title={repairConfirm.targetStatus ? "Ta'mirga yuborish" : "Ta'mirdan chiqarish"}
+                message={repairConfirm.targetStatus ? "Haqiqatan ham avtomobilni ta'mirga yubormoqchimisiz? Haydovchi uchun kunlik reja to'xtatiladi." : "Haqiqatan ham avtomobilni ta'mirdan chiqarmoqchimisiz? Kunlik reja hisoblanishi davom etadi."}
+                confirmLabel="Tasdiqlash"
+                cancelLabel="Bekor qilish"
+                theme={theme}
+                isDanger={repairConfirm.targetStatus}
+                onConfirm={() => {
+                    if (activeCar) {
+                        onSaveCar({ ...activeCar, inRepair: repairConfirm.targetStatus });
+                    }
+                    setRepairConfirm({ isOpen: false, targetStatus: false });
+                }}
+                onCancel={() => setRepairConfirm({ isOpen: false, targetStatus: false })}
+            />
         </div>,
         document.body
     );

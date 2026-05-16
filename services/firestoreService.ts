@@ -254,6 +254,8 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         contractStartDate: r.contract_start_date ? toMs(r.contract_start_date) : undefined,
         planHistory: r.plan_history ?? [],
         dayOverrides: r.day_overrides ?? undefined,
+        startDate: r.start_date ? toMs(r.start_date) : undefined,
+        quitDate: r.quit_date ? toMs(r.quit_date) : undefined,
     } as Driver);
 
     let cache: Driver[] = [];
@@ -266,7 +268,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
             const { data, error } = await supabase
                 .from('drivers')
                 // Exclude documents (base64 scans) — huge, only needed in DriverModal
-                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold,total_contract_amount,contract_duration_months,contract_start_date,plan_history,day_overrides')
+                .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold,total_contract_amount,contract_duration_months,contract_start_date,plan_history,day_overrides,start_date,quit_date')
                 .eq('fleet_id', fleetId)
                 .eq('is_deleted', false)
                 .abortSignal(controller.signal);
@@ -362,6 +364,8 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
             total_contract_amount: (driver as any).totalContractAmount ?? null,
             contract_duration_months: (driver as any).contractDurationMonths ?? null,
             contract_start_date: (driver as any).contractStartDate ?? null,
+            start_date: (driver as any).startDate ?? null,
+            quit_date: (driver as any).quitDate ?? null,
         })
         .select('id')
         .single();
@@ -403,6 +407,8 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if ((driver as any).contractStartDate !== undefined) payload.contract_start_date = (driver as any).contractStartDate;
     if (driver.planHistory !== undefined) payload.plan_history = driver.planHistory;
     if (driver.dayOverrides !== undefined) payload.day_overrides = driver.dayOverrides;
+    if ((driver as any).startDate !== undefined) payload.start_date = (driver as any).startDate;
+    if ((driver as any).quitDate !== undefined) payload.quit_date = (driver as any).quitDate;
     
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;

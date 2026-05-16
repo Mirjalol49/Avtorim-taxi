@@ -26,7 +26,10 @@ import { useConfirm } from '../../../components/ConfirmContext';
 import FinancialModal from '../../../components/FinancialModal';
 import BalanceCheckModal from '../../../components/BalanceCheckModal';
 import { exportTransactionsToExcel } from '../../../utils/exportToExcel';
-
+import Lottie from 'lottie-react';
+import cardAnimation from '../../../Images/card.json';
+import restAnimation from '../../../Images/rest.json';
+import { LicensePlate } from '../../components/ui/LicensePlate';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const EXPENSE_CATEGORIES = [
@@ -363,7 +366,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300'
                     }`}
                 >
-                    <span className="text-base">💳</span>
+                    <div className="w-5 h-5 flex items-center justify-center mr-1">
+                        <Lottie animationData={cardAnimation} loop={true} />
+                    </div>
                     Balans tekshirish
                 </button>
             </div>
@@ -399,44 +404,55 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                 : null;
                             return (
                                 <>
-                                    <div className={`flex items-center gap-2 mb-2 text-white`}>
-                                        <UsersIcon className="w-4 h-4" />
-                                        <span className="text-xs font-bold uppercase tracking-wider">{t('driver')}</span>
-                                    </div>
                                     <button
                                         type="button"
                                         onClick={() => setDriverModalOpen(true)}
-                                        className={`w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
+                                        className={`w-full h-[46px] px-4 rounded-xl border text-left transition-all flex items-center justify-between gap-3 ${
                                             driverModalOpen
                                                 ? theme === 'dark'
                                                     ? 'bg-surface-2 border-teal-500 ring-1 ring-teal-500/40'
-                                                    : 'bg-white border-teal-500 ring-1 ring-teal-500/20'
+                                                    : 'bg-white border-teal-500 ring-1 ring-teal-500/20 shadow-md'
                                                 : theme === 'dark'
-                                                    ? 'bg-surface-2 border-white/[0.08] hover:border-white/[0.12]'
-                                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                                                    ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12]'
+                                                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
                                         }`}
                                     >
-                                        {selectedDriver ? (
-                                            <>
-                                                <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600">
-                                                    {selectedDriver.avatar
-                                                        ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
-                                                        : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-surface-2 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
-                                                    }
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</div>
-                                                    {selectedCar && <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{selectedCar.name} · {selectedCar.licensePlate}</div>}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="text-lg">👥</span>
-                                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('allDrivers')}</span>
-                                            </>
-                                        )}
-                                        <svg className={`w-4 h-4 ml-auto flex-shrink-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            {selectedDriver ? (
+                                                <>
+                                                    <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-slate-200 dark:border-surface-3">
+                                                        {selectedDriver.avatar
+                                                            ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
+                                                            : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-surface-2 text-gray-300' : 'bg-slate-100 text-slate-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                                                        }
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 pr-2">
+                                                        <div className={`text-[13px] sm:text-[14px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{selectedDriver.name}</div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center -space-x-2.5 flex-shrink-0">
+                                                        {nonDeletedDrivers.slice(0, 3).map((d, i) => (
+                                                            <div key={d.id} className="w-7 h-7 rounded-full overflow-hidden border-2 border-white dark:border-surface bg-slate-100 shadow-sm" style={{ zIndex: 3 - i }}>
+                                                                {d.avatar ? (
+                                                                    <img src={d.avatar} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-slate-600">
+                                                                        {d.name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <span className={`text-[13px] sm:text-[14px] font-medium truncate ${theme === 'dark' ? 'text-gray-300' : 'text-slate-700'}`}>
+                                                        {t('allDrivers') || 'Barcha Haydovchilar'}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <svg className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 ${driverModalOpen ? 'transform rotate-180 text-teal-600' : theme === 'dark' ? 'text-gray-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
                                     <DriverFilterModal
@@ -581,7 +597,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                     <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{car.name}</span>
                                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2 text-gray-400' : 'border-gray-200 bg-gray-100 text-gray-500'}`}>{t('vehicleLabel')}</span>
                                                                 </div>
-                                                                <div className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{car.licensePlate}</div>
+                                                                <div className={`mt-0.5`}>
+                                                                    <LicensePlate plate={car.licensePlate} size="sm" />
+                                                                </div>
                                                             </div>
                                                         </>
                                                     ) : expenseCat ? (
@@ -612,7 +630,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                 </div>
                                                                 {(driver?.isDeleted || driver) && (
                                                                     <div className={`text-xs flex gap-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                                        <span>{driver?.licensePlate}</span>
+                                                                        <LicensePlate plate={driver?.licensePlate || ''} size="sm" />
                                                                         <span>•</span>
                                                                         <span>{driver?.phone}</span>
                                                                     </div>
@@ -639,7 +657,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             {tx.type !== TransactionType.DAY_OFF && tx.paymentMethod && (
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
-                                                                        {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
+                                                                        {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? (
+                                                                            <span className="flex items-center gap-1">
+                                                                                <div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                                                                {t('paymentCard')}
+                                                                            </span>
+                                                                        ) : `🏦 ${t('paymentTransfer')}`}
                                                                     </span>
                                                                     {tx.paymentMethod === 'card' && (
                                                                         <button
@@ -658,7 +681,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 {tx.type === TransactionType.DAY_OFF ? (
-                                                    <span className="flex items-center justify-end gap-1.5 text-xs font-bold text-blue-400"><span>🏝️</span> {t('dayOffLabel')}</span>
+                                                    <span className="flex items-center justify-end gap-1.5 text-xs font-bold text-blue-400">
+                                                        <div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div>
+                                                        {t('dayOffLabel')}
+                                                    </span>
                                                 ) : (
                                                     <NumberTooltip value={tx.type === TransactionType.INCOME ? Math.abs(tx.amount) : -Math.abs(tx.amount)} align="right" theme={theme}>
                                                         <span className={`text-sm font-bold font-mono tabular-nums cursor-default select-none ${tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'}`}>
@@ -720,12 +746,17 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             )}
                                             <div className="flex flex-col">
                                                 <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{car ? car.name : expenseCat ? expenseCat.label : driver ? driver.name : tx.driverName || t('generalExpense')}</span>
-                                                <span className={`text-[11px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{car ? car.licensePlate : driver ? driver.licensePlate : t('expense')}</span>
+                                                <div className={`text-[11px] font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                    {car || driver ? <LicensePlate plate={car?.licensePlate || driver?.licensePlate || ''} size="sm" /> : t('expense')}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0 pl-3">
                                             {tx.type === TransactionType.DAY_OFF ? (
-                                                <span className="flex items-center justify-end gap-1 text-sm font-bold text-blue-400"><span>🏝️</span> {t('dayOffLabel')}</span>
+                                                <span className="flex items-center justify-end gap-1 text-sm font-bold text-blue-400">
+                                                    <div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div>
+                                                    {t('dayOffLabel')}
+                                                </span>
                                             ) : (
                                                 <span className={`text-[15px] font-bold font-mono tabular-nums leading-tight ${tx.type === TransactionType.INCOME ? 'text-[#0f766e]' : 'text-red-500'}`}>
                                                     {tx.type === TransactionType.INCOME ? '+' : '−'}{formatNumberSmart(tx.amount, false, language)}
@@ -743,7 +774,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             <div className="flex items-center gap-2">
                                                 {tx.paymentMethod && (
                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
-                                                        {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? `💳 ${t('paymentCard')}` : `🏦 ${t('paymentTransfer')}`}
+                                                        {tx.paymentMethod === 'cash' ? `💵 ${t('paymentCash')}` : tx.paymentMethod === 'card' ? (
+                                                            <span className="flex items-center gap-1">
+                                                                <div className="w-3 h-3 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
+                                                                {t('paymentCard')}
+                                                            </span>
+                                                        ) : `🏦 ${t('paymentTransfer')}`}
                                                     </span>
                                                 )}
                                                 {tx.paymentMethod === 'card' && (

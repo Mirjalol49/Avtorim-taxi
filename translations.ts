@@ -362,7 +362,8 @@ export const TRANSLATIONS = {
     transactionUpdateFailed: "Yangilashda xatolik yuz berdi",
     bulkDeleteSuccess: "{{n}} ta tranzaksiya o'chirildi",
     bulkDeleteFailed: "Ommaviy o'chirishda xatolik",
-    deleteConfirmBulkTx: "{{n}} ta tranzaksiyani o'chirmoqchimisiz?\nJami summa: {{amount}} UZS\n\nBu amalni ortga qaytarib bo'lmaydi."
+    deleteConfirmBulkTx: "{{n}} ta tranzaksiyani o'chirmoqchimisiz?\nJami summa: {{amount}} UZS\n\nBu amalni ortga qaytarib bo'lmaydi.",
+    repairPlanPaused: "{{name}} uchun bugungi kunlik reja to'xtatildi."
   },
   ru: {
     dashboard: "Приборная панель",
@@ -726,7 +727,8 @@ export const TRANSLATIONS = {
     transactionUpdateFailed: "Не удалось обновить транзакцию",
     bulkDeleteSuccess: "{{n}} транзакций удалено",
     bulkDeleteFailed: "Ошибка массового удаления",
-    deleteConfirmBulkTx: "Удалить {{n}} транзакций?\nОбщая сумма: {{amount}} UZS\n\nЭто действие нельзя отменить."
+    deleteConfirmBulkTx: "Удалить {{n}} транзакций?\nОбщая сумма: {{amount}} UZS\n\nЭто действие нельзя отменить.",
+    repairPlanPaused: "Дневной план на сегодня для {{name}} приостановлен."
   },
   en: {
     dashboard: "Dashboard",
@@ -1086,6 +1088,7 @@ export const TRANSLATIONS = {
     transactionUpdateFailed: "Failed to update transaction",
     bulkDeleteSuccess: "{{n}} transactions deleted",
     bulkDeleteFailed: "Bulk delete failed",
-    deleteConfirmBulkTx: "Delete {{n}} transaction(s)?\nTotal amount: {{amount}} UZS\n\nThis action cannot be undone."
+    deleteConfirmBulkTx: "Delete {{n}} transaction(s)?\nTotal amount: {{amount}} UZS\n\nThis action cannot be undone.",
+    repairPlanPaused: "Today's daily plan for {{name}} has been paused."
   }
 };

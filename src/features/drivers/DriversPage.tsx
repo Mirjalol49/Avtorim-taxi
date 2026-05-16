@@ -71,107 +71,108 @@ const DriversPage: React.FC<DriversPageProps> = ({
         <div className="space-y-6">
             {/* Fleet debt summary removed per user request - focusing on driver management */}
 
-            {/* Search Bar & View Toggle */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className={`flex-1 p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <SearchIcon className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                        </div>
+            {/* ── Toolbar ── */}
+            <div className="flex flex-col gap-3 mb-6">
+                <div className="flex gap-2.5">
+                    <div className="flex-1 relative">
+                        <SearchIcon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${theme === 'dark' ? 'text-white/25' : 'text-gray-400'}`} />
                         <input
                             type="text"
-                            className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e] sm:text-sm transition-colors ${theme === 'dark'
-                                ? 'bg-surface-2 border-white/[0.08] text-white placeholder-gray-400'
-                                : 'bg-gray-50 border-gray-200 text-gray-900'
-                                }`}
+                            className={`w-full pl-10 pr-4 py-2.5 rounded-[14px] border text-[13px] font-medium outline-none transition-all ${theme === 'dark'
+                                ? 'bg-surface border-white/[0.07] text-white placeholder-white/25 focus:border-teal-500/40'
+                                : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500/60'
+                            }`}
                             placeholder={t('searchDriverPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors ${theme === 'dark' ? 'bg-white/10 text-white/40 hover:bg-white/20' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}
+                            >×</button>
+                        )}
                     </div>
-                </div>
 
-                {/* Add Driver Button */}
-                {userRole === 'admin' && (
-                    <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                    <button
+                        onClick={() => exportDriversToExcel(filteredDrivers, 'Haydovchilar')}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-[13px] font-semibold border transition-all active:scale-95 flex-shrink-0 ${theme === 'dark'
+                            ? 'bg-surface border-white/[0.07] text-white/40 hover:text-emerald-400 hover:border-emerald-500/25'
+                            : 'bg-white border-gray-200 text-gray-400 hover:text-emerald-600 hover:border-emerald-300'
+                        }`}
+                        title="Excel"
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Excel</span>
+                    </button>
+
+                    {userRole === 'admin' && (
                         <button
                             onClick={onAddDriver}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg ${theme === 'dark'
-                                ? 'bg-[#0f766e] hover:bg-teal-700 text-white shadow-sm'
-                                : 'bg-[#0f766e] hover:bg-teal-700 text-white shadow-sm'
-                                }`}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] font-bold text-[13px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95 shadow-sm flex-shrink-0"
                         >
-                            <PlusIcon className="w-5 h-5" />
+                            <PlusIcon className="w-4 h-4" />
                             <span>{t('add')}</span>
                         </button>
-                    </div>
-                )}
+                    )}
 
-                {/* Export Button */}
-                <button
-                    onClick={() => exportDriversToExcel(filteredDrivers, 'Haydovchilar')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
-                        theme === 'dark'
-                            ? 'bg-surface border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
-                    }`}
-                >
-                    <DownloadIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Excel</span>
-                </button>
-
-                {/* View Toggle */}
-                <div className={`flex items-center p-1.5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                    <button
-                        onClick={() => setViewMode('grid')}
-                        className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid'
-                            ? 'bg-[#0f766e] text-white shadow-md'
-                            : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                            }`}
-                    >
-                        <GridIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`p-2.5 rounded-xl transition-all ${viewMode === 'list'
-                            ? 'bg-[#0f766e] text-white shadow-md'
-                            : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                            }`}
-                    >
-                        <ListIcon className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Filter chips (Segmented Control) */}
-            <div className={`flex items-center gap-1 p-1 rounded-[14px] border self-start ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
-                {([
-                    { key: 'all', label: 'Barchasi', count: rawFiltered.length },
-                    { key: 'with-car', label: 'Mashina bor', count: withCarCount },
-                    { key: 'no-car', label: "Mashina yo'q", count: noCarCount },
-                ] as { key: CarFilter; label: string; count: number }[]).map(f => {
-                    const active = carFilter === f.key;
-                    return (
+                    {/* View Toggle */}
+                    <div className={`flex items-center p-1 rounded-[14px] border ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
                         <button
-                            key={f.key}
-                            onClick={() => { setCarFilter(f.key); setCurrentPage(1); }}
-                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
-                                active
-                                    ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
-                                    : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
-                            }`}
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded-[10px] transition-all ${viewMode === 'grid'
+                                ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
+                                : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                                }`}
                         >
-                            {f.label}
-                            <span className={`min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-black flex items-center justify-center ${
-                                active
-                                    ? theme === 'dark' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'
-                                    : theme === 'dark' ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'
-                            }`}>
-                                {f.count}
-                            </span>
+                            <GridIcon className="w-4 h-4" />
                         </button>
-                    );
-                })}
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-1.5 rounded-[10px] transition-all ${viewMode === 'list'
+                                ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
+                                : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            <ListIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div className={`flex items-center gap-1 p-1 rounded-[14px] border ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+                        {([
+                            { key: 'all', label: 'Barchasi', count: rawFiltered.length },
+                            { key: 'with-car', label: 'Mashina bor', count: withCarCount },
+                            { key: 'no-car', label: "Mashina yo'q", count: noCarCount },
+                        ] as { key: CarFilter; label: string; count: number }[]).map(f => {
+                            const active = carFilter === f.key;
+                            return (
+                                <button
+                                    key={f.key}
+                                    onClick={() => { setCarFilter(f.key); setCurrentPage(1); }}
+                                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                        active
+                                            ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
+                                            : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    {f.label}
+                                    <span className={`min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-black flex items-center justify-center ${
+                                        active
+                                            ? theme === 'dark' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'
+                                            : theme === 'dark' ? 'bg-white/[0.05] text-white/25' : 'bg-gray-200 text-gray-400'
+                                    }`}>
+                                        {f.count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <span className={`text-[12px] ${theme === 'dark' ? 'text-white/25' : 'text-gray-400'}`}>
+                        {filteredDrivers.length} ta haydovchi
+                    </span>
+                </div>
             </div>
 
             {filteredDrivers.length > 0 ? (
