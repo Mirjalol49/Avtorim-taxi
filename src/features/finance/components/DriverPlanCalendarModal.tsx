@@ -408,11 +408,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         </div>
                     </div>
 
-                    {/* Horizontal scroll wrapper for mobile */}
-                    <div className="w-full overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                        <div className="min-w-[650px] sm:min-w-0 w-full">
-                            {/* Weekday headers */}
-                            <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
+                    {/* Weekday headers */}
+                    <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
                             {orderedDays.map(day => (
                                 <div
                                     key={day}
@@ -454,7 +451,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                 onDayClick(monthData.driver.id, new Date(year, month - 1, d.day));
                                             }
                                         }}
-                                        className={`relative flex flex-col min-h-[72px] sm:min-h-[90px] md:min-h-[110px] rounded-xl sm:rounded-2xl p-2 sm:p-3 transition-all duration-150 overflow-hidden group ${
+                                        className={`relative flex flex-col min-h-[64px] sm:min-h-[90px] md:min-h-[110px] rounded-lg sm:rounded-2xl p-1 sm:p-3 transition-all duration-150 overflow-hidden group ${
                                             isClickable ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md' : 'cursor-default'
                                         } ${(d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' || d.status === 'REPAIR') ? 'border border-transparent shadow-sm' : cardStyle(d.status, isToday)} ${isReducedRate && d.status !== 'DAY_OFF' && d.status !== 'NOT_WORKING' && d.status !== 'REPAIR' ? (isDark ? 'bg-indigo-500/5' : 'bg-indigo-50/50') : ''}`}
                                     >
@@ -489,7 +486,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             </div>
                                         )}
                                         
-                                        <div className="flex flex-col h-full w-full relative z-10">
+                                        {/* ── DESKTOP & TABLET VIEW ── */}
+                                        <div className="hidden sm:flex flex-col h-full w-full relative z-10">
                                             {/* Date Header */}
                                             <div className="mb-2">
                                                 {isToday ? (
@@ -580,13 +578,64 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                 ) : null}
                                             </div>
                                         </div>
+
+                                        {/* ── MOBILE COMPACT VIEW ── */}
+                                        <div className="flex sm:hidden flex-col items-center justify-center h-full w-full relative z-10">
+                                            {/* Top Right Icon for Status */}
+                                            {d.status === 'PAID' && (
+                                                <div className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isDark ? 'bg-emerald-500' : 'bg-emerald-500'}`}></div>
+                                            )}
+                                            {d.debt > 0 && d.status !== 'PAID' && (
+                                                <div className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isDark ? 'bg-red-500' : 'bg-red-500'}`}></div>
+                                            )}
+                                            
+                                            {/* Date Number */}
+                                            <span className={`text-[11px] font-bold leading-none mt-1.5 mb-0.5 ${
+                                                isToday ? 'bg-blue-500 text-white px-1 py-0.5 rounded shadow-sm' :
+                                                (d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' || d.status === 'REPAIR')
+                                                    ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
+                                                    : isDark ? 'text-gray-200' : 'text-slate-800'
+                                            }`}>
+                                                {d.date.getDate()}
+                                            </span>
+
+                                            {/* Bottom Income/Debt/Status */}
+                                            {d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' || d.status === 'REPAIR' || d.status === 'NOT_WORKING' ? null : d.status.startsWith('FUTURE') && d.status !== 'FUTURE_DISCOUNT' ? null : (
+                                                <div className="flex flex-col items-center justify-center w-full mt-auto mb-0.5 whitespace-nowrap">
+                                                    {d.status === 'PAID' || (d.income > d.planForDay && d.planForDay > 0) ? (
+                                                        <span className={`text-[6.5px] font-bold tracking-tighter leading-tight text-center flex flex-col items-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                            <span>+{fmtCompact(d.income > d.planForDay ? d.income - d.planForDay : d.income).replace(' UZS', '')}</span>
+                                                            <span className="text-[5px]">UZS</span>
+                                                        </span>
+                                                    ) : d.debt > 0 ? (
+                                                        <span className={`text-[6.5px] font-bold tracking-tighter leading-tight text-center flex flex-col items-center ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                            <span>-{fmtCompact(d.debt).replace(' UZS', '')}</span>
+                                                            <span className="text-[5px]">UZS</span>
+                                                        </span>
+                                                    ) : d.status === 'FUTURE_DISCOUNT' ? (
+                                                        <span className={`text-[6.5px] font-bold tracking-tighter leading-tight text-center flex flex-col items-center ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
+                                                            <span>{fmtCompact(d.planForDay).replace(' UZS', '')}</span>
+                                                            <span className="text-[5px]">UZS</span>
+                                                        </span>
+                                                    ) : d.income > 0 ? (
+                                                        <span className={`text-[6.5px] font-bold tracking-tighter leading-tight text-center flex flex-col items-center ${isDark ? 'text-blue-400' : 'text-blue-500'}`}>
+                                                            <span>+{fmtCompact(d.income).replace(' UZS', '')}</span>
+                                                            <span className="text-[5px]">UZS</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`text-[6.5px] font-bold tracking-tighter leading-tight text-center flex flex-col items-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                            <span>0</span>
+                                                            <span className="text-[5px]">UZS</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                 );
                             })}
                         </div>
-                        </div>
-                    </div>
                     </div>
                 </div>
 
