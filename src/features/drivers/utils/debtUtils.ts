@@ -43,7 +43,8 @@ const dateKey = (ts: number | Date) => {
 export function calcDriverDebt(
     driver: Driver,
     car: Car | null | undefined,
-    transactions: Transaction[]
+    transactions: Transaction[],
+    targetDate: Date = new Date()
 ): DriverDebtInfo {
     const dailyPlan = car?.dailyPlan ?? 0;
 
@@ -74,7 +75,7 @@ export function calcDriverDebt(
             dayOffsByMonth[mk] = (dayOffsByMonth[mk] || 0) + 1;
         });
 
-    const todayKey = dateKey(Date.now());
+    const todayKey = dateKey(targetDate);
     const todayIsDayOff = validTxs.some(tx => (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) && dateKey(tx.timestamp) === todayKey);
     const todayIncome = incomeByDate[todayKey] ?? 0;
     const todayDebt = (dailyPlan > 0 && !todayIsDayOff)

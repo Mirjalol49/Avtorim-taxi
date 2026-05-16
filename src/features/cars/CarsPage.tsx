@@ -650,26 +650,17 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfi
                 {/* Status Badge (Top Right) */}
                 <div className="absolute top-4 right-4 z-20">
                     {car.inRepair ? (
-                        <div className="relative inline-flex">
-                            <div className="absolute inset-0 bg-red-400/40 dark:bg-red-500/50 blur-[8px] rounded-full"></div>
-                            <span className="relative px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[9px] font-black tracking-widest border border-red-200/50 dark:border-red-500/30">
-                                TA'MIRDA
-                            </span>
-                        </div>
+                        <span className="px-2.5 py-1 rounded-[8px] bg-red-500 text-white text-[9px] font-black tracking-widest shadow-sm">
+                            TA'MIRDA
+                        </span>
                     ) : isAssigned ? (
-                        <div className="relative inline-flex">
-                            <div className="absolute inset-0 bg-emerald-400/30 dark:bg-emerald-500/40 blur-[8px] rounded-full"></div>
-                            <span className="relative px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-widest border border-emerald-200/50 dark:border-emerald-500/30">
-                                BIRIKTIRILGAN
-                            </span>
-                        </div>
+                        <span className="px-2.5 py-1 rounded-[8px] bg-emerald-500 text-white text-[9px] font-black tracking-widest shadow-sm">
+                            BIRIKTIRILGAN
+                        </span>
                     ) : (
-                        <div className="relative inline-flex">
-                            <div className="absolute inset-0 bg-blue-400/40 dark:bg-blue-500/50 blur-[8px] rounded-full"></div>
-                            <span className="relative px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[9px] font-black tracking-widest border border-blue-200/50 dark:border-blue-500/30">
-                                BO'SH
-                            </span>
-                        </div>
+                        <span className="px-2.5 py-1 rounded-[8px] bg-slate-500 text-white text-[9px] font-black tracking-widest shadow-sm">
+                            BO'SH
+                        </span>
                     )}
                 </div>
 

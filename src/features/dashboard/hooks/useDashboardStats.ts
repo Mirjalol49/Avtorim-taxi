@@ -6,6 +6,7 @@ import { calcDriverDebt } from '../../drivers/utils/debtUtils';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[]) => {
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+    const [targetDate, setTargetDate] = useState<Date>(new Date());
 
     // Dashboard view mode state (chart/grid)
     const [dashboardViewMode, setDashboardViewMode] = useState<'chart' | 'grid'>('chart');
@@ -65,7 +66,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
     // Daily Plan Status
     const todayStats = useMemo(() => {
-        const todayKey = toDateKey(new Date());
+        const todayKey = toDateKey(targetDate);
 
         // Build a set of driver IDs who have an active DAY_OFF transaction today
         const dayOffDriverIds = new Set<string>(
@@ -99,7 +100,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
             // would always show as "pending" with -0, which is misleading.
             if (!driverCar || !driverCar.dailyPlan || driverCar.dailyPlan <= 0) return;
 
-            const info = calcDriverDebt(driver, driverCar, transactions);
+            const info = calcDriverDebt(driver, driverCar, transactions, targetDate);
 
             const adjustedTotalDebt = info.netDebt;
 
@@ -125,10 +126,11 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         pending.sort((a, b) => a.todayDebt - b.todayDebt);
 
         return { completed, pending, dayOff };
-    }, [nonDeletedDrivers, cars, transactions]);
+    }, [nonDeletedDrivers, cars, transactions, targetDate]);
 
     return {
         timeFilter, setTimeFilter,
+        targetDate, setTargetDate,
         dashboardViewMode, setDashboardViewMode,
         dashboardPage, setDashboardPage, dashboardItemsPerPage,
         totalIncome, totalExpense, netProfit,

@@ -100,8 +100,8 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
 
                 {/* Search */}
                 <div className="px-6 pb-4 flex-shrink-0">
-                    <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl ${
-                        isDark ? 'bg-black/20 focus-within:bg-black/30' : 'bg-black/[0.04] focus-within:bg-white/60'
+                    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-[16px] border ${
+                        isDark ? 'bg-black/20 border-white/[0.06] focus-within:border-teal-500/50' : 'bg-black/[0.03] border-transparent focus-within:border-teal-500/50 focus-within:bg-white'
                     } transition-colors`}>
                         <svg className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -131,8 +131,8 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                 className={`relative flex flex-col items-center gap-3 pt-8 pb-6 px-4 rounded-[24px] transition-all text-left border-2 ${
                                     selectedDriverId === 'all'
                                         ? isDark
-                                            ? 'border-teal-500/30 bg-surface shadow-[0_4px_20px_rgba(20,184,166,0.1)]'
-                                            : 'border-teal-400/70 bg-white shadow-[0_0_15px_rgba(45,212,191,0.15)]'
+                                            ? 'border-teal-500/50 bg-teal-500/10'
+                                            : 'border-teal-500/50 bg-teal-50'
                                         : isDark
                                             ? 'border-transparent bg-surface-2/40 hover:bg-white/[0.04]'
                                             : 'border-transparent bg-white shadow-sm hover:shadow-md'
@@ -176,15 +176,15 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                 <button
                                     key={driver.id}
                                     onClick={() => handleSelect(driver.id)}
-                                    className={`relative flex flex-col items-center gap-3 pt-6 pb-6 px-4 rounded-[24px] border-2 transition-all text-left ${
-                                        isSelected
-                                            ? isDark
-                                                ? 'border-teal-500/30 bg-surface shadow-[0_4px_20px_rgba(20,184,166,0.1)]'
-                                                : 'border-teal-400/70 bg-white shadow-[0_0_15px_rgba(45,212,191,0.15)]'
-                                            : isDark
-                                                ? 'border-transparent bg-surface-2/40 hover:bg-white/[0.04]'
-                                                : 'border-transparent bg-white shadow-sm hover:shadow-md'
-                                    }`}>
+                                    className={`relative flex flex-col items-center pt-5 pb-4 px-3 rounded-[24px] transition-all text-left border-2 ${
+                                    selectedDriverId === driver.id
+                                        ? isDark
+                                            ? 'border-teal-500/50 bg-teal-500/10'
+                                            : 'border-teal-500/50 bg-teal-50'
+                                        : isDark
+                                            ? 'border-transparent bg-surface-2/40 hover:bg-white/[0.04]'
+                                            : 'border-transparent bg-white shadow-sm hover:shadow-md'
+                                }`}>
                                     {/* Checkmark */}
                                     {isSelected && (
                                         <span className="absolute top-3 right-3 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center shadow-sm">

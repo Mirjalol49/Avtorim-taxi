@@ -335,53 +335,55 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                     <div className="w-[70px]" /> {/* Placeholder for balance to center title */}
                 </div>
 
-                {/* Hero Section */}
-                <div className="px-6 pb-6 pt-2 flex flex-col items-center w-full max-w-md mx-auto">
-                    <div className={`w-full rounded-2xl shadow-sm border p-6 flex flex-col items-center ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-white border-gray-100'}`}>
-                        <div className="w-16 h-16 rounded-full overflow-hidden mb-3 ring-2 ring-gray-100 dark:ring-white/10">
+                {/* Hero Section - Dual Cards */}
+                <div className="px-4 sm:px-6 pb-2 pt-4 flex flex-col sm:flex-row gap-4 justify-center w-full max-w-3xl mx-auto">
+                    {/* Left: Profile Card */}
+                    <div className={`flex-1 flex items-center gap-4 rounded-3xl p-4 sm:p-5 shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                        <div className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] flex-shrink-0 rounded-full overflow-hidden ring-4 ring-gray-50 dark:ring-white/5 bg-gray-100 dark:bg-white/5">
                             {driver.avatar
                                 ? <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover"/>
-                                : <div className={`w-full h-full flex items-center justify-center text-2xl font-bold ${isDark ? 'bg-surface-2 text-white/40' : 'bg-gray-100 text-gray-500'}`}>{driver.name.charAt(0)}</div>
+                                : <div className={`w-full h-full flex items-center justify-center text-3xl font-bold ${isDark ? 'text-white/40' : 'text-gray-500'}`}>{driver.name.charAt(0)}</div>
                             }
                         </div>
-                        <h1 className={`text-xl font-bold tracking-tight mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h1>
-                        <div className={`flex items-center justify-center flex-wrap gap-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <span className="truncate">{driver.carModel || 'Noma\'lum avto'}</span>
-                            <span>•</span>
-                            <LicensePlate plate={driver.licensePlate || ''} size="sm" />
-                        </div>
-                        
-                        <div className={`w-full h-px my-5 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />
-                        
-                        <div className="w-full flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Umumiy Qarz / Balans</span>
-                                <span className={`text-lg font-bold tracking-tight ${globalBalance < 0 ? 'text-rose-600 dark:text-rose-500' : (globalBalance > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-white' : 'text-gray-900'))}`}>
-                                    {globalBalance > 0 ? '+' : ''}{fmtCompact(globalBalance)} UZS
-                                </span>
-                            </div>
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${globalBalance < 0 ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
-                                <WalletIcon className={`w-5 h-5 ${globalBalance < 0 ? 'text-rose-500' : 'text-emerald-500'}`} />
+                        <div className="flex flex-col min-w-0">
+                            <h1 className={`text-[20px] sm:text-[22px] font-bold tracking-tight mb-1 truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h1>
+                            <span className={`text-[12px] sm:text-[13px] font-medium mb-1.5 truncate ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>{driver.carModel || 'Noma\'lum avto'}</span>
+                            <div className="scale-90 origin-left">
+                                <LicensePlate plate={driver.licensePlate || ''} size="sm" />
                             </div>
                         </div>
                     </div>
 
-                    {/* iOS Segmented Control */}
-                    <div className={`mt-6 p-1 rounded-[9px] flex w-full max-w-md mx-auto ${isDark ? 'bg-[#1C1C1E]' : 'bg-[#E3E3E8]'}`}>
-                        {TABS.map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => setTab(t.id)}
-                                className={`flex-1 flex justify-center items-center gap-1.5 py-1.5 text-[13px] font-semibold rounded-md transition-all ${
-                                    tab === t.id 
-                                    ? (isDark ? 'bg-[#636366] text-white shadow-sm' : 'bg-white text-black shadow-sm') 
-                                    : (isDark ? 'text-[#EBEBF5]/60 hover:text-white' : 'text-[#3C3C43]/60 hover:text-black')
-                                }`}
-                            >
-                                {t.label} {t.count > 0 && `(${t.count})`}
-                            </button>
-                        ))}
+                    {/* Right: Balance Card */}
+                    <div className={`flex-1 flex items-center justify-between rounded-3xl p-5 sm:p-6 shadow-sm border relative overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                        <div className="flex flex-col relative z-10">
+                            <span className={`text-[12px] sm:text-[13px] font-medium mb-1 ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>Umumiy Balans</span>
+                            <span className={`text-[22px] sm:text-[28px] font-bold tracking-tight ${globalBalance < 0 ? 'text-[#FF3B30] dark:text-[#FF453A]' : (globalBalance > 0 ? 'text-[#34C759] dark:text-[#30D158]' : (isDark ? 'text-white' : 'text-gray-900'))}`}>
+                                {globalBalance > 0 ? '+' : ''}{fmtCompact(globalBalance)} <span className="text-[18px]">UZS</span>
+                            </span>
+                        </div>
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-[1.25rem] flex-shrink-0 flex items-center justify-center relative z-10 shadow-inner ${globalBalance < 0 ? 'bg-rose-50 dark:bg-rose-500/20' : 'bg-emerald-50 dark:bg-emerald-500/20'}`}>
+                            <div className={`absolute inset-0 rounded-[1.25rem] blur-md opacity-40 ${globalBalance < 0 ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
+                            <WalletIcon className={`w-6 h-6 sm:w-7 sm:h-7 relative z-20 ${globalBalance < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-500 dark:text-emerald-400'}`} />
+                        </div>
                     </div>
+                </div>
+
+                {/* iOS Segmented Control */}
+                <div className={`mt-2 mb-6 p-1 rounded-xl flex w-full max-w-[320px] mx-auto shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-[#F2F2F7] border-[#E5E5EA]'}`}>
+                    {TABS.map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => setTab(t.id)}
+                            className={`flex-1 flex justify-center items-center gap-1.5 py-1.5 text-[14px] font-bold rounded-lg transition-all ${
+                                tab === t.id 
+                                ? (isDark ? 'bg-[#636366] text-white shadow-sm' : 'bg-white text-black shadow-sm') 
+                                : (isDark ? 'text-[#EBEBF5]/60 hover:text-white' : 'text-[#3C3C43]/60 hover:text-black')
+                            }`}
+                        >
+                            {t.label} {t.count > 0 && `(${t.count})`}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -392,28 +394,39 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                     {/* ═══════════ DAILY HISTORY ═══════════ */}
                     {tab === 'daily_history' && (
                         <div className="space-y-6">
-                            {/* Filter Section */}
-                            {/* Inline Filter Section */}
-                            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between px-2">
-                                {periodSummary && (
-                                    <div className="flex gap-6 items-center w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
-                                        <div className="flex flex-col flex-shrink-0">
-                                            <span className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami"} to'langan</span>
-                                            <span className={`text-[15px] font-bold font-mono tracking-tight ${isDark ? 'text-[#30D158]' : 'text-[#34C759]'}`}>+{fmtCompact(periodSummary.totalPaid)} UZS</span>
+                            {/* Summary Cards */}
+                            {periodSummary && (
+                                <div className="flex flex-col sm:flex-row gap-4 w-full px-2 sm:px-0 max-w-3xl mx-auto">
+                                    {/* Jami To'langan */}
+                                    <div className={`flex-1 rounded-3xl p-5 shadow-sm border flex items-center justify-between ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                                        <div className="flex flex-col min-w-0 pr-2">
+                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami to'langan"}</span>
+                                            <span className={`text-[20px] sm:text-[24px] font-bold tracking-tight truncate ${isDark ? 'text-[#30D158]' : 'text-[#34C759]'}`}>+{fmtCompact(periodSummary.totalPaid)} <span className="text-[16px] font-bold">UZS</span></span>
                                         </div>
-                                        <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
-                                        <div className="flex flex-col flex-shrink-0">
-                                            <span className={`text-[12px] font-medium ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami"} qarz</span>
-                                            <span className={`text-[15px] font-bold font-mono tracking-tight ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : txt}`}>
-                                                {periodSummary.totalDebt > 0 ? '−' : ''}{fmtCompact(periodSummary.totalDebt)} UZS
-                                            </span>
+                                        <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-inner ${isDark ? 'bg-[#30D158]/10 text-[#30D158]' : 'bg-[#34C759]/10 text-[#34C759]'}`}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
                                         </div>
                                     </div>
-                                )}
+                                    {/* Jami Qarz */}
+                                    <div className={`flex-1 rounded-3xl p-5 shadow-sm border flex items-center justify-between ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                                        <div className="flex flex-col min-w-0 pr-2">
+                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami qarz"}</span>
+                                            <span className={`text-[20px] sm:text-[24px] font-bold tracking-tight truncate ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : txt}`}>
+                                                {periodSummary.totalDebt > 0 ? '−' : ''}{fmtCompact(periodSummary.totalDebt)} <span className="text-[16px] font-bold">UZS</span>
+                                            </span>
+                                        </div>
+                                        <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-inner ${isDark ? 'bg-[#FF453A]/10 text-[#FF453A]' : 'bg-[#FF3B30]/10 text-[#FF3B30]'}`}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
-                                <div className="flex items-center gap-2 relative z-20 self-end sm:self-auto w-full sm:w-auto">
-                                    <div className={`flex items-center p-1 rounded-xl shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-white border-gray-200'}`}>
-                                        <div className="w-32">
+                            {/* Filters Align Right */}
+                            <div className="flex justify-end px-2 sm:px-0 max-w-3xl mx-auto w-full">
+                                <div className="flex items-center gap-2">
+                                    <div className={`flex items-center p-1 rounded-[14px] shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-[#F2F2F7] border-gray-200'}`}>
+                                        <div className="w-[120px] sm:w-32">
                                             <DatePicker 
                                                 label="Boshlanish"
                                                 value={startDate} 
@@ -423,21 +436,21 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                 hideLabel
                                             />
                                         </div>
-                                        <span className={`px-2 ${muted}`}>-</span>
-                                        <div className="w-32">
+                                        <span className={`px-1.5 ${muted}`}>-</span>
+                                        <div className="w-[120px] sm:w-32">
                                             <DatePicker 
                                                 label="Tugash"
                                                 value={endDate} 
                                                 onChange={setEndDate} 
                                                 theme={theme} 
-                                                placeholder="Tugash" 
+                                                placeholder="Boshlanish - Tugash" 
                                                 hideLabel
                                             />
                                         </div>
                                         {(startDate || endDate) && (
                                             <button 
                                                 onClick={() => { setStartDate(null); setEndDate(null); }}
-                                                className={`p-2 ml-1 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                                                className={`p-2 ml-1 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-gray-400' : 'bg-white hover:bg-gray-50 text-gray-500 shadow-sm'}`}
                                                 title="Tozalash"
                                             >
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -453,34 +466,35 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                     <p className="text-[15px] font-medium">Tarix topilmadi</p>
                                 </div>
                             ) : (
-                                filteredTimeline.map(group => (
-                                    <div key={group.monthKey} className="space-y-2">
-                                        <button 
-                                            onClick={() => toggleMonth(group.monthKey)}
-                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${isDark ? 'bg-[#1C1C1E] border-[#38383A] hover:bg-[#2C2C2E]' : 'bg-white border-[#E5E5EA] shadow-sm hover:bg-gray-50'}`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
-                                                    <span className="text-xl">📅</span>
+                                <div className="max-w-3xl mx-auto w-full space-y-3">
+                                    {filteredTimeline.map(group => (
+                                        <div key={group.monthKey} className="space-y-2">
+                                            <button 
+                                                onClick={() => toggleMonth(group.monthKey)}
+                                                className={`w-full flex items-center justify-between p-4 sm:p-5 rounded-3xl border transition-all ${isDark ? 'bg-[#1C1C1E] border-[#38383A] hover:bg-[#2C2C2E]' : 'bg-white border-[#E5E5EA] shadow-sm hover:bg-gray-50'}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center border ${isDark ? 'bg-[#2C2C2E] border-white/5' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                                        <span className="text-[20px] sm:text-[22px]">📅</span>
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <h2 className={`text-[16px] sm:text-[18px] font-bold tracking-tight ${txt}`}>{group.label}</h2>
+                                                        <p className={`text-[13px] font-medium mt-0.5 ${muted}`}>{group.days.length} kun</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-left">
-                                                    <h2 className={`text-[17px] font-bold tracking-tight ${txt}`}>{group.label}</h2>
-                                                    <p className={`text-[12px] font-medium ${muted}`}>{group.days.length} kun</p>
+                                                <div className="text-right flex items-center gap-2 sm:gap-4">
+                                                    <div className="flex flex-col items-end">
+                                                        <p className={`text-[12px] sm:text-[13px] font-semibold ${muted}`}>Kutilgan: {fmtCompact(group.totalExpected)} <span className="text-[10px]">UZS</span></p>
+                                                        {group.totalDebt > 0 && <p className="text-[12px] sm:text-[13px] font-bold text-[#FF3B30] dark:text-[#FF453A] mt-0.5">Qarz: {fmtCompact(group.totalDebt)} <span className="text-[10px]">UZS</span></p>}
+                                                    </div>
+                                                    <svg 
+                                                        className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform ${expandedMonths[group.monthKey] || (startDate || endDate) ? 'rotate-180' : ''} ${muted}`} 
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                                    >
+                                                        <polyline points="6 9 12 15 18 9"/>
+                                                    </svg>
                                                 </div>
-                                            </div>
-                                            <div className="text-right flex items-center gap-3">
-                                                <div className="hidden sm:block">
-                                                    <p className={`text-[12px] font-semibold ${muted}`}>Kutilgan: {fmtCompact(group.totalExpected)}</p>
-                                                    {group.totalDebt > 0 && <p className="text-[12px] font-bold text-[#FF3B30] dark:text-[#FF453A]">Qarz: {fmtCompact(group.totalDebt)}</p>}
-                                                </div>
-                                                <svg 
-                                                    className={`w-5 h-5 transition-transform ${expandedMonths[group.monthKey] || (startDate || endDate) ? 'rotate-180' : ''} ${muted}`} 
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                                                >
-                                                    <polyline points="6 9 12 15 18 9"/>
-                                                </svg>
-                                            </div>
-                                        </button>
+                                            </button>
 
                                         {(expandedMonths[group.monthKey] || (startDate || endDate)) && (
                                             <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA] shadow-sm'} animate-in fade-in slide-in-from-top-2 duration-200`}>
@@ -550,7 +564,8 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                         </div>
                                         )}
                                     </div>
-                                ))
+                                ))}
+                                </div>
                             )}
                         </div>
                     )}

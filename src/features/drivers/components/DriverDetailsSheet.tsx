@@ -115,7 +115,7 @@ export const DriverDetailsSheet: React.FC<Props> = ({
         }
     }, [driver]);
 
-    const activeDriver = driver || internalDriver;
+    const activeDriver = internalDriver || driver;
 
     useEffect(() => {
         if (isOpen && activeDriver?.id) {

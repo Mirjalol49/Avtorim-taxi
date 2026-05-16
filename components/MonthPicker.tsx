@@ -50,10 +50,12 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ label, value, onChange, theme
     return (
         <div className="relative w-full">
             {/* Label */}
-            <div className={`flex items-center gap-2 mb-3 ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
-                <CalendarIcon className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
-            </div>
+            {label && (
+                <div className={`flex items-center gap-2 mb-3 ${labelClassName || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
+                    <CalendarIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
+                </div>
+            )}
 
             {/* Date Display */}
             <button

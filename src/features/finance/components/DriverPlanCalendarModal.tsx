@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { XIcon, AlertTriangleIcon } from '../../../../components/Icons';
+import MonthPicker from '../../../../components/MonthPicker';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { PaymentStatus } from '../../../core/types/transaction.types';
@@ -32,6 +33,7 @@ interface Props {
     monthData: DriverPlanMonthInfo | null;
     transactions: Transaction[];
     onDayClick?: (driverId: string, date: Date) => void;
+    onMonthChange?: (newMonthKey: string) => void;
 }
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
@@ -91,7 +93,7 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     return null;
 };
 
-export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick }) => {
+export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick, onMonthChange }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
     const monthNames = t('months', { returnObjects: true }) as string[];
@@ -126,6 +128,23 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
         return Array.from({ length: monthData.totalDays }, (_, i) => {
             const d = i + 1;
             const date = new Date(year, month, d);
+            
+            // Check lifecycle
+            const time = date.getTime();
+            const startMs = monthData.driver.startDate || monthData.driver.createdAt;
+            const endMs = monthData.driver.quitDate;
+            
+            if (startMs) {
+                const startDay = new Date(startMs);
+                startDay.setHours(0, 0, 0, 0);
+                if (time < startDay.getTime()) return null; // Before joined
+            }
+            if (monthData.driver.isDeleted && endMs) {
+                const endDay = new Date(endMs);
+                endDay.setHours(23, 59, 59, 999);
+                if (time > endDay.getTime()) return null; // After fired
+            }
+
             const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
             // ── Historically-correct plan for THIS specific day ───────────────────
@@ -241,7 +260,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
     };
 
     return createPortal(
-        <div className={`fixed top-16 md:left-64 right-0 bottom-0 z-[40] flex flex-col overflow-y-auto animate-in fade-in duration-200 ${
+        <div className={`fixed top-16 md:left-64 right-0 bottom-0 z-[40] flex flex-col animate-in fade-in duration-200 ${
             isDark ? 'bg-[#0b1326]' : 'bg-slate-50'
         }`}>
             {/* ── Top Navigation Bar ── */}
@@ -259,105 +278,120 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     </svg>
                     Orqaga
                 </button>
-                <div className={`font-bold text-sm sm:text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}
+                <div className={`flex items-center justify-center min-w-[150px] font-bold text-sm sm:text-base select-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {onMonthChange ? (
+                        <div className="w-[160px]">
+                            <MonthPicker
+                                label=""
+                                value={new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1)}
+                                onChange={(d) => {
+                                    const newM = String(d.getMonth() + 1).padStart(2, '0');
+                                    const newY = d.getFullYear();
+                                    onMonthChange(`${newY}-${newM}`);
+                                }}
+                                theme={theme}
+                            />
+                        </div>
+                    ) : (
+                        <span className="w-24 text-center">{monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}</span>
+                    )}
                 </div>
                 <div className="w-20" /> {/* Spacer to center title */}
             </div>
 
             {/* ── Content Container ── */}
-            <div className="w-full px-4 py-6 sm:px-6 md:px-8 space-y-6 sm:space-y-8 flex-1">
-                {/* ── Profile Header ── */}
-                <div className={`flex items-center justify-between gap-4 p-3 sm:p-4 rounded-2xl ${
-                    isDark ? 'bg-surface border border-white/[0.06] shadow-sm' : 'bg-white border-transparent shadow-sm'
-                }`}>
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full">
-                        {monthData.driver.avatar ? (
-                            <img
-                                src={monthData.driver.avatar}
-                                alt="Avatar"
-                                className="w-11 h-11 rounded-2xl object-cover flex-shrink-0"
-                            />
-                        ) : (
-                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-base font-bold flex-shrink-0 ${isDark ? 'bg-surface-2 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                                {monthData.driver.name.charAt(0)}
-                            </div>
-                        )}
-                        <div className="min-w-0 flex flex-1 items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
-                            <h2 className={`text-lg sm:text-xl font-bold tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className="w-full flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
+                
+                {/* ── Dashboard Header Card ── */}
+                <div className={`mb-8 rounded-3xl border shadow-sm ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-white border-gray-200'}`}>
+                    
+                    {/* Top Row: Avatar & Name */}
+                    <div className={`flex items-center justify-between p-5 sm:p-6 border-b ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+                        <div className="flex items-center gap-4">
+                            {monthData.driver.avatar ? (
+                                <img
+                                    src={monthData.driver.avatar}
+                                    alt="Avatar"
+                                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover ring-2 ring-gray-100 dark:ring-white/10"
+                                />
+                            ) : (
+                                <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-xl font-bold ${isDark ? 'bg-surface-2 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                    {monthData.driver.name.charAt(0)}
+                                </div>
+                            )}
+                            <h2 className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                 {monthData.driver.name}
                             </h2>
-                            <div className={`text-sm font-medium whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                <span className="font-bold">{fmt(monthData.dailyPlan)}</span> <span className="text-slate-500">/ kun</span>
-                            </div>
+                        </div>
+                        <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-[#2C2C2E] text-slate-300' : 'bg-[#F2F2F7] text-slate-600'}`}>
+                            {fmt(monthData.dailyPlan)} <span className="font-medium opacity-70">/ kun</span>
                         </div>
                     </div>
-                </div>
 
-                {/* ── Dashboard (Stats + Progress) ── */}
-                <div className={`p-4 sm:p-5 rounded-3xl flex flex-col gap-6 ${isDark ? 'bg-surface border border-white/[0.06]' : 'bg-white border-transparent shadow-sm'}`}>
-                    {/* Stats grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                    {/* Middle Row: Stats Grid */}
+                    <div className={`grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b ${isDark ? 'divide-white/5 border-white/5' : 'divide-gray-100 border-gray-100'}`}>
                         {/* Monthly plan */}
-                        <div className="min-w-0">
-                            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 truncate">{t('monthlyPlan') ?? 'Oylik Reja'}</p>
-                            <p className={`text-lg sm:text-2xl font-bold tabular-nums truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{fmt(monthData.monthlyTarget)}</p>
+                        <div className="p-5 sm:p-6">
+                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik reja'}</p>
+                            <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(monthData.monthlyTarget)}</p>
+                            <p className="text-[11px] sm:text-[12px] font-medium text-slate-400 mt-0.5">Oylik reja</p>
                         </div>
                         {/* Paid */}
-                        <div className="min-w-0">
-                            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 truncate">{t('totalPaidAmount') ?? "Jami To'ladi"}</p>
-                            <p className={`text-lg sm:text-2xl font-bold tabular-nums truncate ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{fmt(monthData.actualIncome)}</p>
+                        <div className="p-5 sm:p-6">
+                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('totalPaidAmount') ?? "Jami to'ladi"}</p>
+                            <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-emerald-400' : 'text-[#16a34a]'}`}>{fmt(monthData.actualIncome)}</p>
                         </div>
-                        {/* Debt / Prepaid card */}
-                        <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                                {monthData.remaining <= 0 ? (
-                                    <>
-                                        {t('prepaidAmount') ?? 'Oldindan to\'lov'}
-                                    </>
-                                ) : (
-                                    <>
-                                        {t('currentDebt') ?? 'Hozirgi Qarz'}
-                                    </>
-                                )}
-                            </p>
-                            <p className={`text-lg sm:text-2xl font-bold tabular-nums truncate ${
-                                monthData.remaining <= 0
-                                    ? isDark ? 'text-emerald-400' : 'text-emerald-600'
-                                    : isDark ? 'text-red-400' : 'text-red-500'
-                            }`}>
-                                {monthData.remaining > 0 ? `-${fmt(monthData.remaining)}` : `+${fmt(-monthData.remaining)}`}
-                            </p>
+                        {/* Debt */}
+                        <div className="p-5 sm:p-6 relative overflow-hidden group">
+                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{monthData.remaining <= 0 ? (t('prepaidAmount') ?? 'Oldindan to\'lov') : (t('currentDebt') ?? 'Hozirgi qarz')}</p>
+                            <div className="relative inline-block">
+                                <p className={`relative text-[18px] sm:text-[22px] font-bold tracking-tight ${
+                                    monthData.remaining <= 0
+                                        ? isDark ? 'text-emerald-400' : 'text-[#34C759]'
+                                        : isDark ? 'text-red-400' : 'text-[#FF3B30]'
+                                }`}>
+                                    {monthData.remaining > 0 ? `-${fmt(monthData.remaining)}` : `+${fmt(-monthData.remaining)}`}
+                                </p>
+                            </div>
                         </div>
                         {/* Working days */}
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{t('workingDays') ?? 'Ish Kunlari'}</p>
-                            <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                {monthData.workingDays}
-                                <span className={`text-lg font-medium ml-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>/ {monthData.totalDays}</span>
-                            </p>
+                        <div className="p-5 sm:p-6 flex items-center justify-between">
+                            <div>
+                                <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('workingDays') ?? 'Ish kunlari'}</p>
+                                <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                    {monthData.workingDays} <span className="text-sm font-medium text-slate-400">/ {monthData.totalDays}</span>
+                                </p>
+                            </div>
+                            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[3px] border-t-transparent rotate-45 ${isDark ? 'border-[#30D158]' : 'border-[#16a34a]'}`}></div>
                         </div>
                     </div>
 
-                    {/* Progress bar */}
-                    <div>
-                        <div className="flex justify-between text-sm font-medium mb-2">
-                            <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>{t('incomeProgress') ?? 'Tushum progressi'}</span>
-                            <span className={isDark ? 'text-white' : 'text-slate-900'}>{monthData.paidPercent}%</span>
+                    {/* Bottom Row: Progress */}
+                    <div className="p-5 sm:p-6">
+                        <div className="flex items-center justify-between mb-4 relative">
+                            <span className="text-[13px] sm:text-[14px] font-semibold text-slate-500">{t('incomeProgress') ?? 'Tushum progressi'}</span>
+                            {/* Floating pill for percentage */}
+                            <div 
+                                className={`absolute -top-3 sm:-top-2 shadow-sm border rounded-[8px] px-2.5 py-1 text-[11px] font-bold z-10 transition-all duration-700 ease-out ${isDark ? 'bg-[#2C2C2E] border-[#38383A] text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                                style={{ left: `calc(${Math.min(100, monthData.paidPercent)}% - 22px)` }}
+                            >
+                                {monthData.paidPercent}%
+                                <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 border-r border-b rotate-45 ${isDark ? 'bg-[#2C2C2E] border-[#38383A]' : 'bg-white border-gray-200'}`} />
+                            </div>
                         </div>
-                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-surface-3' : 'bg-slate-100'}`}>
+                        <div className={`w-full h-4 sm:h-5 rounded-full p-[3px] shadow-inner ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#E5E5EA]'}`}>
                             <div
-                                className={`h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-teal-500 to-emerald-400`}
+                                className="h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-[#145358] to-[#52D296]"
                                 style={{ width: `${Math.min(100, monthData.paidPercent)}%` }}
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* ── Calendar ── */}
-                <div>
+                {/* ── Main Area (Calendar) ── */}
+                <div className="w-full">
                     {/* Legend */}
-                    <div className="flex items-center justify-end w-full mb-3">
+                    <div className="flex items-center justify-end w-full mb-4">
                         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
                             {([
                                 { status: 'PAID'    as DayStatus, label: t('legendPaid') ?? "To'liq to'landi" },
@@ -374,8 +408,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         </div>
                     </div>
 
-                    {/* Weekday headers */}
-                    <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
+                    {/* Horizontal scroll wrapper for mobile */}
+                    <div className="w-full overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                        <div className="min-w-[650px] sm:min-w-0 w-full">
+                            {/* Weekday headers */}
+                            <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
                             {orderedDays.map(day => (
                                 <div
                                     key={day}
@@ -394,6 +431,10 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             ))}
 
                             {days.map((d, i) => {
+                                if (!d) {
+                                    return <div key={`empty-${i}`} className="min-h-[72px] sm:min-h-[90px] md:min-h-[110px] rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-500/10 dark:border-white/5 opacity-50" />;
+                                }
+
                                 const isToday = d.dayStr === todayStr;
                                 const isFuture = d.status.startsWith('FUTURE');
                                 const isSunday = (padDays + i) % 7 === 6;
@@ -478,19 +519,19 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                 </div>
                                             )}
 
-                                            {/* Bottom Full-width Badge */}
+                                            {/* Bottom Status */}
                                             <div className="mt-auto pt-1 w-full flex-shrink-0">
                                                 {d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' ? (
-                                                    <div className="w-full flex justify-center mb-0.5 pointer-events-none">
-                                                        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-[#ffeadb] drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Dam olish</span>
+                                                    <div className="w-full flex mb-0.5 pointer-events-none">
+                                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">DAM OLISH</span>
                                                     </div>
                                                 ) : d.status === 'REPAIR' ? (
-                                                    <div className="w-full flex justify-center mb-0.5 pointer-events-none">
-                                                        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Ta'mirda</span>
+                                                    <div className="w-full flex mb-0.5 pointer-events-none">
+                                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">TA'MIRDA</span>
                                                     </div>
                                                 ) : d.status === 'NOT_WORKING' ? (
-                                                    <div className={`w-full py-1 px-1 rounded sm:rounded-md flex items-center justify-center ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-                                                        <span className="text-[8px] sm:text-[9px] font-bold uppercase">Ishlamagan</span>
+                                                    <div className={`flex items-center gap-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                        <span className="text-[10px] sm:text-[11px] font-medium">Ishlamagan</span>
                                                     </div>
                                                 ) : !d.status.startsWith('FUTURE') ? (() => {
                                                     const excess = d.income - d.planForDay;
@@ -498,51 +539,43 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                     
                                                     if (d.status === 'PAID') {
                                                         return (
-                                                            <div className={`w-full py-1 sm:py-1.5 px-1 rounded-md sm:rounded-lg flex flex-col items-center justify-center relative overflow-hidden ${isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[#eafaf1] text-emerald-700'}`}>
-                                                                <div className="flex items-center gap-1 sm:gap-1.5 relative z-10">
-                                                                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 -ml-1">
-                                                                        <Lottie animationData={planDoneAnimation} loop={true} />
-                                                                    </div>
-                                                                    <span className="text-[9px] sm:text-[11px] font-black tracking-tight">+{fmtCompact(excess > 0 ? excess : d.income)}</span>
+                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                                <div className="w-4 h-4 flex-shrink-0 -ml-0.5">
+                                                                    <Lottie animationData={planDoneAnimation} loop={true} />
                                                                 </div>
-                                                                <span className="text-[7px] sm:text-[8px] font-bold opacity-60 uppercase mt-0.5 leading-none hidden sm:block">
-                                                                    {excess > 0 ? "Ortiqcha to'landi" : "To'liq to'landi"}
+                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
+                                                                    {excess > 0 ? `Ortiqcha +${fmtCompact(excess)}` : "To'liq to'landi"}
                                                                 </span>
                                                             </div>
                                                         );
                                                     } else if (d.debt > 0) {
                                                         return (
-                                                            <div className={`w-full py-1.5 sm:py-2 px-1 rounded-md sm:rounded-lg flex flex-col items-center justify-center ${isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-700'}`}>
-                                                                <div className="flex items-center gap-1.5 relative z-10">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500">
-                                                                        <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clipRule="evenodd" />
-                                                                    </svg>
-                                                                    <span className="text-[10px] sm:text-[12px] font-black tracking-tight">-{fmtCompact(d.debt)}</span>
-                                                                </div>
-                                                                <span className="text-[8px] sm:text-[9px] font-bold text-red-800/60 uppercase mt-0.5 leading-none hidden sm:block">Qarz</span>
+                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
+                                                                    <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clipRule="evenodd" />
+                                                                </svg>
+                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
+                                                                    Qarz: -{fmtCompact(d.debt)}
+                                                                </span>
                                                             </div>
                                                         );
                                                     } else if (isOverpaid) {
                                                         return (
-                                                            <div className={`w-full py-1 sm:py-1.5 px-1 rounded-md sm:rounded-lg flex flex-col items-center justify-center ${isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[#eafaf1] text-emerald-700'}`}>
-                                                                <div className="flex items-center gap-1 sm:gap-1.5 relative z-10">
-                                                                    <span className="text-[9px] sm:text-[11px] font-black tracking-tight">+{fmtCompact(excess)}</span>
-                                                                </div>
+                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">Ortiqcha: +{fmtCompact(excess)}</span>
                                                             </div>
                                                         );
                                                     } else if (d.income > 0) {
                                                         return (
-                                                            <div className={`w-full py-1 sm:py-1.5 px-1 rounded-md sm:rounded-lg flex flex-col items-center justify-center ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                                                                <div className="flex items-center gap-1 relative z-10">
-                                                                    <span className="text-[9px] sm:text-[11px] font-black tracking-tight">Qisman</span>
-                                                                </div>
+                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`}>
+                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">Qisman to'landi</span>
                                                             </div>
                                                         );
                                                     }
                                                     return null;
                                                 })() : d.status === 'FUTURE_DISCOUNT' ? (
-                                                    <div className={`w-full py-1 px-1 rounded sm:rounded-md flex flex-col items-center justify-center ${isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600'}`}>
-                                                        <span className="text-[9px] sm:text-[10px] font-bold">{fmtCompact(d.planForDay)}</span>
+                                                    <div className={`flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
+                                                        <span className="text-[10px] sm:text-[11px] font-bold">Chegirma: {fmtCompact(d.planForDay)}</span>
                                                     </div>
                                                 ) : null}
                                             </div>
@@ -552,6 +585,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 );
                             })}
                         </div>
+                        </div>
+                    </div>
                     </div>
                 </div>
 

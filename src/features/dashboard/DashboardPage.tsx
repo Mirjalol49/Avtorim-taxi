@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from './hooks/useDashboardStats';
 import DateFilter from '../../../components/DateFilter';
+import DatePicker from '../../../components/DatePicker';
 import NumberTooltip from '../../../components/NumberTooltip';
 import Skeleton from '../../../components/Skeleton';
 import {
@@ -41,6 +42,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
     const {
         timeFilter, setTimeFilter,
+        targetDate, setTargetDate,
         totalIncome, totalExpense, netProfit,
         todayStats
     } = useDashboardStats(transactions, drivers, cars);
@@ -116,10 +118,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="mt-8">
                 {/* ── Header ─────────────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <div>
+                    <div className="flex items-center gap-3">
                         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {t('todayStatus')}
                         </h3>
+                        <div className="w-[140px]">
+                            <DatePicker
+                                label=""
+                                hideLabel
+                                value={targetDate}
+                                onChange={(d) => setTargetDate(d || new Date())}
+                                theme={theme}
+                            />
+                        </div>
                     </div>
                     {/* Summary pills / Search */}
                     <div className="flex items-center gap-2 flex-wrap">
@@ -246,10 +257,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 )}
                                             </div>
                                             {/* Amount */}
-                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                            <div className="flex flex-col items-end justify-center flex-shrink-0">
                                                 <span className={`text-[13px] font-bold tabular-nums text-rose-500`}>
                                                     −{remaining.toLocaleString()} UZS
                                                 </span>
+                                                {paid > 0 && (
+                                                    <span className={`text-[10px] font-bold tracking-wide uppercase mt-0.5 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>
+                                                        +{paid.toLocaleString()} to'landi
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     );

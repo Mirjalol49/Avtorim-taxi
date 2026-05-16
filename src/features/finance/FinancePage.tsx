@@ -110,6 +110,12 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     />
                     {/* Driver Filter via Modal */}
                     <div className="w-full relative">
+                        <div className="flex items-center gap-2 mb-3">
+                            <UsersIcon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
+                            <span className={`text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                                {t('driver') || 'Haydovchi'}
+                            </span>
+                        </div>
                         {(() => {
                             const selectedDriver = filters.driverId && filters.driverId !== 'all'
                                 ? nonDeletedDrivers.find(d => d.id === filters.driverId)
@@ -122,14 +128,14 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setDriverModalOpen(true)}
-                                        className={`w-full h-[48px] px-3 sm:px-4 rounded-full border text-left transition-all flex items-center justify-between gap-3 ${
+                                        className={`w-full h-[48px] px-3 sm:px-4 rounded-xl border text-left transition-all flex items-center justify-between gap-3 ${
                                             driverModalOpen
                                                 ? theme === 'dark'
                                                     ? 'bg-surface-2 border-teal-500 ring-1 ring-teal-500/40'
                                                     : 'bg-white border-teal-500 ring-1 ring-teal-500/20 shadow-md'
                                                 : theme === 'dark'
                                                     ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12]'
-                                                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
+                                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                                         }`}
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
