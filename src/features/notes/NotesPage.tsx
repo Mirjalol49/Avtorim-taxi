@@ -403,7 +403,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                                             return (
                                                                 <button 
                                                                     key={h} 
-                                                                    ref={isActive ? (el) => el && setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'instant' }), 10) : null}
+                                                                    ref={isActive ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'instant' }), 10); } : null}
                                                                     type="button" 
                                                                     onClick={() => updateTime(h, null)} 
                                                                     className={`w-12 h-9 flex items-center justify-center rounded-lg text-sm font-semibold transition-all mb-0.5 ${isActive ? 'bg-[#0f766e] text-white shadow-sm' : isDark ? 'hover:bg-white/[0.06] text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
@@ -420,7 +420,7 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                                                             return (
                                                                 <button 
                                                                     key={m} 
-                                                                    ref={isActive ? (el) => el && setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'instant' }), 10) : null}
+                                                                    ref={isActive ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'instant' }), 10); } : null}
                                                                     type="button" 
                                                                     onClick={() => updateTime(null, m)} 
                                                                     className={`w-12 h-9 flex items-center justify-center rounded-lg text-sm font-semibold transition-all mb-0.5 ${isActive ? 'bg-[#0f766e] text-white shadow-sm' : isDark ? 'hover:bg-white/[0.06] text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
@@ -540,7 +540,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
     const bg = isDark ? 'bg-surface hover:bg-surface-2' : 'bg-white hover:bg-gray-50';
     
     const borderBase = isDark ? 'border-white/[0.08]' : 'border-gray-200';
-    const borderDue = isDue ? 'border-l-[4px] border-l-red-500 shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : '';
+    const borderDue = isDue ? 'border-l-[4px] border-l-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-red-500/20' : '';
 
     return (
         <div
@@ -595,16 +595,19 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
                 <div className="flex items-center gap-2">
                     {note.reminderAt && (
                         <span 
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
                                 isDue 
-                                    ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.2)] dark:shadow-[inset_0_0_0_1px_rgba(239,68,68,0.1)]' 
+                                    ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.3)]' 
                                     : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 shadow-[inset_0_0_0_1px_rgba(217,119,6,0.2)] dark:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.1)]'
                             }`} 
                             title={`Eslatma: ${new Date(note.reminderAt).toLocaleString()}`}
                         >
                             {isDue ? (
                                 <>
-                                    <BellOutlineIcon className="w-3.5 h-3.5 animate-bounce origin-bottom opacity-80" />
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
                                     <span className="uppercase tracking-wider">Vaqti keldi</span>
                                 </>
                             ) : (

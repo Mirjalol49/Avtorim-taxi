@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
     getAllAccounts, createAccount, toggleAccountStatus,
-    resetAccountPassword, deleteAccount, generatePassword,
+    updateAccountDetails, deleteAccount, generatePassword,
     formatPhone, normalizePhone, AccountRecord,
 } from '../services/superAdminService';
 import { supabase } from '../supabase';
@@ -192,6 +192,7 @@ const AccountCard: React.FC<{
     const [resetting, setResetting]   = useState(false);
     const [deleting, setDeleting]     = useState(false);
     const [newPass, setNewPass]       = useState('');
+    const [newPhone, setNewPhone]     = useState('');
     const [showReset, setShowReset]   = useState(false);
     const [resetDone, setResetDone]   = useState('');
     const [confirmDel, setConfirmDel] = useState(false);
@@ -208,12 +209,15 @@ const AccountCard: React.FC<{
 
     const handleReset = async () => {
         const p = newPass.trim() || generatePassword();
+        const ph = newPhone.trim();
         setResetting(true);
         try {
-            await resetAccountPassword(account.id, p);
-            setResetDone(p);
+            await updateAccountDetails(account.id, p, ph);
+            setResetDone('Muvaffaqiyatli yangilandi');
             setShowReset(false);
             setNewPass('');
+            setNewPhone('');
+            onRefresh();
         } catch { /* ignore */ }
         finally { setResetting(false); }
     };
@@ -279,39 +283,57 @@ const AccountCard: React.FC<{
                 </div>
             </div>
 
-            {/* Reset password */}
+            {/* Reset password/phone */}
             {resetDone && (
                 <div className="flex items-center justify-between bg-teal-500/10 border border-teal-500/20 rounded-xl px-3 py-2">
-                    <span className="text-teal-400 text-xs">Yangi parol:</span>
-                    <CopyBtn text={resetDone} />
+                    <span className="text-teal-400 text-xs">{resetDone}</span>
                 </div>
             )}
             {showReset && (
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={newPass}
-                        onChange={e => setNewPass(e.target.value)}
-                        placeholder={generatePassword()}
-                        className="flex-1 border border-white/[0.08] rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-teal-500"
-                        style={{ background: '#222a3d' }}
-                    />
-                    <button onClick={handleReset} disabled={resetting} className="px-3 py-2 rounded-lg bg-teal-500 text-white text-xs font-bold hover:bg-teal-600 transition-colors">
-                        {resetting ? '...' : 'OK'}
-                    </button>
-                    <button onClick={() => setShowReset(false)} className="px-3 py-2 rounded-lg text-gray-400 text-xs hover:bg-white/[0.06] transition-colors" style={{ background: '#222a3d' }}>✕</button>
+                <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newPhone}
+                            onChange={e => setNewPhone(e.target.value)}
+                            placeholder={account.phone || '+998...'}
+                            className="flex-1 border border-white/[0.08] rounded-lg px-3 py-2 !text-white text-xs font-mono focus:outline-none focus:border-teal-500 placeholder-gray-500"
+                            style={{ background: '#222a3d', color: '#ffffff' }}
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newPass}
+                            onChange={e => setNewPass(e.target.value)}
+                            placeholder={generatePassword()}
+                            className="flex-1 border border-white/[0.08] rounded-lg px-3 py-2 !text-white text-xs font-mono focus:outline-none focus:border-teal-500 placeholder-gray-500"
+                            style={{ background: '#222a3d', color: '#ffffff' }}
+                        />
+                        <button onClick={handleReset} disabled={resetting} className="px-3 py-2 rounded-lg bg-teal-500 text-white text-xs font-bold hover:bg-teal-600 transition-colors">
+                            {resetting ? '...' : 'OK'}
+                        </button>
+                        <button onClick={() => setShowReset(false)} className="px-3 py-2 rounded-lg text-gray-400 text-xs hover:bg-white/[0.06] transition-colors" style={{ background: '#222a3d' }}>✕</button>
+                    </div>
                 </div>
             )}
 
             {/* Actions */}
             {!isSelf && (
                 <div className="flex gap-2 pt-1 border-t border-white/[0.05]">
-                    <button
-                        onClick={() => { setShowReset(v => !v); setResetDone(''); setConfirmDel(false); }}
-                        className="flex-1 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 border border-white/[0.05] hover:border-blue-500/30 transition-colors"
-                    >
-                        🔑 Parol
-                    </button>
+                    <div className="flex-1 flex gap-1">
+                        <div className="flex-1 py-2 rounded-lg text-xs font-medium border border-white/[0.05] flex items-center justify-center gap-1.5 bg-white/[0.02] overflow-hidden">
+                            <span className="text-gray-500">🔑</span>
+                            <span className="text-teal-400 font-mono tracking-wider truncate">{account.password || '***'}</span>
+                        </div>
+                        <button
+                            onClick={() => { setShowReset(v => !v); setResetDone(''); setConfirmDel(false); }}
+                            className="px-2.5 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 border border-white/[0.05] hover:border-blue-500/30 transition-colors flex-shrink-0"
+                            title="Parolni yangilash"
+                        >
+                            ✏️
+                        </button>
+                    </div>
                     <button
                         onClick={handleDelete}
                         disabled={deleting}

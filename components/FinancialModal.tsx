@@ -11,6 +11,8 @@ import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
 import Lottie from 'lottie-react';
 import cardAnimation from '../Images/card.json';
 import restAnimation from '../Images/rest.json';
+import chequeAnimation from '../Images/cheque.json';
+import depositAnimation from '../Images/deposit.json';
 
 type PaymentMethod = 'cash' | 'card';
 type ExpenseTarget = 'driver' | 'car' | 'other';
@@ -55,13 +57,14 @@ interface FinancialModalProps {
   initialDriverId?: string;
   initialDate?: Date;
   initialTransaction?: Transaction;
+  initialIsDepositTopup?: boolean;
 }
 
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit,
   drivers, cars = [], transactions = [],
   theme, fleetId = '',
-  initialType, initialDriverId, initialDate, initialTransaction,
+  initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup,
 }) => {
   const { t } = useTranslation();
   const { addToast } = useToast();
@@ -75,6 +78,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [carSearch,     setCarSearch]     = useState('');
   const [isDriverOpen,  setIsDriverOpen]  = useState(false);
   const [isCarOpen,     setIsCarOpen]     = useState(false);
+  
+  // Specific financial states
+  const [useDeposit,     setUseDeposit]     = useState(false);
+  const [isDepositTopup, setIsDepositTopup] = useState(false);
+  
   const [amount,        setAmount]        = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [description,   setDescription]   = useState('');
@@ -82,7 +90,6 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [chequeImage,   setChequeImage]   = useState<string | null>(null);
   const [chequeError,   setChequeError]   = useState<string | null>(null);
-  const [useDeposit,    setUseDeposit]    = useState(false);
   const chequeRef = useRef<HTMLInputElement>(null);
 
   // ── Init / reset ────────────────────────────────────────────────────────────
@@ -107,11 +114,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         setType(initialType || TransactionType.INCOME);
         if (initialDriverId) setDriverId(initialDriverId);
         if (initialDate)     setDate(initialDate);
+        if (initialIsDepositTopup) setIsDepositTopup(true);
         setIsDriverOpen(!initialDriverId);
         setDriverSearch('');
       }
     }
-  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction]);
+  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -180,10 +188,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     return { totalDebt: debt, remaining: Math.max(0, debt - income) };
   }, [selectedDriver, transactions]);
 
-  // Deposit info for deposit-type drivers
+  // Deposit info for non-salary drivers (Standard and Lease-to-own)
   const depositInfo = useMemo(() => {
     if (!selectedDriver) return null;
-    if ((selectedDriver.driverType ?? 'deposit') !== 'deposit') return null;
+    // Salary drivers have their own "Maoshdan ushlab qolish" toggle logic, so we hide deposit for them
+    // to prevent toggle conflicts. Arenda and Standard drivers will see "Depozitdan foydalanish".
+    if ((selectedDriver.driverType ?? 'deposit') === 'salary') return null;
+    
     const driverCar = cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null;
     const finance = calcDriverFinance(selectedDriver, driverCar, transactions);
     return {
@@ -262,13 +273,25 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         : {}
       : { driverId };
 
-    onSubmit({
+    const payload: any = {
       amount: finalAmount, type, description,
       ...entityFields,
       timestamp: timestamp.getTime(),
       ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
-      ...(useDeposit ? { useDeposit: true } : {}),
-    } as any, initialTransaction?.id);
+    };
+
+    if (useDeposit) {
+      payload.useDeposit = true;
+    }
+    if (isDepositTopup) {
+      payload.category = 'deposit_topup';
+      // Auto-fill a standard description if the admin left it blank
+      if (!payload.description?.trim()) {
+        payload.description = "Depozit to'ldirish";
+      }
+    }
+
+    onSubmit(payload, initialTransaction?.id);
 
     resetAndClose();
   };
@@ -280,7 +303,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDriverSearch(''); setCarSearch('');
     setDate(new Date());
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
-    setExpenseTarget('driver'); setUseDeposit(false);
+    setExpenseTarget('driver'); setUseDeposit(false); setIsDepositTopup(false);
     onClose();
   };
 
@@ -598,8 +621,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   className="w-full flex items-center justify-between px-4 py-3 gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xl flex-shrink-0">
-                      {paymentSourceInfo.type === 'salary' ? '💼' : '🏦'}
+                    <span className="text-xl flex-shrink-0 flex items-center justify-center">
+                      {paymentSourceInfo.type === 'salary' ? '💼' : (
+                        <div className="w-6 h-6"><Lottie animationData={depositAnimation} loop={true} /></div>
+                      )}
                     </span>
                     <div className="text-left min-w-0">
                       <p className={`text-[13px] font-bold leading-tight ${
@@ -634,9 +659,57 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     }`} />
                   </div>
                 </button>
+              </div>
+            )}
 
+            {/* ── Deposit Top-up Toggle ── */}
+            {paymentSourceInfo?.type === 'deposit' && type === TransactionType.INCOME && !useDeposit && (
+              <div className={`rounded-2xl border overflow-hidden transition-all ${
+                isDepositTopup
+                  ? isDark ? 'border-amber-500/50 bg-amber-500/[0.07]'  : 'border-amber-400 bg-amber-50'
+                  : isDark ? 'border-white/[0.08] bg-surface-2/40' : 'border-gray-200 bg-gray-50'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setIsDepositTopup(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl flex-shrink-0 flex items-center justify-center">
+                      <div className="w-6 h-6"><Lottie animationData={depositAnimation} loop={true} /></div>
+                    </span>
+                    <div className="text-left min-w-0">
+                      <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Depozitni to'ldirish
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                        Bu to'lov haydovchining depozit hisobiga o'tkaziladi
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
+                    isDepositTopup
+                      ? 'bg-amber-500'
+                      : isDark ? 'bg-white/[0.10]' : 'bg-gray-300'
+                  }`}>
+                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                      isDepositTopup ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Balance Card Details (Only for useDeposit or isDepositTopup) */}
+            {paymentSourceInfo !== null && type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING &&
+             (useDeposit || isDepositTopup) && (
+              <div className={`mt-3 rounded-xl border overflow-hidden ${
+                isDark
+                  ? paymentSourceInfo.type === 'salary' ? 'border-violet-500/20 bg-violet-500/[0.03]' : 'border-amber-500/20 bg-amber-500/[0.03]'
+                  : paymentSourceInfo.type === 'salary' ? 'border-violet-200 bg-violet-50/50'         : 'border-amber-200 bg-amber-50/50'
+              }`}>
                 {/* Balance row */}
-                <div className={`px-4 pb-3 flex items-center justify-between border-t ${
+                <div className={`px-4 py-3 flex items-center justify-between border-b ${
                   isDark ? 'border-white/[0.06]' : 'border-gray-100'
                 }`}>
                   <span className={`text-[11px] font-semibold uppercase tracking-wide ${
@@ -661,29 +734,27 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 </div>
 
                 {/* Post-transaction projection */}
-                {useDeposit && Number(amount) > 0 && (
-                  <div className={`px-4 pb-3 flex items-center justify-between border-t ${
-                    isDark
-                      ? paymentSourceInfo.type === 'salary' ? 'border-violet-500/20' : 'border-amber-500/20'
-                      : paymentSourceInfo.type === 'salary' ? 'border-violet-200'    : 'border-amber-200'
-                  }`}>
+                {Number(amount) > 0 && (
+                  <div className={`px-4 py-3 flex items-center justify-between`}>
                     <span className={`text-[11px] font-semibold uppercase tracking-wide ${
                       isDark
                         ? paymentSourceInfo.type === 'salary' ? 'text-violet-400/60' : 'text-amber-400/60'
                         : paymentSourceInfo.type === 'salary' ? 'text-violet-600/70' : 'text-amber-600/70'
                     }`}>
-                      Bu to'lovdan keyin
+                      {isDepositTopup ? "To'lovdan keyin (qo'shiladi)" : "To'lovdan keyin (ayriladi)"}
                     </span>
                     <span className={`text-[14px] font-black font-mono ${
-                      paymentSourceInfo.balance - Number(amount) < 0
+                      (!isDepositTopup && paymentSourceInfo.balance - Number(amount) < 0)
                         ? 'text-red-400'
                         : paymentSourceInfo.type === 'salary'
                           ? isDark ? 'text-violet-300' : 'text-violet-700'
                           : isDark ? 'text-amber-300' : 'text-amber-700'
                     }`}>
-                      {paymentSourceInfo.balance - Number(amount) < 0
-                        ? `−${fmt(Number(amount) - paymentSourceInfo.balance)} UZS (yetmaydi)`
-                        : `${fmt(paymentSourceInfo.balance - Number(amount))} UZS`
+                      {isDepositTopup
+                        ? `${fmt(paymentSourceInfo.balance + Number(amount))} UZS`
+                        : paymentSourceInfo.balance - Number(amount) < 0
+                          ? `−${fmt(Number(amount) - paymentSourceInfo.balance)} UZS (yetmaydi)`
+                          : `${fmt(paymentSourceInfo.balance - Number(amount))} UZS`
                       }
                     </span>
                   </div>
@@ -779,7 +850,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       isDark ? 'border-white/[0.08] hover:border-teal-500/50 bg-surface-2/40 hover:bg-teal-500/5' : 'border-gray-300 hover:border-teal-400 bg-white hover:bg-teal-50/50 shadow-sm'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:-translate-y-1 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>🧾</div>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:-translate-y-1 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
+                      <Lottie animationData={chequeAnimation} loop={true} className="w-10 h-10" />
+                    </div>
                     <div className="text-center">
                       <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Karta chekini yuklang</p>
                       <p className={`text-xs mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>

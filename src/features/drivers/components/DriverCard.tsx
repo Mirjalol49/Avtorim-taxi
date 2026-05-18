@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
+import { useNavigate } from 'react-router-dom';
 import { EditIcon, TrashIcon, CarIcon, ChevronRightIcon } from '../../../../components/Icons';
 import { calcDriverFinance } from '../utils/debtUtils';
 import { DriverAvatar } from './DriverAvatar';
@@ -19,15 +20,15 @@ interface DriverCardProps {
     onEdit: (driver: Driver) => void;
     onDelete: (id: string) => void;
     onUpdateStatus: (id: string, status: DriverStatus) => void;
-    onCardClick?: (driver: Driver) => void;
 }
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
 export const DriverCard: React.FC<DriverCardProps> = ({
-    driver, car, transactions, theme, userRole, onEdit, onDelete, onCardClick,
+    driver, car, transactions, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const isDark = theme === 'dark';
     const driverType = driver.driverType ?? 'deposit';
 
@@ -71,7 +72,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
     return (
         <div
-            onClick={() => onCardClick?.(driver)}
+            onClick={() => navigate(`/drivers/${driver.id}`)}
             className={`group relative rounded-[28px] border cursor-pointer transition-all duration-200 overflow-hidden hover:-translate-y-1 hover:shadow-md ${
                 depositWarning
                     ? isDark
@@ -90,7 +91,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                         : 'bg-[#fff8e1] border-amber-200 text-amber-700'
                 }`}>
                     <span className="opacity-80">⚠️</span>
-                    <span>Low Deposit Warning: {fmt(depositWarning.remaining)} remaining</span>
+                    <span>{t('lowDepositWarning', { amount: fmt(depositWarning.remaining), defaultValue: `Low Deposit Warning: ${fmt(depositWarning.remaining)} remaining` })}</span>
                 </div>
             )}
 
@@ -147,9 +148,9 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     {/* Clean textual financial metric */}
                     <div className="flex flex-col items-end justify-center">
                         {driverType === 'deposit' ? (
-                            <div className={`flex flex-col items-start px-3 py-1.5 rounded-[10px] min-w-[125px] ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'bg-white/5' : 'bg-gray-100') : depositWarning ? (isDark ? 'bg-red-500/10' : 'bg-red-50') : (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50')}`}>
+                            <div className={`flex flex-col items-start px-3 py-1.5 rounded-[10px] min-w-[125px] ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'bg-white/5' : 'bg-gray-100') : depositWarning ? (isDark ? 'bg-amber-500/10' : 'bg-amber-50') : (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50')}`}>
                                 <div className="flex items-center justify-between w-full">
-                                    <span className={`text-[11px] font-medium ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-500') : depositWarning ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+                                    <span className={`text-[11px] font-medium ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-500') : depositWarning ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
                                         Depozit:
                                     </span>
                                     {finance.remainingDeposit > 0 && !depositWarning && (
@@ -158,7 +159,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                         </svg>
                                     )}
                                 </div>
-                                <span className={`text-[14px] font-bold mt-0.5 leading-none ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-400' : 'text-gray-600') : depositWarning ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+                                <span className={`text-[14px] font-bold mt-0.5 leading-none ${!finance.remainingDeposit || finance.remainingDeposit <= 0 ? (isDark ? 'text-gray-400' : 'text-gray-600') : depositWarning ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
                                     {finance.remainingDeposit > 0 ? fmt(finance.remainingDeposit) : '0 UZS'}
                                 </span>
                             </div>
@@ -172,13 +173,30 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                                 </span>
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-start px-3 py-1.5 rounded-[10px] min-w-[125px] ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'bg-white/5' : 'bg-gray-100') : (isDark ? 'bg-teal-500/15' : 'bg-teal-50')}`}>
-                                <span className={`text-[11px] font-medium ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'text-gray-500' : 'text-gray-500') : (isDark ? 'text-teal-400' : 'text-teal-700')}`}>
-                                    Qarz:
-                                </span>
-                                <span className={`text-[14px] font-bold mt-0.5 leading-none ${!finance.contractRemaining || finance.contractRemaining <= 0 ? (isDark ? 'text-gray-400' : 'text-gray-600') : (isDark ? 'text-teal-400' : 'text-teal-700')}`}>
-                                    {finance.contractRemaining && finance.contractRemaining > 0 ? fmt(finance.contractRemaining) : '0 UZS'}
-                                </span>
+                            <div className={`flex flex-col w-[145px] px-3 py-2 rounded-[12px] border ${isDark ? 'bg-[#1e1b4b]/40 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
+                                <div className="flex items-center justify-between w-full mb-1.5">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                        Vikup
+                                    </span>
+                                    <span className={`text-[10px] font-black ${isDark ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                                        {Math.round(((finance.contractPaid ?? 0) / (driver.totalContractAmount || 1)) * 100)}%
+                                    </span>
+                                </div>
+                                
+                                {/* Sleek Progress Bar */}
+                                <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1.5 ${isDark ? 'bg-indigo-950' : 'bg-indigo-200/60'}`}>
+                                    <div 
+                                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                                        style={{ width: `${Math.min(100, ((finance.contractPaid ?? 0) / (driver.totalContractAmount || 1)) * 100)}%` }}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between w-full">
+                                    <span className={`text-[9px] font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Qoldi</span>
+                                    <span className={`text-[11px] font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                                        {fmt(finance.contractRemaining ?? 0).replace(' UZS', '')}
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -220,7 +238,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                     <div className="flex-1">
                         <button onClick={(e) => { e.stopPropagation(); onEdit(driver); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold transition-colors ${isDark ? 'bg-[#1a2840] border-white/[0.08] text-gray-300 hover:text-white' : 'bg-white border-gray-200 text-gray-700 hover:text-gray-900 shadow-sm'}`}>
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
-                            Biriktirish
+                            {t('assignCar', { defaultValue: 'Biriktirish' })}
                         </button>
                     </div>
                 )}

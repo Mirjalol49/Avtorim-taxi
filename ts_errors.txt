@@ -1,0 +1,22 @@
+
+> avtorim-taxi@0.0.0 typecheck
+> tsc --noEmit
+
+services/reconciliationService.ts(37,22): error TS2352: Conversion of type '{ id: any; driver_id: any; amount: any; status: any; created_at: any; period_start: any; }[]' to type 'DriverSalary[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: any; driver_id: any; amount: any; status: any; created_at: any; period_start: any; }' is missing the following properties from type 'DriverSalary': driverId, effectiveDate, createdAt
+services/reconciliationService.ts(45,26): error TS2352: Conversion of type '{ id: any; driver_id: any; amount: any; type: any; status: any; description: any; timestamp_ms: any; }[]' to type 'Transaction[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'timestamp' is missing in type '{ id: any; driver_id: any; amount: any; type: any; status: any; description: any; timestamp_ms: any; }' but required in type 'Transaction'.
+src/features/drivers/components/DriverHistoryPage.tsx(285,39): error TS2339: Property 'ACTIVE' does not exist on type 'typeof PaymentStatus'.
+src/features/drivers/components/DriverHistoryPage.tsx(517,126): error TS2339: Property 'contractDailyPlan' does not exist on type 'Driver'.
+src/features/drivers/DriverProfilePage.tsx(16,5): error TS2305: Module '"../../../components/Icons"' has no exported member 'XCircleIcon'.
+src/features/finance/FinancePage.tsx(67,51): error TS2339: Property 'carId' does not exist on type 'Driver'.
+src/features/finance/hooks/useFinanceStats.ts(234,37): error TS2339: Property 'carId' does not exist on type 'Driver'.
+src/features/finance/hooks/useFinanceStats.ts(235,42): error TS2339: Property 'carId' does not exist on type 'Driver'.
+src/features/notes/NotesPage.tsx(406,69): error TS2322: Type '(el: HTMLButtonElement) => Timeout' is not assignable to type 'Ref<HTMLButtonElement>'.
+  Type '(el: HTMLButtonElement) => Timeout' is not assignable to type '(instance: HTMLButtonElement) => void | (() => VoidOrUndefinedOnly)'.
+    Type 'Timeout' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+src/features/notes/NotesPage.tsx(423,69): error TS2322: Type '(el: HTMLButtonElement) => Timeout' is not assignable to type 'Ref<HTMLButtonElement>'.
+  Type '(el: HTMLButtonElement) => Timeout' is not assignable to type '(instance: HTMLButtonElement) => void | (() => VoidOrUndefinedOnly)'.
+    Type 'Timeout' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+test_db.ts(11,25): error TS2339: Property 'VITE_SUPABASE_URL' does not exist on type '{}'.
+test_db.ts(12,25): error TS2339: Property 'VITE_SUPABASE_ANON_KEY' does not exist on type '{}'.

@@ -34,7 +34,15 @@ export const reconcileSalaryTransactions = async (
         .select('id,driver_id,amount,status,created_at,period_start')
         .gte('period_start', startDate)
         .lte('period_start', endDate);
-    const salaries = (salaryRows ?? []) as DriverSalary[];
+    const salaries: DriverSalary[] = (salaryRows ?? []).map((s: any) => ({
+        id: s.id,
+        driverId: s.driver_id,
+        amount: s.amount,
+        status: s.status,
+        createdAt: s.created_at,
+        effectiveDate: s.created_at,
+        period_start: s.period_start,
+    } as DriverSalary));
 
     const { data: txRows } = await supabase
         .from('transactions')
@@ -42,7 +50,15 @@ export const reconcileSalaryTransactions = async (
         .gte('timestamp_ms', startDate)
         .lte('timestamp_ms', endDate)
         .eq('type', TransactionType.EXPENSE);
-    const transactions = (txRows ?? []) as Transaction[];
+    const transactions: Transaction[] = (txRows ?? []).map((t: any) => ({
+        id: t.id,
+        driverId: t.driver_id,
+        amount: t.amount,
+        type: t.type,
+        status: t.status,
+        description: t.description,
+        timestamp: t.timestamp_ms,
+    } as Transaction));
 
     const discrepancies: ReconciliationDiscrepancy[] = [];
     let matchedCount = 0;

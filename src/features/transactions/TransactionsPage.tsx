@@ -20,6 +20,10 @@ import {
     EditIcon,
     CarIcon,
     DownloadIcon,
+    ArrowDownRightIcon,
+    ArrowUpRightIcon,
+    PalmtreeIcon,
+    ListIcon,
 } from '../../../components/Icons';
 import { useToast } from '../../../components/ToastNotification';
 import { useConfirm } from '../../../components/ConfirmContext';
@@ -29,6 +33,7 @@ import { exportTransactionsToExcel } from '../../../utils/exportToExcel';
 import Lottie from 'lottie-react';
 import cardAnimation from '../../../Images/card.json';
 import restAnimation from '../../../Images/rest.json';
+import depositAnimation from '../../../Images/deposit.json';
 import { LicensePlate } from '../../components/ui/LicensePlate';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -212,6 +217,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         restoreRows,
         patchRow,
     } = useTransactionsPaginated(fleetId, filters);
+
+    // ── Real-time Sync from Global Context ─────────────────────────────────────
+    // DataContext maintains a realtime global list of transactions.
+    // If a new transaction arrives there (e.g. from an optimistic update or its own realtime listener),
+    // inject it into the paginated list immediately.
+    useEffect(() => {
+        if (!allTransactionsForBalance || allTransactionsForBalance.length === 0 || !transactions || transactions.length === 0) return;
+        
+        // Paginated list is sorted by timestamp desc, so transactions[0] is the newest
+        const newestPaginatedTs = transactions[0]?.timestamp || 0;
+        
+        const newTxs = allTransactionsForBalance.filter(t => t.timestamp > newestPaginatedTs);
+        if (newTxs.length > 0) {
+            restoreRows(newTxs);
+        }
+    }, [allTransactionsForBalance, transactions, restoreRows]);
 
     // ── IntersectionObserver sentinel at list bottom ──────────────────────────
     const sentinelRef = useRef<HTMLDivElement>(null);
@@ -482,10 +503,31 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             value={type}
                             onChange={(val) => setType(val)}
                             options={[
-                                { id: 'all',                      name: t('transactions') },
-                                { id: TransactionType.INCOME,     name: t('income') },
-                                { id: TransactionType.EXPENSE,    name: t('expense') },
-                                { id: TransactionType.DAY_OFF,    name: `🏝️ ${t('legendDayOff') || 'Dam olish kuni'}` },
+                                { 
+                                    id: 'all',                      
+                                    name: t('transactions') || 'Barcha o\'tkazmalar',
+                                    node: <div className="flex items-center gap-2"><ListIcon className="w-4 h-4 opacity-70" /> <span>{t('transactions')}</span></div>
+                                },
+                                { 
+                                    id: TransactionType.INCOME,     
+                                    name: t('income') || 'Kirim',
+                                    node: <div className="flex items-center gap-2 text-[#0f766e]"><ArrowDownRightIcon className="w-4 h-4" /> <span className="text-current">{t('income')}</span></div>
+                                },
+                                { 
+                                    id: TransactionType.EXPENSE,    
+                                    name: t('expense') || 'Chiqim',
+                                    node: <div className="flex items-center gap-2 text-red-500"><ArrowUpRightIcon className="w-4 h-4" /> <span className="text-current">{t('expense')}</span></div>
+                                },
+                                { 
+                                    id: TransactionType.DAY_OFF,    
+                                    name: t('legendDayOff') || 'Dam olish kuni',
+                                    node: <div className="flex items-center gap-2 text-blue-500"><PalmtreeIcon className="w-4 h-4" /> <span className="text-current">{t('legendDayOff') || 'Dam olish kuni'}</span></div>
+                                },
+                                { 
+                                    id: 'deposit',                  
+                                    name: t('deposit') || 'Depozit',
+                                    node: <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500"><div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div> <span className="text-current">{t('deposit') || 'Depozit'}</span></div>
+                                },
                             ]}
                             theme={theme}
                             icon={FilterIcon}
@@ -635,8 +677,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                     {driver?.isDeleted && <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>{t('deleted')}</span>}
                                                                 </div>
                                                                 {(driver?.isDeleted || driver) && (
-                                                                    <div className={`text-xs flex gap-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                                        <LicensePlate plate={driver?.licensePlate || ''} size="sm" />
+                                                                    <div className={`text-xs flex items-center gap-2 mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                                        {(() => {
+                                                                            const liveCar = driver ? cars.find(c => c.assignedDriverId === driver.id) : undefined;
+                                                                            return liveCar ? (
+                                                                                <>
+                                                                                    <span className="font-semibold truncate max-w-[120px]">{liveCar.name}</span>
+                                                                                    <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                                                </>
+                                                                            ) : driver?.licensePlate ? (
+                                                                                <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                                            ) : null;
+                                                                        })()}
                                                                         <span>•</span>
                                                                         <span>{driver?.phone}</span>
                                                                     </div>
@@ -660,6 +712,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             ) : (
                                                                 <span className="font-medium">{descText}</span>
                                                             )}
+                                                            {(tx as any).category === 'deposit_topup' && (
+                                                                <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-bold w-fit mt-0.5 ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>
+                                                                    <div className="w-3 h-3"><Lottie animationData={depositAnimation} loop={true} /></div>
+                                                                    {t('depositTopup')}
+                                                                </span>
+                                                            )}
+                                                            {tx.useDeposit && (
+                                                                <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-bold w-fit mt-0.5 ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>
+                                                                    <div className="w-3 h-3"><Lottie animationData={depositAnimation} loop={true} /></div>
+                                                                    {t('usedFromDeposit') || 'DEPOZITDAN YECHILDI'}
+                                                                </span>
+                                                            )}
                                                             {tx.type !== TransactionType.DAY_OFF && tx.paymentMethod && (
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold tracking-wider ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
@@ -668,7 +732,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                                 <div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                                                                                 {t('paymentCard')}
                                                                             </span>
-                                                                        ) : `🏦 ${t('paymentTransfer')}`}
+                                                                        ) : (
+                                                                            <span className="flex items-center gap-1">
+                                                                                <div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div>
+                                                                                {t('paymentTransfer')}
+                                                                            </span>
+                                                                        )}
                                                                     </span>
                                                                     {tx.paymentMethod === 'card' && (
                                                                         <button
@@ -753,7 +822,21 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             <div className="flex flex-col">
                                                 <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{car ? car.name : expenseCat ? expenseCat.label : driver ? driver.name : tx.driverName || t('generalExpense')}</span>
                                                 <div className={`text-[11px] font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                    {car || driver ? <LicensePlate plate={car?.licensePlate || driver?.licensePlate || ''} size="sm" /> : t('expense')}
+                                                    {car ? (
+                                                        <LicensePlate plate={car.licensePlate} size="sm" />
+                                                    ) : driver ? (() => {
+                                                        const liveCar = cars.find(c => c.assignedDriverId === driver.id);
+                                                        return liveCar ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-semibold truncate max-w-[100px]">{liveCar.name}</span>
+                                                                <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                            </div>
+                                                        ) : driver.licensePlate ? (
+                                                            <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                        ) : null;
+                                                    })() : (
+                                                        t('expense')
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -773,6 +856,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     </div>
                                     <div className="flex flex-col gap-2 mt-1">
                                         <span className={`text-[13px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{descText}</span>
+                                        {(tx as any).category === 'deposit_topup' && (
+                                            <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-bold w-fit ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>
+                                                <div className="w-3 h-3"><Lottie animationData={depositAnimation} loop={true} /></div>
+                                                {t('depositTopup')}
+                                            </span>
+                                        )}
+                                        {tx.useDeposit && (
+                                            <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-bold w-fit ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>
+                                                <div className="w-3 h-3"><Lottie animationData={depositAnimation} loop={true} /></div>
+                                                {t('usedFromDeposit') || 'DEPOZITDAN YECHILDI'}
+                                            </span>
+                                        )}
                                         <div className="flex items-center justify-between">
                                             <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                                 {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(tx.timestamp).toLocaleDateString('en-GB')}
@@ -785,7 +880,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                 <div className="w-3 h-3 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                                                                 {t('paymentCard')}
                                                             </span>
-                                                        ) : `🏦 ${t('paymentTransfer')}`}
+                                                        ) : (
+                                                                            <span className="flex items-center gap-1">
+                                                                                <div className="w-3 h-3 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div>
+                                                                                {t('paymentTransfer')}
+                                                                            </span>
+                                                                        )}
                                                     </span>
                                                 )}
                                                 {tx.paymentMethod === 'card' && (

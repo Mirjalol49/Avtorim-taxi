@@ -62,6 +62,8 @@ export interface Driver extends Lockable {
     contractDurationMonths?: number;
     /** Start date of the lease-to-own contract (epoch ms) */
     contractStartDate?: number;
+    /** Number of allowed off days per month */
+    daysOffPerMonth?: number;
     /** Historical tracking of daily plan changes for this driver */
     planHistory?: DriverPlanHistoryEntry[];
     /** Overrides for specific days (e.g. day off, sick leave, discount) */

@@ -3,7 +3,8 @@ export enum PaymentStatus {
     COMPLETED = 'COMPLETED',
     REVERSED = 'REVERSED',
     REFUNDED = 'REFUNDED',
-    DELETED = 'DELETED'
+    DELETED = 'DELETED',
+    ACTIVE = 'ACTIVE'
 }
 
 export enum TransactionType {

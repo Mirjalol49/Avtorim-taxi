@@ -32,8 +32,8 @@ export function getPlanForDriverDate(driver: Driver | null | undefined, date: Da
         return effective.plan;
     }
 
-    if (history[0].carId === null) return 0;
-    return history[0].plan;
+    // No history entry is on or before the target date — the driver's plan hadn't started yet.
+    return 0;
 }
 
 function toDateKey(date: Date): string {
@@ -45,6 +45,35 @@ function toDateKey(date: Date): string {
  */
 export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, date: Date, fallbackCar?: Car | null): number {
     if (!driver) return 0;
+    
+    // Check lifecycle: before joined (including the join day itself as free)
+    const startMs = driver.startDate || driver.createdAt;
+    if (startMs) {
+        const targetDateMidnight = new Date(date);
+        targetDateMidnight.setHours(0, 0, 0, 0);
+        
+        const startDateMidnight = new Date(startMs);
+        startDateMidnight.setHours(0, 0, 0, 0);
+        
+        // 1. If target date is strictly before the start date -> 0
+        // 2. The start date itself IS charged.
+        if (targetDateMidnight.getTime() < startDateMidnight.getTime()) {
+            return 0;
+        }
+    }
+
+    // Check lifecycle: after fired
+    if (driver.isDeleted && driver.quitDate) {
+        const targetDateMidnight = new Date(date);
+        targetDateMidnight.setHours(0, 0, 0, 0);
+        
+        const endDateMidnight = new Date(driver.quitDate);
+        endDateMidnight.setHours(0, 0, 0, 0);
+        
+        if (targetDateMidnight.getTime() > endDateMidnight.getTime()) {
+            return 0;
+        }
+    }
     
     // Automatic suspension: If the car is currently in repair, pause the plan for today and the future.
     // Past days rely on explicit historical overrides (added at the time of repair).

@@ -5,6 +5,7 @@ import { ChevronDownIcon, CheckIcon } from './Icons';
 interface Option {
     id: string;
     name: string;
+    node?: React.ReactNode;
 }
 
 interface CustomSelectProps {
@@ -40,7 +41,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     const effectivePlaceholder = placeholder || defaultPlaceholder;
 
     const selectedOption = options.find(opt => opt.id === value);
-    const displayValue = selectedOption ? selectedOption.name : effectivePlaceholder;
+    const displayValue = selectedOption ? (selectedOption.node || selectedOption.name) : effectivePlaceholder;
 
     const filteredOptions = options.filter(opt =>
         opt.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -150,7 +151,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                                             }`}
                                     >
                                         <span className="flex-1 truncate">
-                                            {option.name}
+                                            {option.node || option.name}
                                         </span>
                                         {value === option.id && (
                                             <div className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ml-2 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'}`}>

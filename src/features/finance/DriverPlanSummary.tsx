@@ -135,6 +135,49 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             }
         }
 
+        // Apply pre-calculated off days (daysOffPerMonth)
+        const allowedOffDays = driver.daysOffPerMonth || 0;
+        if (allowedOffDays > 0) {
+            let explicitOffDaysCount = 0;
+            for (let d = 1; d <= totalDays; d++) {
+                const dayDate = new Date(mkYear, mkMonth - 1, d);
+                // Check if this day is before the driver even started
+                const startMs = driver.startDate || driver.createdAt;
+                if (startMs) {
+                    const startDay = new Date(startMs);
+                    startDay.setHours(0,0,0,0);
+                    if (dayDate.getTime() < startDay.getTime()) continue;
+                }
+
+                const isOffTx = transactions.some(tx =>
+                    tx.driverId === driver.id &&
+                    (tx.type === TransactionType.DAY_OFF || tx.type === 'NOT_WORKING') &&
+                    tx.status !== PaymentStatus.DELETED &&
+                    (tx as any).status !== 'DELETED' &&
+                    toMonthKey(new Date(tx.timestamp)) === mk &&
+                    new Date(tx.timestamp).getDate() === d
+                );
+                
+                const key = `${mkYear}-${String(mkMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const overrideType = driver.dayOverrides?.[key]?.type;
+                const isOverrideOff = overrideType === 'OFF' || overrideType === 'NOT_WORKING';
+
+                if (isOffTx || isOverrideOff) {
+                    explicitOffDaysCount++;
+                }
+            }
+
+            const unmarkedOffDays = Math.max(0, allowedOffDays - explicitOffDaysCount);
+            const dailyPlanAmount = car?.dailyPlan ?? 0;
+            
+            if (unmarkedOffDays > 0) {
+                monthlyTarget -= (unmarkedOffDays * dailyPlanAmount);
+                monthlyTarget = Math.max(0, monthlyTarget);
+                // Cap pastTarget so they don't accrue debt for their allowed off days at the end of the month
+                pastTarget = Math.min(pastTarget, monthlyTarget);
+            }
+        }
+
         const dailyPlan = car?.dailyPlan ?? 0;
         const workingDays = actualWorkingDays;
 
@@ -144,7 +187,9 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 tx.type === TransactionType.INCOME &&
                 tx.status !== PaymentStatus.DELETED &&
                 (tx as any).status !== 'DELETED' &&
-                toMonthKey(new Date(tx.timestamp)) === mk
+                toMonthKey(new Date(tx.timestamp)) === mk &&
+                (tx as any).category !== 'deposit_topup' &&
+                (tx as any).category !== 'DEPOSIT'
             )
             .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 

@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { uploadAvatarToStorage } from '../services/storageService';
 import Lottie from 'lottie-react';
 import cardAnimation from '../Images/card.json';
+import depositAnimation from '../Images/deposit.json';
 import DatePicker from './DatePicker';
 
 interface DriverModalProps {
@@ -44,6 +45,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [contractDurationMonths, setContractDurationMonths] = useState(36);
   const [contractStartDate, setContractStartDate] = useState<number>(Date.now());
   const [startDate, setStartDate] = useState<number>(Date.now());
+  const [daysOffPerMonth, setDaysOffPerMonth] = useState<number>(0);
   const [quitDate, setQuitDate] = useState<number | null>(null);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
@@ -88,6 +90,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setContractDurationMonths((editingDriver as any).contractDurationMonths ?? 36);
       setContractStartDate((editingDriver as any).contractStartDate ?? Date.now());
       setStartDate((editingDriver as any).startDate ?? editingDriver.createdAt ?? Date.now());
+      setDaysOffPerMonth((editingDriver as any).daysOffPerMonth ?? 0);
       setQuitDate((editingDriver as any).quitDate ?? null);
       setSelectedCarId(currentAssignedCar?.id ?? '');
       setDocuments([]);
@@ -110,6 +113,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setContractDurationMonths(36);
       setContractStartDate(Date.now());
       setStartDate(Date.now());
+      setDaysOffPerMonth(0);
       setQuitDate(null);
       setSelectedCarId('');
       setError(null);
@@ -168,12 +172,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         notes,
         monthlySalary: driverType === 'salary' ? monthlySalary : 0,
         driverType,
-        depositAmount: driverType === 'deposit' ? depositAmount : 0,
-        depositWarningThreshold: driverType === 'deposit' ? depositWarningThreshold : 1_000_000,
+        depositAmount: depositAmount,
+        depositWarningThreshold: depositWarningThreshold,
         totalContractAmount: driverType === 'lease_to_own' ? totalContractAmount : undefined,
         contractDurationMonths: driverType === 'lease_to_own' ? contractDurationMonths : undefined,
         contractStartDate: driverType === 'lease_to_own' ? contractStartDate : undefined,
         startDate,
+        daysOffPerMonth,
         quitDate: quitDate || null,
         documents,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
@@ -445,6 +450,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               />
             </div>
           </div>
+          
 
           {/* Driver payment type */}
           <div>
@@ -465,7 +471,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   }`}
                 >
                   {type === 'deposit' ? (
-                    <>🏦 Depozitchi</>
+                    <><div className="w-4 h-4 flex items-center justify-center"><span className="text-lg leading-none">🚕</span></div> Standart</>
                   ) : type === 'salary' ? (
                     <><div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> Maoshli</>
                   ) : (
@@ -476,7 +482,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             </div>
             <p className={`text-[10px] mt-1.5 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
               {driverType === 'deposit'
-                ? "Haydovchi boshlang'ich depozit beradi, reja bajarilmasa depozitdan ayriladi."
+                ? "Odatiy haydovchi. Kunlik reja asosida ishlaydi."
                 : driverType === 'salary'
                   ? "Sizdan haydovchiga oylik maosh to'lanadi, reja bajarilmasa maoshdan ayriladi."
                   : "Haydovchi mashinani bo'lib to'lash (sotib olish) sharti bilan oladi. Barcha to'lovlar shartnoma summasidan ayirib boriladi."}
@@ -484,50 +490,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
 
           {/* Conditional amount field */}
-          {driverType === 'deposit' ? (
-            <>
-            <div>
-              <label className={labelClass}>Depozit miqdori</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={depositAmount > 0 ? depositAmount.toLocaleString('uz-UZ') : ''}
-                  onChange={e => {
-                    const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
-                    setDepositAmount(isNaN(raw) ? 0 : raw);
-                  }}
-                  className={inputClass}
-                  placeholder="0"
-                />
-                <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
-              </div>
-              <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Haydovchi bergan boshlang'ich depozit summasi
-              </p>
-            </div>
-
-            {/* Deposit warning threshold */}
-            <div>
-              <label className={labelClass}>⚠ Ogohlantirish limiti</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={depositWarningThreshold > 0 ? depositWarningThreshold.toLocaleString('uz-UZ') : ''}
-                  onChange={e => {
-                    const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
-                    setDepositWarningThreshold(isNaN(raw) ? 0 : raw);
-                  }}
-                  className={inputClass}
-                  placeholder="1 000 000"
-                />
-                <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
-              </div>
-              <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Depozit bu miqdorga tushsa ogohlantirish yuboriladi
-              </p>
-            </div>
-            </>
-          ) : driverType === 'salary' ? (
+          {driverType === 'salary' ? (
             <div>
               <label className={labelClass}>Oylik maosh</label>
               <div className="relative">
@@ -606,6 +569,54 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               )}
             </div>
           )}
+
+          {/* Deposit fields for all drivers */}
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-50'}`}>
+            <p className={sectionTitle}>
+              <div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div> Depozit sozlamalari
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Depozit miqdori</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={depositAmount > 0 ? depositAmount.toLocaleString('uz-UZ') : ''}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      setDepositAmount(isNaN(raw) ? 0 : raw);
+                    }}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                </div>
+                <p className={`text-[10px] mt-1 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  Boshlang'ich depozit
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClass}>Ogohlantirish limiti</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={depositWarningThreshold > 0 ? depositWarningThreshold.toLocaleString('uz-UZ') : ''}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      setDepositWarningThreshold(isNaN(raw) ? 0 : raw);
+                    }}
+                    className={inputClass}
+                    placeholder="1 000 000"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                </div>
+                <p className={`text-[10px] mt-1 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  Depozit tushib ketsa xabar beriladi
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Car assignment picker */}
           <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
-import { EditIcon, TrashIcon, CameraIcon, XIcon } from '../../../../components/Icons';
+import { useNavigate } from 'react-router-dom';
+import { EditIcon, TrashIcon, CarIcon, XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
 import { DriverAvatar } from './DriverAvatar';
 import { LicensePlate } from '../../../components/ui/LicensePlate';
@@ -27,6 +28,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const docs = driver.documents ?? [];
     const explicitDailyPlan = car ? (car.dailyPlan ?? 0) : 0;
@@ -35,7 +37,10 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
     return (<>
-        <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-black/[0.03]'}`}>
+        <tr 
+            onClick={() => navigate(`/drivers/${driver.id}`)}
+            className={`group cursor-pointer transition-colors ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-black/[0.03]'}`}
+        >
 
             {/* Driver */}
             <td className="p-4">
@@ -71,7 +76,7 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                    <CameraIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
+                                    <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
                                 </div>
                             )}
                         </div>

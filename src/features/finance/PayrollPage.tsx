@@ -282,7 +282,7 @@ const ConfirmPayModal: React.FC<{
                         const advance = thisMonth?.salaryAdvance ?? 0;
                         // If no finance entry exists for this period, fall back to the fixed salary
                         const gross = driver.monthlySalary ?? 0;
-                        const net = thisMonth ? (thisMonth.netSalary ?? gross) : gross;
+                        const net = Math.max(0, gross - advance);
                         return (
                             <div className={`rounded-2xl border overflow-hidden ${
                                 isDark ? 'bg-emerald-500/[0.07] border-emerald-500/[0.18]' : 'bg-emerald-50 border-emerald-200'
@@ -454,16 +454,16 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
         });
     }, [salaryDrivers, search, statusFilter, cars, filterYear, filterMonth, transactions]);
 
-    const salaryHistory = useMemo(
-        () => transactions
+    const salaryHistory = useMemo(() => {
+        const targetPeriod = `SALARY|${filterYear}-${String(filterMonth + 1).padStart(2, '0')}`;
+        return transactions
             .filter(tx =>
                 tx.type === TransactionType.EXPENSE &&
                 tx.description?.startsWith('Ish haqi:') &&
-                (tx as any).note?.startsWith('SALARY|')
+                (tx as any).note === targetPeriod
             )
-            .sort((a, b) => b.timestamp - a.timestamp),
-        [transactions]
-    );
+            .sort((a, b) => b.timestamp - a.timestamp);
+    }, [transactions, filterYear, filterMonth]);
 
     const totalMonthly = salaryDrivers.reduce((s, d) => s + (d.monthlySalary ?? 0), 0);
     const paidCount    = salaryDrivers.filter(d => isPayedForPeriod(transactions, d.id, filterYear, filterMonth)).length;

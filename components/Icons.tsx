@@ -22,6 +22,7 @@ export {
     Trophy            as TrophyIcon,
     Check             as CheckIcon,
     CheckCircle2      as CheckCircleIcon,
+    XCircle           as XCircleIcon,
     LogOut            as LogOutIcon,
     SlidersHorizontal as FilterIcon,
     Download          as DownloadIcon,
@@ -97,6 +98,7 @@ export {
     Paperclip         as PaperclipIcon,
     Eye               as PreviewIcon,
     FileVideo         as FileVideoIcon,
+    Palmtree          as PalmtreeIcon,
     FileArchive       as FileArchiveIcon,
 } from 'lucide-react';
 

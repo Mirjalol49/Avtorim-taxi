@@ -40,6 +40,8 @@ import Skeleton from './components/Skeleton';
 import PageSkeleton from './components/PageSkeleton';
 import DashboardPage from './src/features/dashboard/DashboardPage';
 import DriversPage from './src/features/drivers/DriversPage';
+import { DriverProfilePage } from './src/features/drivers/DriverProfilePage';
+import { CarProfilePage } from './src/features/cars/CarProfilePage';
 import NotesPage from './src/features/notes/NotesPage';
 import { DocumentsPage } from './src/features/documents/DocumentsPage';
 import PdfViewerPage from './src/features/documents/PdfViewerPage';
@@ -110,6 +112,7 @@ const AppContent: React.FC = () => {
     drivers,
     setDrivers,
     transactions,
+    setTransactions,
     driversLoading,
     txLoading,
     notifications,
@@ -138,6 +141,7 @@ const AppContent: React.FC = () => {
   const [txInitialDriverId, setTxInitialDriverId] = useState<string | undefined>(undefined);
   const [txInitialType, setTxInitialType] = useState<TransactionType | undefined>(undefined);
   const [txInitialDate, setTxInitialDate] = useState<Date | undefined>(undefined);
+  const [txInitialDepositTopup, setTxInitialDepositTopup] = useState(false);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isSuperAdminOpen, setIsSuperAdminOpen] = useState(false);
@@ -301,7 +305,11 @@ const AppContent: React.FC = () => {
 
       const payload: Omit<Transaction, 'id'> = { ...data };
       if (driver) (payload as any).driverName = driver.name;
-      if (car) payload.carName = `${car.name} — ${car.licensePlate}`;
+      // Don't attach car info for deposit top-ups — the HAYDOVCHI column should show the driver, not the car
+      if (car && (data as any).category !== 'deposit_topup') {
+        payload.carName = `${car.name} — ${car.licensePlate}`;
+        if (!(payload as any).carId) (payload as any).carId = car.id;
+      }
 
       // Snapshot deposit balance BEFORE saving (deposit drivers only)
       const isDepositDriver = driver && (driver as any).driverType === 'deposit';
@@ -311,7 +319,10 @@ const AppContent: React.FC = () => {
 
       const newTxId = await firestoreService.addTransaction(payload as any, carsFleetId);
 
-
+      // Optimistically update the UI so the transaction shows up instantly
+      if (newTxId) {
+        setTransactions(prev => [...prev, { ...payload, id: newTxId, timestamp: (payload as any).timestamp ?? Date.now() } as Transaction]);
+      }
 
       // Check threshold crossing for deposit drivers
       if (isDepositDriver && driver && balanceBefore !== null && newTxId) {
@@ -340,6 +351,8 @@ const AppContent: React.FC = () => {
               extraTracking: {
                 depositWarning: true,
                 driverName: driver.name,
+                carName: car?.name,
+                carPlate: car?.licensePlate,
                 remainingDeposit: balanceAfter,
               },
             },
@@ -433,6 +446,16 @@ const AppContent: React.FC = () => {
       }
       if (assignedCarId && assignedCarId !== previousCarId) {
         await assignCar(assignedCarId, driverId);
+      }
+
+      // Automatically sync the car's daily plan if this is a lease-to-own driver
+      if (data.driverType === 'lease_to_own' && assignedCarId) {
+        const total = data.totalContractAmount || 0;
+        const duration = data.contractDurationMonths || 1;
+        if (total > 0 && duration > 0) {
+          const suggestedPlan = Math.ceil(total / (duration * 30) / 1000) * 1000;
+          await updateCar(assignedCarId, { dailyPlan: suggestedPlan });
+        }
       }
     } catch (error: any) {
       const msg = error?.message || error?.details || 'Xatolik yuz berdi';
@@ -656,7 +679,7 @@ const AppContent: React.FC = () => {
         }`} />
         <span className="font-medium flex-1 text-left">{label}</span>
         {!!badgeCount && badgeCount > 0 && (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto ${theme === 'dark' ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-100 text-rose-600'}`}>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto bg-red-500 text-white">
             {badgeCount}
           </span>
         )}
@@ -976,6 +999,7 @@ const AppContent: React.FC = () => {
               readIds={readNotificationIds}
               userId={adminUser?.id || 'global'}
               theme={theme}
+              cars={cars}
               onMarkAsRead={async (id) => {
                 const userId = adminUser?.id || 'global';
                 await markNotificationAsRead(id, userId);
@@ -1066,7 +1090,24 @@ const AppContent: React.FC = () => {
               />
             } />
 
-
+            <Route path="/drivers/:id" element={
+              <DriverProfilePage
+                drivers={drivers}
+                cars={cars}
+                transactions={transactions}
+                theme={theme}
+                userRole={userRole}
+                onEditDriver={handleEditDriverClick}
+                onDeleteDriver={handleDeleteDriver}
+                onAddTransaction={handleAddTransaction}
+                onOpenDepositTopup={(driverId) => {
+                  setTxInitialDriverId(driverId);
+                  setTxInitialType(TransactionType.INCOME);
+                  setTxInitialDepositTopup(true);
+                  setIsTxModalOpen(true);
+                }}
+              />
+            } />
 
             {/* CARS */}
             <Route path="/cars" element={
@@ -1081,6 +1122,18 @@ const AppContent: React.FC = () => {
                 onSaveCar={handleSaveCar}
                 onDeleteCar={handleDeleteCar}
                 theme={theme}
+              />
+            } />
+            <Route path="/cars/:id" element={
+              <CarProfilePage
+                cars={cars}
+                drivers={drivers}
+                theme={theme}
+                userRole={userRole}
+                adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
+                onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
+                onDeleteCar={handleDeleteCar}
+                onSaveCar={handleSaveCar}
               />
             } />
 
@@ -1182,6 +1235,7 @@ const AppContent: React.FC = () => {
             setTxInitialDriverId(undefined);
             setTxInitialType(undefined);
             setTxInitialDate(undefined);
+            setTxInitialDepositTopup(false);
         }}
         onSubmit={handleAddTransaction}
         drivers={nonDeletedDrivers}
@@ -1192,6 +1246,7 @@ const AppContent: React.FC = () => {
         initialDriverId={txInitialDriverId}
         initialType={txInitialType}
         initialDate={txInitialDate}
+        initialIsDepositTopup={txInitialDepositTopup}
       />
 
       <DriverModal
@@ -1210,6 +1265,7 @@ const AppContent: React.FC = () => {
         editingCar={editingCar}
         adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
         theme={theme}
+        isLockedByVikup={editingCar ? drivers.some(d => d.id === editingCar.assignedDriverId && d.driverType === 'lease_to_own') : false}
       />
 
       {/* ── Repair Prompt Modal (Apple iOS Native Style) ── */}

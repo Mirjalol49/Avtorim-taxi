@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Driver, DriverStatus } from '../../../core/types';
+import { Driver } from '../../../core/types';
 
 export const useDriversList = (drivers: Driver[]) => {
     const [searchQuery, setSearchQuery] = useState('');

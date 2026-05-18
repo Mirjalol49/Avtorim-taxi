@@ -231,8 +231,8 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
 
                     if (!cid && tx.driverId) {
                         const driver = drivers.find(d => d.id === tx.driverId);
-                        if (driver?.carId) {
-                            cid = driver.carId;
+                        if (driver) {
+                            cid = cars.find(c => c.assignedDriverId === driver.id)?.id;
                         }
                     }
 

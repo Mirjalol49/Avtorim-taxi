@@ -64,7 +64,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
             currentDrivers = currentDrivers.filter(d => d.id === filters.driverId);
         }
         return currentDrivers.map(d => {
-            const car = cars.find(c => c.id === d.carId);
+            const car = cars.find(c => c.assignedDriverId === d.id);
             const debtInfo = calcDriverDebt(d, car, allTransactions);
             return { driver: d, debt: debtInfo.netDebt };
         })

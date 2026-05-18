@@ -5,10 +5,10 @@ import { Driver } from '../../core/types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
 import { formatNumberSmart } from '../../../utils/formatNumber';
-import { CarDetailsSheet } from './components/CarDetailsSheet';
 import { ShieldAlert as ShieldAlertIcon, Wrench as WrenchIcon, SunDim as SunDimIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { updateCar } from '../../../services/carsService';
 import { LicensePlate } from '../../components/ui/LicensePlate';
+import { useNavigate } from 'react-router-dom';
 
 interface CarsPageProps {
     cars: Car[];
@@ -199,11 +199,11 @@ const CarsPage: React.FC<CarsPageProps> = ({
     cars, drivers = [], isDataLoading, userRole, adminName = 'Admin', onAddCar, onEditCar, onSaveCar, onDeleteCar, theme
 }) => {
     const isDark = theme === 'dark';
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
     const [docViewer, setDocViewer] = useState<DocViewerState | null>(null);
-    const [selectedCarDetails, setSelectedCarDetails] = useState<Car | null>(null);
     const [clearedWarnings, setClearedWarnings] = useState<Set<string>>(new Set());
     const [repairConfirm, setRepairConfirm] = useState<{ isOpen: boolean; car: Car | null; targetRepairState: boolean }>({ isOpen: false, car: null, targetRepairState: false });
 
@@ -498,12 +498,12 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 driver={getDriver(car)}
                                 userRole={userRole}
                                 isDark={isDark}
-                                onClick={() => setSelectedCarDetails(car)}
+                                onClick={() => navigate(`/cars/${car.id}`)}
                                 onEdit={onEditCar}
                                 onRepairConfirm={(car, targetStatus) => setRepairConfirm({ isOpen: true, car, targetRepairState: targetStatus })}
                                 onDelete={onDeleteCar}
                                 onDocClick={(index) => openDoc(car, index)}
-                                onDamageClick={() => setSelectedCarDetails(car)}
+                                onDamageClick={() => navigate(`/cars/${car.id}`)}
                             />
                         ))}
                     </div>
@@ -544,29 +544,6 @@ const CarsPage: React.FC<CarsPageProps> = ({
                     onClose={() => setDocViewer(null)}
                 />
             )}
-
-            {/* ── Car Details Sheet ── */}
-            <CarDetailsSheet
-                car={selectedCarDetails}
-                driver={selectedCarDetails ? getDriver(selectedCarDetails) : undefined}
-                theme={theme}
-                userRole={userRole}
-                adminName={adminName}
-                isOpen={!!selectedCarDetails}
-                onClose={() => setSelectedCarDetails(null)}
-                onEdit={(car) => {
-                    setSelectedCarDetails(null);
-                    onEditCar(car);
-                }}
-                onSaveCar={onSaveCar}
-                onDelete={(id) => {
-                    setSelectedCarDetails(null);
-                    onDeleteCar(id);
-                }}
-                onUpdated={(updatedDamage) => {
-                    setSelectedCarDetails(prev => prev ? { ...prev, damage: updatedDamage } : null);
-                }}
-            />
 
             {/* ── Confirm Modal for Grid Actions ── */}
             <ConfirmModal

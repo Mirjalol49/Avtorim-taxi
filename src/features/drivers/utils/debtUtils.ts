@@ -86,7 +86,7 @@ export function calcDriverDebt(
     const explicitTxs = validTxs.filter(tx => tx.type === TransactionType.DEBT);
     let totalExplicitDebt = 0;
     explicitTxs.forEach(tx => {
-        totalExplicitDebt += tx.amount;
+        totalExplicitDebt += Math.abs(tx.amount);
     });
 
     // Calculate total Auto Debt since createdAt (only past days, never future)
@@ -102,15 +102,38 @@ export function calcDriverDebt(
     let currentMs = trackingStartMs;
     const todayMs = Date.now();
     
+    // Group loop execution by month to accurately apply daysOffPerMonth
+    const monthlyStats: Record<string, { autoDebt: number, explicitOffCount: number, dailyPlanAmount: number }> = {};
+    
     while (currentMs <= todayMs) {
         const d = new Date(currentMs);
         const loopDateKey = dateKey(currentMs);
+        const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlyStats[mk]) monthlyStats[mk] = { autoDebt: 0, explicitOffCount: 0, dailyPlanAmount: car?.dailyPlan ?? 0 };
         
         const isDayOffTx = validTxs.some(tx => 
             (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) && 
             dateKey(tx.timestamp) === loopDateKey
         );
         
+        const overrideType = driver.dayOverrides?.[loopDateKey]?.type;
+        const isOverrideOff = overrideType === 'OFF' || overrideType === 'NOT_WORKING';
+
+        // Only count explicit off days if they are after the driver's start date
+        const startMs = driver.startDate || driver.createdAt;
+        let isBeforeStart = false;
+        if (startMs) {
+            const startDay = new Date(startMs);
+            startDay.setHours(0,0,0,0);
+            if (d.getTime() < startDay.getTime()) {
+                isBeforeStart = true;
+            }
+        }
+
+        if (!isBeforeStart && (isDayOffTx || isOverrideOff)) {
+            monthlyStats[mk].explicitOffCount++;
+        }
+
         let planForDay = 0;
         if (!isDayOffTx) {
             planForDay = getEffectivePlanForDriverDay(driver, d, car);
@@ -119,10 +142,23 @@ export function calcDriverDebt(
         if (planForDay > 0) {
             workingDays++;
         }
-        totalAutoDebt += planForDay;
+        monthlyStats[mk].autoDebt += planForDay;
 
         currentMs += 86400000;
     }
+
+    // Apply allowed off days logic
+    const allowedOffDays = driver.daysOffPerMonth || 0;
+    if (allowedOffDays > 0) {
+        Object.values(monthlyStats).forEach(stat => {
+            const unmarkedOffDays = Math.max(0, allowedOffDays - stat.explicitOffCount);
+            if (unmarkedOffDays > 0) {
+                stat.autoDebt = Math.max(0, stat.autoDebt - (unmarkedOffDays * stat.dailyPlanAmount));
+            }
+        });
+    }
+
+    totalAutoDebt = Object.values(monthlyStats).reduce((sum, stat) => sum + stat.autoDebt, 0);
 
     const netDebt = (totalAutoDebt + totalExplicitDebt) - totalIncome;
 
@@ -207,8 +243,8 @@ export function calcDriverFinance(
         } else if (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) {
             e.daysOff    += 1;
         }
-        // Track explicit deposit usage regardless of transaction type (deposit drivers)
-        if (tx.useDeposit === true && driverType === 'deposit') {
+        // Track explicit deposit usage regardless of transaction type (for all non-salary drivers, including lease_to_own)
+        if (tx.useDeposit === true && driverType !== 'salary') {
             e.depositUsed += Math.abs(tx.amount);
         }
         byMonth.set(mk, e);
@@ -278,9 +314,10 @@ export function calcDriverFinance(
         const totalIncome = validTxs.filter(tx => tx.type === TransactionType.INCOME).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
         const totalDebts = validTxs.filter(tx => tx.type === TransactionType.DEBT).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
         const totalExpenses = validTxs.filter(tx => tx.type === TransactionType.EXPENSE).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        const contractTotal = driver.totalContractAmount ?? 0;
 
-        contractPaid = totalIncome;
-        contractRemaining = Math.max(0, (driver.totalContractAmount ?? 0) + totalDebts + totalExpenses - contractPaid);
+        contractPaid = Math.min(totalIncome, contractTotal > 0 ? contractTotal : Infinity);
+        contractRemaining = Math.max(0, contractTotal + totalDebts + totalExpenses - totalIncome);
     }
 
     return { 

@@ -12,8 +12,8 @@ i18n
     .use(initReactI18next)
     // init i18next
     .init({
-        // Uzbek is the primary language of the platform
-        fallbackLng: 'uz',
+        // English is the default fallback; Uzbek/Russian are supported
+        fallbackLng: 'en',
         supportedLngs: ['uz', 'ru', 'en'],
         debug: process.env.NODE_ENV === 'development',
 
@@ -22,7 +22,7 @@ i18n
         },
 
         backend: {
-            loadPath: '/locales/{{lng}}/translation.json',
+            loadPath: '/locales/{{lng}}/translation.json?v=2',
         },
 
         detection: {

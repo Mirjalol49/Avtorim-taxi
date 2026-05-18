@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Notification, NotificationType, markNotificationAsRead } from '../services/notificationService';
+import { Car } from '../src/core/types/car.types';
 import {
     TrashIcon,
     BellIcon,
@@ -19,6 +20,10 @@ import {
     ReceiptIcon,
     CarIcon,
 } from './Icons';
+import Lottie from 'lottie-react';
+import depositAnimation from '../Images/deposit.json';
+import { useDataContext } from '../src/core/context/DataContext';
+import { LicensePlate } from '../src/components/ui/LicensePlate';
 
 type Tab = 'warnings' | 'transactions';
 
@@ -32,6 +37,7 @@ interface NotificationBellProps {
     onMarkAllAsRead: () => void;
     onDeleteNotification: (id: string) => void;
     onClearAllRead: () => void;
+    cars?: Car[];
 }
 
 const PAGE_SIZE = 20;
@@ -60,8 +66,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     onMarkAllAsRead,
     onDeleteNotification,
     onClearAllRead,
+    cars = [],
 }) => {
     const { t } = useTranslation();
+    const { drivers } = useDataContext();
     const [isOpen, setIsOpen]       = useState(false);
     const [visible, setVisible]     = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>('warnings');
@@ -451,6 +459,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     const renderDepositWarning = (notification: Notification, isRead: boolean) => {
         const dt  = (notification as any).deliveryTracking ?? {};
         const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+        // Resolve license plate: prefer stored value, fall back to live lookup via driverId → assigned car
+        const liveDriver = dt.driverId ? drivers.find(d => d.id === dt.driverId) : undefined;
+        const liveCar = liveDriver ? cars.find(c => c.assignedDriverId === liveDriver.id) : undefined;
+        const resolvedPlate: string | undefined = dt.carPlate || liveCar?.licensePlate;
+        const resolvedCarName: string | undefined = dt.carName || liveCar?.name;
         return (
             <div
                 key={notification.id}
@@ -464,37 +477,57 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                  : 'bg-amber-50/60 hover:bg-amber-50 cursor-pointer'
                 }`}
             >
-                <div className="px-4 py-3.5 pr-10">
-                    <div className="flex items-center gap-3">
-                        {/* Driver avatar or fallback amber icon */}
-                        {dt.driverAvatar ? (
+                <div className="px-4 pt-3 pb-2.5 pr-10">
+                    {/* Top row: badge */}
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                            ⚠ Depozit
+                        </span>
+                        <span className={`ml-auto text-[10px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                            <ClockIcon className="w-3 h-3" />
+                            {formatRelative(notification.createdAt)}
+                        </span>
+                    </div>
+
+                    {/* Driver row */}
+                    <div className="flex items-center gap-2.5">
+                        {/* Avatar */}
+                        {dt.driverId && drivers.find(d => d.id === dt.driverId)?.avatar ? (
+                            <img src={drivers.find(d => d.id === dt.driverId)!.avatar} alt={dt.driverName ?? ''}
+                                className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ${isDark ? 'ring-amber-500/40' : 'ring-amber-200'}`} />
+                        ) : dt.driverAvatar ? (
                             <img src={dt.driverAvatar} alt={dt.driverName ?? ''}
-                                className={`w-11 h-11 rounded-full object-cover flex-shrink-0 ring-2 ${isDark ? 'ring-amber-500/30' : 'ring-amber-300'}`} />
+                                className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ${isDark ? 'ring-amber-500/40' : 'ring-amber-200'}`} />
                         ) : (
-                            <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl ${isDark ? 'bg-amber-500/15' : 'bg-amber-100'}`}>
-                                🏦
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-amber-500/15' : 'bg-amber-100'}`}>
+                                <div className="w-5 h-5 opacity-80"><Lottie animationData={depositAnimation} loop={true} /></div>
                             </div>
                         )}
+
+                        {/* Driver name + balance */}
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                                    ⚠ Depozit
-                                </span>
-                            </div>
-                            <p className={`text-[13px] font-bold truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <p className={`text-[13px] font-bold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
                                 {dt.driverName ?? notification.title}
                             </p>
                             {dt.remainingDeposit !== undefined && (
-                                <p className={`text-[12px] font-black font-mono tabular-nums ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                <p className={`text-[12px] font-black font-mono tabular-nums leading-tight mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
                                     Qoldiq: {fmt(dt.remainingDeposit)} UZS
                                 </p>
                             )}
-                            <p className={`text-[10px] flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                <ClockIcon className="w-3 h-3" />
-                                {formatRelative(notification.createdAt)}
-                            </p>
                         </div>
                     </div>
+
+                    {/* Car strip */}
+                    {resolvedCarName && (
+                        <div className={`mt-2.5 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl ${isDark ? 'bg-white/[0.04] border border-white/[0.06]' : 'bg-gray-50 border border-gray-100'}`}>
+                            <span className={`text-[11px] font-semibold truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {resolvedCarName}
+                            </span>
+                            {resolvedPlate && (
+                                <LicensePlate plate={resolvedPlate} size="sm" />
+                            )}
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}

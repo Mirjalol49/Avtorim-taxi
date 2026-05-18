@@ -10,6 +10,7 @@ import DatePicker from '../../../../components/DatePicker';
 import Lottie from 'lottie-react';
 import cardAnimation from '../../../../Images/card.json';
 import restAnimation from '../../../../Images/rest.json';
+import depositAnimation from '../../../../Images/deposit.json';
 import { LicensePlate } from '../../../components/ui/LicensePlate';
 
 interface Props {
@@ -101,7 +102,15 @@ const generateDailyTimeline = (
         }
     });
 
+    // If the driver has a quit date, don't show days after that date
     let current = new Date(today);
+    if (driver.quitDate) {
+        const quitDay = new Date(driver.quitDate);
+        quitDay.setHours(0, 0, 0, 0);
+        if (quitDay.getTime() < current.getTime()) {
+            current = quitDay;
+        }
+    }
     
     while (current.getTime() >= start.getTime()) {
         const key = `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`;
@@ -178,8 +187,12 @@ const generateDailyTimeline = (
         grp.totalPaid += day.paidAmount;
         if (!day.isDayOff) {
             grp.totalExpected += day.expectedPlan;
-            grp.totalDebt += day.dailyDebt;
         }
+    }
+    
+    // Calculate true net debt per month group
+    for (const grp of monthGroups.values()) {
+        grp.totalDebt = grp.totalExpected - grp.totalPaid;
     }
     
     return Array.from(monthGroups.values());
@@ -230,12 +243,14 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
         if (startDate || endDate) {
             groups = groups.map(g => {
                 const filteredDays = g.days.filter(d => d.timestamp >= start && d.timestamp <= endMs);
+                const totalPaid = filteredDays.reduce((sum, d) => sum + d.paidAmount, 0);
+                const totalExpected = filteredDays.filter(d => !d.isDayOff).reduce((sum, d) => sum + d.expectedPlan, 0);
                 return {
                     ...g,
                     days: filteredDays,
-                    totalPaid: filteredDays.reduce((sum, d) => sum + d.paidAmount, 0),
-                    totalExpected: filteredDays.filter(d => !d.isDayOff).reduce((sum, d) => sum + d.expectedPlan, 0),
-                    totalDebt: filteredDays.filter(d => !d.isDayOff).reduce((sum, d) => sum + d.dailyDebt, 0)
+                    totalPaid,
+                    totalExpected,
+                    totalDebt: totalExpected - totalPaid
                 };
             }).filter(g => g.days.length > 0);
         }
@@ -299,11 +314,11 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
 
     const isSalary = driver.driverType === 'salary';
 
-    const TABS: { id: Tab; icon: string; label: string; count: number }[] = [
+    const TABS: { id: Tab; icon: React.ReactNode | string; label: string; count: number }[] = [
         { id: 'daily_history', icon: '📅', label: 'Tarix', count: 0 },
     ];
     if (!isSalary) {
-        TABS.push({ id: 'deposit', icon: '🏦', label: 'Depozit', count: depositLedger.length });
+        TABS.push({ id: 'deposit', icon: <div className="w-5 h-5 flex items-center justify-center -mr-1"><Lottie animationData={depositAnimation} loop={true} /></div>, label: 'Depozit', count: depositLedger.length });
     } else {
         TABS.push({ id: 'salary', icon: '💳', label: 'Maosh', count: salaryTxs.length });
     }
@@ -355,16 +370,15 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                     </div>
 
                     {/* Right: Balance Card */}
-                    <div className={`flex-1 flex items-center justify-between rounded-3xl p-5 sm:p-6 shadow-sm border relative overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
-                        <div className="flex flex-col relative z-10">
+                    <div className={`flex-1 flex items-center justify-between rounded-3xl p-5 sm:p-6 shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                        <div className="flex flex-col">
                             <span className={`text-[12px] sm:text-[13px] font-medium mb-1 ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>Umumiy Balans</span>
-                            <span className={`text-[22px] sm:text-[28px] font-bold tracking-tight ${globalBalance < 0 ? 'text-[#FF3B30] dark:text-[#FF453A]' : (globalBalance > 0 ? 'text-[#34C759] dark:text-[#30D158]' : (isDark ? 'text-white' : 'text-gray-900'))}`}>
-                                {globalBalance > 0 ? '+' : ''}{fmtCompact(globalBalance)} <span className="text-[18px]">UZS</span>
+                            <span className={`text-[22px] sm:text-[28px] font-bold tracking-tight ${globalBalance < 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : (globalBalance > 0 ? (isDark ? 'text-[#30D158]' : 'text-[#34C759]') : (isDark ? 'text-white' : 'text-gray-900'))}`}>
+                                {globalBalance > 0 ? '+' : (globalBalance < 0 ? '−' : '')}{fmtCompact(globalBalance)} <span className="text-[18px]">UZS</span>
                             </span>
                         </div>
-                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-[1.25rem] flex-shrink-0 flex items-center justify-center relative z-10 shadow-inner ${globalBalance < 0 ? 'bg-rose-50 dark:bg-rose-500/20' : 'bg-emerald-50 dark:bg-emerald-500/20'}`}>
-                            <div className={`absolute inset-0 rounded-[1.25rem] blur-md opacity-40 ${globalBalance < 0 ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
-                            <WalletIcon className={`w-6 h-6 sm:w-7 sm:h-7 relative z-20 ${globalBalance < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-500 dark:text-emerald-400'}`} />
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-inner ${globalBalance < 0 ? (isDark ? 'bg-[#FF453A]/10 text-[#FF453A]' : 'bg-[#FF3B30]/10 text-[#FF3B30]') : (globalBalance > 0 ? (isDark ? 'bg-[#30D158]/10 text-[#30D158]' : 'bg-[#34C759]/10 text-[#34C759]') : (isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-[#F2F2F7] text-gray-500'))}`}>
+                            <WalletIcon className="w-6 h-6 sm:w-7 sm:h-7" />
                         </div>
                     </div>
                 </div>
@@ -407,16 +421,20 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
                                         </div>
                                     </div>
-                                    {/* Jami Qarz */}
+                                    {/* Jami Qarz / Ortiqcha */}
                                     <div className={`flex-1 rounded-3xl p-5 shadow-sm border flex items-center justify-between ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                                         <div className="flex flex-col min-w-0 pr-2">
-                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami qarz"}</span>
-                                            <span className={`text-[20px] sm:text-[24px] font-bold tracking-tight truncate ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : txt}`}>
-                                                {periodSummary.totalDebt > 0 ? '−' : ''}{fmtCompact(periodSummary.totalDebt)} <span className="text-[16px] font-bold">UZS</span>
+                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : (periodSummary.totalDebt < 0 ? "Ortiqcha to'lov" : "Jami qarz")}</span>
+                                            <span className={`text-[20px] sm:text-[24px] font-bold tracking-tight truncate ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : (periodSummary.totalDebt < 0 ? (isDark ? 'text-[#30D158]' : 'text-[#34C759]') : txt)}`}>
+                                                {periodSummary.totalDebt > 0 ? '−' : (periodSummary.totalDebt < 0 ? '+' : '')}{fmtCompact(periodSummary.totalDebt)} <span className="text-[16px] font-bold">UZS</span>
                                             </span>
                                         </div>
-                                        <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-inner ${isDark ? 'bg-[#FF453A]/10 text-[#FF453A]' : 'bg-[#FF3B30]/10 text-[#FF3B30]'}`}>
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></svg>
+                                        <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-inner ${periodSummary.totalDebt > 0 ? (isDark ? 'bg-[#FF453A]/10 text-[#FF453A]' : 'bg-[#FF3B30]/10 text-[#FF3B30]') : (periodSummary.totalDebt < 0 ? (isDark ? 'bg-[#30D158]/10 text-[#30D158]' : 'bg-[#34C759]/10 text-[#34C759]') : (isDark ? 'bg-[#2C2C2E] text-gray-400' : 'bg-[#F2F2F7] text-gray-500'))}`}>
+                                            {periodSummary.totalDebt < 0 ? (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                                            ) : (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></svg>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -485,7 +503,11 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                 <div className="text-right flex items-center gap-2 sm:gap-4">
                                                     <div className="flex flex-col items-end">
                                                         <p className={`text-[12px] sm:text-[13px] font-semibold ${muted}`}>Kutilgan: {fmtCompact(group.totalExpected)} <span className="text-[10px]">UZS</span></p>
-                                                        {group.totalDebt > 0 && <p className="text-[12px] sm:text-[13px] font-bold text-[#FF3B30] dark:text-[#FF453A] mt-0.5">Qarz: {fmtCompact(group.totalDebt)} <span className="text-[10px]">UZS</span></p>}
+                                                        {group.totalDebt !== 0 && (
+                                                            <p className={`text-[12px] sm:text-[13px] font-bold mt-0.5 ${group.totalDebt > 0 ? 'text-[#FF3B30] dark:text-[#FF453A]' : 'text-[#34C759] dark:text-[#30D158]'}`}>
+                                                                {group.totalDebt > 0 ? 'Qarz: ' : "Ortiqcha: +"}{fmtCompact(group.totalDebt)} <span className="text-[10px]">UZS</span>
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <svg 
                                                         className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform ${expandedMonths[group.monthKey] || (startDate || endDate) ? 'rotate-180' : ''} ${muted}`} 
@@ -500,7 +522,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                             <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA] shadow-sm'} animate-in fade-in slide-in-from-top-2 duration-200`}>
                                             <div className={`divide-y ${divider}`}>
                                                 {group.days.map(day => {
-                                                    const isReducedRate = day.expectedPlan > 0 && day.expectedPlan < (driver.contractDailyPlan || car?.dailyPlan || 0);
+                                                    const isReducedRate = day.expectedPlan > 0 && day.expectedPlan < (driver.dailyPlan || car?.dailyPlan || 0);
                                                     const rowBg = isReducedRate ? (isDark ? 'bg-white/[0.03]' : 'bg-slate-50') : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/50');
                                                     
                                                     return (
@@ -575,14 +597,16 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                         <div className="space-y-6">
                             {/* Hero */}
                             <div className={`rounded-2xl border px-6 py-5 ${isDark ? 'border-[#FF9F0A]/20 bg-[#FF9F0A]/10' : 'border-[#FF9500]/20 bg-[#FF9500]/10'}`}>
-                                <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-[#FF9F0A]/80' : 'text-[#FF9500]/80'}`}>🏦 Joriy depozit</p>
-                                <p className={`text-[32px] font-bold tracking-tight font-mono ${isDark ? 'text-[#FF9F0A]' : 'text-[#FF9500]'}`}>{fmt(driver.depositAmount ?? 0)}</p>
+                                <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-[#FF9F0A]/80' : 'text-[#FF9500]/80'}`}>
+                                    <div className="w-4 h-4"><Lottie animationData={depositAnimation} loop={true} /></div> Joriy depozit
+                                </p>
+                                <p className={`text-[32px] font-bold tracking-tight font-mono ${isDark ? 'text-[#FF9F0A]' : 'text-[#FF9500]'}`}>{fmt(depositLedger.length > 0 ? depositLedger[0].newBal : 0)}</p>
                                 <p className={`text-[13px] font-medium mt-1 ${muted}`}>{depositLedger.length} ta harakat</p>
                             </div>
 
                             {depositLedger.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center py-16 gap-3 ${muted}`}>
-                                    <span className="text-4xl">🏦</span>
+                                    <div className="w-12 h-12 flex items-center justify-center opacity-80"><Lottie animationData={depositAnimation} loop={true} /></div>
                                     <p className="text-[15px] font-medium">Depozit harakatlari yo'q</p>
                                 </div>
                             ) : (

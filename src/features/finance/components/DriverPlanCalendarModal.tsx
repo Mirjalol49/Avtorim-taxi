@@ -159,7 +159,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     tx.type === TransactionType.INCOME &&
                     tx.status !== PaymentStatus.DELETED &&
                     (tx as any).status !== 'DELETED' &&
-                    toLocalDateStr(tx.timestamp) === dayStr
+                    toLocalDateStr(tx.timestamp) === dayStr &&
+                    tx.category !== 'deposit_topup' &&
+                    tx.category !== 'DEPOSIT'
                 )
                 .reduce((acc, tx) => acc + Math.abs(tx.amount), 0);
 
@@ -296,7 +298,6 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         <span className="w-24 text-center">{monthNames[parseInt(mStr, 10) - 1] ?? mStr} {yStr}</span>
                     )}
                 </div>
-                <div className="w-20" /> {/* Spacer to center title */}
             </div>
 
             {/* ── Content Container ── */}
@@ -330,11 +331,52 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
 
                     {/* Middle Row: Stats Grid */}
                     <div className={`grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b ${isDark ? 'divide-white/5 border-white/5' : 'divide-gray-100 border-gray-100'}`}>
-                        {/* Monthly plan */}
+                    {/* Monthly plan */}
                         <div className="p-5 sm:p-6">
-                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik reja'}</p>
-                            <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(monthData.monthlyTarget)}</p>
-                            <p className="text-[11px] sm:text-[12px] font-medium text-slate-400 mt-0.5">Oylik reja</p>
+                            {(() => {
+                                const [mkYear, mkMonth] = monthData.monthKey.split('-').map(Number);
+                                const totalDays = monthData.totalDays;
+                                const dailyAmt = monthData.dailyPlan;
+
+                                let preStartDays = 0;
+                                const startMs = monthData.driver.startDate || monthData.driver.createdAt;
+                                if (startMs) {
+                                    const startDay = new Date(startMs);
+                                    startDay.setHours(0, 0, 0, 0);
+                                    for (let d = 1; d <= totalDays; d++) {
+                                        const dayDate = new Date(mkYear, mkMonth - 1, d);
+                                        if (dayDate.getTime() < startDay.getTime()) preStartDays++;
+                                    }
+                                }
+
+                                let offDays = 0;
+                                for (let d = 1; d <= totalDays; d++) {
+                                    const dayStr = `${mkYear}-${String(mkMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                                    const hasOff = transactions.some(tx =>
+                                        tx.driverId === monthData.driver.id &&
+                                        (tx.type === TransactionType.DAY_OFF || (tx.type as string) === 'NOT_WORKING') &&
+                                        (tx.status as string) !== 'DELETED' &&
+                                        (() => { const dt = new Date(tx.timestamp); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; })() === dayStr
+                                    );
+                                    const overrideType = monthData.driver.dayOverrides?.[dayStr]?.type;
+                                    if (hasOff || overrideType === 'OFF' || overrideType === 'NOT_WORKING') offDays++;
+                                }
+
+                                const workingDays = totalDays - preStartDays - offDays;
+                                const hasDeductions = preStartDays > 0 || offDays > 0;
+
+                                return (
+                                    <div>
+                                        <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik reja'}</p>
+                                        <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            {fmt(monthData.monthlyTarget)}
+                                        </p>
+                                        <p className={`text-[11px] font-medium mt-1 tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {workingDays} kun × {new Intl.NumberFormat('uz-UZ').format(dailyAmt)}
+                                        </p>
+                                    </div>
+                                );
+                            })()}
                         </div>
                         {/* Paid */}
                         <div className="p-5 sm:p-6">
@@ -355,14 +397,83 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             </div>
                         </div>
                         {/* Working days */}
-                        <div className="p-5 sm:p-6 flex items-center justify-between">
-                            <div>
-                                <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('workingDays') ?? 'Ish kunlari'}</p>
-                                <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {monthData.workingDays} <span className="text-sm font-medium text-slate-400">/ {monthData.totalDays}</span>
-                                </p>
-                            </div>
-                            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[3px] border-t-transparent rotate-45 ${isDark ? 'border-[#30D158]' : 'border-[#16a34a]'}`}></div>
+                        <div className="p-5 sm:p-6 flex flex-col justify-center">
+                            {(() => {
+                                const [mkYear, mkMonth] = monthData.monthKey.split('-').map(Number);
+                                const totalDays = monthData.totalDays;
+
+                                let preStartDays = 0;
+                                const startMs = monthData.driver.startDate || monthData.driver.createdAt;
+                                if (startMs) {
+                                    const startDay = new Date(startMs);
+                                    startDay.setHours(0, 0, 0, 0);
+                                    for (let d = 1; d <= totalDays; d++) {
+                                        const dayDate = new Date(mkYear, mkMonth - 1, d);
+                                        if (dayDate.getTime() < startDay.getTime()) preStartDays++;
+                                    }
+                                }
+
+                                let offDays = 0;
+                                for (let d = 1; d <= totalDays; d++) {
+                                    const dayStr = `${mkYear}-${String(mkMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                                    const hasOff = transactions.some(tx =>
+                                        tx.driverId === monthData.driver.id &&
+                                        (tx.type === TransactionType.DAY_OFF || (tx.type as string) === 'NOT_WORKING') &&
+                                        (tx.status as string) !== 'DELETED' &&
+                                        (() => { const dt = new Date(tx.timestamp); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; })() === dayStr
+                                    );
+                                    const overrideType = monthData.driver.dayOverrides?.[dayStr]?.type;
+                                    if (hasOff || overrideType === 'OFF' || overrideType === 'NOT_WORKING') offDays++;
+                                }
+
+                                const targetWorkingDays = Math.max(1, totalDays - preStartDays - offDays);
+                                const currentWorked = monthData.workingDays; // actual working days so far
+
+                                return (
+                                    <>
+                                        <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-3">{t('workingDays') ?? 'Ish kunlari'}</p>
+                                        
+                                        <div className="flex items-center gap-3 mb-2">
+                                            {/* Icon box */}
+                                            <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-[#2563EB] text-white shadow-sm'}`}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                            </div>
+                                            {/* Segmented Progress */}
+                                            <div className="flex-1 flex gap-1.5 h-2.5">
+                                                {Array.from({ length: 4 }).map((_, i) => {
+                                                    const percent = (currentWorked / targetWorkingDays) * 100;
+                                                    const threshold = (i + 1) * 25;
+                                                    const prevThreshold = i * 25;
+                                                    
+                                                    let fill = 0;
+                                                    if (percent >= threshold) fill = 100;
+                                                    else if (percent > prevThreshold) fill = ((percent - prevThreshold) / 25) * 100;
+                                                    
+                                                    return (
+                                                        <div key={i} className={`flex-1 rounded-full overflow-hidden ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#E5E5EA]'}`}>
+                                                            <div 
+                                                                className={`h-full rounded-full transition-all duration-500 ${isDark ? 'bg-blue-500' : 'bg-[#2563EB]'}`}
+                                                                style={{ width: `${fill}%` }}
+                                                            />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="text-center pl-12">
+                                            <p className={`text-[15px] sm:text-[16px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                                {currentWorked} <span className="text-sm font-semibold text-slate-400">/ {targetWorkingDays}</span>
+                                            </p>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -505,6 +616,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                         {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d.date)}
                                                     </span>
                                                 )}
+                                                <div className={`mt-2 h-[1px] w-full ${
+                                                    (d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' || d.status === 'REPAIR')
+                                                        ? 'bg-transparent'
+                                                        : isDark ? 'bg-white/10' : 'bg-gray-100'
+                                                }`} />
                                             </div>
 
                                             {/* Center / Income */}

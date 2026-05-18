@@ -10,6 +10,7 @@ export interface AccountRecord {
     created_ms: number;
     driverCount: number;
     transactionCount: number;
+    password?: string;
 }
 
 /** Normalize any phone input to +998XXXXXXXXX */
@@ -53,7 +54,7 @@ export const getAllAccounts = async (): Promise<AccountRecord[]> => {
     // head-only COUNT queries — no row data downloaded, zero egress cost.
     const [usersRes, driversRes] = await Promise.all([
         // Exclude avatar (base64 blob) — not needed in admin list view
-        supabase.from('admin_users').select('id,username,phone,role,active,created_ms').order('created_ms', { ascending: false }),
+        supabase.from('admin_users').select('id,username,phone,role,active,created_ms,password').order('created_ms', { ascending: false }),
         supabase.from('drivers').select('fleet_id').eq('is_deleted', false),
     ]);
 
@@ -123,8 +124,13 @@ export const toggleAccountStatus = async (id: string, active: boolean): Promise<
     if (error) throw new Error(error.message);
 };
 
-export const resetAccountPassword = async (id: string, newPassword: string): Promise<void> => {
-    const { error } = await supabase.from('admin_users').update({ password: newPassword }).eq('id', id);
+export const updateAccountDetails = async (id: string, password?: string, phone?: string): Promise<void> => {
+    const updates: any = {};
+    if (password) updates.password = password;
+    if (phone) updates.phone = normalizePhone(phone);
+    if (Object.keys(updates).length === 0) return;
+
+    const { error } = await supabase.from('admin_users').update(updates).eq('id', id);
     if (error) throw new Error(error.message);
 };
 

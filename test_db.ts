@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
 const envFile = fs.readFileSync('.env', 'utf8');
-const env = {};
+const env: Record<string, string> = {};
 envFile.split('\n').forEach(line => {
   const [key, ...val] = line.split('=');
   if (key && val.length) env[key.trim()] = val.join('=').trim().replace(/['"]/g, '');

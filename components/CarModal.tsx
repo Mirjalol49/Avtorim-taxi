@@ -12,6 +12,7 @@ interface CarModalProps {
   editingCar?: Car | null;
   adminName?: string;
   theme: 'light' | 'dark';
+  isLockedByVikup?: boolean;
 }
 
 const MAX_DOC_MB = 5;
@@ -23,7 +24,7 @@ const DOC_SLOTS: { category: CarDocument['category']; label: string }[] = [
   { category: 'other',              label: "Boshqa hujjat"                     },
 ];
 
-const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingCar, theme }) => {
+const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingCar, theme, isLockedByVikup }) => {
   const [name,         setName]         = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [avatar,       setAvatar]       = useState('');   // CDN URL or preview URL
@@ -376,13 +377,32 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
                 — haydovchi topishi kerak bo'lgan miqdor
               </span>
             </label>
-            <input
-              type="text"
-              value={dailyPlan}
-              onChange={handleDailyPlanChange}
-              className={inputClass}
-              placeholder="750,000"
-            />
+            {isLockedByVikup ? (
+              <div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={dailyPlan}
+                    disabled
+                    className={`${inputClass} opacity-70 cursor-not-allowed`}
+                  />
+                  <div className={`absolute right-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-amber-500' : 'text-amber-600'}`} title="Vikup shartnomasi orqali bloklangan">
+                    🔒
+                  </div>
+                </div>
+                <p className={`text-[10px] mt-1.5 ml-1 leading-tight ${isDark ? 'text-amber-500/80' : 'text-amber-600'}`}>
+                  Ushbu avtomobil Vikup (Arenda) ga berilgan. Kunlik reja shartnoma asosida avtomatik belgilangan va qulflangan.
+                </p>
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={dailyPlan}
+                onChange={handleDailyPlanChange}
+                className={inputClass}
+                placeholder="750,000"
+              />
+            )}
           </div>
 
           {/* ── Status ── */}

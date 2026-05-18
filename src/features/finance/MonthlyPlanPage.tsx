@@ -47,16 +47,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Header Filters */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                <div className="w-full sm:w-auto min-w-[160px]">
-                    <MonthPicker
-                        label={t('selectMonth') || 'Oyni tanlang'}
-                        value={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
-                        theme={theme}
-                        labelClassName="hidden"
-                    />
-                </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
                 {/* Driver Filter via Modal */}
                 <div className="w-full sm:w-auto min-w-[260px] relative">
                     {(() => {
@@ -133,6 +124,16 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                             </>
                         );
                     })()}
+                </div>
+                {/* Month Picker — right side */}
+                <div className="w-full sm:w-auto min-w-[160px] sm:ml-auto">
+                    <MonthPicker
+                        label={t('selectMonth') || 'Oyni tanlang'}
+                        value={selectedDate}
+                        onChange={(date) => setSelectedDate(date)}
+                        theme={theme}
+                        labelClassName="hidden"
+                    />
                 </div>
             </div>
 

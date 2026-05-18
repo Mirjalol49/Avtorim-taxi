@@ -71,7 +71,11 @@ export const fetchTransactionsPage = async (
         if (filters.startMs) q = q.gte('timestamp_ms', filters.startMs);
         if (filters.endMs) q = q.lte('timestamp_ms', filters.endMs);
         if (filters.driverId && filters.driverId !== 'all') q = q.eq('driver_id', filters.driverId);
-        if (filters.type && filters.type !== 'all') q = q.eq('type', filters.type);
+        if (filters.type === 'deposit') {
+            q = q.or('category.eq.deposit_topup,use_deposit.eq.true');
+        } else if (filters.type && filters.type !== 'all') {
+            q = q.eq('type', filters.type);
+        }
 
         const { data, error } = await q.abortSignal(controller.signal);
         clearTimeout(abort);
@@ -256,6 +260,7 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
         dayOverrides: r.day_overrides ?? undefined,
         startDate: r.start_date ? toMs(r.start_date) : undefined,
         quitDate: r.quit_date ? toMs(r.quit_date) : undefined,
+        daysOffPerMonth: r.days_off_per_month ?? undefined,
     } as Driver);
 
     let cache: Driver[] = [];
@@ -366,6 +371,7 @@ export const addDriver = async (driver: Omit<Driver, 'id'>, fleetId?: string) =>
             contract_start_date: (driver as any).contractStartDate ?? null,
             start_date: (driver as any).startDate ?? null,
             quit_date: (driver as any).quitDate ?? null,
+            days_off_per_month: (driver as any).daysOffPerMonth || null,
         })
         .select('id')
         .single();
@@ -409,6 +415,7 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
     if (driver.dayOverrides !== undefined) payload.day_overrides = driver.dayOverrides;
     if ((driver as any).startDate !== undefined) payload.start_date = (driver as any).startDate;
     if ((driver as any).quitDate !== undefined) payload.quit_date = (driver as any).quitDate;
+    if ((driver as any).daysOffPerMonth !== undefined) payload.days_off_per_month = (driver as any).daysOffPerMonth || null;
     
     const { error } = await supabase.from('drivers').update(payload).eq('id', id);
     if (error) throw error;

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Transaction } from '../../../core/types';
 import { fetchTransactionsPage, TxPageFilters } from '../../../../services/firestoreService';
+import { supabase } from '../../../../supabase';
 
 export interface UsePaginatedTxState {
     transactions: Transaction[];
@@ -117,6 +118,27 @@ export const useTransactionsPaginated = (
         fetchPage(null, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fleetId, filters.startMs, filters.endMs, filters.driverId, filters.type]);
+
+    // Realtime subscription to keep the paginated list fresh when new transactions are added
+    useEffect(() => {
+        if (!fleetId) return;
+
+        let debounceTimer: NodeJS.Timeout;
+
+        const channel = supabase
+            .channel(`transactions_paginated_${fleetId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, () => {
+                // Debounce reload to prevent spamming if many transactions change at once
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => reload(), 300);
+            })
+            .subscribe();
+
+        return () => {
+            clearTimeout(debounceTimer);
+            supabase.removeChannel(channel);
+        };
+    }, [fleetId, reload]);
 
     const removeRows = useCallback((ids: Set<string>) => {
         setRows(prev => prev.filter(r => !ids.has(r.id)));

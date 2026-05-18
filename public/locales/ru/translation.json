@@ -404,9 +404,7 @@
   "incomeAndExpenseCategories": "Категории доходов и расходов",
   "incomes": "Доходы",
   "total": "Всего",
-  "totalIncome": "Общий доход",
   "expenses": "Расходы",
-  "totalExpense": "Общий расход",
   "planFulfillment": "Выполнение плана",
   "debt": "Долг",
   "totalExpectedPlan": "Общий ожидаемый план",
@@ -439,5 +437,14 @@
   "exactTime": "Точное время",
   "selectDay": "Выберите день",
   "hourUpper": "ЧАС",
-  "minuteUpper": "МИНУТА"
+  "minuteUpper": "МИНУТА",
+  "success": "Успешно",
+  "error": "Ошибка",
+  "warning": "Внимание",
+  "info": "Информация",
+  "lowDepositWarning": "Низкий депозит: осталось {{amount}}",
+  "assignCar": "Назначить авто",
+  "usedFromDeposit": "Из депозита",
+  "depositTopup": "Пополнение депозита",
+  "deposit": "Депозит"
 }

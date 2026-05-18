@@ -15,37 +15,26 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/transaction.types';
 import { Driver } from '../src/core/types/driver.types';
+import { useAuthContext } from '../src/features/auth/context/AuthContext';
+import { supabase } from '../supabase';
 import { XIcon, CheckIcon, TrashIcon } from './Icons';
 import Lottie from 'lottie-react';
 import cardAnimation from '../Images/card.json';
 
-// ─── Persistence ──────────────────────────────────────────────────────────────
-
-const STORAGE_KEY = 'avtorim_card_ledger_v2';
-
-interface SpendingEntry {
+export interface SpendingEntry {
     id: string;
     amount: number;
     description: string;
     timestamp: number;
 }
 
-interface CardLedger {
+export interface CardLedger {
     startBalance: number;
     startTimestamp: number;  // Only count card txs AFTER this moment
     spending: SpendingEntry[];
 }
 
-const EMPTY: CardLedger = { startBalance: 0, startTimestamp: 0, spending: [] };
-
-function load(): CardLedger {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') ?? EMPTY; }
-    catch { return EMPTY; }
-}
-
-function save(l: CardLedger) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(l));
-}
+export const EMPTY_LEDGER: CardLedger = { startBalance: 0, startTimestamp: 0, spending: [] };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -95,7 +84,42 @@ type FeedItem =
 const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, drivers, theme }) => {
     const isDark = theme === 'dark';
 
-    const [ledger,        setLedger]        = useState<CardLedger>(EMPTY);
+    // Get fleetId for Supabase queries
+    const { adminUser: authAdmin, userRole: authRole, adminProfile } = useAuthContext();
+    const fleetId = authRole === 'viewer'
+        ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+        : authAdmin?.id;
+
+    // Derived ledger from transactions
+    const configTx = useMemo(() => {
+        return transactions.find(t => t.category === 'ledger_config' && t.description === 'CARD_LEDGER_STATE');
+    }, [transactions]);
+
+    const ledger: CardLedger = useMemo(() => {
+        if (!configTx?.note) return EMPTY_LEDGER;
+        try { return JSON.parse(configTx.note); } catch { return EMPTY_LEDGER; }
+    }, [configTx]);
+
+    const saveLedgerToDB = async (next: CardLedger) => {
+        if (!fleetId) return;
+        if (configTx) {
+            await supabase.from('transactions').update({ note: JSON.stringify(next) }).eq('id', configTx.id);
+        } else {
+            // Create a "DELETED" transaction so it's globally synced but completely invisible to normal queries
+            await supabase.from('transactions').insert({
+                fleet_id: fleetId,
+                amount: 0,
+                type: 'EXPENSE',
+                category: 'ledger_config',
+                description: 'CARD_LEDGER_STATE',
+                note: JSON.stringify(next),
+                status: 'DELETED',
+                timestamp_ms: Date.now(),
+                created_ms: Date.now()
+            });
+        }
+    };
+
     const [view,          setView]          = useState<'main' | 'setup' | 'spend'>('main');
 
     // Setup inputs
@@ -112,7 +136,6 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
 
     useEffect(() => {
         if (isOpen) {
-            setLedger(load());
             setView('main');
             setSetupInput(''); setSetupDisplay('');
             setSpendInput(''); setSpendDisplay(''); setSpendDesc('');
@@ -139,11 +162,12 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
             tx.type === TransactionType.INCOME &&
             (tx as any).paymentMethod === 'card' &&
             tx.status !== PaymentStatus.DELETED &&
-            tx.timestamp >= ledger.startTimestamp
+            tx.timestamp >= ledger.startTimestamp &&
+            tx.category !== 'ledger_config' // Never include the config itself
         );
     }, [transactions, ledger.startTimestamp]);
 
-    const totalIn   = cardIncomes.reduce((s, t) => s + t.amount, 0);
+    const totalIn   = cardIncomes.reduce((s, t) => s + Math.abs(t.amount), 0);
     const totalOut  = ledger.spending.reduce((s, e) => s + e.amount, 0);
     const balance   = ledger.startBalance + totalIn - totalOut;
     const hasLedger = ledger.startTimestamp > 0;
@@ -166,15 +190,15 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
     }, [hasLedger, ledger, cardIncomes, drivers]);
 
     // Actions
-    const handleSetup = () => {
+    const handleSetup = async () => {
         const amt = Number(setupInput.replace(/\D/g, ''));
         if (!amt) return;
         const next: CardLedger = { startBalance: amt, startTimestamp: Date.now(), spending: [] };
-        setLedger(next); save(next);
+        await saveLedgerToDB(next);
         setView('main');
     };
 
-    const handleSpend = () => {
+    const handleSpend = async () => {
         const amt = Number(spendInput.replace(/\D/g, ''));
         if (!amt) return;
         const entry: SpendingEntry = {
@@ -184,19 +208,18 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
             timestamp: Date.now(),
         };
         const next: CardLedger = { ...ledger, spending: [...ledger.spending, entry] };
-        setLedger(next); save(next);
+        await saveLedgerToDB(next);
         setSpendInput(''); setSpendDisplay(''); setSpendDesc('');
         setView('main');
     };
 
-    const deleteSpend = (id: string) => {
+    const deleteSpend = async (id: string) => {
         const next: CardLedger = { ...ledger, spending: ledger.spending.filter(s => s.id !== id) };
-        setLedger(next); save(next);
+        await saveLedgerToDB(next);
     };
 
-    const resetLedger = () => {
-        const next = EMPTY;
-        setLedger(next); save(next);
+    const resetLedger = async () => {
+        await saveLedgerToDB(EMPTY_LEDGER);
         setView('main');
     };
 
@@ -343,7 +366,7 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                                         📅 Kuzatish boshlangan: <span className="font-bold">{fmtTime(ledger.startTimestamp)}</span>
                                     </p>
                                     <button
-                                        onClick={() => { const next: CardLedger = { startBalance: Math.round(balance), startTimestamp: Date.now(), spending: [] }; setLedger(next); save(next); }}
+                                        onClick={async () => { const next: CardLedger = { startBalance: Math.round(balance), startTimestamp: Date.now(), spending: [] }; await saveLedgerToDB(next); }}
                                         className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${isDark ? 'text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/10' : 'text-amber-600 hover:bg-amber-50'}`}
                                     >
                                         Bugundan boshlash ↺
