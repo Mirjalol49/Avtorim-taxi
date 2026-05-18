@@ -322,10 +322,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return createPortal(
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-end md:items-center justify-center p-0 md:p-4">
       <form
         onSubmit={handleSubmit}
-        className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[92vh] rounded-[2rem] shadow-2xl overflow-hidden border ${
+        className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] md:max-h-[92vh] rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-y-auto md:overflow-hidden border ${
           isDark ? 'border-white/[0.06]' : 'bg-white border-gray-200'
         }`}
         style={{ animation: 'modalPop 0.2s ease-out', ...(isDark ? { background: '#171f33' } : {}) }}
@@ -333,7 +333,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
         {/* ══ LEFT PANEL ══════════════════════════════════════════════════════ */}
         <div
-          className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-white/[0.06]' : 'border-gray-100 bg-white'}`}
+          className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-visible md:overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-white/[0.06]' : 'border-gray-100 bg-white'}`}
           style={isDark ? { background: '#171f33' } : undefined}
         >
 
@@ -766,7 +766,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         </div>
 
         {/* ══ RIGHT PANEL ══════════════════════════════════════════════════════ */}
-        <div className={`flex flex-col flex-1 overflow-y-auto ${isDark ? 'bg-surface-2/30' : 'bg-surface-2/50'}`}>
+        <div className={`flex flex-col flex-1 overflow-visible md:overflow-y-auto ${isDark ? 'bg-surface-2/30' : 'bg-surface-2/50'}`}>
 
           {/* Desktop close */}
           <div className="flex justify-end px-6 py-5 flex-shrink-0">
@@ -890,7 +890,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           {/* Action footer */}
-          <div className={`mt-auto px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-transparent border-white/[0.06]' : 'bg-gray-50 border-gray-100'}`}>
+          <div className={`mt-auto sticky bottom-0 z-10 px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-[#171f33]/95 backdrop-blur-md border-white/[0.06]' : 'bg-gray-50/95 backdrop-blur-md border-gray-200'}`}>
             <button type="button" onClick={resetAndClose}
               className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${isDark ? 'bg-surface-2 text-gray-300 hover:bg-white/[0.06] border border-white/[0.08]' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}>
               {t('cancel')}

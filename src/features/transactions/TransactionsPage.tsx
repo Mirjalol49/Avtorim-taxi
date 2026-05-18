@@ -631,7 +631,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    {car ? (
+                                                    {(car && !tx.driverId) ? (
                                                         <>
                                                             <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
                                                                 {car.avatar ? (
@@ -802,7 +802,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                 <div key={tx.id} className={`p-4 flex flex-col gap-3 relative ${isDeleted ? 'opacity-50 grayscale' : ''} ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-gray-50'}`}>
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
-                                            {car ? (
+                                            {(car && !tx.driverId) ? (
                                                 <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-100'}`}>
                                                     {car.avatar ? (
                                                         <img src={car.avatar} className="w-full h-full object-cover" alt={car.name} />
@@ -820,9 +820,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 </div>
                                             )}
                                             <div className="flex flex-col">
-                                                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{car ? car.name : expenseCat ? expenseCat.label : driver ? driver.name : tx.driverName || t('generalExpense')}</span>
+                                                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{(car && !tx.driverId) ? car.name : expenseCat ? expenseCat.label : driver ? driver.name : tx.driverName || t('generalExpense')}</span>
                                                 <div className={`text-[11px] font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                    {car ? (
+                                                    {(car && !tx.driverId) ? (
                                                         <LicensePlate plate={car.licensePlate} size="sm" />
                                                     ) : driver ? (() => {
                                                         const liveCar = cars.find(c => c.assignedDriverId === driver.id);
