@@ -37,7 +37,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     const { t, i18n } = useTranslation();
     // Ensure accurate type for helpers that expect specific Language string
     const currentLanguage = (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
-    const monthsRaw = t('months', { returnObjects: true });
+    const monthsRaw = t('monthNames', { returnObjects: true });
     const months: string[] = Array.isArray(monthsRaw) ? monthsRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     const weekdaysRaw = t('weekdays', { returnObjects: true });
     const weekdays: string[] = Array.isArray(weekdaysRaw) ? weekdaysRaw : ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'];

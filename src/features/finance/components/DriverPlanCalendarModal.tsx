@@ -97,7 +97,7 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
 export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick, onMonthChange }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNamesRaw = t('monthNames', { returnObjects: true });
     const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     
     const [overrideDate, setOverrideDate] = React.useState<Date | null>(null);

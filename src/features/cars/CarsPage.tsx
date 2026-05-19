@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Car, CarDocument, CarDamage } from '../../core/types';
 import { Driver } from '../../core/types';
 import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon } from '../../../components/Icons';
@@ -42,6 +43,7 @@ function DocViewerModal({
     state: DocViewerState;
     onClose: () => void;
 }) {
+    const { t } = useTranslation();
     const [idx, setIdx] = useState(state.index);
     const doc = state.docs[idx];
     const isPdf = doc.type === 'application/pdf';
@@ -70,9 +72,9 @@ function DocViewerModal({
 
     const categoryLabel: Record<string, string> = {
         id_card: 'Texpassport',
-        insurance: 'Sug\'urta',
+        insurance: t('insurance'),
         technical_passport: 'Tex.Passport',
-        other: 'Hujjat',
+        other: t('document'),
     };
 
     return createPortal(
@@ -102,17 +104,17 @@ function DocViewerModal({
                     <button
                         onClick={handleDownload}
                         className="flex items-center gap-2 px-3.5 py-2 rounded-[12px] bg-teal-500 hover:bg-teal-400 active:scale-95 transition-all text-white text-[13px] font-bold shadow-lg"
-                        title="Yuklab olish"
+                        title={t('download')}
                     >
                         <DownloadIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Yuklab olish</span>
+                        <span className="hidden sm:inline">{t('download')}</span>
                     </button>
 
                     {/* Close */}
                     <button
                         onClick={onClose}
                         className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90"
-                        title="Yopish (Esc)"
+                        title={`${t('close')} (Esc)`}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -198,6 +200,7 @@ import ConfirmModal from '../../../components/ConfirmModal';
 const CarsPage: React.FC<CarsPageProps> = ({
     cars, drivers = [], isDataLoading, userRole, adminName = 'Admin', onAddCar, onEditCar, onSaveCar, onDeleteCar, theme
 }) => {
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
@@ -241,9 +244,9 @@ const CarsPage: React.FC<CarsPageProps> = ({
                 }
             };
             
-            check(car.insuranceExpiryMs, "Sug'urta (OSAGO)", 'insurance');
-            check(car.techInspectionExpiryMs, "Texnik ko'rik", 'tech');
-            check(car.tintingExpiryMs, "Tanirovka", 'tinting');
+            check(car.insuranceExpiryMs, t('insuranceOsago'), 'insurance');
+            check(car.techInspectionExpiryMs, t('technicalInspection'), 'tech');
+            check(car.tintingExpiryMs, t('tinting'), 'tinting');
             
             if (docs.length > 0) {
                 docs.sort((a, b) => a.days - b.days);
@@ -260,9 +263,9 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const totalCount    = cars.filter(c => !c.isDeleted).length;
 
     const filterTabs: { id: FilterTab; label: string; count: number }[] = [
-        { id: 'all',       label: 'Barchasi',      count: totalCount               },
-        { id: 'assigned',  label: 'Biriktirilgan', count: assignedCount            },
-        { id: 'available', label: "Bo'sh",          count: totalCount - assignedCount },
+        { id: 'all',       label: t('all'),          count: totalCount               },
+        { id: 'assigned',  label: t('assigned'),     count: assignedCount            },
+        { id: 'available', label: t('available'),    count: totalCount - assignedCount },
     ];
 
     const openDoc = (car: Car, index: number) => {
@@ -305,7 +308,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                     <div className="flex items-center mb-4">
                         <AlertTriangleIcon className="w-[18px] h-[18px] text-rose-500 mr-2" />
                         <h3 className="text-[13px] font-semibold text-rose-800 dark:text-rose-400 tracking-wide uppercase">
-                            Diqqat: Hujjatlar muddati tugamoqda!
+                            {t('documentsExpiringWarning')}
                         </h3>
                     </div>
                     
@@ -353,18 +356,18 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                                     <div className="flex items-center gap-1">
                                                         {doc.days <= 0 ? (
                                                             <div className="bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0">
-                                                                {doc.days < 0 ? "O'tgan" : "Bugun"}
+                                                                {doc.days < 0 ? t('expired') : t('today')}
                                                             </div>
                                                         ) : (
                                                             <div className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">
-                                                                {doc.days} kun qoldi
+                                                                {t('daysLeft', { count: doc.days })}
                                                             </div>
                                                         )}
                                                         {/* Quick Dismiss Checkmark */}
                                                         <button
                                                             onClick={(e) => handleClearWarning(e, group.id, doc.docType)}
                                                             className="flex-shrink-0 flex items-center justify-center w-[22px] h-[22px] rounded-[6px] bg-white dark:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.1] text-slate-400 dark:text-gray-500 hover:bg-[#34C759] hover:border-[#34C759] hover:text-white hover:shadow-sm hover:scale-110 active:scale-90 transition-all duration-200 opacity-0 group-hover/item:opacity-100 ml-1.5"
-                                                            title="Ogohlantirishni o'chirish (Bajarildi)"
+                                                            title={t('clearWarningDone')}
                                                         >
                                                             <CheckIcon size={14} strokeWidth={3.5} />
                                                         </button>
@@ -391,7 +394,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 ? 'bg-surface border-white/[0.07] text-white placeholder-white/25 focus:border-teal-500/40'
                                 : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500/60'
                             }`}
-                            placeholder="Avtomobil qidirish…"
+                            placeholder={t('searchVehiclePlaceholder')}
                             value={search}
                             onChange={e => { setSearch(e.target.value); setPage(1); }}
                         />
@@ -421,7 +424,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                             className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] font-bold text-[13px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95 shadow-sm flex-shrink-0"
                         >
                             <PlusIcon className="w-4 h-4" />
-                            <span>Qo'shish</span>
+                            <span>{t('add')}</span>
                         </button>
                     )}
                 </div>
@@ -514,7 +517,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 onClick={() => setPage(p => Math.max(p - 1, 1))}
                                 disabled={page === 1}
                                 className={`px-3.5 py-2 rounded-[12px] text-[13px] font-semibold border transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'border-white/[0.07] bg-surface text-white/50 hover:bg-white/[0.05]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
-                            >← Oldingi</button>
+                            >← {t('previous')}</button>
 
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                                 <button
@@ -531,7 +534,7 @@ const CarsPage: React.FC<CarsPageProps> = ({
                                 onClick={() => setPage(p => Math.min(p + 1, totalPages))}
                                 disabled={page === totalPages}
                                 className={`px-3.5 py-2 rounded-[12px] text-[13px] font-semibold border transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'border-white/[0.07] bg-surface text-white/50 hover:bg-white/[0.05]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
-                            >Keyingi →</button>
+                            >{t('next')} →</button>
                         </div>
                     )}
                 </>
@@ -548,10 +551,10 @@ const CarsPage: React.FC<CarsPageProps> = ({
             {/* ── Confirm Modal for Grid Actions ── */}
             <ConfirmModal
                 isOpen={repairConfirm.isOpen}
-                title={repairConfirm.targetRepairState ? "Ta'mirga yuborish" : "Ta'mirdan chiqarish"}
-                message={repairConfirm.targetRepairState ? "Haqiqatan ham avtomobilni ta'mirga yubormoqchimisiz? Haydovchi uchun kunlik reja to'xtatiladi." : "Haqiqatan ham avtomobilni ta'mirdan chiqarmoqchimisiz? Kunlik reja hisoblanishi davom etadi."}
-                confirmLabel="Tasdiqlash"
-                cancelLabel="Bekor qilish"
+                title={repairConfirm.targetRepairState ? t('sendToRepair') : t('returnFromRepair')}
+                message={repairConfirm.targetRepairState ? t('confirmSendToRepair') : t('confirmReturnFromRepair')}
+                confirmLabel={t('confirm')}
+                cancelLabel={t('cancel')}
                 theme={theme}
                 isDanger={repairConfirm.targetRepairState}
                 onConfirm={() => {
@@ -582,6 +585,7 @@ interface CardProps {
 }
 
 function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfirm, onDelete, onDocClick, onDamageClick }: CardProps) {
+    const { t } = useTranslation();
     const docs        = car.documents ?? [];
     const damages     = car.damage ?? [];
     const isAssigned  = !!driver;
@@ -595,9 +599,9 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfi
             const days = Math.ceil((ms - now) / MS_IN_DAY);
             if (days <= 3) warnings.push(name);
         };
-        check(car.insuranceExpiryMs, "Sug'urta");
-        check(car.techInspectionExpiryMs, "Tex. ko'rik");
-        check(car.tintingExpiryMs, "Tanirovka");
+        check(car.insuranceExpiryMs, t('insurance'));
+        check(car.techInspectionExpiryMs, t('technicalInspectionShort'));
+        check(car.tintingExpiryMs, t('tinting'));
         return warnings;
     }, [car.insuranceExpiryMs, car.techInspectionExpiryMs, car.tintingExpiryMs]);
 
@@ -628,15 +632,15 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfi
                 <div className="absolute top-4 right-4 z-20">
                     {car.inRepair ? (
                         <span className="px-2.5 py-1 rounded-[8px] bg-red-500 text-white text-[9px] font-black tracking-widest shadow-sm">
-                            TA'MIRDA
+                            {t('inRepair')}
                         </span>
                     ) : isAssigned ? (
                         <span className="px-2.5 py-1 rounded-[8px] bg-emerald-500 text-white text-[9px] font-black tracking-widest shadow-sm">
-                            BIRIKTIRILGAN
+                            {t('assigned')}
                         </span>
                     ) : (
                         <span className="px-2.5 py-1 rounded-[8px] bg-slate-500 text-white text-[9px] font-black tracking-widest shadow-sm">
-                            BO'SH
+                            {t('available')}
                         </span>
                     )}
                 </div>
@@ -650,7 +654,7 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfi
                                 ? 'bg-rose-500/90 hover:bg-rose-600/90 border-rose-400/50 animate-pulse' 
                                 : isDark ? 'bg-black/50 hover:bg-black/70 border-white/20' : 'bg-white/80 hover:bg-white border-slate-200/60 text-slate-800'
                         }`}
-                        title={expiryWarnings.length > 0 ? `Ogohlantirish: ${expiryWarnings.join(', ')}` : "Hujjatlarni ko'rish"}
+                        title={expiryWarnings.length > 0 ? `${t('warning')}: ${expiryWarnings.join(', ')}` : t('viewDocuments')}
                     >
                         <span className="text-[11px]">{expiryWarnings.length > 0 ? '⚠️' : '📄'}</span>
                         <span className={`text-[11px] font-bold leading-none ${expiryWarnings.length > 0 ? 'text-white' : isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -666,14 +670,14 @@ function CarCard({ car, driver, userRole, isDark, onClick, onEdit, onRepairConfi
                             <button
                                 onClick={e => { e.stopPropagation(); onEdit(car); }}
                                 className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform ${isDark ? 'bg-white/10 text-white backdrop-blur-md border border-white/20 hover:bg-white/20' : 'bg-white text-slate-700 border border-slate-100 hover:bg-slate-50'}`}
-                                title="Tahrirlash"
+                                title={t('edit')}
                             >
                                 <EditIcon className="w-4 h-4" />
                             </button>
                             <button
                                 onClick={e => { e.stopPropagation(); onDelete(car.id); }}
                                 className="w-10 h-10 rounded-full bg-rose-500/90 shadow-lg text-white flex items-center justify-center hover:bg-rose-500 hover:scale-110 transition-transform backdrop-blur-md"
-                                title="O'chirish"
+                                title={t('delete')}
                             >
                                 <TrashIcon className="w-4 h-4" />
                             </button>

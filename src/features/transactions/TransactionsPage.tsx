@@ -941,7 +941,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     onChange={(e) => setSelectedIds(prev => e.target.checked ? [...prev, tx.id] : prev.filter(id => id !== tx.id))}
                                                     className={`w-5 h-5 rounded-md ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] checked:bg-[#0f766e]' : 'bg-white border-gray-300 checked:bg-[#0f766e]'}`}
                                                 />
-                                                <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>Tanlash</span>
+                                                <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{t('select')}</span>
                                             </label>
                                             <button onClick={() => setEditingTransaction(tx)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}><EditIcon className="w-4 h-4" /></button>
                                             <button onClick={() => handleDeleteTransaction(tx.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'}`}><TrashIcon className="w-4 h-4" /></button>
@@ -1024,7 +1024,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); forceDownload(selectedImage, 'cheque.jpg'); }}
-                                    title="Yuklab olish"
+                                    title={t('download')}
                                     className={`w-10 h-10 flex items-center justify-center rounded-2xl font-semibold transition-all active:scale-90 ${
                                         theme === 'dark'
                                             ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/20'
@@ -1038,7 +1038,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                 <button
                                     autoFocus
                                     onClick={() => setSelectedImage(null)}
-                                    title="Yopish"
+                                    title={t('close')}
                                     className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-90 ${
                                         theme === 'dark'
                                             ? 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.14] hover:text-white border border-white/[0.10]'
@@ -1074,16 +1074,15 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                         if (isTelegram) {
                                             msg.innerHTML = `
                                                 <span class="text-4xl">⏰</span>
-                                                <p class="font-bold text-gray-300 text-sm">Telegram cheki muddati o'tgan</p>
+                                                <p class="font-bold text-gray-300 text-sm">${t('receiptTelegramExpiredTitle')}</p>
                                                 <p class="text-xs text-gray-500 leading-relaxed max-w-[260px]">
-                                                    Ushbu chek Telegram orqali yuborilgan va Telegram vaqtinchalik havolalari <strong class="text-orange-400">24 soat</strong> dan keyin o'chib ketadi.
-                                                    Yangi yuborilgan cheklarni avtomatik saqlash yoqilgan ✅
+                                                    ${t('receiptTelegramExpiredText')}
                                                 </p>`;
                                         } else {
                                             msg.innerHTML = `
                                                 <span class="text-4xl">🖼️</span>
-                                                <p class="font-bold text-gray-300 text-sm">Chek rasmi yuklanmadi</p>
-                                                <p class="text-xs text-gray-500">Internet yoki saqlash xatosi. Qayta urinib ko'ring.</p>`;
+                                                <p class="font-bold text-gray-300 text-sm">${t('receiptImageLoadFailed')}</p>
+                                                <p class="text-xs text-gray-500">${t('receiptImageLoadFailedText')}</p>`;
                                         }
                                         parent.appendChild(msg);
                                     }
@@ -1096,11 +1095,11 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             theme === 'dark' ? 'border-white/[0.07] bg-[#1a2336]' : 'border-black/[0.07] bg-white'
                         }`}>
                             <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                                Tashqariga bosing yoki{' '}
+                                {t('clickOutsideOrPress')}{' '}
                                 <kbd className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
                                     theme === 'dark' ? 'bg-white/[0.08] border border-white/[0.12] text-gray-400' : 'bg-gray-100 border border-gray-200 text-gray-500'
                                 }`}>Esc</kbd>{' '}
-                                yopish uchun
+                                {t('toClose')}
                             </span>
                             <button
                                 onClick={() => setSelectedImage(null)}
@@ -1108,7 +1107,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/[0.08]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                                 }`}
                             >
-                                Yopish
+                                {t('close')}
                             </button>
                         </div>
                     </div>

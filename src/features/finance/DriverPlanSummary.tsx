@@ -74,7 +74,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNamesRaw = t('monthNames', { returnObjects: true });
     const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
     

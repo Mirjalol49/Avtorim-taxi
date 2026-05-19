@@ -235,9 +235,9 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
             <div className="space-y-4 animate-fadeIn">
                 <div className={`rounded-2xl border p-6 ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                     <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Hujjatlar jadvalini sozlash kerak
+                        {t('documentsSetupRequired')}
                     </p>
-                    <p className={`text-xs mb-4 ${mutedText}`}>Quyidagi SQL-ni Supabase SQL Editor'da ishga tushiring:</p>
+                    <p className={`text-xs mb-4 ${mutedText}`}>{t('documentsSetupSqlInstruction')}</p>
                     <pre className={`text-[11px] rounded-xl p-4 overflow-x-auto leading-relaxed ${isDark ? 'bg-black/40 text-emerald-400' : 'bg-gray-50 text-gray-700'}`}>
                         {DOCUMENTS_SETUP_SQL}
                     </pre>
@@ -246,7 +246,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0f766e] text-white hover:bg-[#0a5c56] transition-colors"
                     >
                         <CopyIcon className="w-3.5 h-3.5" />
-                        {copied ? 'Nusxalandi!' : 'SQL nusxalash'}
+                        {copied ? t('copied') : t('copySql')}
                     </button>
                 </div>
             </div>
@@ -266,7 +266,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className={`text-[12px] font-semibold truncate ${isDark ? 'text-white/80' : 'text-gray-700'}`}>
-                                    {uploadProgress === 100 ? 'Yuklandi ✓' : `Yuklanmoqda: ${uploadCurrentFile}`}
+                                    {uploadProgress === 100 ? t('uploadedDone') : t('uploadingFile', { name: uploadCurrentFile })}
                                 </p>
                                 <span className={`text-[12px] font-bold ml-3 flex-shrink-0 ${uploadProgress === 100 ? 'text-emerald-500' : 'text-[#0f766e]'}`}>
                                     {uploadProgress}%
@@ -425,7 +425,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     {/* Video warning */}
                     {videoFiles.length > 0 && (
                         <div className={`mb-3 rounded-xl border p-3 ${isDark ? 'bg-orange-500/[0.08] border-orange-500/30' : 'bg-orange-50 border-orange-200'}`}>
-                            <p className="text-[12px] font-bold text-orange-500 mb-1.5">🎬 Video fayllar qo'llab-quvvatlanmaydi</p>
+                            <p className="text-[12px] font-bold text-orange-500 mb-1.5">🎬 {t('videoFilesUnsupported')}</p>
                             {videoFiles.map((f, i) => (
                                 <p key={i} className={`text-[11px] ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>• {f.name} ({formatBytes(f.size)})</p>
                             ))}
@@ -435,7 +435,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     {/* Oversized warning */}
                     {oversizedFiles.length > 0 && (
                         <div className={`mb-3 rounded-xl border p-3 ${isDark ? 'bg-red-500/[0.08] border-red-500/30' : 'bg-red-50 border-red-200'}`}>
-                            <p className="text-[12px] font-bold text-red-500 mb-1.5">⚠️ {oversizedFiles.length} ta fayl {MAX_FILE_MB} MB dan oshib ketdi — yuklanmaydi</p>
+                            <p className="text-[12px] font-bold text-red-500 mb-1.5">⚠️ {t('filesTooLargeSkipped', { count: oversizedFiles.length, max: MAX_FILE_MB })}</p>
                             {oversizedFiles.map((f, i) => (
                                 <p key={i} className={`text-[11px] ${isDark ? 'text-red-400/70' : 'text-red-400'}`}>• {f.name} ({formatBytes(f.size)})</p>
                             ))}
@@ -456,13 +456,13 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                                         type="text"
                                         value={pendingNames[i]}
                                         onChange={e => setPendingNames(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
-                                        placeholder="Fayl nomi…"
+                                        placeholder={t('fileNamePlaceholder')}
                                         className={`w-full px-3 py-2 rounded-lg border text-[13px] outline-none transition-colors mb-2 ${isDark ? 'bg-surface border-white/[0.08] text-white placeholder-white/25 focus:border-[#0d9488]' : 'bg-white border-gray-200 text-black placeholder-gray-300 focus:border-[#0f766e]'}`}
                                     />
                                     <textarea
                                         value={pendingDescs[i]}
                                         onChange={e => setPendingDescs(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
-                                        placeholder="Izoh yoki tavsif (ixtiyoriy)…"
+                                        placeholder={t('fileDescriptionPlaceholder')}
                                         rows={2}
                                         className={`w-full px-3 py-2 rounded-lg border text-[13px] outline-none transition-colors resize-none ${isDark ? 'bg-surface border-white/[0.08] text-white placeholder-white/25 focus:border-[#0d9488]' : 'bg-white border-gray-200 text-black placeholder-gray-300 focus:border-[#0f766e]'}`}
                                     />
@@ -571,6 +571,7 @@ interface LightboxProps {
 }
 
 function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps) {
+    const { t, i18n } = useTranslation();
     const cat = getCategory(doc.file_type);
     const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -584,7 +585,7 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
         };
     }, [onClose]);
 
-    const dateStr = new Date(doc.created_at).toLocaleDateString('uz-UZ', {
+    const dateStr = new Date(doc.created_at).toLocaleDateString(i18n.language, {
         day: '2-digit', month: 'short', year: 'numeric',
     });
 
@@ -641,10 +642,10 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                             className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
                                 isDark ? 'text-gray-300 hover:text-white hover:bg-white/[0.08]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                             }`}
-                            title="URL nusxalash"
+                            title={t('copyUrl')}
                         >
                             {copied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
-                            <span>{copied ? 'Nusxalandi' : 'URL'}</span>
+                            <span>{copied ? t('copied') : 'URL'}</span>
                         </button>
                         <a
                             href={doc.file_url}
@@ -655,10 +656,10 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
                                 isDark ? 'text-gray-300 hover:text-white hover:bg-white/[0.08]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                             }`}
-                            title="Yuklab olish"
+                            title={t('download')}
                         >
                             <DownloadIcon className="w-4 h-4" />
-                            <span className="hidden sm:inline">Yuklab olish</span>
+                            <span className="hidden sm:inline">{t('download')}</span>
                         </a>
                         <button
                             autoFocus
@@ -666,7 +667,7 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                             className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-90 ${
                                 isDark ? 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.14] hover:text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                             }`}
-                            title="Yopish"
+                            title={t('close')}
                         >
                             <XIcon className="w-4 h-4" />
                         </button>
@@ -712,7 +713,7 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                                 onClick={e => e.stopPropagation()}
                                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0f766e] hover:bg-[#0a5c56] text-white font-semibold transition-colors active:scale-95"
                             >
-                                <DownloadIcon className="w-4 h-4" /> Yuklab olish
+                                <DownloadIcon className="w-4 h-4" /> {t('download')}
                             </a>
                         </div>
                     )}
@@ -728,9 +729,9 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                             <EditIcon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                            <p className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${isDark ? 'text-white/35' : 'text-gray-400'}`}>Izoh</p>
+                            <p className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${isDark ? 'text-white/35' : 'text-gray-400'}`}>{t('note')}</p>
                             <div className={`text-[14px] leading-relaxed ${isDark ? 'text-white/80' : 'text-gray-700'}`}>
-                                {hasNotes ? doc.description : <span className={isDark ? 'text-white/35' : 'text-gray-400'}>Izoh qo'shilmagan</span>}
+                                {hasNotes ? doc.description : <span className={isDark ? 'text-white/35' : 'text-gray-400'}>{t('noNoteAdded')}</span>}
                             </div>
                         </div>
                     </div>
@@ -754,8 +755,9 @@ interface CardProps {
 }
 
 function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelete }: CardProps) {
+    const { t, i18n } = useTranslation();
     const cat = getCategory(doc.file_type);
-    const dateStr = new Date(doc.created_at).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' });
+    const dateStr = new Date(doc.created_at).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' });
 
     return (
         <div className={`group relative rounded-2xl border overflow-hidden cursor-pointer transition-all duration-200 ${card}`}>
@@ -783,7 +785,7 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
                     <button
                         onClick={e => { e.stopPropagation(); onEdit(); }}
                         className="p-2 rounded-xl bg-white/90 text-gray-700 hover:bg-white transition-colors shadow-sm"
-                        title="Nomni tahrirlash"
+                        title={t('editName')}
                     >
                         <EditIcon className="w-3.5 h-3.5" />
                     </button>
@@ -794,14 +796,14 @@ function DocumentCard({ doc, isDark, card, mutedText, onPreview, onEdit, onDelet
                         rel="noreferrer"
                         onClick={e => e.stopPropagation()}
                         className="p-2 rounded-xl bg-white/90 text-gray-700 hover:bg-white transition-colors shadow-sm"
-                        title="Yuklab olish"
+                        title={t('download')}
                     >
                         <DownloadIcon className="w-3.5 h-3.5" />
                     </a>
                     <button
                         onClick={e => { e.stopPropagation(); onDelete(); }}
                         className="p-2 rounded-xl bg-red-500/90 text-white hover:bg-red-600 transition-colors shadow-sm"
-                        title="O'chirish"
+                        title={t('delete')}
                     >
                         <TrashIcon className="w-3.5 h-3.5" />
                     </button>

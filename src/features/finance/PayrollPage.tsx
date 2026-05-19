@@ -46,9 +46,9 @@ function wasDriverCreatedAfterPeriod(driver: Driver, year: number, month: number
 
 const MONTH_NAMES_UZ = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 
-function formatDate(ts: number): string {
+function formatDate(ts: number, monthNames: string[]): string {
     const d = new Date(ts);
-    return `${String(d.getDate()).padStart(2,'0')} ${MONTH_NAMES_UZ[d.getMonth()]}, ${d.getFullYear()}`;
+    return `${String(d.getDate()).padStart(2,'0')} ${monthNames[d.getMonth()] ?? MONTH_NAMES_UZ[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
 function parsePeriodFromNote(note?: string): string | null {
@@ -291,7 +291,7 @@ const ConfirmPayModal: React.FC<{
                                     <span className={`text-xs font-bold uppercase tracking-wider ${
                                         isDark ? 'text-emerald-400' : 'text-emerald-700'
                                     }`}>
-                                        {advance > 0 ? 'Sof maosh (bu oy)' : t('monthlySalary')}
+                                        {advance > 0 ? t('netSalaryThisMonth') : t('monthlySalary')}
                                     </span>
                                     <span className={`text-lg font-black font-mono tabular-nums ${
                                         isDark ? 'text-emerald-400' : 'text-emerald-700'
@@ -305,7 +305,7 @@ const ConfirmPayModal: React.FC<{
                                     }`}>
                                         <span className="flex items-center gap-1">
                                             <span>💼</span>
-                                            <span>Maoshdan avans berildi</span>
+                                            <span>{t('salaryAdvanceGiven')}</span>
                                         </span>
                                         <span className={`font-bold font-mono ${
                                             isDark ? 'text-violet-400' : 'text-violet-600'
@@ -318,7 +318,7 @@ const ConfirmPayModal: React.FC<{
                                     <div className={`flex items-center justify-between px-4 py-2 text-[10px] ${
                                         isDark ? 'text-gray-600' : 'text-gray-400'
                                     }`}>
-                                        <span>Oylik maosh (brutto)</span>
+                                        <span>{t('grossMonthlySalary')}</span>
                                         <span className="font-mono line-through">{fmt(gross)} UZS</span>
                                     </div>
                                 )}
@@ -403,7 +403,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'due'>('all');
 
-    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNamesRaw = t('monthNames', { returnObjects: true });
     const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : MONTH_NAMES_UZ;
 
     const now = new Date();
@@ -539,7 +539,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                         type="text"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        placeholder="Haydovchi yoki davlat raqami..."
+                        placeholder={t('payrollSearchPlaceholder')}
                         className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border outline-none transition-colors ${
                             isDark
                                 ? 'bg-surface-2 border-white/[0.10] text-white placeholder-gray-600 focus:border-[#0f766e]'
@@ -552,9 +552,9 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                     <Dropdown
                         value={statusFilter}
                         options={[
-                            { value: 'all', label: 'Barchasi' },
-                            { value: 'paid', label: "To'langan" },
-                            { value: 'due', label: "To'lash kerak" },
+                            { value: 'all', label: t('all') },
+                            { value: 'paid', label: t('paid') },
+                            { value: 'due', label: t('salaryDue') },
                         ]}
                         onChange={(v) => setStatusFilter(v as 'all' | 'paid' | 'due')}
                         isDark={isDark}
@@ -570,7 +570,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                     }`}
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Excel
+                    {t('exportExcel')}
                 </button>
             </div>
 
@@ -700,7 +700,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                                     {badgeLabel}
                                                 </span>
                                                 <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt) : '—'}
+                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt, monthNames) : '—'}
                                                 </p>
                                             </div>
 
@@ -800,7 +800,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
 
                                             {/* Date paid */}
                                             <div className={`text-right text-xs tabular-nums ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                {formatDate(tx.timestamp)}
+                                                {formatDate(tx.timestamp, monthNames)}
                                             </div>
                                         </div>
                                     );

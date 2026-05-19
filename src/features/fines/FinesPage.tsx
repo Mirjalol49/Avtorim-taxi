@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useFines } from './hooks/useFines';
 import { Fine } from '../../core/types/fines.types';
 import { useAuthContext } from '../auth/context/AuthContext';
@@ -21,6 +22,7 @@ interface FinesPageProps {
 }
 
 const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
+    const { t } = useTranslation();
     const { userRole, adminUser, adminProfile } = useAuthContext();
     const { theme } = useUIContext();
     const { addToast } = useToast();
@@ -41,21 +43,21 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
 
     const handleSaveFine = async (data: any) => {
         if (!fleetId) {
-            addToast('error', 'Foydalanuvchi aniqlanmadi. Sahifani yangilang.');
+            addToast('error', t('userNotFoundRefresh'));
             return;
         }
         try {
             if (data.id) {
                 const { id, ...updates } = data;
                 await updateFine(id, updates);
-                addToast('success', "Jarima yangilandi");
+                addToast('success', t('fineUpdated'));
             } else {
                 await addFine({ ...data, fleetId });
-                addToast('success', "Yangi jarima qo'shildi");
+                addToast('success', t('fineCreated'));
             }
             if (refetch) refetch();
         } catch (error: any) {
-            addToast('error', error.message || "Xatolik yuz berdi");
+            addToast('error', error.message || t('errorOccurred'));
         }
     };
 
@@ -64,30 +66,30 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
         const newStatus = fine.status === 'PAID' ? 'UNPAID' : 'PAID';
         try {
             await updateFine(fine.id, { status: newStatus });
-            addToast('success', `Holat: ${newStatus === 'PAID' ? "To'langan" : "To'lanmagan"}`);
+            addToast('success', `${t('status')}: ${newStatus === 'PAID' ? t('paid') : t('unpaid')}`);
             if (refetch) refetch();
         } catch (error: any) {
-            addToast('error', "Holatni o'zgartirishda xatolik");
+            addToast('error', t('statusUpdateFailed'));
         }
     };
 
     const handleDeleteFine = async (id: string) => {
         const confirmed = await confirm({
-            title: "Jarimani o'chirish",
-            message: "Ushbu jarimani o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.",
+            title: t('deleteFineTitle'),
+            message: t('deleteFineConfirm'),
             isDanger: true,
-            confirmLabel: "O'chirish",
-            cancelLabel: "Bekor qilish"
+            confirmLabel: t('delete'),
+            cancelLabel: t('cancel')
         });
         
         if (!confirmed) return;
 
         try {
             await deleteFine(id);
-            addToast('success', "Jarima o'chirildi");
+            addToast('success', t('fineDeleted'));
             if (refetch) refetch();
         } catch (error: any) {
-            addToast('error', "O'chirishda xatolik");
+            addToast('error', t('deleteFailed'));
         }
     };
 
@@ -113,9 +115,9 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
         <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Jarimalar</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('fines')}</h1>
                     <p className={`mt-1 text-xs sm:text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Avtomobil va haydovchilar jarimalari nazorati
+                        {t('finesDesc')}
                     </p>
                 </div>
 
@@ -127,7 +129,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                         }`}
                     >
                         <span>🔍</span>
-                        <span className="text-[13px] sm:text-sm whitespace-nowrap">Kim haydagan?</span>
+                        <span className="text-[13px] sm:text-sm whitespace-nowrap">{t('whoWasDriving')}</span>
                     </button>
                     <button
                         onClick={() => { setEditingFine(null); setIsModalOpen(true); }}
@@ -136,7 +138,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                         }`}
                     >
                         <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-[13px] sm:text-sm whitespace-nowrap">Yangi jarima</span>
+                        <span className="text-[13px] sm:text-sm whitespace-nowrap">{t('newFine')}</span>
                     </button>
                 </div>
             </div>
@@ -148,7 +150,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                         <AlertTriangleIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-rose-400' : 'text-rose-500'}`} />
                     </div>
                     <div>
-                        <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-0.5 sm:mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>To'lanmagan jami jarimalar</p>
+                        <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-0.5 sm:mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('totalUnpaidFines')}</p>
                         <p className="text-xl sm:text-2xl font-black">{formatNumberSmart(totalUnpaid)} <span className="text-xs sm:text-sm font-semibold text-gray-500">UZS</span></p>
                     </div>
                 </div>
@@ -162,7 +164,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                     </div>
                     <input
                         type="text"
-                        placeholder="Qidiruv..."
+                        placeholder={t('search')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={`w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 text-[13px] sm:text-sm outline-none bg-transparent font-medium ${isDark ? 'text-white placeholder-gray-500' : 'text-black placeholder-gray-400'}`}
@@ -179,7 +181,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                                     : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-black'
                             }`}
                         >
-                            {f === 'ALL' ? 'Barchasi' : f === 'UNPAID' ? "To'lanmagan" : "To'langan"}
+                            {f === 'ALL' ? t('all') : f === 'UNPAID' ? t('unpaid') : t('paid')}
                         </button>
                     ))}
                 </div>
@@ -194,7 +196,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                 ) : filteredFines.length === 0 ? (
                     <div className="col-span-full py-12 text-center">
                         <AlertTriangleIcon className={`w-12 h-12 mx-auto mb-3 opacity-20 ${isDark ? 'text-white' : 'text-black'}`} />
-                        <p className={`text-lg font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Jarimalar topilmadi</p>
+                        <p className={`text-lg font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noFinesFound')}</p>
                     </div>
                 ) : (
                     filteredFines.map(fine => {
@@ -215,7 +217,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                                             </div>
                                         )}
                                         <div>
-                                            <h3 className={`font-bold text-base leading-tight truncate max-w-[150px] sm:max-w-[180px] ${isDark ? 'text-white' : 'text-gray-900'}`}>{fine.driverName || 'Noma\'lum'}</h3>
+                                            <h3 className={`font-bold text-base leading-tight truncate max-w-[150px] sm:max-w-[180px] ${isDark ? 'text-white' : 'text-gray-900'}`}>{fine.driverName || t('unknown')}</h3>
                                             {fine.carName && <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fine.carName}</p>}
                                         </div>
                                     </div>
@@ -223,7 +225,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                                         <span className={`text-[10px] font-bold tracking-wider hidden sm:block ${
                                             fine.status === 'UNPAID' ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-500 dark:text-emerald-400'
                                         }`}>
-                                            {fine.status === 'UNPAID' ? "TO'LANMAGAN" : "TO'LANGAN"}
+                                            {fine.status === 'UNPAID' ? t('unpaid').toUpperCase() : t('paid').toUpperCase()}
                                         </span>
                                         <button 
                                             onClick={() => handleToggleStatus(fine)}
@@ -243,7 +245,7 @@ const FinesPage: React.FC<FinesPageProps> = ({ drivers, cars }) => {
                                 </div>
                                 
                                 <div className="mb-4 bg-black/[0.02] dark:bg-white/[0.02] p-3.5 rounded-2xl border border-black/[0.03] dark:border-white/[0.04]">
-                                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Jarima Summasi</p>
+                                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('fineAmount')}</p>
                                     <p className={`text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{formatNumberSmart(fine.amount)} <span className="text-sm font-semibold opacity-60">UZS</span></p>
                                 </div>
 
