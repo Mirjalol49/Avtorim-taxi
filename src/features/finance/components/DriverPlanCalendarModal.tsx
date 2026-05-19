@@ -96,7 +96,8 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
 export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick, onMonthChange }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const monthNames = t('months', { returnObjects: true }) as string[];
+    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     
     const [overrideDate, setOverrideDate] = React.useState<Date | null>(null);
     const [overrideLoading, setOverrideLoading] = React.useState(false);
@@ -226,7 +227,8 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
     const firstDayIndex = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, 1).getDay();
     const padDays = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
 
-    const weekdayLabels = (t('weekdays', { returnObjects: true }) as string[]);
+    const weekdayLabelsRaw = t('weekdays', { returnObjects: true });
+    const weekdayLabels: string[] = Array.isArray(weekdayLabelsRaw) ? weekdayLabelsRaw : ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'];
     const orderedDays = [...weekdayLabels.slice(1), weekdayLabels[0]]; // Mon–Sun
 
     // Card background & border per status
@@ -278,7 +280,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 18l-6-6 6-6" />
                     </svg>
-                    Orqaga
+                    {t('back', 'Orqaga')}
                 </button>
                 <div className={`flex items-center justify-center min-w-[150px] font-bold text-sm sm:text-base select-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {onMonthChange ? (
@@ -325,14 +327,14 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                             </h2>
                         </div>
                         <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDark ? 'bg-[#2C2C2E] text-slate-300' : 'bg-[#F2F2F7] text-slate-600'}`}>
-                            {fmt(monthData.dailyPlan)} <span className="font-medium opacity-70">/ kun</span>
+                            {fmt(monthData.dailyPlan)} <span className="font-medium opacity-70">{t('perDay', '/ kun')}</span>
                         </div>
                     </div>
 
                     {/* Middle Row: Stats Grid */}
-                    <div className={`grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b ${isDark ? 'divide-white/5 border-white/5' : 'divide-gray-100 border-gray-100'}`}>
-                    {/* Monthly plan */}
-                        <div className="p-5 sm:p-6">
+                    <div className={`grid grid-cols-2 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-b ${isDark ? 'divide-white/5 border-white/5' : 'divide-gray-100 border-gray-100'}`}>
+                    {/* Monthly plan & Remaining */}
+                        <div className="p-5 sm:p-6 flex flex-col">
                             {(() => {
                                 const [mkYear, mkMonth] = monthData.monthKey.split('-').map(Number);
                                 const totalDays = monthData.totalDays;
@@ -363,38 +365,54 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 }
 
                                 const workingDays = totalDays - preStartDays - offDays;
-                                const hasDeductions = preStartDays > 0 || offDays > 0;
-
+                                
                                 return (
-                                    <div>
-                                        <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik reja'}</p>
-                                        <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                            {fmt(monthData.monthlyTarget)}
-                                        </p>
-                                        <p className={`text-[11px] font-medium mt-1 tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            {workingDays} kun × {new Intl.NumberFormat('uz-UZ').format(dailyAmt)}
-                                        </p>
-                                    </div>
+                                    <>
+                                        <div>
+                                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('monthlyPlan') ?? 'Oylik reja'}</p>
+                                            <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                                {fmt(monthData.monthlyTarget)}
+                                            </p>
+                                            <p className={`text-[11px] font-medium mt-1 tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {workingDays} kun × {new Intl.NumberFormat('uz-UZ').format(dailyAmt)}
+                                            </p>
+                                        </div>
+                                        <div className="mt-auto pt-4">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{t('untilEndOfMonth', 'Oy oxirigacha qoldi')}</p>
+                                            <span className={`text-[14px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                {monthData.remaining > 0 ? fmt(monthData.remaining) : '0 UZS'}
+                                            </span>
+                                        </div>
+                                    </>
                                 );
                             })()}
                         </div>
-                        {/* Paid */}
-                        <div className="p-5 sm:p-6">
-                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('totalPaidAmount') ?? "Jami to'ladi"}</p>
-                            <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-emerald-400' : 'text-[#16a34a]'}`}>{fmt(monthData.actualIncome)}</p>
-                        </div>
-                        {/* Debt */}
-                        <div className="p-5 sm:p-6 relative overflow-hidden group">
-                            <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{monthData.remaining <= 0 ? (t('prepaidAmount') ?? 'Oldindan to\'lov') : (t('currentDebt') ?? 'Hozirgi qarz')}</p>
-                            <div className="relative inline-block">
-                                <p className={`relative text-[18px] sm:text-[22px] font-bold tracking-tight ${
-                                    monthData.remaining <= 0
-                                        ? isDark ? 'text-emerald-400' : 'text-[#34C759]'
-                                        : isDark ? 'text-red-400' : 'text-[#FF3B30]'
-                                }`}>
-                                    {monthData.remaining > 0 ? `-${fmt(monthData.remaining)}` : `+${fmt(-monthData.remaining)}`}
-                                </p>
+                        {/* Paid & Debt */}
+                        <div className="p-5 sm:p-6 flex flex-col">
+                            <div>
+                                <p className="text-[12px] sm:text-[13px] font-semibold text-slate-500 mb-1">{t('totalPaidAmount') ?? "Jami to'ladi"}</p>
+                                <p className={`text-[18px] sm:text-[22px] font-bold tracking-tight ${isDark ? 'text-emerald-400' : 'text-[#16a34a]'}`}>{fmt(monthData.actualIncome)}</p>
                             </div>
+                            {(() => {
+                                const currentDebt = Math.max(0, monthData.pastTarget - monthData.actualIncome);
+                                const isOverpaid = monthData.actualIncome > monthData.pastTarget;
+                                const overpayment = Math.max(0, monthData.actualIncome - monthData.pastTarget);
+                                
+                                return (
+                                    <div className="mt-auto pt-4">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{isOverpaid ? (t('prepaidAmount') ?? "Oldindan to'lov") : (t('currentDebt') ?? 'Hozirgi qarz')}</p>
+                                        <span className={`text-[14px] font-semibold ${
+                                            isOverpaid
+                                                ? isDark ? 'text-emerald-400' : 'text-[#34C759]'
+                                                : currentDebt > 0
+                                                    ? isDark ? 'text-red-400' : 'text-[#FF3B30]'
+                                                    : isDark ? 'text-slate-300' : 'text-slate-700'
+                                        }`}>
+                                            {isOverpaid ? `+${fmt(overpayment)}` : currentDebt > 0 ? `-${fmt(currentDebt)}` : `0 UZS`}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                         </div>
                         {/* Working days */}
                         <div className="p-5 sm:p-6 flex flex-col justify-center">
@@ -505,11 +523,11 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     <div className="flex items-center justify-end w-full mb-4">
                         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
                             {([
-                                { status: 'PAID'    as DayStatus, label: t('legendPaid') ?? "To'liq to'landi" },
-                                { status: 'PARTIAL' as DayStatus, label: t('legendPartial') ?? 'Qisman' },
-                                { status: 'UNPAID'  as DayStatus, label: t('legendDebt') ?? 'Qarz' },
-                                { status: 'DAY_OFF' as DayStatus, label: <span className="flex items-center gap-1"><div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div> {t('legendDayOff') ?? 'Dam olish'}</span> },
-                                { status: 'NOT_WORKING' as DayStatus, label: `❌ Ishlamagan` },
+                                { status: 'PAID'    as DayStatus, label: t('legendPaid', "To'liq to'landi") },
+                                { status: 'PARTIAL' as DayStatus, label: t('legendPartial', 'Qisman') },
+                                { status: 'UNPAID'  as DayStatus, label: t('legendDebt', 'Qarz') },
+                                { status: 'DAY_OFF' as DayStatus, label: <span className="flex items-center gap-1"><div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div> {t('legendDayOff', 'Dam olish')}</span> },
+                                { status: 'NOT_WORKING' as DayStatus, label: `❌ ${t('notWorking', 'Ishlamagan')}` },
                             ]).map(({ status, label }) => (
                                 <div key={status} className="flex items-center gap-1.5">
                                     <StatusIcon status={status} />
@@ -626,7 +644,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             {/* Center / Income */}
                                             {!d.status.startsWith('FUTURE') && d.status !== 'REPAIR' && d.status !== 'DAY_OFF' && (
                                                 <div className="flex flex-col mb-auto">
-                                                    <span className={`text-[9px] sm:text-[10px] mb-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tushum:</span>
+                                                    <span className={`text-[9px] sm:text-[10px] mb-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('incomeLabel', 'Tushum')}:</span>
                                                     <div className={`text-[12px] sm:text-[14px] font-black tabular-nums tracking-tight truncate leading-none ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                                         {d.income > 0 ? fmtCompact(d.income) : '0 UZS'}
                                                     </div>
@@ -637,15 +655,15 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                             <div className="mt-auto pt-1 w-full flex-shrink-0">
                                                 {d.status === 'DAY_OFF' || d.status === 'FUTURE_OFF' ? (
                                                     <div className="w-full flex mb-0.5 pointer-events-none">
-                                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">DAM OLISH</span>
+                                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{t('dayOff', 'DAM OLISH')}</span>
                                                     </div>
                                                 ) : d.status === 'REPAIR' ? (
                                                     <div className="w-full flex mb-0.5 pointer-events-none">
-                                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">TA'MIRDA</span>
+                                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{t('inRepair', "TA'MIRDA")}</span>
                                                     </div>
                                                 ) : d.status === 'NOT_WORKING' ? (
                                                     <div className={`flex items-center gap-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                        <span className="text-[10px] sm:text-[11px] font-medium">Ishlamagan</span>
+                                                        <span className="text-[10px] sm:text-[11px] font-medium">{t('notWorking', 'Ishlamagan')}</span>
                                                     </div>
                                                 ) : !d.status.startsWith('FUTURE') ? (() => {
                                                     const excess = d.income - d.planForDay;
@@ -658,7 +676,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                                     <Lottie animationData={planDoneAnimation} loop={true} />
                                                                 </div>
                                                                 <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
-                                                                    {excess > 0 ? `Ortiqcha +${fmtCompact(excess)}` : "To'liq to'landi"}
+                                                                    {excess > 0 ? `${t('excess', 'Ortiqcha')} +${fmtCompact(excess)}` : t('fullyPaid', "To'liq to'landi")}
                                                                 </span>
                                                             </div>
                                                         );
@@ -669,27 +687,27 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                                     <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clipRule="evenodd" />
                                                                 </svg>
                                                                 <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
-                                                                    Qarz: -{fmtCompact(d.debt)}
+                                                                    {t('debtLabel', 'Qarz')}: -{fmtCompact(d.debt)}
                                                                 </span>
                                                             </div>
                                                         );
                                                     } else if (isOverpaid) {
                                                         return (
                                                             <div className={`flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">Ortiqcha: +{fmtCompact(excess)}</span>
+                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">{t('overpaidLabel', 'Ortiqcha')}: +{fmtCompact(excess)}</span>
                                                             </div>
                                                         );
                                                     } else if (d.income > 0) {
                                                         return (
                                                             <div className={`flex items-center gap-1.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`}>
-                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">Qisman to'landi</span>
+                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">{t('partiallyPaid', "Qisman to'landi")}</span>
                                                             </div>
                                                         );
                                                     }
                                                     return null;
                                                 })() : d.status === 'FUTURE_DISCOUNT' ? (
                                                     <div className={`flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
-                                                        <span className="text-[10px] sm:text-[11px] font-bold">Chegirma: {fmtCompact(d.planForDay)}</span>
+                                                        <span className="text-[10px] sm:text-[11px] font-bold">{t('discount', 'Chegirma')}: {fmtCompact(d.planForDay)}</span>
                                                     </div>
                                                 ) : null}
                                             </div>

@@ -218,21 +218,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         patchRow,
     } = useTransactionsPaginated(fleetId, filters);
 
-    // ── Real-time Sync from Global Context ─────────────────────────────────────
-    // DataContext maintains a realtime global list of transactions.
-    // If a new transaction arrives there (e.g. from an optimistic update or its own realtime listener),
-    // inject it into the paginated list immediately.
-    useEffect(() => {
-        if (!allTransactionsForBalance || allTransactionsForBalance.length === 0 || !transactions || transactions.length === 0) return;
-        
-        // Paginated list is sorted by timestamp desc, so transactions[0] is the newest
-        const newestPaginatedTs = transactions[0]?.timestamp || 0;
-        
-        const newTxs = allTransactionsForBalance.filter(t => t.timestamp > newestPaginatedTs);
-        if (newTxs.length > 0) {
-            restoreRows(newTxs);
-        }
-    }, [allTransactionsForBalance, transactions, restoreRows]);
+    // The paginated list automatically handles its own real-time syncing via useTransactionsPaginated.
 
     // ── IntersectionObserver sentinel at list bottom ──────────────────────────
     const sentinelRef = useRef<HTMLDivElement>(null);
@@ -756,7 +742,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     );
                                                 })()}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
                                                 {tx.type === TransactionType.DAY_OFF ? (
                                                     <span className="flex items-center justify-end gap-1.5 text-xs font-bold text-blue-400">
                                                         <div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div>

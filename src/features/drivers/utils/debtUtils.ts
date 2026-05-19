@@ -53,9 +53,9 @@ export function calcDriverDebt(
         tx.status !== PaymentStatus.DELETED
     );
 
-    // Sum all incomes EXCLUDING deposit top-ups (those don't fulfil the daily plan)
+    // Sum all incomes EXCLUDING deposit top-ups and initial deposits (those don't fulfil the daily plan)
     const incomeTxs = validTxs.filter(
-        tx => tx.type === TransactionType.INCOME && tx.category !== 'deposit_topup'
+        tx => tx.type === TransactionType.INCOME && tx.category !== 'deposit_topup' && (tx as any).category !== 'DEPOSIT'
     );
     const totalIncome = incomeTxs.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
@@ -150,10 +150,22 @@ export function calcDriverDebt(
     // Apply allowed off days logic
     const allowedOffDays = driver.daysOffPerMonth || 0;
     if (allowedOffDays > 0) {
-        Object.values(monthlyStats).forEach(stat => {
+        const currentMk = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        Object.keys(monthlyStats).forEach(mk => {
+            const stat = monthlyStats[mk];
             const unmarkedOffDays = Math.max(0, allowedOffDays - stat.explicitOffCount);
             if (unmarkedOffDays > 0) {
-                stat.autoDebt = Math.max(0, stat.autoDebt - (unmarkedOffDays * stat.dailyPlanAmount));
+                if (mk !== currentMk) {
+                    // Fully elapsed past month: safely deduct the unused off days
+                    stat.autoDebt = Math.max(0, stat.autoDebt - (unmarkedOffDays * stat.dailyPlanAmount));
+                } else {
+                    // Current month: do not deduct prematurely. Only cap the debt so it doesn't exceed the month's total allowed.
+                    const [y, m] = mk.split('-').map(Number);
+                    const totalDays = new Date(y, m, 0).getDate();
+                    const fullMonthTarget = totalDays * stat.dailyPlanAmount;
+                    const cappedTarget = Math.max(0, fullMonthTarget - (unmarkedOffDays * stat.dailyPlanAmount));
+                    stat.autoDebt = Math.min(stat.autoDebt, cappedTarget);
+                }
             }
         });
     }

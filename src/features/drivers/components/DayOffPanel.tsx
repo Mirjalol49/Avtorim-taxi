@@ -15,7 +15,8 @@ interface DayOffPanelProps {
 export const DayOffPanel: React.FC<DayOffPanelProps> = ({ driver, daysOff, theme, onClose }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const monthNames = t('months', { returnObjects: true }) as string[];
+    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     const monthLabel = (monthKey: string) => {
         const [y, m] = monthKey.split('-').map(Number);
         return `${monthNames[m - 1] ?? monthKey} ${y}`;

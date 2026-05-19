@@ -36,6 +36,34 @@ export function getPlanForDriverDate(driver: Driver | null | undefined, date: Da
     return 0;
 }
 
+/**
+ * Returns the car ID that was effective on a given date for a driver.
+ */
+export function getCarIdForDriverDate(driver: Driver | null | undefined, date: Date, fallbackCar?: Car | null): string | null {
+    if (!driver) return null;
+
+    const history = driver.planHistory;
+
+    if (!history || history.length === 0) {
+        return fallbackCar ? fallbackCar.id : null;
+    }
+
+    const targetMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+    let effective: DriverPlanHistoryEntry | null = null;
+    for (const entry of history) {
+        if (entry.effectiveFrom <= targetMs) {
+            effective = entry;
+        }
+    }
+
+    if (effective) {
+        return effective.carId;
+    }
+
+    return null;
+}
+
 function toDateKey(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

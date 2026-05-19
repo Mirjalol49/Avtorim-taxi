@@ -37,8 +37,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     const { t, i18n } = useTranslation();
     // Ensure accurate type for helpers that expect specific Language string
     const currentLanguage = (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
-    const months = t('months', { returnObjects: true }) as string[];
-    const weekdays = t('weekdays', { returnObjects: true }) as string[];
+    const monthsRaw = t('months', { returnObjects: true });
+    const months: string[] = Array.isArray(monthsRaw) ? monthsRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+    const weekdaysRaw = t('weekdays', { returnObjects: true });
+    const weekdays: string[] = Array.isArray(weekdaysRaw) ? weekdaysRaw : ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'];
 
     const {
         timeFilter, setTimeFilter,
@@ -118,11 +120,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="mt-8">
                 {/* ── Header ─────────────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {t('todayStatus')}
-                        </h3>
-                        <div className="w-[140px]">
+                    <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {t('todayStatus')}
+                    </h3>
+                    
+                    {/* Controls */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                        {/* Date Picker */}
+                        <div className="w-full sm:w-[150px]">
                             <DatePicker
                                 label=""
                                 hideLabel
@@ -131,11 +136,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 theme={theme}
                             />
                         </div>
-                    </div>
-                    {/* Summary pills / Search */}
-                    <div className="flex items-center gap-2 flex-wrap">
+
+                        {/* Search */}
                         {(todayStats.completed.length + todayStats.pending.length) > STATUS_VISIBLE && (
-                            <div className="relative">
+                            <div className="relative w-full sm:w-auto">
                                 <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.3)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                                 </svg>
@@ -148,7 +152,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         setShowAllPending(false);
                                     }}
                                     placeholder={t('searchDriverStatus')}
-                                    className={`w-[180px] sm:w-[220px] pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
+                                    className={`w-full sm:w-[220px] pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
                                         ? 'bg-surface border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)] focus:border-[#0d9488]'
                                         : 'bg-white border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
                                     }`}
@@ -158,6 +162,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 )}
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* ── Daily Summary Totals ────────────────────────────────────────── */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                    {/* Expected */}
+                    <div className={`p-4 sm:p-5 rounded-2xl border transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-white border-black/[0.05]'}`}>
+                        <div className={`text-[12px] font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('expectedTotalAmount', 'Kutilayotgan umumiy summa')}</div>
+                        <div className={`text-[20px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{todayStats.totals.expectedTotal.toLocaleString()} UZS</div>
+                    </div>
+                    {/* Paid */}
+                    <div className={`p-4 sm:p-5 rounded-2xl border transition-colors ${isDark ? 'bg-emerald-500/[0.08] border-emerald-500/20' : 'bg-emerald-50/70 border-emerald-200/60'}`}>
+                        <div className={`text-[12px] font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t('paidTotalAmount', "To'langan umumiy summa")}</div>
+                        <div className={`text-[20px] font-bold tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{todayStats.totals.paidTotal.toLocaleString()} UZS</div>
+                    </div>
+                    {/* Remaining */}
+                    <div className={`p-4 sm:p-5 rounded-2xl border transition-colors ${isDark ? 'bg-rose-500/[0.08] border-rose-500/20' : 'bg-rose-50/70 border-rose-200/60'}`}>
+                        <div className={`text-[12px] font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-rose-400/80' : 'text-rose-600/80'}`}>{t('remainingTotalDebt', 'Qolgan umumiy qarz')}</div>
+                        <div className={`text-[20px] font-bold tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{todayStats.totals.debtTotal.toLocaleString()} UZS</div>
                     </div>
                 </div>
 
@@ -173,7 +196,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         {filteredCompleted.length > 0 ? (
                             <div className="space-y-3">
                                 {displayedCompleted.map((driver, i) => {
-                                    const driverCar = cars.find(c => c.assignedDriverId === driver.id);
+                                    const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
                                     return (
                                         <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-[4px] border-emerald-500 transition-colors ${isDark ? 'bg-emerald-500/[0.05]' : 'bg-emerald-50/60'}`}>
                                             {/* Avatar */}
@@ -186,12 +209,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             {/* Info */}
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                 <span className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
-                                                {driverCar && (
+                                                {driverCar ? (
                                                     <div className="flex items-center gap-1.5 mt-0.5">
                                                         <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
                                                         <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                     </div>
-                                                )}
+                                                ) : driver.fallbackCarName ? (
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                        {driver.fallbackCarName.includes(' — ') && (
+                                                            <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
+                                                        )}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                             {/* Amount & Check */}
                                             <div className="flex items-center gap-2 flex-shrink-0">
@@ -236,7 +266,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                     const plan = driver.dailyPlan || 0;
                                     const paid = driver.todayIncome || 0;
                                     const remaining = Math.max(0, plan - paid);
-                                    const driverCar = cars.find(c => c.assignedDriverId === driver.id);
+                                    const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
                                     return (
                                         <div key={driver.id} className={`flex items-center gap-3 px-2 py-3 transition-colors`}>
                                             {/* Avatar */}
@@ -249,12 +279,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             {/* Info */}
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                 <span className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
-                                                {driverCar && (
+                                                {driverCar ? (
                                                     <div className="flex items-center gap-1.5 mt-0.5">
                                                         <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
                                                         <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                     </div>
-                                                )}
+                                                ) : driver.fallbackCarName ? (
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                        {driver.fallbackCarName.includes(' — ') && (
+                                                            <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
+                                                        )}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                             {/* Amount */}
                                             <div className="flex flex-col items-end justify-center flex-shrink-0">
@@ -299,7 +336,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {todayStats.dayOff.map(driver => {
-                                const driverCar = cars.find(c => c.assignedDriverId === driver.id);
+                                const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
                                 return (
                                     <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                                         <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.4] flex-shrink-0">
@@ -310,12 +347,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         </div>
                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                             <p className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
-                                            {driverCar && (
+                                            {driverCar ? (
                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                     <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
                                                     <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                 </div>
-                                            )}
+                                            ) : driver.fallbackCarName ? (
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                    {driver.fallbackCarName.includes(' — ') && (
+                                                        <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
+                                                    )}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
                                 );

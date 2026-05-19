@@ -150,32 +150,32 @@ const DriversPage: React.FC<DriversPageProps> = ({
                 <div className="flex flex-wrap items-end justify-between gap-3 overflow-hidden">
                     <div className="flex flex-wrap items-end gap-4 w-full md:w-auto">
                         {/* Car Status Filter */}
-                        <div className="flex flex-col gap-1.5 w-full md:w-auto overflow-hidden">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Avtomobil
+                        <div className="flex flex-col">
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider ml-2 mb-1.5 ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
+                                {t('car', 'Avtomobil')}
                             </span>
-                            <div className={`flex items-center gap-1 p-1 rounded-[14px] border overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+                            <div className={`flex items-center p-1 rounded-xl sm:rounded-2xl transition-colors ${theme === 'dark' ? 'bg-[#1c1c1e]' : 'bg-[#f4f4f5]'}`}>
                                 {([
-                                    { key: 'all', label: 'Barchasi', count: rawFiltered.length },
-                                    { key: 'with-car', label: 'Mashina bor', count: withCarCount },
-                                    { key: 'no-car', label: "Mashina yo'q", count: noCarCount },
+                                    { key: 'all', label: t('all', 'Barchasi'), count: rawFiltered.length },
+                                    { key: 'with-car', label: t('withCar', 'Mashina bor'), count: withCarCount },
+                                    { key: 'no-car', label: t('noCar', "Mashina yo'q"), count: noCarCount },
                                 ] as { key: CarFilter; label: string; count: number }[]).map(f => {
                                     const active = carFilter === f.key;
                                     return (
                                         <button
                                             key={f.key}
                                             onClick={() => { setCarFilter(f.key); setTypeFilter('all'); setCurrentPage(1); }}
-                                            className={`flex-shrink-0 whitespace-nowrap flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                            className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all ${
                                                 active
-                                                    ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
-                                                    : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                                                    ? theme === 'dark' ? 'bg-[#2c2c2e] text-white shadow-sm' : 'bg-white text-black shadow-sm'
+                                                    : theme === 'dark' ? 'text-white/50 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                         >
                                             {f.label}
-                                            <span className={`min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-black flex items-center justify-center ${
+                                            <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
                                                 active
-                                                    ? theme === 'dark' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'
-                                                    : theme === 'dark' ? 'bg-white/[0.05] text-white/25' : 'bg-gray-200 text-gray-400'
+                                                    ? theme === 'dark' ? 'bg-white/10 text-white' : 'bg-gray-100 text-black'
+                                                    : theme === 'dark' ? 'bg-white/5 text-white/40' : 'bg-gray-200/60 text-gray-400'
                                             }`}>
                                                 {f.count}
                                             </span>
@@ -186,58 +186,34 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         </div>
 
                         {/* Driver Type Filter */}
-                        <div className="flex flex-col gap-1.5 w-full md:w-auto overflow-hidden">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Toifa
+                        <div className="flex flex-col">
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider ml-2 mb-1.5 ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
+                                {t('category', 'Toifa')}
                             </span>
-                            <div className={`flex items-center gap-1 p-1 rounded-[14px] border overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+                            <div className={`flex items-center p-1 rounded-xl sm:rounded-2xl transition-colors ${theme === 'dark' ? 'bg-[#1c1c1e]' : 'bg-[#f4f4f5]'}`}>
                                 {([
-                                    { key: 'all', label: 'Barchasi', count: carFilteredList.length, color: 'gray' },
-                                    { key: 'deposit', label: 'Standart', count: depositCount, color: 'emerald' },
-                                    { key: 'salary', label: 'Maosh', count: salaryCount, color: 'violet' },
-                                    { key: 'lease_to_own', label: 'Vikup', count: vikupCount, color: 'indigo' },
+                                    { key: 'all', label: t('all', 'Barchasi'), count: carFilteredList.length },
+                                    { key: 'deposit', label: t('standard', 'Standart'), count: depositCount },
+                                    { key: 'salary', label: t('salary', 'Maosh'), count: salaryCount },
+                                    { key: 'lease_to_own', label: t('vikup', 'Vikup'), count: vikupCount },
                                 ] as const).map(f => {
                                     const active = typeFilter === f.key;
                                     
-                                    const activeClasses = {
-                                        gray: theme === 'dark' ? 'bg-white/10 text-white shadow-sm' : 'bg-white text-gray-800 shadow-sm border border-gray-200',
-                                        emerald: theme === 'dark' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-white text-emerald-700 shadow-sm border border-emerald-100',
-                                        violet: theme === 'dark' ? 'bg-violet-500 text-white shadow-sm' : 'bg-white text-violet-700 shadow-sm border border-violet-100',
-                                        indigo: theme === 'dark' ? 'bg-indigo-500 text-white shadow-sm' : 'bg-white text-indigo-700 shadow-sm border border-indigo-100',
-                                    }[f.color];
-
-                                    const badgeActiveClasses = {
-                                        gray: theme === 'dark' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700',
-                                        emerald: theme === 'dark' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700',
-                                        violet: theme === 'dark' ? 'bg-white/20 text-white' : 'bg-violet-50 text-violet-700',
-                                        indigo: theme === 'dark' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700',
-                                    }[f.color];
-
-                                    const dotColor = {
-                                        gray: theme === 'dark' ? 'bg-gray-600' : 'bg-gray-400',
-                                        emerald: theme === 'dark' ? 'bg-emerald-500/50' : 'bg-emerald-400',
-                                        violet: theme === 'dark' ? 'bg-violet-500/50' : 'bg-violet-400',
-                                        indigo: theme === 'dark' ? 'bg-indigo-500/50' : 'bg-indigo-400',
-                                    }[f.color];
-
                                     return (
                                         <button
                                             key={f.key}
                                             onClick={() => { setTypeFilter(f.key as DriverTypeFilter); setCurrentPage(1); }}
-                                            className={`flex-shrink-0 whitespace-nowrap flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                            className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all ${
                                                 active
-                                                    ? activeClasses
-                                                    : theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-gray-500 hover:text-gray-700'
+                                                    ? theme === 'dark' ? 'bg-[#2c2c2e] text-white shadow-sm' : 'bg-white text-black shadow-sm'
+                                                    : theme === 'dark' ? 'text-white/50 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                         >
-                                            {!active && f.key !== 'all' && (
-                                                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                                            )}
                                             {f.label}
-                                            <span className={`min-w-[18px] h-[18px] px-1 rounded-md text-[10px] font-black flex items-center justify-center ${
+                                            <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
                                                 active
-                                                    ? badgeActiveClasses
-                                                    : theme === 'dark' ? 'bg-white/[0.05] text-white/30' : 'bg-gray-100 text-gray-400'
+                                                    ? theme === 'dark' ? 'bg-white/10 text-white' : 'bg-gray-100 text-black'
+                                                    : theme === 'dark' ? 'bg-white/5 text-white/40' : 'bg-gray-200/60 text-gray-400'
                                             }`}>
                                                 {f.count}
                                             </span>
@@ -249,7 +225,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                     </div>
                     
                     <span className={`text-[12px] whitespace-nowrap ${theme === 'dark' ? 'text-white/25' : 'text-gray-400'}`}>
-                        {filteredDrivers.length} ta haydovchi
+                        {filteredDrivers.length} {t('driversCount', 'ta haydovchi')}
                     </span>
                 </div>
             </div>

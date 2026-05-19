@@ -275,7 +275,6 @@ export const subscribeToDrivers = (callback: (drivers: Driver[]) => void, fleetI
                 // Exclude documents (base64 scans) — huge, only needed in DriverModal
                 .select('id,fleet_id,name,phone,car,car_number,status,avatar,balance,rating,monthly_salary,daily_plan,notes,extra_phone,is_deleted,location,created_ms,last_salary_paid_at,driver_type,deposit_amount,deposit_warning_threshold,total_contract_amount,contract_duration_months,contract_start_date,plan_history,day_overrides,start_date,quit_date')
                 .eq('fleet_id', fleetId)
-                .eq('is_deleted', false)
                 .abortSignal(controller.signal);
             clearTimeout(abort);
             if (error) throw error;

@@ -10,7 +10,7 @@ export interface UsePaginatedTxState {
     hasMore: boolean;
     nextCursor: number | null;
     error: string | null;
-    reload: () => void;
+    reload: (quiet?: boolean) => void;
     fetchMore: () => void;
     removeRows: (ids: Set<string>) => void;
     restoreRows: (rows: Transaction[]) => void;
@@ -42,12 +42,12 @@ export const useTransactionsPaginated = (
     // from landing after a newer fetch has already started.
     const genRef = useRef(0);
 
-    const fetchPage = useCallback(async (cursor: number | null, reset: boolean) => {
+    const fetchPage = useCallback(async (cursor: number | null, reset: boolean, showLoading: boolean = true) => {
         const fleet = fleetRef.current;
-        if (!fleet) { setLoading(false); return; }
+        if (!fleet) { if (showLoading) setLoading(false); return; }
 
         if (reset) {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             setError(null);
         } else {
             if (fetchingMoreRef.current) return;
@@ -99,13 +99,13 @@ export const useTransactionsPaginated = (
         if (!stale()) {
             setError(lastErr?.message ?? 'Failed to load transactions');
             setHasMore(false);
-            setLoading(false);
+            if (showLoading) setLoading(false);
             setIsFetchingMore(false);
         }
     }, []);
 
-    const reload = useCallback(() => {
-        fetchPage(null, true);
+    const reload = useCallback((quiet = false) => {
+        fetchPage(null, true, !quiet);
     }, [fetchPage]);
 
     const fetchMore = useCallback(() => {
@@ -130,7 +130,7 @@ export const useTransactionsPaginated = (
             .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, () => {
                 // Debounce reload to prevent spamming if many transactions change at once
                 clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => reload(), 300);
+                debounceTimer = setTimeout(() => reload(true), 300);
             })
             .subscribe();
 

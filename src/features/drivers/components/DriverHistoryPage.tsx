@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
@@ -200,6 +201,7 @@ const generateDailyTimeline = (
 
 export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, theme, onClose }) => {
     const isDark = theme === 'dark';
+    const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
     const [tab, setTab] = useState<Tab>('daily_history');
     const [startDate, setStartDate] = useState<Date | null>(null);
@@ -315,12 +317,12 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
     const isSalary = driver.driverType === 'salary';
 
     const TABS: { id: Tab; icon: React.ReactNode | string; label: string; count: number }[] = [
-        { id: 'daily_history', icon: '📅', label: 'Tarix', count: 0 },
+        { id: 'daily_history', icon: '📅', label: t('historyTab', 'Tarix'), count: 0 },
     ];
     if (!isSalary) {
-        TABS.push({ id: 'deposit', icon: <div className="w-5 h-5 flex items-center justify-center -mr-1"><Lottie animationData={depositAnimation} loop={true} /></div>, label: 'Depozit', count: depositLedger.length });
+        TABS.push({ id: 'deposit', icon: <div className="w-5 h-5 flex items-center justify-center -mr-1"><Lottie animationData={depositAnimation} loop={true} /></div>, label: t('depositTab', 'Depozit'), count: depositLedger.length });
     } else {
-        TABS.push({ id: 'salary', icon: '💳', label: 'Maosh', count: salaryTxs.length });
+        TABS.push({ id: 'salary', icon: '💳', label: t('salaryTab', 'Maosh'), count: salaryTxs.length });
     }
 
     return createPortal(
@@ -344,9 +346,9 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="15 18 9 12 15 6"/>
                         </svg>
-                        Orqaga
+                        {t('back', 'Orqaga')}
                     </button>
-                    <div className={`text-[17px] font-semibold tracking-tight ${txt}`}>Haydovchi Tarixi</div>
+                    <div className={`text-[17px] font-semibold tracking-tight ${txt}`}>{t('driverHistoryTitle', 'Haydovchi Tarixi')}</div>
                     <div className="w-[70px]" /> {/* Placeholder for balance to center title */}
                 </div>
 
@@ -372,7 +374,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                     {/* Right: Balance Card */}
                     <div className={`flex-1 flex items-center justify-between rounded-3xl p-5 sm:p-6 shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                         <div className="flex flex-col">
-                            <span className={`text-[12px] sm:text-[13px] font-medium mb-1 ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>Umumiy Balans</span>
+                            <span className={`text-[12px] sm:text-[13px] font-medium mb-1 ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>{t('overallBalance', 'Umumiy Balans')}</span>
                             <span className={`text-[22px] sm:text-[28px] font-bold tracking-tight ${globalBalance < 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : (globalBalance > 0 ? (isDark ? 'text-[#30D158]' : 'text-[#34C759]') : (isDark ? 'text-white' : 'text-gray-900'))}`}>
                                 {globalBalance > 0 ? '+' : (globalBalance < 0 ? '−' : '')}{fmtCompact(globalBalance)} <span className="text-[18px]">UZS</span>
                             </span>
@@ -414,7 +416,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                     {/* Jami To'langan */}
                                     <div className={`flex-1 rounded-3xl p-5 shadow-sm border flex items-center justify-between ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                                         <div className="flex flex-col min-w-0 pr-2">
-                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : "Jami to'langan"}</span>
+                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? t('selectedRange', 'Tanlangan oraliqda') : t('totalPaid', "Jami to'langan")}</span>
                                             <span className={`text-[20px] sm:text-[24px] font-bold tracking-tight truncate ${isDark ? 'text-[#30D158]' : 'text-[#34C759]'}`}>+{fmtCompact(periodSummary.totalPaid)} <span className="text-[16px] font-bold">UZS</span></span>
                                         </div>
                                         <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-inner ${isDark ? 'bg-[#30D158]/10 text-[#30D158]' : 'bg-[#34C759]/10 text-[#34C759]'}`}>
@@ -424,7 +426,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                     {/* Jami Qarz / Ortiqcha */}
                                     <div className={`flex-1 rounded-3xl p-5 shadow-sm border flex items-center justify-between ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                                         <div className="flex flex-col min-w-0 pr-2">
-                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? "Tanlangan oraliqda" : (periodSummary.totalDebt < 0 ? "Ortiqcha to'lov" : "Jami qarz")}</span>
+                                            <span className={`text-[13px] font-semibold mb-1 ${muted}`}>{startDate || endDate ? t('selectedRange', 'Tanlangan oraliqda') : (periodSummary.totalDebt < 0 ? t('overpayment', "Ortiqcha to'lov") : t('totalDebt', 'Jami qarz'))}</span>
                                             <span className={`text-[20px] sm:text-[24px] font-bold tracking-tight truncate ${periodSummary.totalDebt > 0 ? (isDark ? 'text-[#FF453A]' : 'text-[#FF3B30]') : (periodSummary.totalDebt < 0 ? (isDark ? 'text-[#30D158]' : 'text-[#34C759]') : txt)}`}>
                                                 {periodSummary.totalDebt > 0 ? '−' : (periodSummary.totalDebt < 0 ? '+' : '')}{fmtCompact(periodSummary.totalDebt)} <span className="text-[16px] font-bold">UZS</span>
                                             </span>
@@ -481,7 +483,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                             {filteredTimeline.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center py-24 gap-3 ${muted}`}>
                                     <span className="text-4xl">📅</span>
-                                    <p className="text-[15px] font-medium">Tarix topilmadi</p>
+                                    <p className="text-[15px] font-medium">{t('noHistory', 'Tarix topilmadi')}</p>
                                 </div>
                             ) : (
                                 <div className="max-w-3xl mx-auto w-full space-y-3">
@@ -497,15 +499,15 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                     </div>
                                                     <div className="text-left">
                                                         <h2 className={`text-[16px] sm:text-[18px] font-bold tracking-tight ${txt}`}>{group.label}</h2>
-                                                        <p className={`text-[13px] font-medium mt-0.5 ${muted}`}>{group.days.length} kun</p>
+                                                        <p className={`text-[13px] font-medium mt-0.5 ${muted}`}>{group.days.length} {t('daysCount', 'kun')}</p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right flex items-center gap-2 sm:gap-4">
                                                     <div className="flex flex-col items-end">
-                                                        <p className={`text-[12px] sm:text-[13px] font-semibold ${muted}`}>Kutilgan: {fmtCompact(group.totalExpected)} <span className="text-[10px]">UZS</span></p>
+                                                        <p className={`text-[12px] sm:text-[13px] font-semibold ${muted}`}>{t('expected', 'Kutilgan:')} {fmtCompact(group.totalExpected)} <span className="text-[10px]">UZS</span></p>
                                                         {group.totalDebt !== 0 && (
                                                             <p className={`text-[12px] sm:text-[13px] font-bold mt-0.5 ${group.totalDebt > 0 ? 'text-[#FF3B30] dark:text-[#FF453A]' : 'text-[#34C759] dark:text-[#30D158]'}`}>
-                                                                {group.totalDebt > 0 ? 'Qarz: ' : "Ortiqcha: +"}{fmtCompact(group.totalDebt)} <span className="text-[10px]">UZS</span>
+                                                                {group.totalDebt > 0 ? t('debt', 'Qarz: ') : t('excess', 'Ortiqcha: +')}{fmtCompact(group.totalDebt)} <span className="text-[10px]">UZS</span>
                                                             </p>
                                                         )}
                                                     </div>
@@ -549,8 +551,8 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                                     ↳ {t.description}
                                                                 </div>
                                                             ))}
-                                                            {day.transactions.filter(t => t.description && t.type !== TransactionType.DAY_OFF).length === 0 && (
-                                                                <div className={`text-[13px] italic ${muted}`}>Izohsiz</div>
+                                                            {day.transactions.filter(tx => tx.description && tx.type !== TransactionType.DAY_OFF).length === 0 && (
+                                                                <div className={`text-[13px] italic ${muted}`}>{t('noComment', 'Izohsiz')}</div>
                                                             )}
                                                         </div>
 
@@ -559,7 +561,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                             {!day.isDayOff && (
                                                                 <>
                                                                     <div className={`text-[17px] font-bold tracking-tight mb-0.5 flex sm:block justify-between ${day.paidAmount > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-white' : 'text-gray-900')}`}>
-                                                                        <span className="sm:hidden text-sm font-medium">To'lov:</span> 
+                                                                        <span className="sm:hidden text-sm font-medium">{t('paid', "To'lov")}:</span> 
                                                                         <span>{day.paidAmount > 0 ? '+' : ''}{fmtCompact(day.paidAmount)}</span>
                                                                     </div>
                                                                     <div className="flex sm:flex-col sm:items-end justify-between gap-1 sm:gap-0 mt-1">
@@ -576,7 +578,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                             )}
                                                             {day.isDayOff && (
                                                                 <div className={`text-[14px] font-medium h-full flex items-center justify-start sm:justify-end ${muted}`}>
-                                                                    Reja yo'q
+                                                                    {t('noPlan', "Reja yo'q")}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -598,21 +600,21 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                             {/* Hero */}
                             <div className={`rounded-2xl border px-6 py-5 ${isDark ? 'border-[#FF9F0A]/20 bg-[#FF9F0A]/10' : 'border-[#FF9500]/20 bg-[#FF9500]/10'}`}>
                                 <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-[#FF9F0A]/80' : 'text-[#FF9500]/80'}`}>
-                                    <div className="w-4 h-4"><Lottie animationData={depositAnimation} loop={true} /></div> Joriy depozit
+                                    <div className="w-4 h-4"><Lottie animationData={depositAnimation} loop={true} /></div> {t('currentDeposit', 'Joriy depozit')}
                                 </p>
                                 <p className={`text-[32px] font-bold tracking-tight font-mono ${isDark ? 'text-[#FF9F0A]' : 'text-[#FF9500]'}`}>{fmt(depositLedger.length > 0 ? depositLedger[0].newBal : 0)}</p>
-                                <p className={`text-[13px] font-medium mt-1 ${muted}`}>{depositLedger.length} ta harakat</p>
+                                <p className={`text-[13px] font-medium mt-1`}>{depositLedger.length} {t('movements', 'ta harakat')}</p>
                             </div>
 
                             {depositLedger.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center py-16 gap-3 ${muted}`}>
                                     <div className="w-12 h-12 flex items-center justify-center opacity-80"><Lottie animationData={depositAnimation} loop={true} /></div>
-                                    <p className="text-[15px] font-medium">Depozit harakatlari yo'q</p>
+                                    <p className="text-[15px] font-medium">{t('noDepositMovements', "Depozit harakatlari yo'q")}</p>
                                 </div>
                             ) : (
                                 <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA] shadow-sm'}`}>
                                     <div className={`px-4 py-3 border-b ${bdr} ${isDark ? 'bg-[#2C2C2E]' : 'bg-[#F2F2F7]'}`}>
-                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${muted}`}>Depozit ledgeri</p>
+                                        <p className={`text-[11px] font-bold uppercase tracking-widest ${muted}`}>{t('depositLedger', 'Depozit ledgeri')}</p>
                                     </div>
                                     <div className={`divide-y ${divider}`}>
                                         {depositLedger.map(({ tx, prevBal, newBal }) => {
@@ -623,7 +625,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                         {isTopUp ? '↑' : '↓'}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className={`text-[14px] font-semibold ${txt}`}>{isTopUp ? "Depozit to'ldirildi" : "Depozitdan yechildi"}</p>
+                                                        <p className={`text-[14px] font-semibold ${txt}`}>{isTopUp ? t('depositTopup', "Depozit to'ldirildi") : t('depositWithdrawal', 'Depozitdan yechildi')}</p>
                                                         {tx.description && <p className={`text-[12px] truncate mt-0.5 ${muted}`}>{tx.description}</p>}
                                                         <p className={`text-[11px] mt-1 ${muted}`}>{fmtDate(tx.timestamp)} • {fmtTime(tx.timestamp)}</p>
                                                     </div>
@@ -649,16 +651,16 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                             <div className={`rounded-2xl border px-6 py-5 ${isDark ? 'border-[#BF5AF2]/20 bg-[#BF5AF2]/10' : 'border-[#AF52DE]/20 bg-[#AF52DE]/10'}`}>
                                 <p className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1 ${isDark ? 'text-[#BF5AF2]/80' : 'text-[#AF52DE]/80'}`}>
                                     <div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
-                                    Oylik maosh
+                                    {t('salary', 'Oylik maosh')}
                                 </p>
                                 <p className={`text-[32px] font-bold tracking-tight font-mono ${isDark ? 'text-[#BF5AF2]' : 'text-[#AF52DE]'}`}>{fmt(driver.monthlySalary ?? 0)}</p>
-                                <p className={`text-[13px] font-medium mt-1 ${muted}`}>UZS / oy • {salaryTxs.length} ta to'lov</p>
+                                <p className={`text-[13px] font-medium mt-1 ${muted}`}>UZS / oy • {salaryTxs.length} {t('salaryPayments', "ta to'lov")}</p>
                             </div>
 
                             {salaryTxs.length === 0 ? (
                                 <div className={`flex flex-col items-center justify-center py-16 gap-3 ${muted}`}>
                                     <div className="w-10 h-10 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
-                                    <p className="text-[15px] font-medium">Maosh to'lovlari yo'q</p>
+                                    <p className="text-[15px] font-medium">{t('noSalaryPayments', "Maosh to'lovlari yo'q")}</p>
                                 </div>
                             ) : (
                                 <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA] shadow-sm'}`}>
@@ -669,7 +671,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                     <div className="w-6 h-6 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className={`text-[14px] font-semibold ${txt}`}>Maosh to'lovi</p>
+                                                    <p className={`text-[14px] font-semibold ${txt}`}>{t('salaryPayment', "Maosh to'lovi")}</p>
                                                     {tx.description && <p className={`text-[12px] truncate mt-0.5 ${muted}`}>{tx.description}</p>}
                                                     <p className={`text-[11px] mt-1 ${muted}`}>{fmtDate(tx.timestamp)} • {fmtTime(tx.timestamp)}</p>
                                                 </div>

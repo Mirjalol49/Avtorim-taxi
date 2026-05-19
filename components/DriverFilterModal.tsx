@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Driver } from '../src/core/types/driver.types';
 import { Car } from '../src/core/types/car.types';
 import { LicensePlate } from '../src/components/ui/LicensePlate';
@@ -24,9 +25,10 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
     drivers,
     cars,
     theme,
-    allLabel = 'Barcha Haydovchilar',
-    searchPlaceholder = 'Qidirish...',
+    allLabel = 'All Drivers',
+    searchPlaceholder = 'Search...',
 }) => {
+    const { t } = useTranslation();
     const [search, setSearch] = useState('');
     const searchRef = useRef<HTMLInputElement>(null);
     const isDark = theme === 'dark';
@@ -91,10 +93,10 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                 {/* Header */}
                 <div className="pt-7 pb-4 px-6 flex-shrink-0 flex flex-col items-center justify-center relative">
                     <h2 className={`text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Haydovchini tanlang
+                        {t('selectDriver', 'Haydovchini tanlang')}
                     </h2>
                     <p className={`text-[13px] mt-1 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {drivers.filter(d => !d.isDeleted).length} ta faol haydovchi
+                        {drivers.filter(d => !d.isDeleted).length} {t('activeDriversCount', 'ta faol haydovchi')}
                     </p>
                 </div>
 
@@ -162,7 +164,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                         {allLabel}
                                     </div>
                                     <div className={`text-[12px] mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                                        Hammasi
+                                        {t('all', 'Hammasi')}
                                     </div>
                                 </div>
                             </button>
@@ -231,7 +233,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                             </>
                                         ) : (
                                             <div className={`text-[12px] mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                Mashina yo'q
+                                                {t('noCar', "Mashina yo'q")}
                                             </div>
                                         )}
                                     </div>
@@ -241,7 +243,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
 
                         {filtered.length === 0 && search && (
                             <div className={`col-span-3 py-12 text-center text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Haydovchi topilmadi
+                                {t('driverNotFound', 'Haydovchi topilmadi')}
                             </div>
                         )}
                     </div>

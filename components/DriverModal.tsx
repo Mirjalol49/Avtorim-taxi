@@ -247,7 +247,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     // We allow larger initial files because we will compress them
     const oversized = files.find(f => f.size > 20 * 1024 * 1024);
     if (oversized) {
-      setDocError(`Fayl hajmi 20MB dan oshmasligi kerak`);
+      setDocError(t('driverModalFileSizeError', 'Fayl hajmi 20MB dan oshmasligi kerak'));
       e.target.value = '';
       return;
     }
@@ -275,7 +275,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       const newDocs = await Promise.all(promises);
       setDocuments(prev => [...prev, ...newDocs]);
     } catch (err) {
-      setDocError("Faylni qayta ishlashda xatolik yuz berdi");
+      setDocError(t('driverModalFileProcessError', 'Faylni qayta ishlashda xatolik yuz berdi'));
     } finally {
       e.target.value = '';
     }
@@ -324,11 +324,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           <div>
             <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
             {docs.length > 0 && (
-              <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{docs.length} ta fayl</p>
+              <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{docs.length} {t('driverModalFileCount', 'ta fayl')}</p>
             )}
           </div>
           <label htmlFor={inputId} className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors flex-shrink-0">
-            + Qo'shish
+            {t('driverModalAddFile', "+ Qo'shish")}
           </label>
           <input id={inputId} type="file" accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp,application/pdf" multiple className="hidden"
             onChange={(e) => handleDocumentUpload(e, category)} />
@@ -359,7 +359,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
         ) : (
           <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-            Oldi-orqa tomonlarni yoki bir nechta sahifalarni yuklash mumkin
+            {t('driverModalUploadHint', 'Oldi-orqa tomonlarni yoki bir nechta sahifalarni yuklash mumkin')}
           </p>
         )}
       </div>
@@ -390,7 +390,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           {/* Avatar + Name */}
           <div className="flex items-center gap-5">
             <div className="flex-shrink-0">
-              <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Foto</label>
+              <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('driverModalPhoto', 'FOTO')}</label>
               <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
                 {avatar ? (
                   <img src={avatar} alt="Preview" className="w-full h-full object-cover" />
@@ -407,7 +407,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             </div>
             <div className="flex-1">
               <label className={labelClass}>{t('name')} <span className="text-red-500">*</span></label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Ism Familiya" />
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={t('namePlaceholder', 'Ism Familiya')} />
             </div>
           </div>
 
@@ -417,21 +417,21 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               <input type="tel" required value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 90 123 45 67" />
             </div>
             <div>
-              <label className={labelClass}>Qo'shimcha telefon</label>
+              <label className={labelClass}>{t('driverModalExtraPhone', "Qo'shimcha telefon")}</label>
               <input type="tel" value={extraPhone} onChange={(e) => setExtraPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 " />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Eslatmalar (Ixtiyoriy)</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder="Haydovchi haqida qo'shimcha ma'lumot..."></textarea>
+            <label className={labelClass}>{t('driverModalNotes', 'Eslatmalar (Ixtiyoriy)')}</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder={t('driverModalNotesPlaceholder', "Haydovchi haqida qo'shimcha ma'lumot...")}></textarea>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Ish boshlagan sana</label>
+              <label className={labelClass}>{t('driverModalStartDate', 'Ish boshlagan sana')}</label>
               <DatePicker
-                label="Ish boshlagan sana"
+                label={t('driverModalStartDate', 'Ish boshlagan sana')}
                 hideLabel
                 value={startDate ? new Date(startDate) : new Date()}
                 onChange={(d: Date) => setStartDate(d.getTime())}
@@ -439,9 +439,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               />
             </div>
             <div>
-              <label className={labelClass}>Ishdan ketgan sana</label>
+              <label className={labelClass}>{t('driverModalQuitDate', 'Ishdan ketgan sana')}</label>
               <DatePicker
-                label="Ishdan ketgan sana"
+                label={t('driverModalQuitDate', 'Ishdan ketgan sana')}
                 hideLabel
                 isClearable
                 value={quitDate ? new Date(quitDate) : null}
@@ -454,7 +454,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
           {/* Driver payment type */}
           <div>
-            <label className={labelClass}>Haydovchi turi</label>
+            <label className={labelClass}>{t('driverModalType', 'Haydovchi turi')}</label>
             {/* Toggle */}
             <div className={`flex flex-wrap sm:flex-nowrap rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
               {(['deposit', 'salary', 'lease_to_own'] as const).map(type => (
@@ -471,28 +471,28 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   }`}
                 >
                   {type === 'deposit' ? (
-                    <><div className="w-4 h-4 flex items-center justify-center"><span className="text-lg leading-none">🚕</span></div> Standart</>
+                    <><div className="w-4 h-4 flex items-center justify-center"><span className="text-lg leading-none">🚕</span></div> {t('driverTypeStandard', 'Standart')}</>
                   ) : type === 'salary' ? (
-                    <><div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> Maoshli</>
+                    <><div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> {t('driverTypeSalary', 'Maoshli')}</>
                   ) : (
-                    <>🚗 Arenda (Vikup)</>
+                    <>🚗 {t('driverTypeLease', 'Arenda (Vikup)')}</>
                   )}
                 </button>
               ))}
             </div>
             <p className={`text-[10px] mt-1.5 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
               {driverType === 'deposit'
-                ? "Odatiy haydovchi. Kunlik reja asosida ishlaydi."
+                ? t('driverTypeStandardDesc', 'Odatiy haydovchi. Kunlik reja asosida ishlaydi.')
                 : driverType === 'salary'
-                  ? "Sizdan haydovchiga oylik maosh to'lanadi, reja bajarilmasa maoshdan ayriladi."
-                  : "Haydovchi mashinani bo'lib to'lash (sotib olish) sharti bilan oladi. Barcha to'lovlar shartnoma summasidan ayirib boriladi."}
+                  ? t('driverTypeSalaryDesc', "Sizdan haydovchiga oylik maosh to'lanadi, reja bajarilmasa maoshdan ayriladi.")
+                  : t('driverTypeLeaseDesc', "Haydovchi mashinani bo'lib to'lash (sotib olish) sharti bilan oladi. Barcha to'lovlar shartnoma summasidan ayirib boriladi.")}
             </p>
           </div>
 
           {/* Conditional amount field */}
           {driverType === 'salary' ? (
             <div>
-              <label className={labelClass}>Oylik maosh</label>
+              <label className={labelClass}>{t('driverModalSalaryLabel', 'Oylik maosh')}</label>
               <div className="relative">
                 <input
                   type="text"
@@ -507,13 +507,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
               </div>
               <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Har oyda haydovchiga to'lanadigan maosh. Reja bajarilmasa ayiriladi.
+                {t('driverModalSalaryDesc', "Har oyda haydovchiga to'lanadigan maosh. Reja bajarilmasa ayiriladi.")}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <label className={labelClass}>Mashina narxi (Shartnoma jami)</label>
+                <label className={labelClass}>{t('driverModalContractTotal', 'Mashina narxi (Shartnoma jami)')}</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -531,7 +531,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>Muddati (Oy)</label>
+                  <label className={labelClass}>{t('driverModalDuration', 'Muddati (Oy)')}</label>
                   <input
                     type="number"
                     min="1"
@@ -542,9 +542,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Boshlanish sanasi</label>
+                  <label className={labelClass}>{t('driverModalContractStart', 'Boshlanish sanasi')}</label>
                   <DatePicker
-                    label="Boshlanish sanasi"
+                    label={t('driverModalContractStart', 'Boshlanish sanasi')}
                     hideLabel
                     value={contractStartDate ? new Date(contractStartDate) : new Date()}
                     onChange={(d: Date) => setContractStartDate(d.getTime())}
@@ -557,12 +557,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 <div className={`p-3 rounded-xl mt-2 flex items-start gap-3 ${theme === 'dark' ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'}`}>
                   <span className="text-xl">💡</span>
                   <div>
-                    <p className={`text-xs font-bold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>Tavsiya etilgan kunlik reja:</p>
+                    <p className={`text-xs font-bold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>{t('driverModalSuggestedPlan', 'Tavsiya etilgan kunlik reja:')}</p>
                     <p className={`text-sm font-mono font-black ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
                       {(Math.ceil(totalContractAmount / (contractDurationMonths * 30) / 1000) * 1000).toLocaleString('uz-UZ')} UZS
                     </p>
                     <p className={`text-[9px] mt-0.5 opacity-80 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>
-                      (Bu summani pastdagi avtomobil qismiga kiritishingiz kerak)
+                      {t('driverModalSuggestedPlanNote', '(Bu summani pastdagi avtomobil qismiga kiritishingiz kerak)')}
                     </p>
                   </div>
                 </div>
@@ -573,11 +573,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           {/* Deposit fields for all drivers */}
           <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-50'}`}>
             <p className={sectionTitle}>
-              <div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div> Depozit sozlamalari
+              <div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div> {t('driverModalDepositSettings', 'Depozit sozlamalari')}
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Depozit miqdori</label>
+                <label className={labelClass}>{t('driverModalDepositAmount', 'Depozit miqdori')}</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -592,12 +592,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
                 </div>
                 <p className={`text-[10px] mt-1 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                  Boshlang'ich depozit
+                  {t('driverModalInitialDeposit', "Boshlang'ich depozit")}
                 </p>
               </div>
 
               <div>
-                <label className={labelClass}>Ogohlantirish limiti</label>
+                <label className={labelClass}>{t('driverModalWarningLimit', 'Ogohlantirish limiti')}</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -612,7 +612,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
                 </div>
                 <p className={`text-[10px] mt-1 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                  Depozit tushib ketsa xabar beriladi
+                  {t('driverModalWarningLimitDesc', 'Depozit tushib ketsa xabar beriladi')}
                 </p>
               </div>
             </div>
@@ -621,7 +621,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           {/* Car assignment picker */}
           <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
-              <CarIcon className="w-4 h-4" /> Biriktirilgan avtomobil
+              <CarIcon className="w-4 h-4" /> {t('driverModalAssignedVehicle', 'Biriktirilgan avtomobil')}
             </p>
 
             {/* Selected car preview or picker trigger */}
@@ -660,7 +660,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                       <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                     </div>
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {availableCars.length === 0 ? "Bo'sh avtomobil yo'q" : "Avtomobil tanlang..."}
+                      {availableCars.length === 0 ? t('driverModalNoVehicles', "Bo'sh avtomobil yo'q") : t('driverModalSelectVehicle', 'Avtomobil tanlang...')}
                     </span>
                   </>
                 )}
@@ -679,7 +679,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                       type="text"
                       value={carSearch}
                       onChange={e => setCarSearch(e.target.value)}
-                      placeholder="Nomi yoki raqami bo'yicha qidiring..."
+                      placeholder={t('driverModalSearchVehicle', "Nomi yoki raqami bo'yicha qidiring...")}
                       className={`w-full px-3 py-2 rounded-lg text-sm outline-none border ${theme === 'dark'
                         ? 'bg-surface-2 border-white/[0.08] text-white placeholder-gray-500 focus:border-[#0f766e]'
                         : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-[#0f766e]'}`}
@@ -698,11 +698,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`}>
                           <XIcon className="w-4 h-4" />
                         </div>
-                        <span>Avtomobil biriktirmaslik</span>
+                        <span>{t('driverModalNoVehicle', 'Avtomobil biriktirmaslik')}</span>
                       </button>
                     )}
                     {filteredCars.length === 0 ? (
-                      <p className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hech narsa topilmadi</p>
+                      <p className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('driverModalNothingFound', 'Hech narsa topilmadi')}</p>
                     ) : (
                       filteredCars.map(car => (
                         <button
@@ -736,11 +736,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           {/* Driver documents */}
           <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
-              <span>👤</span> Haydovchi hujjatlari
+              <span>👤</span> {t('driverModalDocuments', 'Haydovchi hujjatlari')}
             </p>
             <div className="space-y-2">
-              <DocUploadBox category="driver_license" label="Haydovchilik guvohnomasi" />
-              <DocUploadBox category="passport" label="Pasport" />
+              <DocUploadBox category="driver_license" label={t('driverModalLicense', 'Haydovchilik guvohnomasi')} />
+              <DocUploadBox category="passport" label={t('driverModalPassport', 'Pasport')} />
             </div>
             {docError && <p className="text-xs text-red-500 mt-2">{docError}</p>}
           </div>

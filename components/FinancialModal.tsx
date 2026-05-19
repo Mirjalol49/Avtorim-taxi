@@ -23,14 +23,14 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: any }[] = [
 ];
 
 const OTHER_CATEGORIES = [
-  { icon: '⛽', label: 'Benzin'       },
-  { icon: '🔧', label: 'Ehtiyot qism' },
-  { icon: '🔩', label: 'Ta\'mirlash'  },
-  { icon: '🚨', label: 'Jarima'       },
-  { icon: '💡', label: 'Kommunal'     },
-  { icon: '🏢', label: 'Ijara'        },
-  { icon: '🛒', label: 'Xarid'        },
-  { icon: '📝', label: 'Boshqa'       },
+  { icon: '⛽', label: 'Benzin',       tKey: 'catFuel' },
+  { icon: '🔧', label: 'Ehtiyot qism', tKey: 'catParts' },
+  { icon: '🔩', label: 'Ta\'mirlash',  tKey: 'catRepair' },
+  { icon: '🚨', label: 'Jarima',       tKey: 'catFine' },
+  { icon: '💡', label: 'Kommunal',     tKey: 'catUtility' },
+  { icon: '🏢', label: 'Ijara',        tKey: 'catRent' },
+  { icon: '🛒', label: 'Xarid',        tKey: 'catPurchase' },
+  { icon: '📝', label: 'Boshqa',       tKey: 'catOther' },
 ];
 
 const ALL_CATEGORY_LABELS = OTHER_CATEGORIES.map(c => c.label);
@@ -66,7 +66,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   theme, fleetId = '',
   initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { addToast } = useToast();
   const isDark = theme === 'dark';
 
@@ -234,20 +234,20 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     // Validation
     if (type === TransactionType.EXPENSE) {
       if (expenseTarget === 'driver' && (!driverId || !drivers.find(d => d.id === driverId))) {
-        addToast('error', 'Haydovchini tanlang');
+        addToast('error', t('selectDriverToast', 'Haydovchini tanlang'));
         return;
       }
-      if (expenseTarget === 'car'    && (!carId    || !cars.find(c => c.id === carId))) {
-        addToast('error', 'Mashinani tanlang');
+      if (expenseTarget === 'car' && !carId) {
+        addToast('error', t('selectCarToast', 'Mashinani tanlang'));
         return;
       }
       if (!description.trim()) {
-        addToast('error', 'Izoh kiritish majburiy');
+        addToast('error', t('commentRequiredToast', 'Izoh kiritish majburiy'));
         return;
       }
     } else {
-      if (!driverId || !drivers.find(d => d.id === driverId)) {
-        addToast('error', 'Haydovchini tanlang');
+      if (!driverId) {
+        addToast('error', t('selectDriverToast', 'Haydovchini tanlang'));
         return;
       }
     }
@@ -255,11 +255,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     let finalAmount = Number(amount);
     if (type === TransactionType.DAY_OFF || type === TransactionType.NOT_WORKING) finalAmount = 0;
     if (type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (isNaN(finalAmount) || finalAmount <= 0)) {
-        addToast('error', 'Summani kiriting (noldan katta bo\'lishi kerak)');
+        addToast('error', t('enterAmountToast', 'Summani kiriting (noldan katta bo\'lishi kerak)'));
         return;
     }
     if (paymentMethod === 'card' && !chequeImage) {
-      setChequeError("Karta orqali to'lovda chek rasmi talab qilinadi");
+      setChequeError(t('cardImageRequiredToast', "Karta orqali to'lovda chek rasmi talab qilinadi"));
       return;
     }
 
@@ -314,10 +314,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const labelClass = `block text-[11px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
 
   const typeConfig = {
-    [TransactionType.INCOME]:  { label: 'Kirim',     color: 'bg-teal-500',  shadow: 'shadow-sm'  },
-    [TransactionType.EXPENSE]: { label: 'Chiqim',    color: 'bg-red-500',   shadow: 'shadow-sm'   },
-    [TransactionType.DAY_OFF]: { label: 'Dam olish', color: 'bg-blue-500',  shadow: 'shadow-sm'  },
-    [TransactionType.NOT_WORKING]: { label: 'Ishlamagan', color: 'bg-red-500', shadow: 'shadow-sm' },
+    [TransactionType.INCOME]:  { label: t('incomeLabel', 'Kirim'),     color: 'bg-teal-500',  shadow: 'shadow-sm'  },
+    [TransactionType.EXPENSE]: { label: t('expenseLabel', 'Chiqim'),    color: 'bg-red-500',   shadow: 'shadow-sm'   },
+    [TransactionType.DAY_OFF]: { label: t('dayOffLabel', 'Dam olish'), color: 'bg-blue-500',  shadow: 'shadow-sm'  },
+    [TransactionType.NOT_WORKING]: { label: t('notWorkingLabel', 'Ishlamagan'), color: 'bg-red-500', shadow: 'shadow-sm' },
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -348,7 +348,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               </div>
               <div>
                 <h3 className={`font-bold text-base leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {initialTransaction ? 'Tahrirlash' : t('newTransaction')}
+                  {initialTransaction ? t('editTransaction', 'Tahrirlash') : t('newTransaction')}
                 </h3>
                 <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                   {typeConfig[type]?.label}
@@ -365,10 +365,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Type toggle */}
             <div className={`flex gap-1 p-1 rounded-2xl border overflow-x-auto ${isDark ? 'bg-surface-3 border-white/[0.08]' : 'bg-surface-2 border-gray-200'}`}>
               {[
-                { v: TransactionType.INCOME,  label: 'Kirim',     emoji: '💰' },
-                { v: TransactionType.EXPENSE, label: 'Chiqim',    emoji: '💸' },
-                { v: TransactionType.DAY_OFF, label: 'Dam olish', emoji: <div className="w-4 h-4"><Lottie animationData={restAnimation} loop={true} /></div> },
-                { v: TransactionType.NOT_WORKING, label: 'Ishlamagan', emoji: '❌' },
+                { v: TransactionType.INCOME,  label: t('incomeLabel', 'Kirim'),     emoji: '💰' },
+                { v: TransactionType.EXPENSE, label: t('expenseLabel', 'Chiqim'),    emoji: '💸' },
+                { v: TransactionType.DAY_OFF, label: t('dayOffLabel', 'Dam olish'), emoji: <div className="w-4 h-4"><Lottie animationData={restAnimation} loop={true} /></div> },
+                { v: TransactionType.NOT_WORKING, label: t('notWorkingLabel', 'Ishlamagan'), emoji: '❌' },
               ].map(item => (
                 <button key={item.v} type="button"
                   onClick={() => { setType(item.v); if (item.v !== TransactionType.EXPENSE) setExpenseTarget('driver'); }}
@@ -391,9 +391,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {type === TransactionType.EXPENSE && (
               <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-surface-3 border-white/[0.06]' : 'bg-surface-2 border-gray-200'}`}>
                 {([
-                  { v: 'driver', label: 'Haydovchi', icon: '👤' },
-                  { v: 'car',    label: 'Mashina',   icon: '🚙' },
-                  { v: 'other',  label: 'Boshqa',    icon: '📦' },
+                  { v: 'driver', label: t('driver'), icon: '👤' },
+                  { v: 'car',    label: t('car'),   icon: '🚙' },
+                  { v: 'other',  label: t('other'),    icon: '📦' },
                 ] as { v: ExpenseTarget; label: string; icon: string }[]).map(tab => (
                   <button key={tab.v} type="button"
                     onClick={() => {
@@ -418,7 +418,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               <div className="relative">
                 <label className={labelClass}>
                   <UsersIcon className="inline w-3 h-3 mr-1 mb-0.5" />
-                  Haydovchi
+                  {t('driver', 'Haydovchi')}
                 </label>
 
                 {!isDriverOpen && selectedDriver ? (
@@ -444,7 +444,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={driverSearch} onChange={e => setDriverSearch(e.target.value)}
-                          placeholder="Qidirish..." autoFocus
+                          placeholder={t('searchPlaceholder', 'Qidirish...')} autoFocus
                           className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-surface-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
                       </div>
                     </div>
@@ -463,12 +463,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                           {driverId === d.id && <CheckIcon className="w-4 h-4 text-teal-500 flex-shrink-0" />}
                         </div>
                       ))}
-                      {filteredDrivers.length === 0 && <p className="p-5 text-center text-sm text-gray-500">Topilmadi</p>}
+                      {filteredDrivers.length === 0 && <p className="p-5 text-center text-sm text-gray-500">{t('notFound', 'Topilmadi')}</p>}
                     </div>
                     {selectedDriver && (
                       <div onClick={() => setIsDriverOpen(false)}
                         className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-white/[0.08] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-black/[0.03]'}`}>
-                        Yopish
+                        {t('closeLabel', 'Yopish')}
                       </div>
                     )}
                   </div>
@@ -478,7 +478,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {type === TransactionType.EXPENSE && expenseTarget === 'car' && (
               <div className="relative">
-                <label className={`${labelClass} flex items-center gap-1.5`}><CarIcon className="w-3.5 h-3.5" /> Mashina</label>
+                <label className={`${labelClass} flex items-center gap-1.5`}><CarIcon className="w-3.5 h-3.5" /> {t('carModalLabel', 'MASHINA')}</label>
                 {!isCarOpen && selectedCar ? (
                   <div onClick={() => setIsCarOpen(true)}
                     className={`cursor-pointer p-4 rounded-2xl border transition-all group ${isDark ? 'bg-surface-2/60 border-white/[0.08] hover:border-white/[0.12]' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
@@ -500,7 +500,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={carSearch} onChange={e => setCarSearch(e.target.value)}
-                          placeholder="Mashinani qidirish..." autoFocus
+                          placeholder={t('searchCarPlaceholder', 'Mashinani qidirish...')} autoFocus
                           className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-surface-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
                       </div>
                     </div>
@@ -516,12 +516,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                           {carId === c.id && <CheckIcon className="w-4 h-4 text-teal-500 flex-shrink-0" />}
                         </div>
                       ))}
-                      {filteredCars.length === 0 && <p className="p-5 text-center text-sm text-gray-500">Topilmadi</p>}
+                      {filteredCars.length === 0 && <p className="p-5 text-center text-sm text-gray-500">{t('notFound', 'Topilmadi')}</p>}
                     </div>
                     {selectedCar && (
                       <div onClick={() => setIsCarOpen(false)}
                         className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-white/[0.08] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-black/[0.03]'}`}>
-                        Yopish
+                        {t('closeLabel', 'Yopish')}
                       </div>
                     )}
                   </div>
@@ -532,7 +532,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Category chips — shown for ALL expense targets */}
             {type === TransactionType.EXPENSE && (
               <div>
-                <label className={labelClass}>📦 Kategoriya</label>
+                <label className={labelClass}>📦 {t('categoryLabel', 'KATEGORIYA')}</label>
                 <div className="grid grid-cols-4 gap-2">
                   {OTHER_CATEGORIES.map(cat => {
                     const active = isCategoryActive(description, cat.label);
@@ -556,7 +556,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                         }`}
                       >
                         <span className="text-xl">{cat.icon}</span>
-                        <span className="leading-tight text-center">{cat.label}</span>
+                        <span className="leading-tight text-center">{t(cat.tKey, cat.label)}</span>
                       </button>
                     );
                   })}
@@ -570,18 +570,18 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Debt warning */}
             {type === TransactionType.INCOME && driverDebtInfo && driverDebtInfo.remaining > 0 && (
               <div className="rounded-xl p-4 border border-orange-500/30 bg-orange-500/5">
-                <p className="text-xs font-bold text-orange-400 mb-2">⚠ Haydovchida qarz bor</p>
+                <p className="text-xs font-bold text-orange-400 mb-2">{t('hasDebtWarning', '⚠ Haydovchida qarz bor')}</p>
                 <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Qolgan qarz:</span>
+                  <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('remainingDebtText', 'Qolgan qarz:')}</span>
                   <span className="font-bold text-orange-400">−{fmt(driverDebtInfo.remaining)} UZS</span>
                 </div>
                 {amount && Number(amount) > 0 && (
                   <div className={`flex justify-between text-sm pt-2 mt-2 border-t ${isDark ? 'border-orange-500/20' : 'border-orange-200'}`}>
-                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Bu to'lovdan so'ng:</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('afterThisPayment', "Bu to'lovdan so'ng:")}</span>
                     <span className={`font-bold ${Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0 ? 'text-orange-400' : 'text-teal-400'}`}>
                       {Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0
                         ? `−${fmt(Math.max(0, driverDebtInfo.remaining - Number(amount)))} UZS`
-                        : "Qarz to'landi ✓"}
+                        : t('debtPaidOff', "Qarz to'landi ✓")}
                     </span>
                   </div>
                 )}
@@ -591,7 +591,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Amount */}
             {type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (
               <div>
-                <label className={labelClass}>Summa (UZS)</label>
+                <label className={labelClass}>{t('amountUzsLabel', 'SUMMA (UZS)')}</label>
                 <div className="relative">
                   <input type="text" required inputMode="numeric"
                     value={displayAmount} onChange={handleAmountChange}
@@ -631,19 +631,19 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                         isDark ? 'text-white' : 'text-gray-900'
                       }`}>
                         {paymentSourceInfo.type === 'salary'
-                          ? "Maoshdan ushlab qolish"
-                          : "Depozitdan foydalanish"}
+                          ? t('deductFromSalary', "Maoshdan ushlab qolish")
+                          : t('useDepositText', "Depozitdan foydalanish")}
                       </p>
                       <p className={`text-[11px] mt-0.5 ${
                         isDark ? 'text-white/40' : 'text-gray-400'
                       }`}>
                         {paymentSourceInfo.type === 'salary'
                           ? type === TransactionType.INCOME
-                            ? "Haydovchi maoshidan ushlab qolinadi"
-                            : "Bu chiqim haydovchi maoshidan hisoblanadi"
+                            ? t('salaryDeductIncomeDesc', "Haydovchi maoshidan ushlab qolinadi")
+                            : t('salaryDeductExpenseDesc', "Bu chiqim haydovchi maoshidan hisoblanadi")
                           : type === TransactionType.INCOME
-                            ? "Haydovchi reja o'rniga depozitdan to'lov"
-                            : "Bu chiqim depozitdan hisoblanadi"}
+                            ? t('depositIncomeDesc', "Haydovchi reja o'rniga depozitdan to'lov")
+                            : t('depositExpenseDesc', "Bu chiqim depozitdan hisoblanadi")}
                       </p>
                     </div>
                   </div>
@@ -680,10 +680,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </span>
                     <div className="text-left min-w-0">
                       <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Depozitni to'ldirish
+                        {t('topupDeposit', "Depozitni to'ldirish")}
                       </p>
                       <p className={`text-[11px] mt-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
-                        Bu to'lov haydovchining depozit hisobiga o'tkaziladi
+                        {t('topupDepositDesc', "Bu to'lov haydovchining depozit hisobiga o'tkaziladi")}
                       </p>
                     </div>
                   </div>
@@ -715,7 +715,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   <span className={`text-[11px] font-semibold uppercase tracking-wide ${
                     isDark ? 'text-white/40' : 'text-gray-400'
                   }`}>
-                    {paymentSourceInfo.type === 'salary' ? 'Joriy oy maoshi (sof)' : "Depozit qoldig'i"}
+                    {paymentSourceInfo.type === 'salary' ? t('currentMonthSalaryNet', 'Joriy oy maoshi (sof)') : t('depositBalanceText', "Depozit qoldig'i")}
                   </span>
                   <span className={`text-[14px] font-black font-mono ${
                     paymentSourceInfo.balance <= 0
@@ -728,7 +728,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                   }`}>
                     {fmt(Math.max(0, paymentSourceInfo.balance))} UZS
                     {paymentSourceInfo.balance <= 0 && (
-                      <span className="ml-1 text-[10px] font-normal opacity-70">(tugagan)</span>
+                      <span className="ml-1 text-[10px] font-normal opacity-70">{t('finishedText', '(tugagan)')}</span>
                     )}
                   </span>
                 </div>
@@ -741,7 +741,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                         ? paymentSourceInfo.type === 'salary' ? 'text-violet-400/60' : 'text-amber-400/60'
                         : paymentSourceInfo.type === 'salary' ? 'text-violet-600/70' : 'text-amber-600/70'
                     }`}>
-                      {isDepositTopup ? "To'lovdan keyin (qo'shiladi)" : "To'lovdan keyin (ayriladi)"}
+                      {isDepositTopup ? t('afterPaymentAdd', "To'lovdan keyin (qo'shiladi)") : t('afterPaymentSubtract', "To'lovdan keyin (ayriladi)")}
                     </span>
                     <span className={`text-[14px] font-black font-mono ${
                       (!isDepositTopup && paymentSourceInfo.balance - Number(amount) < 0)
@@ -753,7 +753,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       {isDepositTopup
                         ? `${fmt(paymentSourceInfo.balance + Number(amount))} UZS`
                         : paymentSourceInfo.balance - Number(amount) < 0
-                          ? `−${fmt(Number(amount) - paymentSourceInfo.balance)} UZS (yetmaydi)`
+                          ? `−${fmt(Number(amount) - paymentSourceInfo.balance)} UZS ${t('insufficientFunds', '(yetmaydi)')}`
                           : `${fmt(paymentSourceInfo.balance - Number(amount))} UZS`
                       }
                     </span>
@@ -782,9 +782,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {type === TransactionType.DAY_OFF && (
               <div className={`rounded-2xl p-6 border flex flex-col items-center gap-3 text-center ${isDark ? 'border-blue-500/30 bg-blue-500/8' : 'border-blue-200 bg-blue-50'}`}>
                 <div className="w-16 h-16"><Lottie animationData={restAnimation} loop={true} /></div>
-                <p className={`text-base font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Dam olish kuni</p>
+                <p className={`text-base font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{t('dayOffTitle', 'Dam olish kuni')}</p>
                 <p className={`text-sm leading-relaxed max-w-xs ${isDark ? 'text-blue-400/80' : 'text-blue-600/80'}`}>
-                  <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> kuni haydovchidan pul undirilmaydi.
+                  {i18n.language === 'uz' ? (
+                    <><strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> {t('dayOffDesc', 'kuni haydovchidan pul undirilmaydi.')}</>
+                  ) : (
+                    <>{t('dayOffDesc')} <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></>
+                  )}
                 </p>
               </div>
             )}
@@ -793,9 +797,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {type === TransactionType.NOT_WORKING && (
               <div className={`rounded-2xl p-6 border flex flex-col items-center gap-3 text-center ${isDark ? 'border-red-500/30 bg-red-500/8' : 'border-red-200 bg-red-50'}`}>
                 <span className="text-5xl">❌</span>
-                <p className={`text-base font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>Ishlamagan kun</p>
+                <p className={`text-base font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{t('notWorkingTitle', 'Ishlamagan kun')}</p>
                 <p className={`text-sm leading-relaxed max-w-xs ${isDark ? 'text-red-400/80' : 'text-red-600/80'}`}>
-                  <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> kuni haydovchi ishlamaganligi qayd etiladi. Ushbu kunga qarz hisoblanmaydi va oylik reja maqsadidan ham chiqarib tashlanadi.
+                  {i18n.language === 'uz' ? (
+                    <><strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> {t('notWorkingDesc', 'kuni haydovchi ishlamaganligi qayd etiladi.')} {t('notWorkingDescEnd', 'Ushbu kunga qarz hisoblanmaydi va oylik reja maqsadidan ham chiqarib tashlanadi.')}</>
+                  ) : (
+                    <>{t('notWorkingDesc')} <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>{t('notWorkingDescEnd')}</>
+                  )}
                 </p>
               </div>
             )}
@@ -803,7 +811,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Payment method */}
             {type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (
               <div>
-                <label className={labelClass}>To'lov usuli</label>
+                <label className={labelClass}>{t('paymentMethodLabel', "To'lov usuli")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   {PAYMENT_METHODS.map(pm => (
                     <button key={pm.id} type="button"
@@ -815,7 +823,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       }`}
                     >
                       <span className="text-3xl">{pm.icon}</span>
-                      <span className="text-xs font-bold">{pm.label}</span>
+                      <span className="text-xs font-bold">{t(pm.id === 'cash' ? 'paymentCash' : 'paymentCard', pm.label)}</span>
                     </button>
                   ))}
                 </div>
@@ -826,15 +834,15 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {paymentMethod === 'card' && type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (
               <div>
                 <label className={labelClass}>
-                  Karta cheki <span className="text-red-400 ml-1 normal-case text-xs font-normal">(majburiy)</span>
+                  {t('chequeRequired', 'Karta cheki')} <span className="text-red-400 ml-1 normal-case text-xs font-normal">{t('requiredLabel', '(majburiy)')}</span>
                 </label>
                 {chequeImage ? (
                   <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-surface-3' : 'border-teal-300 bg-gray-50'}`}>
                     <div className="flex items-center justify-between px-4 py-3">
-                      <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>✓ Chek qo'shildi</span>
+                      <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{t('chequeAdded', "✓ Chek qo'shildi")}</span>
                       <button type="button" onClick={() => { setChequeImage(null); setChequeError(null); }}
                         className={`text-xs px-3 py-1 rounded-lg font-bold transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
-                        Olib tashlash
+                        {t('removeCheque', 'Olib tashlash')}
                       </button>
                     </div>
                     <div className={`mx-4 border-t border-dashed mb-3 ${isDark ? 'border-white/[0.08]' : 'border-gray-300'}`} />
@@ -854,9 +862,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       <Lottie animationData={chequeAnimation} loop={true} className="w-10 h-10" />
                     </div>
                     <div className="text-center">
-                      <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Karta chekini yuklang</p>
+                      <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('uploadCheque', 'Karta chekini yuklang')}</p>
                       <p className={`text-xs mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                        Drag & drop · <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${isDark ? 'bg-surface-2 border border-white/[0.08]' : 'bg-gray-100 border border-gray-200'}`}>Ctrl+V</kbd> · yoki bosing
+                        {t('dragDropText', 'Drag & drop · ')}<kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${isDark ? 'bg-surface-2 border border-white/[0.08]' : 'bg-gray-100 border border-gray-200'}`}>Ctrl+V</kbd>{t('orClickText', ' · yoki bosing')}
                       </p>
                     </div>
                   </div>
@@ -871,7 +879,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             <div>
               <label className={labelClass}>
                 {t('comment')}
-                {type === TransactionType.EXPENSE && <span className="text-red-400 ml-1 normal-case text-xs font-normal">(majburiy)</span>}
+                {type === TransactionType.EXPENSE && <span className="text-red-400 ml-1 normal-case text-xs font-normal">{t('requiredLabel', '(majburiy)')}</span>}
               </label>
               <textarea
                 required={type === TransactionType.EXPENSE}
@@ -880,9 +888,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 className={`${inputClass} min-h-[110px] resize-none shadow-inner`}
                 placeholder={
                   type === TransactionType.EXPENSE && expenseTarget === 'other'
-                    ? 'Chiqim sababi...'
+                    ? t('commentPlaceholderExpense', 'Chiqim sababi...')
                     : type === TransactionType.EXPENSE
-                    ? t('commentPlaceholder') || 'Masalan: Benzin uchun, Ta\'mirlash...'
+                    ? t('commentPlaceholderExpense', 'Masalan: Benzin uchun, Ta\'mirlash...')
                     : t('commentPlaceholder') || 'Ixtiyoriy izoh...'
                 }
               />
@@ -893,7 +901,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           <div className={`mt-auto sticky bottom-0 z-10 px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-[#171f33]/95 backdrop-blur-md border-white/[0.06]' : 'bg-gray-50/95 backdrop-blur-md border-gray-200'}`}>
             <button type="button" onClick={resetAndClose}
               className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${isDark ? 'bg-surface-2 text-gray-300 hover:bg-white/[0.06] border border-white/[0.08]' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}>
-              {t('cancel')}
+              {t('cancelLabel', 'Bekor qilish')}
             </button>
             <button type="submit"
               className={`px-10 py-3 text-white rounded-xl text-sm font-black shadow-sm transition-all transform active:scale-95 ${
@@ -901,7 +909,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 : type === TransactionType.DAY_OFF ? 'bg-blue-500 hover:bg-blue-600'
                 : 'bg-red-500 hover:bg-red-600'
               }`}>
-              {t('save')}
+              {initialTransaction ? t('editTransaction', 'Tahrirlash') : t('saveTransaction', 'Saqlash')}
             </button>
           </div>
         </div>

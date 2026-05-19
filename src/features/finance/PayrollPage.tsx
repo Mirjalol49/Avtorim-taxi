@@ -403,7 +403,8 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'due'>('all');
 
-    const monthNames = t('months', { returnObjects: true }) as string[];
+    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : MONTH_NAMES_UZ;
 
     const now = new Date();
     const currentYear = now.getFullYear();

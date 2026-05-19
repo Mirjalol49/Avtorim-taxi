@@ -33,21 +33,21 @@ interface Props {
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
-function getFriendlyDocName(doc: any): string {
+function getFriendlyDocName(doc: any, t: (key: string, fallback: string) => string): string {
     if (doc.category) {
         switch (doc.category) {
-            case 'driver_license': return 'Haydovchilik guvohnomasi';
-            case 'passport': return 'Pasport';
-            case 'car_registration': return 'Texnik pasport';
-            case 'car_insurance': return "Sug'urta";
+            case 'driver_license': return t('docNameLicense', 'Haydovchilik guvohnomasi');
+            case 'passport':       return t('docNamePassport', 'Pasport');
+            case 'car_registration': return t('docNameCarRegistration', 'Texnik pasport');
+            case 'car_insurance':  return t('docNameInsurance', "Sug'urta");
         }
     }
     const fn = doc.name || '';
     const lo = fn.toLowerCase();
-    if (lo.includes('pasport')||lo.includes('passport')||lo.includes('id')) return 'ID / Pasport';
-    if (lo.includes('prava')||lo.includes('license')||lo.includes('guvohnoma')) return 'Haydovchilik guvohnomasi';
-    if (lo.includes('tex')||lo.includes('tech')) return 'Texnik pasport';
-    if (lo.includes('sug')||lo.includes('insur')) return "Sug'urta";
+    if (lo.includes('pasport')||lo.includes('passport')||lo.includes('id')) return t('docNamePassport', 'Pasport');
+    if (lo.includes('prava')||lo.includes('license')||lo.includes('guvohnoma')) return t('docNameLicense', 'Haydovchilik guvohnomasi');
+    if (lo.includes('tex')||lo.includes('tech')) return t('docNameCarRegistration', 'Texnik pasport');
+    if (lo.includes('sug')||lo.includes('insur')) return t('docNameInsurance', "Sug'urta");
     return (fn.split('.').slice(0,-1).join('.')||fn).replace(/[_-]/g,' ');
 }
 
@@ -98,8 +98,8 @@ export const DriverProfilePage: React.FC<Props> = ({
     if (!driver) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
-                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Haydovchi topilmadi</p>
-                <button onClick={() => navigate('/drivers')} className="mt-4 px-4 py-2 bg-teal-500 text-white rounded-xl">Ortga qaytish</button>
+                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('driverNotFound', 'Haydovchi topilmadi')}</p>
+                <button onClick={() => navigate('/drivers')} className="mt-4 px-4 py-2 bg-teal-500 text-white rounded-xl">{t('goBack', 'Ortga qaytish')}</button>
             </div>
         );
     }
@@ -150,18 +150,18 @@ export const DriverProfilePage: React.FC<Props> = ({
                             onClick={() => onEditDriver?.(driver)}
                             className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border transition-all active:scale-95 flex items-center gap-2 ${isDark ? 'border-teal-500/30 text-teal-400 hover:bg-teal-500/10' : 'border-teal-200 text-teal-700 hover:bg-teal-50'}`}
                         >
-                            <EditIcon className="w-4 h-4" /> Tahrirlash
+                            <EditIcon className="w-4 h-4" /> {t('edit', 'Tahrirlash')}
                         </button>
                         <button
                             onClick={() => {
-                                if (window.confirm("Rostdan ham bu haydovchini o'chirmoqchimisiz?")) {
+                                if (window.confirm(t('confirmDeleteDriver', "Rostdan ham bu haydovchini o'chirmoqchimisiz?"))) {
                                     onDeleteDriver?.(driver.id);
                                     navigate('/drivers');
                                 }
                             }}
                             className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border transition-all active:scale-95 flex items-center gap-2 ${isDark ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' : 'border-red-200 text-red-600 hover:bg-red-50'}`}
                         >
-                            <TrashIcon className="w-4 h-4" /> O'chirish
+                            <TrashIcon className="w-4 h-4" /> {t('delete', "O'chirish")}
                         </button>
                     </div>
                 )}
@@ -175,40 +175,40 @@ export const DriverProfilePage: React.FC<Props> = ({
                     
                     {/* Employment Info */}
                     <div className={`p-5 rounded-3xl border ${bg}`}>
-                        <p className={`text-[11px] font-black uppercase tracking-wider mb-4 ${muted}`}>🏢 Ish faoliyati</p>
+                        <p className={`text-[11px] font-black uppercase tracking-wider mb-4 ${muted}`}>🏢 {t('workActivity', 'Ish faoliyati')}</p>
                         <div className="flex flex-wrap gap-x-12 gap-y-6">
                             <div>
-                                <p className={`text-[11px] font-semibold ${muted} mb-1`}>Boshladi</p>
+                                <p className={`text-[11px] font-semibold ${muted} mb-1`}>{t('started', 'Boshladi')}</p>
                                 <p className={`text-[15px] font-bold ${txt}`}>
                                     {driver.startDate || driver.createdAt 
                                         ? new Date(driver.startDate || driver.createdAt).toLocaleDateString('ru-RU')
-                                        : 'Noma\'lum'}
+                                        : t('unknown', "Noma'lum")}
                                 </p>
                             </div>
                             {driver.quitDate && (
                                 <div>
-                                    <p className={`text-[11px] font-semibold ${muted} mb-1`}>Tugadi</p>
+                                    <p className={`text-[11px] font-semibold ${muted} mb-1`}>{t('finished', 'Tugadi')}</p>
                                     <p className={`text-[15px] font-bold text-red-500`}>
                                         {new Date(driver.quitDate).toLocaleDateString('ru-RU')}
                                     </p>
                                 </div>
                             )}
                             <div>
-                                <p className={`text-[11px] font-semibold ${muted} mb-1`}>Jami muddat</p>
+                                <p className={`text-[11px] font-semibold ${muted} mb-1`}>{t('totalDuration', 'Jami muddat')}</p>
                                 <p className={`text-[15px] font-black ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
                                     {(() => {
                                         const start = driver.startDate || driver.createdAt || Date.now();
                                         const end = driver.quitDate || Date.now();
                                         const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24));
-                                        if (diffDays <= 0) return '0 kun';
+                                        if (diffDays <= 0) return `0 ${t('daysCount', 'kun')}`;
                                         const years = Math.floor(diffDays / 365);
                                         const months = Math.floor((diffDays % 365) / 30);
                                         const days = (diffDays % 365) % 30;
                                         let res = [];
-                                        if (years > 0) res.push(`${years} yil`);
-                                        if (months > 0) res.push(`${months} oy`);
-                                        if (days > 0 && years === 0) res.push(`${days} kun`);
-                                        return res.join(' ') || '0 kun';
+                                        if (years > 0) res.push(`${years} ${t('years', 'yil')}`);
+                                        if (months > 0) res.push(`${months} ${t('months', 'oy')}`);
+                                        if (days > 0 && years === 0) res.push(`${days} ${t('daysCount', 'kun')}`);
+                                        return res.join(' ') || `0 ${t('daysCount', 'kun')}`;
                                     })()}
                                 </p>
                             </div>
@@ -235,9 +235,9 @@ export const DriverProfilePage: React.FC<Props> = ({
                                 
                                 {(car.dailyPlan ?? 0) > 0 && (
                                     <div className={`p-3 rounded-2xl ${isDark ? 'bg-[#ebf5ff]/5' : 'bg-[#f5f8ff] border border-[#e2e8f0]/50'}`}>
-                                        <p className={`text-[11px] font-medium mb-1 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Kunlik reja</p>
+                                        <p className={`text-[11px] font-medium mb-1 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>{t('dailyPlan', 'Kunlik reja')}</p>
                                         <p className={`text-[15px] sm:text-[16px] font-black font-mono leading-none ${txt}`}>
-                                            {fmt(car.dailyPlan ?? 0)} <span className={`text-[12px] font-medium font-sans ${isDark ? 'text-white/50' : 'text-slate-600'}`}>/ kun</span>
+                                            {fmt(car.dailyPlan ?? 0)} <span className={`text-[12px] font-medium font-sans ${isDark ? 'text-white/50' : 'text-slate-600'}`}>{t('perDay', '/ kun')}</span>
                                         </p>
                                     </div>
                                 )}
@@ -254,7 +254,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                             <div className="space-y-4">
                                 {docs.map((doc:any, idx:number) => {
                                     const isImage = doc.type?.startsWith('image/');
-                                    const friendlyName = getFriendlyDocName(doc);
+                                    const friendlyName = getFriendlyDocName(doc, t);
                                     
                                     return (
                                         <div key={idx} className="flex gap-4 items-center">
@@ -306,18 +306,18 @@ export const DriverProfilePage: React.FC<Props> = ({
                         <div className={`p-6 rounded-3xl border shadow-sm ${isDark ? 'border-teal-500/30 bg-teal-500/[0.04]' : 'border-teal-200 bg-teal-50/50'}`}>
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="flex-1">
-                                    <p className={`text-[11px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-teal-400/80' : 'text-teal-700/80'}`}>🚗 Shartnoma qoldig'i</p>
+                                    <p className={`text-[11px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-teal-400/80' : 'text-teal-700/80'}`}>🚗 {t('contractRemaining', "Shartnoma qoldig'i")}</p>
                                     <p className={`text-[36px] font-black font-mono leading-none tracking-tight ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
                                         {fmt(finance?.contractRemaining ?? 0)}
                                     </p>
                                 </div>
                                 <div className={`flex flex-col justify-end gap-2 p-4 rounded-2xl ${isDark ? 'bg-black/20' : 'bg-white'} border ${isDark ? 'border-teal-500/10' : 'border-teal-100'}`}>
                                     <div className="flex justify-between gap-8">
-                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>Jami shartnoma</span>
+                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>{t('totalContract', 'Jami shartnoma')}</span>
                                         <span className={`text-[13px] font-black font-mono ${isDark ? 'text-teal-400/80' : 'text-teal-600'}`}>{fmt(driver.totalContractAmount ?? 0)}</span>
                                     </div>
                                     <div className="flex justify-between gap-8">
-                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>To'langan</span>
+                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>{t('paid', "To'langan")}</span>
                                         <span className={`text-[13px] font-black font-mono ${isDark ? 'text-teal-400/80' : 'text-teal-600'}`}>{fmt(finance?.contractPaid ?? 0)}</span>
                                     </div>
                                 </div>
@@ -326,7 +326,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                             {driver.totalContractAmount && driver.totalContractAmount > 0 ? (
                                 <div className="mt-6">
                                     <div className="flex justify-between mb-2">
-                                        <span className={`text-[11px] font-bold ${muted}`}>To'lov progressi</span>
+                                        <span className={`text-[11px] font-bold ${muted}`}>{t('paymentProgress', "To'lov progressi")}</span>
                                         <span className={`text-[11px] font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>
                                             {Math.round(((finance?.contractPaid ?? 0) / driver.totalContractAmount) * 100)}%
                                         </span>
@@ -345,14 +345,14 @@ export const DriverProfilePage: React.FC<Props> = ({
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="flex-1">
                                     <p className={`text-[11px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5 ${isLow ? (isDark ? 'text-red-400/80' : 'text-red-600/80') : (isDark ? 'text-amber-400/80' : 'text-amber-700/80')}`}>
-                                        <div className="w-4 h-4"><Lottie animationData={depositAnimation} loop={true} /></div> Depozit qoldig'i
+                                        <div className="w-4 h-4"><Lottie animationData={depositAnimation} loop={true} /></div> {t('depositBalance', "Depozit qoldig'i")}
                                     </p>
                                     <p className={`text-[36px] font-black font-mono leading-none tracking-tight ${isLow ? 'text-red-400' : (isDark ? 'text-amber-300' : 'text-amber-700')}`}>
                                         {fmt(Math.max(0, remaining))}
                                     </p>
                                     {isLow && (
                                         <p className="text-[12px] font-bold mt-2 text-red-500 flex items-center gap-1.5">
-                                            <span>⚠️</span> Depozit miqdori kam — to'ldirish kerak
+                                            <span>⚠️</span> {t('depositLow', "Depozit miqdori kam — to'ldirish kerak")}
                                         </p>
                                     )}
                                     {/* Top-up button */}
@@ -367,18 +367,18 @@ export const DriverProfilePage: React.FC<Props> = ({
                                                 }`}
                                             >
                                                 <div className="w-4 h-4"><Lottie animationData={depositAnimation} loop={true} /></div>
-                                                Depozitni to'ldirish
+                                                {t('topupDepositBtn', "Depozitni to'ldirish")}
                                             </button>
                                         </div>
                                     )}
                                 </div>
                                 <div className={`flex flex-col justify-end gap-2 p-4 rounded-2xl ${isDark ? 'bg-black/20' : 'bg-white'} border ${isLow ? (isDark ? 'border-red-500/10' : 'border-red-100') : (isDark ? 'border-amber-500/10' : 'border-amber-100')}`}>
                                     <div className="flex justify-between gap-8">
-                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>Boshlang'ich</span>
+                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>{t('initialDeposit', "Boshlang'ich")}</span>
                                         <span className={`text-[13px] font-black font-mono ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>{fmt(initial)}</span>
                                     </div>
                                     <div className="flex justify-between gap-8">
-                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>Ishlatilgan</span>
+                                        <span className={`text-[11px] font-bold uppercase ${muted}`}>{t('usedDeposit', 'Ishlatilgan')}</span>
                                         <span className={`text-[13px] font-black font-mono ${isDark ? 'text-red-400/80' : 'text-red-500'}`}>{fmt(Math.max(0, initial - remaining))}</span>
                                     </div>
                                 </div>
@@ -386,7 +386,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                             {initial > 0 && (
                                 <div className="mt-6">
                                     <div className="flex justify-between mb-2">
-                                        <span className={`text-[11px] font-bold ${muted}`}>Qolgan depozit</span>
+                                        <span className={`text-[11px] font-bold ${muted}`}>{t('depositRemaining', 'Qolgan depozit')}</span>
                                         <span className={`text-[11px] font-bold ${isLow ? 'text-red-500' : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
                                             {Math.round(depositPct)}%
                                         </span>
@@ -403,7 +403,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                     ) : (
                         <div className={`p-6 rounded-3xl border shadow-sm ${isDark ? 'border-violet-500/30 bg-violet-500/[0.04]' : 'border-violet-200 bg-violet-50/50'}`}>
                             <div className="flex-1">
-                                <p className={`text-[11px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-violet-400/80' : 'text-violet-700/80'}`}>💵 Oylik maosh</p>
+                                <p className={`text-[11px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-violet-400/80' : 'text-violet-700/80'}`}>💵 {t('monthlySalary', 'Oylik maosh')}</p>
                                 <p className={`text-[36px] font-black font-mono leading-none tracking-tight ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>
                                     {fmt(driver.monthlySalary ?? 0)}
                                 </p>
@@ -414,12 +414,12 @@ export const DriverProfilePage: React.FC<Props> = ({
                     {/* Quick History Actions */}
                     <div className={`p-5 rounded-3xl border ${bg}`}>
                         <div className="flex items-center justify-between mb-4">
-                            <p className={`text-[14px] font-bold ${txt}`}>Moliya tarixi</p>
+                            <p className={`text-[14px] font-bold ${txt}`}>{t('financialHistory', 'Moliya tarixi')}</p>
                             <button 
                                 onClick={() => setShowHistory(true)}
                                 className={`text-[12px] font-bold px-3 py-1.5 rounded-xl border transition-colors ${isDark ? 'bg-white/[0.05] border-white/[0.1] text-white hover:bg-white/[0.1]' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
                             >
-                                To'liq ochish
+                                {t('openFull', "To'liq ochish")}
                             </button>
                         </div>
                         
@@ -432,8 +432,8 @@ export const DriverProfilePage: React.FC<Props> = ({
                                     <Lottie animationData={chequeAnimation} loop={true} />
                                 </div>
                                 <div className="text-left">
-                                    <p className={`text-[14px] font-black ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>Tranzaksiyalar tarixi</p>
-                                    <p className={`text-[11px] ${muted}`}>Barcha kirim / chiqimlar</p>
+                                    <p className={`text-[14px] font-black ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{t('transactionHistory', 'Tranzaksiyalar tarixi')}</p>
+                                    <p className={`text-[11px] ${muted}`}>{t('allIncomeExpense', 'Barcha kirim / chiqimlar')}</p>
                                 </div>
                             </button>
 
@@ -446,8 +446,8 @@ export const DriverProfilePage: React.FC<Props> = ({
                                         <Lottie animationData={depositAnimation} loop={true} />
                                     </div>
                                     <div className="text-left">
-                                        <p className={`text-[14px] font-black ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Depozit tarixi</p>
-                                        <p className={`text-[11px] ${muted}`}>To'ldirish va sarflash</p>
+                                        <p className={`text-[14px] font-black ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{t('depositHistory', 'Depozit tarixi')}</p>
+                                        <p className={`text-[11px] ${muted}`}>{t('topupAndUsage', "To'ldirish va sarflash")}</p>
                                     </div>
                                 </button>
                             )}
@@ -457,7 +457,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                     {/* Notes */}
                     {(driver as any).notes && (
                         <div className={`p-5 rounded-3xl border ${bg}`}>
-                            <p className={`text-[11px] font-black uppercase tracking-wider mb-3 ${muted}`}>📝 Izohlar</p>
+                            <p className={`text-[11px] font-black uppercase tracking-wider mb-3 ${muted}`}>📝 {t('notes', 'Izohlar')}</p>
                             <p className={`text-[13px] leading-relaxed whitespace-pre-wrap ${txt}`}>{(driver as any).notes}</p>
                         </div>
                     )}

@@ -78,7 +78,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const monthNames = t('months', { returnObjects: true }) as string[];
+    const monthNamesRaw = t('months', { returnObjects: true });
+    const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
     
     // Store only a selection key so the modal always derives live data from reactive rows
@@ -193,9 +194,9 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             )
             .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
-        const remaining = pastTarget - actualIncome;
-        const paidPercent = pastTarget > 0
-            ? Math.min(100, Math.round((actualIncome / pastTarget) * 100))
+        const remaining = monthlyTarget - actualIncome;
+        const paidPercent = monthlyTarget > 0
+            ? Math.max(0, Math.min(100, Math.round(((monthlyTarget - Math.max(0, remaining)) / monthlyTarget) * 100)))
             : 0;
 
         return { driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, pastTarget, actualIncome, remaining, paidPercent, isFutureMonth };
@@ -246,7 +247,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             <div className={`flex flex-wrap items-center justify-between p-6 rounded-[24px] shadow-sm border ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-slate-100/60'}`}>
                 <div className="flex flex-col">
                     <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
-                        Jami Reja
+                        {t('totalPlanLabel', 'Jami Reja')}
                     </span>
                     <span className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         {fmt(totalTarget)}
@@ -254,7 +255,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 </div>
                 <div className="flex flex-col">
                     <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
-                        Hali Qolgan
+                        {t('stillRemaining', 'Hali Qolgan')}
                     </span>
                     <div className="flex items-center gap-2">
                         <span className={`text-3xl font-medium tracking-tight ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -297,7 +298,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                                         </span>
                                     ) : (
                                         <span className={`text-[12px] truncate mt-0.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
-                                            Mashina yo'q
+                                            {t('noCar', "Mashina yo'q")}
                                         </span>
                                     )}
                                 </div>
@@ -307,30 +308,44 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                             <div className="grid grid-cols-2 gap-4 mt-6">
                                 <div className="flex flex-col">
                                     <span className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
-                                        Oylik Reja
+                                        {t('monthlyPlanLabel', 'Oylik Reja')}
                                     </span>
                                     <span className={`text-[16px] sm:text-[17px] font-semibold tracking-tight ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
                                         {fmt(row.monthlyTarget)}
                                     </span>
+                                    <span className={`text-[11px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                        {t('remainingLabel', 'Qoldi')}: {fmt(Math.max(0, row.remaining))}
+                                    </span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
-                                        Jami To'ladi
+                                        {t('totalPaidLabel', "Jami To'ladi")}
                                     </span>
                                     <span className={`text-[17px] sm:text-[18px] font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                         {fmt(row.actualIncome)}
                                     </span>
+                                    {(() => {
+                                        const currentDebt = Math.max(0, row.pastTarget - row.actualIncome);
+                                        const isOverpaid = row.actualIncome > row.pastTarget;
+                                        const overpayment = Math.max(0, row.actualIncome - row.pastTarget);
+                                        return currentDebt > 0 ? (
+                                            <span className={`text-[11px] font-bold mt-1 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                {t('debtLabel', 'Qarz')}: -{fmt(currentDebt)}
+                                            </span>
+                                        ) : isOverpaid ? (
+                                            <span className={`text-[11px] font-bold mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                {t('overpaidLabel', 'Ortiqcha')}: +{fmt(overpayment)}
+                                            </span>
+                                        ) : null;
+                                    })()}
                                 </div>
                             </div>
 
                             {/* Progress */}
-                            <div className="mt-6">
+                            <div className="mt-5">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                                        {row.paidPercent}% bajarildi
-                                    </span>
-                                    <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                                        Qoldi: {fmt(Math.max(0, row.remaining))}
+                                        {row.paidPercent}% {t('completedLabel', 'bajarildi')}
                                     </span>
                                 </div>
                                 {(() => {

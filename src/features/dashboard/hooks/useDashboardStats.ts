@@ -3,6 +3,7 @@ import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, Driver
 import { Car } from '../../../core/types/car.types';
 import { toDateKey } from '../../../../services/daysOffService';
 import { calcDriverDebt } from '../../drivers/utils/debtUtils';
+import { getEffectivePlanForDriverDay, getCarIdForDriverDate } from '../../drivers/utils/driverPlanHistory';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[]) => {
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
@@ -72,7 +73,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         const dayOffDriverIds = new Set<string>(
             transactions
                 .filter(tx => {
-                    if ((tx.type as string) !== 'DAY_OFF') return false;
+                    if ((tx.type as string) !== 'DAY_OFF' && (tx.type as string) !== 'NOT_WORKING') return false;
                     if (tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return false;
                     return toDateKey(new Date(tx.timestamp)) === todayKey;
                 })
@@ -80,44 +81,96 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
                 .filter(Boolean) as string[]
         );
 
+        // Also add drivers who have a day override indicating they took a day off
+        drivers.forEach(d => {
+            if (d.dayOverrides && d.dayOverrides[todayKey]) {
+                const override = d.dayOverrides[todayKey];
+                if (override.type === 'OFF' || override.type === 'NOT_WORKING' || override.type === 'REPAIR') {
+                    dayOffDriverIds.add(d.id);
+                }
+            }
+        });
+
         const completed: any[] = [];
         const pending: any[] = [];
         const dayOff: any[] = [];
 
-        nonDeletedDrivers.forEach(driver => {
+        let expectedTotal = 0;
+        let paidTotal = 0;
+        let debtTotal = 0;
+
+        // Drivers active specifically on the targetDate
+        const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
+        const activeDriversForDate = drivers.filter(d => {
+            // If they had any transaction today, they must be considered active
+            const hasTxToday = transactions.some(tx => tx.driverId === d.id && toDateKey(new Date(tx.timestamp)) === todayKey && tx.status !== PaymentStatus.DELETED && (tx as any).status !== 'DELETED');
+            if (hasTxToday) return true;
+
+            const startMs = d.startDate || d.createdAt;
+            if (startMs) {
+                const startMidnight = new Date(new Date(startMs).getFullYear(), new Date(startMs).getMonth(), new Date(startMs).getDate()).getTime();
+                if (targetMidnight < startMidnight) return false; // Haven't started yet on this date
+            }
+
+            const quitMs = d.quitDate;
+            if (quitMs && d.isDeleted) {
+                const quitMidnight = new Date(new Date(quitMs).getFullYear(), new Date(quitMs).getMonth(), new Date(quitMs).getDate(), 23, 59, 59, 999).getTime();
+                if (targetMidnight > quitMidnight) return false; // Already quit before this date
+            }
+            
+            return true;
+        });
+
+        activeDriversForDate.forEach(driver => {
+            const driverCars = cars.filter(c => c.assignedDriverId === driver.id && !c.isDeleted);
+            const driverCar = driverCars[0] || null;
+            const historicalCarId = getCarIdForDriverDate(driver, targetDate, driverCar);
+
+            // Attempt to find car name from transactions if we have no historical car id or current car
+            let fallbackCarName = undefined;
+            if (!historicalCarId && !driverCar) {
+                const txToday = transactions.find(tx => tx.driverId === driver.id && tx.carName && toDateKey(new Date(tx.timestamp)) === todayKey);
+                if (txToday) {
+                    fallbackCarName = txToday.carName;
+                }
+            }
+
             // Exclude drivers who are on day off today
             if (dayOffDriverIds.has(driver.id)) {
-                dayOff.push({ ...driver, isDayOff: true, todayIncome: 0, todayDebt: 0, totalDebt: 0 });
+                dayOff.push({ ...driver, isDayOff: true, todayIncome: 0, todayDebt: 0, totalDebt: 0, historicalCarId, fallbackCarName });
                 return;
             }
 
-            const driverCars = cars.filter(c => c.assignedDriverId === driver.id && !c.isDeleted);
-
-            // Reusing debt utility logic
-            const driverCar = driverCars[0] || null;
-
-            // Skip drivers with no assigned car — they have no daily plan and
-            // would always show as "pending" with -0, which is misleading.
-            if (!driverCar || !driverCar.dailyPlan || driverCar.dailyPlan <= 0) return;
+            // Get the actual plan for this specific day
+            const historicalPlan = getEffectivePlanForDriverDay(driver, targetDate, driverCar);
 
             const info = calcDriverDebt(driver, driverCar, transactions, targetDate);
+
+            // Skip drivers who had no plan on this day AND made no payments today
+            if (historicalPlan <= 0 && info.todayIncome <= 0) return;
 
             const adjustedTotalDebt = info.netDebt;
 
             const stat = {
                 ...driver,
-                dailyPlan: info.dailyPlan,
+                dailyPlan: historicalPlan,
                 todayIncome: info.todayIncome,
-                todayDebt: info.todayDebt,
+                todayDebt: Math.max(0, historicalPlan - info.todayIncome),
                 totalDebt: adjustedTotalDebt,
-                isDayOff: false
+                isDayOff: false,
+                historicalCarId,
+                fallbackCarName
             };
 
-            if (info.todayIncome >= (info.dailyPlan > 0 ? info.dailyPlan : 1)) {
+            if (info.todayIncome >= historicalPlan) {
                 completed.push(stat);
             } else {
                 pending.push(stat);
             }
+
+            expectedTotal += stat.dailyPlan;
+            paidTotal += stat.todayIncome;
+            debtTotal += stat.todayDebt;
         });
 
         // Sort completed by income descending
@@ -125,8 +178,13 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         // Sort pending by remaining amount ascending
         pending.sort((a, b) => a.todayDebt - b.todayDebt);
 
-        return { completed, pending, dayOff };
-    }, [nonDeletedDrivers, cars, transactions, targetDate]);
+        return { 
+            completed, 
+            pending, 
+            dayOff,
+            totals: { expectedTotal, paidTotal, debtTotal }
+        };
+    }, [drivers, cars, transactions, targetDate]);
 
     return {
         timeFilter, setTimeFilter,
