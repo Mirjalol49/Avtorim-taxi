@@ -17,14 +17,58 @@ export interface UsePaginatedTxState {
     patchRow: (id: string, patch: Partial<Transaction>) => void;
 }
 
+type CachedTxPage = {
+    rows: Transaction[];
+    nextCursor: number | null;
+    hasMore: boolean;
+    ts: number;
+};
+
+const PAGE_CACHE = new Map<string, CachedTxPage>();
+const PAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const getCacheKey = (fleetId: string | undefined, filters: TxPageFilters) => {
+    if (!fleetId) return '';
+    return [
+        'tx-page',
+        fleetId,
+        filters.startMs ?? 'any',
+        filters.endMs ?? 'any',
+        filters.driverId ?? 'all',
+        filters.type ?? 'all',
+    ].join('|');
+};
+
+const readPageCache = (key: string): CachedTxPage | null => {
+    if (!key) return null;
+    const cached = PAGE_CACHE.get(key);
+    if (!cached) return null;
+    if (Date.now() - cached.ts > PAGE_CACHE_TTL_MS) {
+        PAGE_CACHE.delete(key);
+        return null;
+    }
+    return cached;
+};
+
+const writePageCache = (
+    key: string,
+    rows: Transaction[],
+    nextCursor: number | null,
+    hasMore: boolean,
+) => {
+    if (!key) return;
+    PAGE_CACHE.set(key, { rows, nextCursor, hasMore, ts: Date.now() });
+};
+
 export const useTransactionsPaginated = (
     fleetId: string | undefined,
     filters: TxPageFilters,
 ): UsePaginatedTxState => {
-    const [rows, setRows] = useState<Transaction[]>([]);
-    const [nextCursor, setNextCursor] = useState<number | null>(null);
-    const [hasMore, setHasMore] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const initialCache = readPageCache(getCacheKey(fleetId, filters));
+    const [rows, setRows] = useState<Transaction[]>(initialCache?.rows ?? []);
+    const [nextCursor, setNextCursor] = useState<number | null>(initialCache?.nextCursor ?? null);
+    const [hasMore, setHasMore] = useState(initialCache?.hasMore ?? false);
+    const [loading, setLoading] = useState(!initialCache);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +80,10 @@ export const useTransactionsPaginated = (
     cursorRef.current = nextCursor;
     const fetchingMoreRef = useRef(false);
     fetchingMoreRef.current = isFetchingMore;
+    const hasMoreRef = useRef(false);
+    hasMoreRef.current = hasMore;
+    const cacheKeyRef = useRef(getCacheKey(fleetId, filters));
+    cacheKeyRef.current = getCacheKey(fleetId, filters);
 
     // Generation counter: incremented on every reset (filter change / initial load).
     // Any async callback checks this before committing state — prevents stale fetches
@@ -44,7 +92,16 @@ export const useTransactionsPaginated = (
 
     const fetchPage = useCallback(async (cursor: number | null, reset: boolean, showLoading: boolean = true) => {
         const fleet = fleetRef.current;
-        if (!fleet) { if (showLoading) setLoading(false); return; }
+        const key = cacheKeyRef.current;
+        if (!fleet) {
+            setRows([]);
+            setNextCursor(null);
+            setHasMore(false);
+            setError(null);
+            setLoading(false);
+            setIsFetchingMore(false);
+            return;
+        }
 
         if (reset) {
             if (showLoading) setLoading(true);
@@ -57,15 +114,12 @@ export const useTransactionsPaginated = (
         const gen = reset ? ++genRef.current : genRef.current;
         const stale = () => genRef.current !== gen;
 
-        // Retry up to 3 attempts with a 3s gap between each.
-        // Mirrors the retry pattern in subscribeToTransactions/fetchAll so cold-start
-        // Supabase hangs are handled the same way everywhere.
+        // Keep failures short and visible instead of making the page look stuck.
         let lastErr: any = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 2; attempt++) {
             if (stale()) return;
             if (attempt > 0) {
-                // Wait 3s before retry, abort if a newer fetch superseded us
-                await new Promise<void>(resolve => setTimeout(resolve, 3000));
+                await new Promise<void>(resolve => setTimeout(resolve, 900));
                 if (stale()) return;
             }
             try {
@@ -74,10 +128,13 @@ export const useTransactionsPaginated = (
 
                 if (reset) {
                     setRows(result.data);
+                    writePageCache(key, result.data, result.nextCursor, result.nextCursor !== null);
                 } else {
                     setRows(prev => {
                         const existing = new Set(prev.map(r => r.id));
-                        return [...prev, ...result.data.filter(r => !existing.has(r.id))];
+                        const next = [...prev, ...result.data.filter(r => !existing.has(r.id))];
+                        writePageCache(key, next, result.nextCursor, result.nextCursor !== null);
+                        return next;
                     });
                 }
                 setNextCursor(result.nextCursor);
@@ -95,7 +152,6 @@ export const useTransactionsPaginated = (
             }
         }
 
-        // All 3 attempts failed
         if (!stale()) {
             setError(lastErr?.message ?? 'Failed to load transactions');
             setHasMore(false);
@@ -110,11 +166,26 @@ export const useTransactionsPaginated = (
 
     const fetchMore = useCallback(() => {
         const cursor = cursorRef.current;
-        if (!cursor || fetchingMoreRef.current) return;
+        if (!cursor || !hasMoreRef.current || fetchingMoreRef.current || loading) return;
         fetchPage(cursor, false);
-    }, [fetchPage]);
+    }, [fetchPage, loading]);
 
     useEffect(() => {
+        const key = getCacheKey(fleetId, filters);
+        const cached = readPageCache(key);
+        if (cached) {
+            setRows(cached.rows);
+            setNextCursor(cached.nextCursor);
+            setHasMore(cached.hasMore);
+            setError(null);
+            setLoading(false);
+            fetchPage(null, true, false);
+            return;
+        }
+
+        setRows([]);
+        setNextCursor(null);
+        setHasMore(false);
         fetchPage(null, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fleetId, filters.startMs, filters.endMs, filters.driverId, filters.type]);
@@ -141,19 +212,29 @@ export const useTransactionsPaginated = (
     }, [fleetId, reload]);
 
     const removeRows = useCallback((ids: Set<string>) => {
-        setRows(prev => prev.filter(r => !ids.has(r.id)));
+        setRows(prev => {
+            const next = prev.filter(r => !ids.has(r.id));
+            writePageCache(cacheKeyRef.current, next, cursorRef.current, hasMoreRef.current);
+            return next;
+        });
     }, []);
 
     const restoreRows = useCallback((toRestore: Transaction[]) => {
         setRows(prev => {
             const existing = new Set(prev.map(r => r.id));
             const fresh = toRestore.filter(r => !existing.has(r.id));
-            return [...prev, ...fresh].sort((a, b) => b.timestamp - a.timestamp);
+            const next = [...prev, ...fresh].sort((a, b) => b.timestamp - a.timestamp);
+            writePageCache(cacheKeyRef.current, next, cursorRef.current, hasMoreRef.current);
+            return next;
         });
     }, []);
 
     const patchRow = useCallback((id: string, patch: Partial<Transaction>) => {
-        setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+        setRows(prev => {
+            const next = prev.map(r => r.id === id ? { ...r, ...patch } : r);
+            writePageCache(cacheKeyRef.current, next, cursorRef.current, hasMoreRef.current);
+            return next;
+        });
     }, []);
 
     return {

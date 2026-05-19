@@ -570,10 +570,9 @@ interface LightboxProps {
     onCopy: () => void;
 }
 
-function PreviewLightbox({ doc, copied, onClose, onCopy }: LightboxProps) {
+function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps) {
     const cat = getCategory(doc.file_type);
     const [imgLoaded, setImgLoaded] = useState(false);
-    const [zoom, setZoom] = useState(false);
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -593,159 +592,148 @@ function PreviewLightbox({ doc, copied, onClose, onCopy }: LightboxProps) {
 
     return (
         <div
-            className="fixed inset-0 z-[9999] flex flex-col"
-            style={{ background: 'rgba(5,8,15,0.98)' }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={doc.name}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5 md:pl-64"
+            style={{
+                background: 'rgba(0,0,0,0.72)',
+                backdropFilter: 'blur(8px)',
+                animation: 'docPreviewFade 0.2s ease-out',
+            }}
             onClick={onClose}
         >
             <style>{`
-                @keyframes lbFadeIn  { from{opacity:0}              to{opacity:1} }
-                @keyframes lbSlideUp { from{opacity:0;transform:translateY(12px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-                @keyframes lbBarIn   { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
-                .lb-img-zoom { cursor: zoom-out !important; object-fit: contain !important; }
+                @keyframes docPreviewFade { from { opacity: 0 } to { opacity: 1 } }
+                @keyframes docPreviewPop { from { opacity: 0; transform: scale(0.96) translateY(14px) } to { opacity: 1; transform: scale(1) translateY(0) } }
             `}</style>
 
-            {/* ── Top bar ── */}
             <div
-                className="flex-shrink-0 flex items-center justify-between px-4 py-3 sm:px-6"
+                className={`relative flex flex-col w-full max-w-5xl max-h-[calc(100vh-32px)] rounded-[28px] overflow-hidden shadow-2xl border ${
+                    isDark ? 'bg-[#101827] border-white/[0.08]' : 'bg-[#f5f5f7] border-white/50'
+                }`}
                 style={{
-                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.0) 100%)',
-                    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+                    animation: 'docPreviewPop 0.28s cubic-bezier(0.22,1,0.36,1)',
+                    boxShadow: '0 32px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
                 }}
                 onClick={e => e.stopPropagation()}
             >
-                {/* Left: name + meta */}
-                <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-white/[0.10] flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                        <FileTypeIcon mimeType={doc.file_type} className="w-4 h-4 text-white/60" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-white text-[14px] font-semibold truncate leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>{doc.name}</p>
-                        <p className="text-white/50 text-[11px] mt-0.5">{formatBytes(doc.file_size)} · {dateStr}</p>
-                    </div>
-                </div>
-
-                {/* Right: actions + close */}
-                <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
-                    <button
-                        onClick={onCopy}
-                        className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white hover:bg-white/[0.12] transition-all active:scale-95 backdrop-blur-sm"
-                        title="URL nusxalash"
-                    >
-                        {copied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-400" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                        <span className="hidden md:inline">{copied ? 'Nusxalandi' : 'URL'}</span>
-                    </button>
-                    <a
-                        href={doc.file_url}
-                        download={doc.original_name}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white hover:bg-white/[0.12] transition-all active:scale-95 backdrop-blur-sm"
-                        title="Yuklab olish"
-                    >
-                        <DownloadIcon className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Yuklab olish</span>
-                    </a>
-                    <button
-                        onClick={e => { e.stopPropagation(); onClose(); }}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/[0.12] transition-all active:scale-95 backdrop-blur-sm"
-                        title="Yopish (Esc)"
-                    >
-                        <XIcon className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-
-            {/* ── Main image / content area — fills entire screen ── */}
-            <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ paddingTop: hasNotes ? 56 : 56, paddingBottom: hasNotes ? 96 : 0 }}
-            >
-                {cat === 'image' ? (
-                    <div
-                        className="relative w-full h-full flex items-center justify-center"
-                        onClick={e => { e.stopPropagation(); setZoom(z => !z); }}
-                    >
-                        {!imgLoaded && (
-                            <div className="flex items-center justify-center">
-                                <div className="w-10 h-10 border-2 border-white/15 border-t-white/70 rounded-full animate-spin" />
-                            </div>
-                        )}
-                        <img
-                            src={doc.file_url}
-                            alt={doc.name}
-                            onLoad={() => setImgLoaded(true)}
-                            className={zoom ? 'lb-img-zoom' : ''}
-                            style={{
-                                display: imgLoaded ? 'block' : 'none',
-                                maxWidth: zoom ? 'none' : '100%',
-                                maxHeight: zoom ? 'none' : '100%',
-                                width: zoom ? 'auto' : 'auto',
-                                height: zoom ? 'auto' : 'auto',
-                                objectFit: zoom ? 'none' : 'contain',
-                                borderRadius: zoom ? 0 : 10,
-                                boxShadow: zoom ? 'none' : '0 32px 96px rgba(0,0,0,0.8)',
-                                cursor: zoom ? 'zoom-out' : 'zoom-in',
-                                animation: imgLoaded ? 'lbSlideUp 0.3s ease' : 'none',
-                                transition: 'box-shadow 0.2s ease',
-                                userSelect: 'none',
-                            }}
-                        />
-                    </div>
-                ) : (
-                    <div
-                        className="flex flex-col items-center gap-5 p-10 rounded-2xl border border-white/[0.10]"
-                        style={{ background: 'rgba(255,255,255,0.04)', animation: 'lbSlideUp 0.25s ease' }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="w-20 h-20 rounded-2xl bg-white/[0.06] flex items-center justify-center">
-                            <FileTypeIcon mimeType={doc.file_type} className="w-10 h-10 text-white/30" />
+                <div className={`flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b ${
+                    isDark ? 'bg-[#172033] border-white/[0.07]' : 'bg-white border-black/[0.07]'
+                }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                            isDark ? 'bg-white/[0.07]' : 'bg-gray-100'
+                        }`}>
+                            <FileTypeIcon mimeType={doc.file_type} className={isDark ? 'w-5 h-5 text-white/55' : 'w-5 h-5 text-gray-500'} />
                         </div>
-                        <div className="text-center max-w-xs">
-                            <p className="text-white font-semibold text-base mb-1">{doc.name}</p>
-                            <p className="text-white/40 text-sm">{formatBytes(doc.file_size)}</p>
+                        <div className="min-w-0">
+                            <p className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{doc.name}</p>
+                            <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {formatBytes(doc.file_size)} · {dateStr}
+                            </p>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            onClick={onCopy}
+                            className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
+                                isDark ? 'text-gray-300 hover:text-white hover:bg-white/[0.08]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            }`}
+                            title="URL nusxalash"
+                        >
+                            {copied ? <CheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                            <span>{copied ? 'Nusxalandi' : 'URL'}</span>
+                        </button>
                         <a
                             href={doc.file_url}
                             download={doc.original_name}
                             target="_blank"
                             rel="noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0f766e] hover:bg-[#0a5c56] text-white font-semibold transition-colors active:scale-95"
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
+                                isDark ? 'text-gray-300 hover:text-white hover:bg-white/[0.08]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            }`}
+                            title="Yuklab olish"
                         >
-                            <DownloadIcon className="w-4 h-4" /> Yuklab olish
+                            <DownloadIcon className="w-4 h-4" />
+                            <span className="hidden sm:inline">Yuklab olish</span>
                         </a>
+                        <button
+                            autoFocus
+                            onClick={onClose}
+                            className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-90 ${
+                                isDark ? 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.14] hover:text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                            }`}
+                            title="Yopish"
+                        >
+                            <XIcon className="w-4 h-4" />
+                        </button>
                     </div>
-                )}
-            </div>
+                </div>
 
-            {/* ── Bottom bar: notes — always visible, anchored to bottom ── */}
-            <div
-                className="absolute bottom-0 left-0 right-0 flex-shrink-0"
-                style={{
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.60) 70%, rgba(0,0,0,0.0) 100%)',
-                    paddingTop: 32,
-                    animation: 'lbBarIn 0.3s ease',
-                }}
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="px-4 pb-4 sm:px-6 sm:pb-5 max-w-3xl mx-auto">
-                    {hasNotes ? (
-                        <div className="flex items-start gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-[#0f766e]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <span className="text-[13px]">📝</span>
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.12em] mb-1">Izoh</p>
-                                <p className="text-white/85 text-[14px] leading-relaxed">{doc.description}</p>
-                            </div>
+                <div className={`flex-1 min-h-0 overflow-auto flex items-center justify-center p-3 sm:p-5 ${
+                    isDark ? 'bg-[#0b1326]' : 'bg-gray-100'
+                }`}>
+                    {cat === 'image' ? (
+                        <div className="relative w-full h-full min-h-[280px] flex items-center justify-center">
+                            {!imgLoaded && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${
+                                        isDark ? 'border-white/25 border-t-white/80' : 'border-gray-300 border-t-gray-700'
+                                    }`} />
+                                </div>
+                            )}
+                            <img
+                                src={doc.file_url}
+                                alt={doc.name}
+                                onLoad={() => setImgLoaded(true)}
+                                style={{ display: imgLoaded ? 'block' : 'none' }}
+                                className="max-w-full max-h-[calc(100vh-250px)] object-contain rounded-2xl shadow-2xl select-none"
+                            />
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <span className="text-white/25 text-[12px]">📝</span>
-                            <p className="text-white/25 text-[12px] italic">Izoh qo'shilmagan — tahrirlash tugmasi orqali izoh kiritishingiz mumkin</p>
+                        <div className={`flex flex-col items-center gap-5 p-10 rounded-2xl border ${
+                            isDark ? 'bg-white/[0.04] border-white/[0.10]' : 'bg-white border-gray-200'
+                        }`}>
+                            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.06]' : 'bg-gray-100'}`}>
+                                <FileTypeIcon mimeType={doc.file_type} className={isDark ? 'w-10 h-10 text-white/30' : 'w-10 h-10 text-gray-400'} />
+                            </div>
+                            <div className="text-center max-w-xs">
+                                <p className={`font-semibold text-base mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{doc.name}</p>
+                                <p className={isDark ? 'text-white/40 text-sm' : 'text-gray-400 text-sm'}>{formatBytes(doc.file_size)}</p>
+                            </div>
+                            <a
+                                href={doc.file_url}
+                                download={doc.original_name}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0f766e] hover:bg-[#0a5c56] text-white font-semibold transition-colors active:scale-95"
+                            >
+                                <DownloadIcon className="w-4 h-4" /> Yuklab olish
+                            </a>
                         </div>
                     )}
+                </div>
+
+                <div className={`px-4 sm:px-5 py-3.5 border-t ${
+                    isDark ? 'bg-[#172033] border-white/[0.07]' : 'bg-white border-black/[0.07]'
+                }`}>
+                    <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            isDark ? 'bg-[#0f766e]/20 text-teal-300' : 'bg-teal-50 text-teal-700'
+                        }`}>
+                            <EditIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${isDark ? 'text-white/35' : 'text-gray-400'}`}>Izoh</p>
+                            <div className={`text-[14px] leading-relaxed ${isDark ? 'text-white/80' : 'text-gray-700'}`}>
+                                {hasNotes ? doc.description : <span className={isDark ? 'text-white/35' : 'text-gray-400'}>Izoh qo'shilmagan</span>}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

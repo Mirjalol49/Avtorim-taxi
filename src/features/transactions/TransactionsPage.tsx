@@ -206,17 +206,19 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }), [startDate, endDate, driverId, type]);
 
     // ── Paginated data ────────────────────────────────────────────────────────
-    const {
-        transactions,
-        loading,
-        isFetchingMore,
-        hasMore,
-        nextCursor,
-        fetchMore,
-        removeRows,
-        restoreRows,
-        patchRow,
-    } = useTransactionsPaginated(fleetId, filters);
+	    const {
+	        transactions,
+	        loading,
+	        isFetchingMore,
+	        hasMore,
+	        nextCursor,
+	        error,
+	        reload,
+	        fetchMore,
+	        removeRows,
+	        restoreRows,
+	        patchRow,
+	    } = useTransactionsPaginated(fleetId, filters);
 
     // The paginated list automatically handles its own real-time syncing via useTransactionsPaginated.
 
@@ -524,8 +526,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 </div>
             </div>
 
-            {/* Toolbar */}
-            <div className="flex items-center justify-between gap-3">
+	            {/* Toolbar */}
+	            <div className="flex items-center justify-between gap-3">
                 {isAdmin && selectedIds.length > 0 ? (
                     <button
                         onClick={handleBulkDelete}
@@ -550,10 +552,36 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 >
                     <DownloadIcon className="w-4 h-4" />
                     Excel ({transactions.length}{hasMore ? '+' : ''})
-                </button>
-            </div>
+	                </button>
+	            </div>
 
-            {/* Table */}
+	            {error && !loading && (
+	                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+	                    theme === 'dark'
+	                        ? 'bg-red-500/[0.08] border-red-500/25 text-red-200'
+	                        : 'bg-red-50 border-red-200 text-red-700'
+	                }`}>
+	                    <div>
+	                        <p className="text-[13px] font-bold">{t('transactionsLoadFailed', 'O\'tkazmalar yuklanmadi')}</p>
+	                        <p className={`text-[12px] mt-0.5 ${theme === 'dark' ? 'text-red-200/65' : 'text-red-600/75'}`}>
+	                            {error}
+	                        </p>
+	                    </div>
+	                    <button
+	                        type="button"
+	                        onClick={() => reload(false)}
+	                        className={`px-3.5 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
+	                            theme === 'dark'
+	                                ? 'bg-red-500/15 hover:bg-red-500/25 text-red-100'
+	                                : 'bg-white hover:bg-red-100 text-red-700 shadow-sm'
+	                        }`}
+	                    >
+	                        {t('retry', 'Qayta urinish')}
+	                    </button>
+	                </div>
+	            )}
+
+	            {/* Table */}
             <div className={`rounded-3xl border shadow-xl overflow-hidden ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
 
                 {/* ── Desktop ──────────────────────────────────────────────── */}
@@ -655,7 +683,13 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     ) : (
                                                         <>
                                                             <div className={`w-8 h-8 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
-                                                                {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
+	                                                                {driver?.avatar ? (
+	                                                                    <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+	                                                                ) : (
+	                                                                    <div className={`w-full h-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+	                                                                        {(driver?.name || tx.driverName || '?').charAt(0)}
+	                                                                    </div>
+	                                                                )}
                                                             </div>
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
@@ -804,7 +838,13 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border flex-shrink-0 ${theme === 'dark' ? 'border-orange-500/20 bg-orange-500/10' : 'border-orange-200 bg-orange-50'}`}>📦</div>
                                             ) : (
                                                 <div className={`w-10 h-10 rounded-full overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'} ${driver?.isDeleted ? 'opacity-50 grayscale' : ''}`}>
-                                                    {driver ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} /> : <div className={`w-full h-full flex items-center justify-center font-bold text-lg ${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{tx.driverName ? tx.driverName.charAt(0) : '?'}</div>}
+	                                                    {driver?.avatar ? (
+	                                                        <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+	                                                    ) : (
+	                                                        <div className={`w-full h-full flex items-center justify-center font-bold text-lg ${theme === 'dark' ? 'bg-surface-2 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+	                                                            {(driver?.name || tx.driverName || '?').charAt(0)}
+	                                                        </div>
+	                                                    )}
                                                 </div>
                                             )}
                                             <div className="flex flex-col">
