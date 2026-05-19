@@ -4,9 +4,7 @@ import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
-import { getEffectivePlanForDay } from '../cars/utils/planHistory';
 import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../drivers/utils/driverPlanHistory';
-import { LicensePlate } from '../../components/ui/LicensePlate';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,8 +38,6 @@ interface DriverPlanSummaryProps {
 
 const fmt = (n: number) =>
     `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
-
-const fmtCompact = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
 
 const toMonthKey = (d: Date): string => {
     const y = d.getFullYear();
@@ -85,6 +81,37 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     // Store only a selection key so the modal always derives live data from reactive rows
     const [selectedKey, setSelectedKey] = useState<{ driverId: string; monthKey: string } | null>(null);
 
+    const transactionSummary = useMemo(() => {
+        const byDriverMonth = new Map<string, { income: number }>();
+        const byDriverDay = new Map<string, { hasDayOff: boolean; hasNotWorking: boolean }>();
+
+        transactions.forEach(tx => {
+            if (tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return;
+
+            const txDate = new Date(tx.timestamp);
+            const mk = toMonthKey(txDate);
+            const dayKey = `${tx.driverId}|${mk}-${String(txDate.getDate()).padStart(2, '0')}`;
+
+            if (
+                tx.type === TransactionType.INCOME &&
+                (tx as any).category !== 'deposit_topup' &&
+                (tx as any).category !== 'DEPOSIT'
+            ) {
+                const monthKey = `${tx.driverId}|${mk}`;
+                const month = byDriverMonth.get(monthKey) ?? { income: 0 };
+                month.income += Math.abs(tx.amount);
+                byDriverMonth.set(monthKey, month);
+            } else if (tx.type === TransactionType.DAY_OFF || tx.type === 'NOT_WORKING') {
+                const day = byDriverDay.get(dayKey) ?? { hasDayOff: false, hasNotWorking: false };
+                if (tx.type === TransactionType.DAY_OFF) day.hasDayOff = true;
+                if (tx.type === 'NOT_WORKING') day.hasNotWorking = true;
+                byDriverDay.set(dayKey, day);
+            }
+        });
+
+        return { byDriverMonth, byDriverDay };
+    }, [transactions]);
+
     const computeMonthRow = useCallback((driver: Driver, car: Car | null, mk: string): MonthRow => {
         const totalDays = daysInMonthForKey(mk);
 
@@ -106,23 +133,9 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
         
         for (let d = 1; d <= totalDays; d++) {
             const dayDate = new Date(mkYear, mkMonth - 1, d);
-            const isDayOffTx = transactions.some(tx =>
-                tx.driverId === driver.id &&
-                tx.type === TransactionType.DAY_OFF &&
-                tx.status !== PaymentStatus.DELETED &&
-                (tx as any).status !== 'DELETED' &&
-                toMonthKey(new Date(tx.timestamp)) === mk &&
-                new Date(tx.timestamp).getDate() === d
-            );
-            
-            const isNotWorkingTx = transactions.some(tx =>
-                tx.driverId === driver.id &&
-                tx.type === 'NOT_WORKING' &&
-                tx.status !== PaymentStatus.DELETED &&
-                (tx as any).status !== 'DELETED' &&
-                toMonthKey(new Date(tx.timestamp)) === mk &&
-                new Date(tx.timestamp).getDate() === d
-            );
+            const daySummary = transactionSummary.byDriverDay.get(`${driver.id}|${mk}-${String(d).padStart(2, '0')}`);
+            const isDayOffTx = daySummary?.hasDayOff ?? false;
+            const isNotWorkingTx = daySummary?.hasNotWorking ?? false;
 
             let planForDay = 0;
             if (!isDayOffTx && !isNotWorkingTx) {
@@ -150,14 +163,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                     if (dayDate.getTime() < startDay.getTime()) continue;
                 }
 
-                const isOffTx = transactions.some(tx =>
-                    tx.driverId === driver.id &&
-                    (tx.type === TransactionType.DAY_OFF || tx.type === 'NOT_WORKING') &&
-                    tx.status !== PaymentStatus.DELETED &&
-                    (tx as any).status !== 'DELETED' &&
-                    toMonthKey(new Date(tx.timestamp)) === mk &&
-                    new Date(tx.timestamp).getDate() === d
-                );
+                const daySummary = transactionSummary.byDriverDay.get(`${driver.id}|${mk}-${String(d).padStart(2, '0')}`);
+                const isOffTx = !!(daySummary?.hasDayOff || daySummary?.hasNotWorking);
                 
                 const key = `${mkYear}-${String(mkMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const overrideType = driver.dayOverrides?.[key]?.type;
@@ -182,17 +189,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
         const dailyPlan = car?.dailyPlan ?? 0;
         const workingDays = actualWorkingDays;
 
-        const actualIncome = transactions
-            .filter(tx =>
-                tx.driverId === driver.id &&
-                tx.type === TransactionType.INCOME &&
-                tx.status !== PaymentStatus.DELETED &&
-                (tx as any).status !== 'DELETED' &&
-                toMonthKey(new Date(tx.timestamp)) === mk &&
-                (tx as any).category !== 'deposit_topup' &&
-                (tx as any).category !== 'DEPOSIT'
-            )
-            .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        const actualIncome = transactionSummary.byDriverMonth.get(`${driver.id}|${mk}`)?.income ?? 0;
 
         const remaining = monthlyTarget - actualIncome;
         const paidPercent = monthlyTarget > 0
@@ -200,7 +197,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
             : 0;
 
         return { driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, pastTarget, actualIncome, remaining, paidPercent, isFutureMonth };
-    }, [transactions]);
+    }, [transactionSummary]);
 
     const rows = useMemo((): MonthRow[] => {
         const result: MonthRow[] = [];
@@ -375,7 +372,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 isOpen={selectedKey !== null}
                 onClose={() => setSelectedKey(null)}
                 theme={theme}
-                monthData={liveModalData as unknown as DriverPlanMonthInfo}
+                monthData={liveModalData as DriverPlanMonthInfo | null}
                 transactions={transactions}
                 onDayClick={onDayClick}
                 onMonthChange={(newMonthKey) => setSelectedKey(prev => prev ? { ...prev, monthKey: newMonthKey } : null)}

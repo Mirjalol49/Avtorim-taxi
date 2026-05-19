@@ -80,8 +80,14 @@
     to   { opacity: 1; transform: translateX(0); }
 }
 
-.animate-fadeIn  { animation: fadeIn  0.25s ease-out both; }
-.animate-slideIn { animation: slideInRight 0.2s ease-out both; }
+:root {
+    --ease-ios: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-ios-control: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.animate-fadeIn  { animation: fadeIn  0.32s var(--ease-ios) both; }
+.animate-slideIn { animation: slideInRight 0.28s var(--ease-ios) both; }
+.ios-smooth { transition-timing-function: var(--ease-ios-control); }
 
 /* ===== GLOBAL STYLES ===== */
 body {
@@ -101,15 +107,22 @@ code { font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', mon
 ::-webkit-scrollbar-thumb:hover { background: var(--color-scrollbar-hover); }
 
 /* ===== SMOOTH THEME TRANSITION ===== */
-*, *::before, *::after {
-    transition-property: background-color, border-color, color, box-shadow;
-    transition-duration: 220ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+body,
+:where(button, a, input, select, textarea, [role='button'], .transition-all, .transition-colors, .transition-transform, .transition-opacity) {
+    transition-timing-function: var(--ease-ios-control);
 }
 
-button, a, input, select, textarea {
-    transition-property: background-color, border-color, color, opacity, transform, box-shadow;
-    transition-duration: 150ms;
+button, a, [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* ===== INPUTS — theme-aware ===== */

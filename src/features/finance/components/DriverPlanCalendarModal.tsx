@@ -21,6 +21,7 @@ export interface DriverPlanMonthInfo {
     workingDays: number;
     dailyPlan: number;    // current plan (for header display only)
     monthlyTarget: number;
+    pastTarget: number;
     actualIncome: number;
     remaining: number;
     paidPercent: number;
@@ -115,16 +116,40 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
         return () => { document.body.style.overflow = 'unset'; };
     }, [isOpen]);
 
+    const transactionSummaryByDay = useMemo(() => {
+        const summary = new Map<string, { income: number; hasDayOff: boolean; hasNotWorking: boolean }>();
+        if (!monthData) return summary;
+
+        transactions.forEach(tx => {
+            if (tx.driverId !== monthData.driver.id || tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return;
+
+            const txDate = new Date(tx.timestamp);
+            const key = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
+            const day = summary.get(key) ?? { income: 0, hasDayOff: false, hasNotWorking: false };
+
+            if (
+                tx.type === TransactionType.INCOME &&
+                tx.category !== 'deposit_topup' &&
+                tx.category !== 'DEPOSIT'
+            ) {
+                day.income += Math.abs(tx.amount);
+            } else if (tx.type === TransactionType.DAY_OFF) {
+                day.hasDayOff = true;
+            } else if (tx.type === 'NOT_WORKING') {
+                day.hasNotWorking = true;
+            }
+
+            summary.set(key, day);
+        });
+
+        return summary;
+    }, [monthData?.driver.id, transactions]);
+
     const days = useMemo(() => {
         if (!monthData) return [];
         const [yStr, mStr] = monthData.monthKey.split('-');
         const year = parseInt(yStr, 10);
         const month = parseInt(mStr, 10) - 1;
-
-        const toLocalDateStr = (ts: number) => {
-            const d = new Date(ts);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        };
 
         return Array.from({ length: monthData.totalDays }, (_, i) => {
             const d = i + 1;
@@ -153,34 +178,10 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             // and applies any per-day overrides.
             const planForDay = getEffectivePlanForDriverDay(monthData.driver, date, monthData.car);
             const overrideType = getDriverDayOverrideType(monthData.driver, date, monthData.car);
-
-            const sumTushum = transactions
-                .filter(tx =>
-                    tx.driverId === monthData.driver.id &&
-                    tx.type === TransactionType.INCOME &&
-                    tx.status !== PaymentStatus.DELETED &&
-                    (tx as any).status !== 'DELETED' &&
-                    toLocalDateStr(tx.timestamp) === dayStr &&
-                    tx.category !== 'deposit_topup' &&
-                    tx.category !== 'DEPOSIT'
-                )
-                .reduce((acc, tx) => acc + Math.abs(tx.amount), 0);
-
-            const isDayOffTx = transactions.some(tx =>
-                tx.driverId === monthData.driver.id &&
-                tx.type === 'DAY_OFF' &&
-                tx.status !== PaymentStatus.DELETED &&
-                (tx as any).status !== 'DELETED' &&
-                toLocalDateStr(tx.timestamp) === dayStr
-            );
-
-            const isNotWorkingTx = transactions.some(tx =>
-                tx.driverId === monthData.driver.id &&
-                tx.type === 'NOT_WORKING' &&
-                tx.status !== PaymentStatus.DELETED &&
-                (tx as any).status !== 'DELETED' &&
-                toLocalDateStr(tx.timestamp) === dayStr
-            );
+            const daySummary = transactionSummaryByDay.get(dayStr);
+            const sumTushum = daySummary?.income ?? 0;
+            const isDayOffTx = daySummary?.hasDayOff ?? false;
+            const isNotWorkingTx = daySummary?.hasNotWorking ?? false;
 
             const isFuture = date.getTime() > Date.now();
             let status: DayStatus = 'UNPAID';
@@ -219,7 +220,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                 planForDay,
             };
         });
-    }, [monthData, transactions]);
+    }, [monthData, transactionSummaryByDay]);
 
     if (!isOpen || !monthData) return null;
 

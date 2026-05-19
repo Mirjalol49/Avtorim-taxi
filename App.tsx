@@ -1,35 +1,39 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-import {
-  LayoutDashboardIcon, MapIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, TrashIcon, UserPlusIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, TrophyIcon, CheckCircleIcon, LogOutIcon, LockIcon, FilterIcon, DownloadIcon, ChevronDownIcon, TelegramIcon, MedalIcon, TrendingUpIcon, TrendingDownIcon, WalletIcon, SunIcon, MoonIcon, SearchIcon, ListIcon, GridIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, CalculatorIcon, ShieldIcon, NotesIcon, FolderOpenIcon, AlertTriangleIcon
+  LayoutDashboardIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, LogOutIcon, WalletIcon, SunIcon, MoonIcon, ListIcon, ShieldIcon, NotesIcon, FolderOpenIcon, AlertTriangleIcon
 } from './components/Icons';
 
-import FinancialModal from './components/FinancialModal';
 import NotificationBell from './components/NotificationBell';
-import DriverModal from './components/DriverModal';
-import CarModal from './components/CarModal';
-import CarsPage from './src/features/cars/CarsPage';
 import { subscribeToCars, addCar, updateCar, deleteCar, assignCar, unassignCar } from './services/carsService';
-import { AvatarWithFallback } from './components/AvatarWithFallback';
 import { Car } from './src/core/types';
-import AdminModal from './components/AdminModal';
 import AuthScreen from './components/AuthScreen';
 import LockScreen from './components/LockScreen';
-import ConfirmModal from './components/ConfirmModal';
-import NumberTooltip from './components/NumberTooltip';
-import DateFilter from './components/DateFilter';
-import DatePicker from './components/DatePicker';
-import CustomSelect from './components/CustomSelect';
-import YearSelector from './components/YearSelector';
 import DesktopHeader from './components/DesktopHeader';
 import { useAdminProfile } from './src/features/admin/hooks/useAdminProfile';
 import NotFound from './components/NotFound';
 
-// Lazy load heavy components for code splitting
+// Lazy load route screens so the first app shell stays light.
 const HiddenDashboard = React.lazy(() => import('./components/hidden/HiddenDashboard'));
+const DashboardPage = React.lazy(() => import('./src/features/dashboard/DashboardPage'));
+const DriversPage = React.lazy(() => import('./src/features/drivers/DriversPage'));
+const DriverProfilePage = React.lazy(() => import('./src/features/drivers/DriverProfilePage').then(module => ({ default: module.DriverProfilePage })));
+const CarsPage = React.lazy(() => import('./src/features/cars/CarsPage'));
+const CarProfilePage = React.lazy(() => import('./src/features/cars/CarProfilePage').then(module => ({ default: module.CarProfilePage })));
+const NotesPage = React.lazy(() => import('./src/features/notes/NotesPage'));
+const DocumentsPage = React.lazy(() => import('./src/features/documents/DocumentsPage').then(module => ({ default: module.DocumentsPage })));
+const PdfViewerPage = React.lazy(() => import('./src/features/documents/PdfViewerPage'));
+const TransactionsPage = React.lazy(() => import('./src/features/transactions/TransactionsPage').then(module => ({ default: module.TransactionsPage })));
+const FinancePage = React.lazy(() => import('./src/features/finance/FinancePage').then(module => ({ default: module.FinancePage })));
+const MonthlyPlanPage = React.lazy(() => import('./src/features/finance/MonthlyPlanPage').then(module => ({ default: module.MonthlyPlanPage })));
+const PayrollPage = React.lazy(() => import('./src/features/finance/PayrollPage').then(module => ({ default: module.PayrollPage })));
+const FinesPage = React.lazy(() => import('./src/features/fines/FinesPage'));
+const FinancialModal = React.lazy(() => import('./components/FinancialModal'));
+const DriverModal = React.lazy(() => import('./components/DriverModal'));
+const CarModal = React.lazy(() => import('./components/CarModal'));
+const AdminModal = React.lazy(() => import('./components/AdminModal'));
+const ConfirmModal = React.lazy(() => import('./components/ConfirmModal'));
+const SuperAdminPanel = React.lazy(() => import('./components/SuperAdminPanel'));
 import { ToastProvider, ToastContainer, useToast } from './components/ToastNotification';
 import { ConfirmProvider } from './components/ConfirmContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -38,31 +42,13 @@ import { useNotes } from './src/features/notes/hooks/useNotes';
 import { useNoteReminders } from './hooks/useNoteReminders';
 import Skeleton from './components/Skeleton';
 import PageSkeleton from './components/PageSkeleton';
-import DashboardPage from './src/features/dashboard/DashboardPage';
-import DriversPage from './src/features/drivers/DriversPage';
-import { DriverProfilePage } from './src/features/drivers/DriverProfilePage';
-import { CarProfilePage } from './src/features/cars/CarProfilePage';
-import NotesPage from './src/features/notes/NotesPage';
-import { DocumentsPage } from './src/features/documents/DocumentsPage';
-import PdfViewerPage from './src/features/documents/PdfViewerPage';
-import { TransactionsPage } from './src/features/transactions/TransactionsPage';
-import { FinancePage } from './src/features/finance/FinancePage';
-import { MonthlyPlanPage } from './src/features/finance/MonthlyPlanPage';
-import { PayrollPage } from './src/features/finance/PayrollPage';
-import FinesPage from './src/features/fines/FinesPage';
-import { MOCK_DRIVERS, MOCK_TRANSACTIONS, CITY_CENTER } from './constants';
-import { Driver, Transaction, TransactionType, DriverStatus, Language, TimeFilter, Tab } from './types';
-import { TRANSLATIONS } from './translations';
-import { formatNumberSmart } from './utils/formatNumber';
-import { useDrivers } from './src/features/drivers/hooks/useDrivers';
-import { useTransactions } from './src/features/transactions/hooks/useTransactions';
-import { useAuth } from './src/features/auth/hooks/useAuth';
-import { useNotifications } from './src/features/notifications/hooks/useNotifications';
+import { CITY_CENTER } from './constants';
+import { Driver, Transaction, TransactionType, DriverStatus, Language, Tab } from './types';
 import { AuthProvider, useAuthContext } from './src/features/auth/context/AuthContext';
 import { UIProvider, useUIContext } from './src/features/shared/context/UIContext';
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
 import * as firestoreService from './services/firestoreService';
-import { subscribeToNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, cleanupExpiredNotifications, sendNotification, Notification } from './services/notificationService';
+import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, sendNotification } from './services/notificationService';
 
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
@@ -78,7 +64,6 @@ const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
 );
 
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
-import SuperAdminPanel from './components/SuperAdminPanel';
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
@@ -247,10 +232,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
-
-  const TRANSACTIONS_PER_PAGE = 10;
-
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -368,21 +349,6 @@ const AppContent: React.FC = () => {
 
   const closeConfirmModal = () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
-  };
-
-  const handleDeleteTransaction = (id: string) => {
-    setConfirmModal({
-      isOpen: true,
-      title: t.confirmDeleteTitle,
-      message: t.deleteConfirmTx,
-      isDanger: true,
-      action: async () => {
-        closeConfirmModal();
-        setSelectedTransactions(prev => prev.filter(txId => txId !== id));
-        firestoreService.deleteTransaction(id, { adminName: adminUser?.username || 'Admin' }, carsFleetId)
-          .catch(() => {});
-      }
-    });
   };
 
   const handleSaveDriver = async (data: any) => {
@@ -685,26 +651,6 @@ const AppContent: React.FC = () => {
         )}
       </button>
     );
-  };
-
-  // --- COMPONENTS FOR FILTERS ---
-  const FilterControl = ({ icon: Icon, label, children }: any) => (
-    <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-[#181818] border-white/[0.08]' : 'bg-white border-gray-200'
-      }`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-        <span className={`text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-          }`}>{label}</span>
-      </div>
-      {children}
-    </div>
-  );
-
-  const getBadgeColor = (index: number) => {
-    if (index === 0) return "text-yellow-500"; // Gold
-    if (index === 1) return "text-slate-400";  // Silver
-    if (index === 2) return "text-orange-500"; // Bronze
-    return "text-slate-600 opacity-20";
   };
 
   if (!isAuthenticated) return <AuthScreen onAuthenticated={handleLogin} theme={theme} />;
@@ -1056,6 +1002,7 @@ const AppContent: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 relative z-0 custom-scrollbar">
 
           {/* DASHBOARD */}
+          <React.Suspense fallback={<PageSkeleton theme={theme} variant="generic" />}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage
@@ -1224,49 +1171,58 @@ const AppContent: React.FC = () => {
             {/* PDF viewer — fixed overlay, no sidebar visible */}
             <Route path="/pdf-viewer" element={<PdfViewerPage />} />
           </Routes >
+          </React.Suspense>
         </main >
       </div >
 
       {/* MODALS */}
-      <FinancialModal
-        isOpen={isTxModalOpen}
-        onClose={() => {
-            setIsTxModalOpen(false);
-            setTxInitialDriverId(undefined);
-            setTxInitialType(undefined);
-            setTxInitialDate(undefined);
-            setTxInitialDepositTopup(false);
-        }}
-        onSubmit={handleAddTransaction}
-        drivers={nonDeletedDrivers}
-        cars={cars}
-        transactions={transactions}
-        theme={theme}
-        fleetId={carsFleetId}
-        initialDriverId={txInitialDriverId}
-        initialType={txInitialType}
-        initialDate={txInitialDate}
-        initialIsDepositTopup={txInitialDepositTopup}
-      />
+      <React.Suspense fallback={null}>
+        {isTxModalOpen && (
+          <FinancialModal
+            isOpen={isTxModalOpen}
+            onClose={() => {
+                setIsTxModalOpen(false);
+                setTxInitialDriverId(undefined);
+                setTxInitialType(undefined);
+                setTxInitialDate(undefined);
+                setTxInitialDepositTopup(false);
+            }}
+            onSubmit={handleAddTransaction}
+            drivers={nonDeletedDrivers}
+            cars={cars}
+            transactions={transactions}
+            theme={theme}
+            fleetId={carsFleetId}
+            initialDriverId={txInitialDriverId}
+            initialType={txInitialType}
+            initialDate={txInitialDate}
+            initialIsDepositTopup={txInitialDepositTopup}
+          />
+        )}
 
-      <DriverModal
-        isOpen={isDriverModalOpen}
-        onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
-        onSubmit={handleSaveDriver}
-        editingDriver={editingDriver}
-        cars={cars}
-        theme={theme}
-      />
+        {isDriverModalOpen && (
+          <DriverModal
+            isOpen={isDriverModalOpen}
+            onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
+            onSubmit={handleSaveDriver}
+            editingDriver={editingDriver}
+            cars={cars}
+            theme={theme}
+          />
+        )}
 
-      <CarModal
-        isOpen={isCarModalOpen}
-        onClose={() => { setIsCarModalOpen(false); setEditingCar(null); }}
-        onSubmit={handleSaveCar}
-        editingCar={editingCar}
-        adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
-        theme={theme}
-        isLockedByVikup={editingCar ? drivers.some(d => d.id === editingCar.assignedDriverId && d.driverType === 'lease_to_own') : false}
-      />
+        {isCarModalOpen && (
+          <CarModal
+            isOpen={isCarModalOpen}
+            onClose={() => { setIsCarModalOpen(false); setEditingCar(null); }}
+            onSubmit={handleSaveCar}
+            editingCar={editingCar}
+            adminName={adminUser?.username ?? adminProfile?.name ?? 'Admin'}
+            theme={theme}
+            isLockedByVikup={editingCar ? drivers.some(d => d.id === editingCar.assignedDriverId && d.driverType === 'lease_to_own') : false}
+          />
+        )}
+      </React.Suspense>
 
       {/* ── Repair Prompt Modal (Apple iOS Native Style) ── */}
       {repairPrompt.isOpen && (
@@ -1324,46 +1280,58 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      <AdminModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-        adminData={
-          adminUser
-            ? {
-              name: adminUser.username,
-              role: adminUser.role,
-              // Pass the raw saved avatar URL (or undefined). Do NOT fall back to a DiceBear URL here —
-              // AdminModal internally renders initials when avatar is falsy, and hasChanges() compares
-              // the initial value. If we substitute a DiceBear URL, the upload comparison breaks.
-              avatar: adminUser.avatar || undefined,
-              password: adminUser.password
+      <React.Suspense fallback={null}>
+        {isAdminModalOpen && (
+          <AdminModal
+            isOpen={isAdminModalOpen}
+            onClose={() => setIsAdminModalOpen(false)}
+            adminData={
+              adminUser
+                ? {
+                  name: adminUser.username,
+                  role: adminUser.role,
+                  // Pass the raw saved avatar URL (or undefined). Do NOT fall back to a DiceBear URL here —
+                  // AdminModal internally renders initials when avatar is falsy, and hasChanges() compares
+                  // the initial value. If we substitute a DiceBear URL, the upload comparison breaks.
+                  avatar: adminUser.avatar || undefined,
+                  password: adminUser.password
+                }
+                : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: undefined, password: '' })
             }
-            : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: undefined, password: '' })
-        }
-        onUpdate={handleUpdateProfile}
-        userRole={userRole}
-        theme={theme}
-        onLogout={() => { playLockSound(); handleLogout(); }}
-        onLock={() => { playLockSound(); setIsLocked(true); }}
-      />
+            onUpdate={handleUpdateProfile}
+            userRole={userRole}
+            theme={theme}
+            onLogout={() => { playLockSound(); handleLogout(); }}
+            onLock={() => { playLockSound(); setIsLocked(true); }}
+          />
+        )}
+      </React.Suspense>
 
       {/* CONFIRMATION MODAL */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        onConfirm={confirmModal.action}
-        onCancel={closeConfirmModal}
-        isDanger={confirmModal.isDanger}
-        theme={theme}
-      />
+      <React.Suspense fallback={null}>
+        {confirmModal.isOpen && (
+          <ConfirmModal
+            isOpen={confirmModal.isOpen}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            onConfirm={confirmModal.action}
+            onCancel={closeConfirmModal}
+            isDanger={confirmModal.isDanger}
+            theme={theme}
+          />
+        )}
+      </React.Suspense>
 
       {/* SUPER ADMIN PANEL */}
-      <SuperAdminPanel
-        isOpen={isSuperAdminOpen}
-        onClose={() => setIsSuperAdminOpen(false)}
-        currentUserId={adminUser?.id || ''}
-      />
+      <React.Suspense fallback={null}>
+        {isSuperAdminOpen && (
+          <SuperAdminPanel
+            isOpen={isSuperAdminOpen}
+            onClose={() => setIsSuperAdminOpen(false)}
+            currentUserId={adminUser?.id || ''}
+          />
+        )}
+      </React.Suspense>
 
       {/* TOAST NOTIFICATIONS */}
       <ToastContainer theme={theme} />

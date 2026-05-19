@@ -96,7 +96,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const [name, setName]                         = useState(adminData.name);
   const [avatar, setAvatar]                     = useState(adminData.avatar);
   const [newPassword, setNewPassword]           = useState('');
-  const [showCurrentPw, setShowCurrentPw]       = useState(false);
+  const [showCurrentPw, setShowCurrentPw]       = useState(true);
   const [showNewPw, setShowNewPw]               = useState(false);
   const [nameError, setNameError]               = useState('');
   const [pwError, setPwError]                   = useState('');
@@ -118,7 +118,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
       setName(adminData.name);
       setAvatar(adminData.avatar);
       setNewPassword('');
-      setShowCurrentPw(false);
+      setShowCurrentPw(true);
       setNameError('');
       setPwError('');
       setImageError('');
@@ -372,12 +372,13 @@ const AdminModal: React.FC<AdminModalProps> = ({
                         ? (adminData.password || '—')
                         : '•'.repeat(Math.max(6, (adminData.password || '••••••').length))}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPw(v => !v)}
-                      className={`ml-2 p-1 rounded-lg transition-colors flex-shrink-0 ${
-                        isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
-                      }`}
+	                    <button
+	                      type="button"
+	                      onClick={() => setShowCurrentPw(v => !v)}
+	                      aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
+	                      className={`ml-2 p-1 rounded-lg transition-colors flex-shrink-0 ${
+	                        isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
+	                      }`}
                       title={showCurrentPw ? 'Yashirish' : 'Ko\'rsatish'}
                     >
                       {showCurrentPw
@@ -405,12 +406,13 @@ const AdminModal: React.FC<AdminModalProps> = ({
                           pwError ? 'ring-2 ring-red-500/40' : ''
                         }`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPw(v => !v)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${
-                          isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
-                        }`}
+	                      <button
+	                        type="button"
+	                        onClick={() => setShowNewPw(v => !v)}
+	                        aria-label={showNewPw ? 'Hide password' : 'Show password'}
+	                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${
+	                          isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
+	                        }`}
                       >
                         {showNewPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                       </button>
