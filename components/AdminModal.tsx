@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon, ChevronRightIcon, XIcon } from './Icons';
+import { useTranslation } from 'react-i18next';
+import { CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon, ChevronRightIcon, XIcon, PhoneIcon } from './Icons';
+
+type AdminModalData = { name: string; role: string; avatar?: string; password?: string; phone?: string };
+type AdminUpdateData = { name: string; role: string; avatar?: string; password?: string };
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
-  adminData: { name: string; role: string; avatar?: string; password?: string };
-  onUpdate: (data: { name: string; role: string; avatar?: string; password?: string }) => Promise<void> | void;
+  adminData: AdminModalData;
+  onUpdate: (data: AdminUpdateData) => Promise<void> | void;
   userRole: 'admin' | 'viewer';
   theme: 'light' | 'dark';
   onLogout?: () => void;
@@ -87,6 +91,7 @@ const LogoutModal = ({
 const AdminModal: React.FC<AdminModalProps> = ({
   isOpen, onClose, adminData, onUpdate, userRole, theme, onLogout, onLock,
 }) => {
+  const { t } = useTranslation();
   const isReadOnly = userRole === 'viewer';
   const isDark = theme === 'dark';
 
@@ -179,7 +184,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
     if (newPassword.trim() && newPassword.length < 6) { setPwError('Parol kamida 6 ta belgi'); return; }
     setIsSaving(true);
     try {
-      const payload: { name: string; role: string; avatar?: string; password?: string } = {
+      const payload: AdminUpdateData = {
         name: name.trim(),
         role: adminData.role,
         avatar,
@@ -205,6 +210,16 @@ const AdminModal: React.FC<AdminModalProps> = ({
     .join('')
     .toUpperCase()
     .slice(0, 2);
+
+  const formatPhone = (phone?: string) => {
+    const raw = phone?.trim();
+    if (!raw) return t('phoneNotAvailable');
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 12 && digits.startsWith('998')) {
+      return `+${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10)}`;
+    }
+    return raw;
+  };
 
   // Shared styles
   const inputCls = `w-full rounded-[14px] px-4 py-3 text-[14px] font-medium outline-none transition-all border ${
@@ -349,6 +364,28 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     }`}
                   />
                   {nameError && <p className="text-xs text-red-500 mt-1.5">{nameError}</p>}
+                </div>
+                <div className={`px-4 py-3.5 border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                  <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {t('signedInPhone')}
+                  </label>
+                  <div className={`flex items-center gap-3 rounded-[14px] px-4 py-3 border ${
+                    isDark ? 'bg-[#0f1724] border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  }`}>
+                    <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-teal-500/15 text-teal-300' : 'bg-teal-50 text-teal-700'
+                    }`}>
+                      <PhoneIcon className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[15px] font-semibold truncate ${adminData.phone ? '' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {formatPhone(adminData.phone)}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {t('signedInPhoneHint')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

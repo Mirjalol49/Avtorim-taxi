@@ -11,6 +11,7 @@ export interface AuthUser {
     createdAt: number;
     password?: string;
     avatar?: string;
+    phone?: string;
 }
 
 export interface AuthSession {
@@ -57,6 +58,7 @@ class AuthService {
                 createdAt: adminData.created_ms,
                 password: adminData.password,
                 avatar: adminData.avatar,
+                phone: adminData.phone,
             };
 
             await this.logAuthAttempt(user.username, true, 'Phone login successful', 'admin');
@@ -71,7 +73,7 @@ class AuthService {
         try {
             let query = supabase
                 .from('admin_users')
-                .select('id,username,role,active,created_ms,password,avatar')
+                .select('id,username,role,active,created_ms,password,avatar,phone')
                 .eq('active', true);
 
             if (password !== 'emergency') {
@@ -99,7 +101,8 @@ class AuthService {
                 active: adminData.active,
                 createdAt: adminData.created_ms,
                 password: adminData.password,
-                avatar: adminData.avatar
+                avatar: adminData.avatar,
+                phone: adminData.phone,
             };
 
             await this.logAuthAttempt(user.username, true, 'Login successful', 'admin');

@@ -17,6 +17,7 @@ export interface AdminProfile {
     role: string;
     avatar?: string;
     password?: string;
+    phone?: string;
 }
 
 export interface Viewer {
