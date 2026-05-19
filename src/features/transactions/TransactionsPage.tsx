@@ -604,7 +604,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     </td>
                                 </tr>
                             ) : (
-                                transactions.map(tx => {
+                                transactions.filter(tx => tx.category !== 'ledger_config').map(tx => {
                                     const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
                                     const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
@@ -677,20 +677,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                     {driver?.isDeleted && <span className={`text-[10px] px-1.5 py-0.5 rounded border ${theme === 'dark' ? 'border-red-900/50 bg-red-900/20 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>{t('deleted')}</span>}
                                                                 </div>
                                                                 {(driver?.isDeleted || driver) && (
-                                                                    <div className={`text-xs flex items-center gap-2 mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                                    <div className={`flex flex-col mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
                                                                         {(() => {
                                                                             const liveCar = driver ? cars.find(c => c.assignedDriverId === driver.id) : undefined;
                                                                             return liveCar ? (
                                                                                 <>
-                                                                                    <span className="font-semibold truncate max-w-[120px]">{liveCar.name}</span>
-                                                                                    <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                                                    <span className="text-[11px] font-semibold whitespace-normal">{liveCar.name}</span>
+                                                                                    <div className="mt-1 w-fit">
+                                                                                        <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                                                    </div>
                                                                                 </>
                                                                             ) : driver?.licensePlate ? (
-                                                                                <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                                                <div className="mt-1 w-fit">
+                                                                                    <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                                                </div>
                                                                             ) : null;
                                                                         })()}
-                                                                        <span>•</span>
-                                                                        <span>{driver?.phone}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -792,7 +794,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     ) : transactions.length === 0 ? (
                         <div className={`p-8 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('noTransactions')}</div>
                     ) : (
-                        transactions.map(tx => {
+                        transactions.filter(tx => tx.category !== 'ledger_config').map(tx => {
                             const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
                             const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
                             const isDeleted = tx.status === PaymentStatus.DELETED;
@@ -827,12 +829,16 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                     ) : driver ? (() => {
                                                         const liveCar = cars.find(c => c.assignedDriverId === driver.id);
                                                         return liveCar ? (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="font-semibold truncate max-w-[100px]">{liveCar.name}</span>
-                                                                <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                            <div className="flex flex-col mt-0.5">
+                                                                <span className="font-semibold whitespace-normal">{liveCar.name}</span>
+                                                                <div className="mt-1 w-fit">
+                                                                    <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                                </div>
                                                             </div>
                                                         ) : driver.licensePlate ? (
-                                                            <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                            <div className="mt-1 w-fit">
+                                                                <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                            </div>
                                                         ) : null;
                                                     })() : (
                                                         t('expense')

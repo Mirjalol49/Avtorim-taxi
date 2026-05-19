@@ -105,7 +105,7 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
         if (configTx) {
             await supabase.from('transactions').update({ note: JSON.stringify(next) }).eq('id', configTx.id);
         } else {
-            // Create a "DELETED" transaction so it's globally synced but completely invisible to normal queries
+            // Create an "ACTIVE" transaction so it's globally synced but we will hide it from the UI manually
             await supabase.from('transactions').insert({
                 fleet_id: fleetId,
                 amount: 0,
@@ -113,7 +113,7 @@ const BalanceCheckModal: React.FC<Props> = ({ isOpen, onClose, transactions, dri
                 category: 'ledger_config',
                 description: 'CARD_LEDGER_STATE',
                 note: JSON.stringify(next),
-                status: 'DELETED',
+                status: 'ACTIVE',
                 timestamp_ms: Date.now(),
                 created_ms: Date.now()
             });

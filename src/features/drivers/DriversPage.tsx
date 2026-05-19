@@ -147,14 +147,14 @@ const DriversPage: React.FC<DriversPageProps> = ({
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-wrap items-end justify-between gap-3 overflow-hidden">
+                    <div className="flex flex-wrap items-end gap-4 w-full md:w-auto">
                         {/* Car Status Filter */}
-                        <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-col gap-1.5 w-full md:w-auto overflow-hidden">
                             <span className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 Avtomobil
                             </span>
-                            <div className={`flex items-center gap-1 p-1 rounded-[14px] border ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+                            <div className={`flex items-center gap-1 p-1 rounded-[14px] border overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
                                 {([
                                     { key: 'all', label: 'Barchasi', count: rawFiltered.length },
                                     { key: 'with-car', label: 'Mashina bor', count: withCarCount },
@@ -165,7 +165,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                         <button
                                             key={f.key}
                                             onClick={() => { setCarFilter(f.key); setTypeFilter('all'); setCurrentPage(1); }}
-                                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                            className={`flex-shrink-0 whitespace-nowrap flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
                                                 active
                                                     ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
                                                     : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
@@ -186,11 +186,11 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         </div>
 
                         {/* Driver Type Filter */}
-                        <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-col gap-1.5 w-full md:w-auto overflow-hidden">
                             <span className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 Toifa
                             </span>
-                            <div className={`flex items-center gap-1 p-1 rounded-[14px] border ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
+                            <div className={`flex items-center gap-1 p-1 rounded-[14px] border overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
                                 {([
                                     { key: 'all', label: 'Barchasi', count: carFilteredList.length, color: 'gray' },
                                     { key: 'deposit', label: 'Standart', count: depositCount, color: 'emerald' },
@@ -224,7 +224,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                         <button
                                             key={f.key}
                                             onClick={() => { setTypeFilter(f.key as DriverTypeFilter); setCurrentPage(1); }}
-                                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
+                                            className={`flex-shrink-0 whitespace-nowrap flex items-center gap-2 px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold transition-all ${
                                                 active
                                                     ? activeClasses
                                                     : theme === 'dark' ? 'text-white/40 hover:text-white/70' : 'text-gray-500 hover:text-gray-700'
