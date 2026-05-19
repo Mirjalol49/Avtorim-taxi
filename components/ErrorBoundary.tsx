@@ -11,6 +11,11 @@ interface State {
     errorInfo: ErrorInfo | null;
 }
 
+const CHUNK_ERROR_RELOAD_KEY = 'avtorim_error_boundary_chunk_reload';
+
+const isChunkLoadError = (error: Error) =>
+    /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(error.message);
+
 class ErrorBoundary extends Component<Props, State> {
     constructor(props: Props) {
         super(props);
@@ -25,9 +30,15 @@ class ErrorBoundary extends Component<Props, State> {
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
         this.setState({ errorInfo });
+
+        if (isChunkLoadError(error) && sessionStorage.getItem(CHUNK_ERROR_RELOAD_KEY) !== '1') {
+            sessionStorage.setItem(CHUNK_ERROR_RELOAD_KEY, '1');
+            window.location.reload();
+        }
     }
 
     handleRetry = () => {
+        sessionStorage.removeItem(CHUNK_ERROR_RELOAD_KEY);
         this.setState({ hasError: false, error: null, errorInfo: null });
     };
 

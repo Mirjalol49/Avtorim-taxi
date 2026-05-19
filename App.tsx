@@ -13,27 +13,6 @@ import DesktopHeader from './components/DesktopHeader';
 import { useAdminProfile } from './src/features/admin/hooks/useAdminProfile';
 import NotFound from './components/NotFound';
 
-// Lazy load route screens so the first app shell stays light.
-const HiddenDashboard = React.lazy(() => import('./components/hidden/HiddenDashboard'));
-const DashboardPage = React.lazy(() => import('./src/features/dashboard/DashboardPage'));
-const DriversPage = React.lazy(() => import('./src/features/drivers/DriversPage'));
-const DriverProfilePage = React.lazy(() => import('./src/features/drivers/DriverProfilePage').then(module => ({ default: module.DriverProfilePage })));
-const CarsPage = React.lazy(() => import('./src/features/cars/CarsPage'));
-const CarProfilePage = React.lazy(() => import('./src/features/cars/CarProfilePage').then(module => ({ default: module.CarProfilePage })));
-const NotesPage = React.lazy(() => import('./src/features/notes/NotesPage'));
-const DocumentsPage = React.lazy(() => import('./src/features/documents/DocumentsPage').then(module => ({ default: module.DocumentsPage })));
-const PdfViewerPage = React.lazy(() => import('./src/features/documents/PdfViewerPage'));
-const TransactionsPage = React.lazy(() => import('./src/features/transactions/TransactionsPage').then(module => ({ default: module.TransactionsPage })));
-const FinancePage = React.lazy(() => import('./src/features/finance/FinancePage').then(module => ({ default: module.FinancePage })));
-const MonthlyPlanPage = React.lazy(() => import('./src/features/finance/MonthlyPlanPage').then(module => ({ default: module.MonthlyPlanPage })));
-const PayrollPage = React.lazy(() => import('./src/features/finance/PayrollPage').then(module => ({ default: module.PayrollPage })));
-const FinesPage = React.lazy(() => import('./src/features/fines/FinesPage'));
-const FinancialModal = React.lazy(() => import('./components/FinancialModal'));
-const DriverModal = React.lazy(() => import('./components/DriverModal'));
-const CarModal = React.lazy(() => import('./components/CarModal'));
-const AdminModal = React.lazy(() => import('./components/AdminModal'));
-const ConfirmModal = React.lazy(() => import('./components/ConfirmModal'));
-const SuperAdminPanel = React.lazy(() => import('./components/SuperAdminPanel'));
 import { ToastProvider, ToastContainer, useToast } from './components/ToastNotification';
 import { ConfirmProvider } from './components/ConfirmContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -52,6 +31,55 @@ import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification,
 
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
+import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
+
+const STALE_CHUNK_RELOAD_KEY = 'avtorim_stale_chunk_reloaded';
+
+const isDynamicImportError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(message);
+};
+
+const lazyWithReload = <T extends { default: React.ComponentType<any> }>(
+  importer: () => Promise<T>,
+) => React.lazy(async () => {
+  try {
+    const module = await importer();
+    sessionStorage.removeItem(STALE_CHUNK_RELOAD_KEY);
+    return module;
+  } catch (error) {
+    if (isDynamicImportError(error) && sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) !== '1') {
+      sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, '1');
+      window.location.reload();
+      return new Promise<T>(() => {});
+    }
+    throw error;
+  }
+});
+
+// Lazy load route screens so the first app shell stays light. If a deploy replaces
+// hashed chunks while a browser is still on the old shell, reload once into the
+// current build instead of crashing in ErrorBoundary.
+const HiddenDashboard = lazyWithReload(() => import('./components/hidden/HiddenDashboard'));
+const DashboardPage = lazyWithReload(() => import('./src/features/dashboard/DashboardPage'));
+const DriversPage = lazyWithReload(() => import('./src/features/drivers/DriversPage'));
+const DriverProfilePage = lazyWithReload(() => import('./src/features/drivers/DriverProfilePage').then(module => ({ default: module.DriverProfilePage })));
+const CarsPage = lazyWithReload(() => import('./src/features/cars/CarsPage'));
+const CarProfilePage = lazyWithReload(() => import('./src/features/cars/CarProfilePage').then(module => ({ default: module.CarProfilePage })));
+const NotesPage = lazyWithReload(() => import('./src/features/notes/NotesPage'));
+const DocumentsPage = lazyWithReload(() => import('./src/features/documents/DocumentsPage').then(module => ({ default: module.DocumentsPage })));
+const PdfViewerPage = lazyWithReload(() => import('./src/features/documents/PdfViewerPage'));
+const TransactionsPage = lazyWithReload(() => import('./src/features/transactions/TransactionsPage').then(module => ({ default: module.TransactionsPage })));
+const FinancePage = lazyWithReload(() => import('./src/features/finance/FinancePage').then(module => ({ default: module.FinancePage })));
+const MonthlyPlanPage = lazyWithReload(() => import('./src/features/finance/MonthlyPlanPage').then(module => ({ default: module.MonthlyPlanPage })));
+const PayrollPage = lazyWithReload(() => import('./src/features/finance/PayrollPage').then(module => ({ default: module.PayrollPage })));
+const FinesPage = lazyWithReload(() => import('./src/features/fines/FinesPage'));
+const FinancialModal = lazyWithReload(() => import('./components/FinancialModal'));
+const DriverModal = lazyWithReload(() => import('./components/DriverModal'));
+const CarModal = lazyWithReload(() => import('./components/CarModal'));
+const AdminModal = lazyWithReload(() => import('./components/AdminModal'));
+const ConfirmModal = lazyWithReload(() => import('./components/ConfirmModal'));
+const SuperAdminPanel = lazyWithReload(() => import('./components/SuperAdminPanel'));
 
 const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
     <img
@@ -62,8 +90,6 @@ const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
         style={theme === 'dark' ? { filter: 'brightness(0) invert(1)' } : {}}
     />
 );
-
-import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
