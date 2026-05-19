@@ -32,25 +32,17 @@ import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification,
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { playLockSound } from './services/soundService';
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
-
-const STALE_CHUNK_RELOAD_KEY = 'avtorim_stale_chunk_reloaded';
-
-const isDynamicImportError = (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(message);
-};
+import { clearChunkRecoveryState, isChunkLoadError, recoverFromChunkLoadError } from './src/utils/chunkRecovery';
 
 const lazyWithReload = <T extends { default: React.ComponentType<any> }>(
   importer: () => Promise<T>,
 ) => React.lazy(async () => {
   try {
     const module = await importer();
-    sessionStorage.removeItem(STALE_CHUNK_RELOAD_KEY);
+    clearChunkRecoveryState();
     return module;
   } catch (error) {
-    if (isDynamicImportError(error) && sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) !== '1') {
-      sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, '1');
-      window.location.reload();
+    if (isChunkLoadError(error) && await recoverFromChunkLoadError()) {
       return new Promise<T>(() => {});
     }
     throw error;
@@ -58,8 +50,8 @@ const lazyWithReload = <T extends { default: React.ComponentType<any> }>(
 });
 
 // Lazy load route screens so the first app shell stays light. If a deploy replaces
-// hashed chunks while a browser is still on the old shell, reload once into the
-// current build instead of crashing in ErrorBoundary.
+// hashed chunks while a browser is still on the old shell, clear stale caches and
+// reload into the current build instead of crashing in ErrorBoundary.
 const HiddenDashboard = lazyWithReload(() => import('./components/hidden/HiddenDashboard'));
 const DashboardPage = lazyWithReload(() => import('./src/features/dashboard/DashboardPage'));
 const DriversPage = lazyWithReload(() => import('./src/features/drivers/DriversPage'));
@@ -799,7 +791,7 @@ const AppContent: React.FC = () => {
                 ? <SunIcon className="w-4 h-4 text-[#FF9F0A]" />
                 : <MoonIcon className="w-4 h-4 text-slate-500" />
               }
-              <span className="font-medium text-[14px]">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+              <span className="font-medium text-[14px]">{theme === 'dark' ? t.lightMode : t.darkMode}</span>
             </div>
             <div className={`w-10 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-white/20' : 'bg-slate-200'}`}>
               <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${theme === 'dark' ? 'left-0.5' : 'translate-x-[18px]'}`} />
@@ -958,7 +950,7 @@ const AppContent: React.FC = () => {
                 {location.pathname === '/monthly-plan' && t.monthlyPlanDesc}
                 {location.pathname === '/transactions' && t.descTransactions}
                 {location.pathname === '/notes' && t.descNotes}
-                {location.pathname === '/documents' && 'Fayllar va hujjatlarni saqlash'}
+                {location.pathname === '/documents' && t.documentsDesc}
               </p>
             </div>
           </div>

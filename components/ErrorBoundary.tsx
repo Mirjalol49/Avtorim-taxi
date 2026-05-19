@@ -1,4 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import i18n from '../src/i18n';
+import { isChunkLoadError, recoverFromChunkLoadError } from '../src/utils/chunkRecovery';
 
 interface Props {
     children: ReactNode;
@@ -10,11 +12,6 @@ interface State {
     error: Error | null;
     errorInfo: ErrorInfo | null;
 }
-
-const CHUNK_ERROR_RELOAD_KEY = 'avtorim_error_boundary_chunk_reload';
-
-const isChunkLoadError = (error: Error) =>
-    /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(error.message);
 
 class ErrorBoundary extends Component<Props, State> {
     constructor(props: Props) {
@@ -31,14 +28,12 @@ class ErrorBoundary extends Component<Props, State> {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
         this.setState({ errorInfo });
 
-        if (isChunkLoadError(error) && sessionStorage.getItem(CHUNK_ERROR_RELOAD_KEY) !== '1') {
-            sessionStorage.setItem(CHUNK_ERROR_RELOAD_KEY, '1');
-            window.location.reload();
+        if (isChunkLoadError(error)) {
+            void recoverFromChunkLoadError();
         }
     }
 
     handleRetry = () => {
-        sessionStorage.removeItem(CHUNK_ERROR_RELOAD_KEY);
         this.setState({ hasError: false, error: null, errorInfo: null });
     };
 
@@ -56,14 +51,14 @@ class ErrorBoundary extends Component<Props, State> {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                         </div>
-                        <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
+                        <h2 className="text-xl font-bold text-white mb-2">{i18n.t('errorBoundaryTitle')}</h2>
                         <p className="text-gray-400 mb-6">
-                            An unexpected error occurred. Please try again.
+                            {i18n.t('errorBoundaryMessage')}
                         </p>
                         {this.state.error && (
                             <details className="text-left mb-6" open>
                                 <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-400 font-bold mb-2">
-                                    Technical details
+                                    {i18n.t('technicalDetails')}
                                 </summary>
                                 <div className="bg-surface-3 rounded-lg p-4 overflow-auto max-h-[500px] border border-white/[0.08]">
                                     <p className="text-red-400 font-mono text-sm mb-4 font-bold">
@@ -82,13 +77,13 @@ class ErrorBoundary extends Component<Props, State> {
                                 onClick={this.handleRetry}
                                 className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#0f766e] text-white rounded-xl font-medium transition-colors"
                             >
-                                Try Again
+                                {i18n.t('tryAgain')}
                             </button>
                             <button
                                 onClick={() => window.location.reload()}
                                 className="px-6 py-2.5 bg-surface-2 hover:bg-white/[0.06] text-white rounded-xl font-medium transition-colors"
                             >
-                                Reload Page
+                                {i18n.t('reloadPage')}
                             </button>
                         </div>
                     </div>

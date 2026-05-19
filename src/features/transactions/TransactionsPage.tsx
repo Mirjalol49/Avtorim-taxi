@@ -378,7 +378,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     <div className="w-5 h-5 flex items-center justify-center mr-1">
                         <Lottie animationData={cardAnimation} loop={true} />
                     </div>
-                    Balans tekshirish
+                    {t('balanceCheck')}
                 </button>
             </div>
 
@@ -551,7 +551,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     }`}
                 >
                     <DownloadIcon className="w-4 h-4" />
-                    Excel ({transactions.length}{hasMore ? '+' : ''})
+                    {t('exportExcel')} ({transactions.length}{hasMore ? '+' : ''})
 	                </button>
 	            </div>
 

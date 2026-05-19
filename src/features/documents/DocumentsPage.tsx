@@ -298,7 +298,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-[14px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95 shadow-sm"
                 >
                     <UploadCloudIcon className="w-4 h-4" />
-                    <span>{t('upload', 'Yuklash')}</span>
+                    <span>{t('upload')}</span>
                 </button>
                 <input
                     ref={fileInputRef}
@@ -366,7 +366,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                     <div className="text-center">
                         <p className={`font-semibold text-base ${isDark ? 'text-white/60' : 'text-gray-500'}`}>{t('noFiles', 'Fayl yo\'q')}</p>
                         <p className={`text-[13px] mt-1 ${mutedText}`}>{t('dropFilesHere', 'Bosing yoki fayllarni bu yerga tashlang')}</p>
-                        <p className={`text-[11px] mt-1 ${mutedText}`}>Rasm, PDF, Excel, Word · {t('max', 'Maks')} {MAX_FILE_MB} MB</p>
+                        <p className={`text-[11px] mt-1 ${mutedText}`}>{t('supportedFiles')} · {t('max')} {MAX_FILE_MB} MB</p>
                     </div>
                 </div>
             ) : (
@@ -378,7 +378,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                 >
                     {dragOver && (
                         <div className="absolute inset-0 rounded-2xl border-2 border-dashed border-[#0f766e] bg-[#0f766e]/[0.07] z-10 flex items-center justify-center pointer-events-none">
-                            <p className="text-[#0f766e] font-semibold">Tashlang!</p>
+                            <p className="text-[#0f766e] font-semibold">{t('dropFilesNow')}</p>
                         </div>
                     )}
                     {loading ? (
@@ -483,7 +483,7 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ theme, fleetId, us
                                 onClick={confirmUpload}
                                 className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-colors"
                             >
-                                {t('upload', 'Yuklash')}
+                                {t('upload')}
                             </button>
                         )}
                     </div>

@@ -372,7 +372,7 @@
   "photo": "ФОТО",
   "damageShortDesc": "Кратко опишите повреждение…",
   "savingProgress": "Загрузка…",
-  "saveBtnWithIcon": "💾 Сохранить",
+  "saveBtnWithIcon": "Сохранить",
   "back": "Назад",
   "carLabel": "Автомобиль",
   "noDamage": "Нет повреждений",
@@ -614,5 +614,17 @@
   "fullyPaid": "Полностью оплачено",
   "partiallyPaid": "Частично оплачено",
   "discount": "Скидка",
-  "activeDriversCount": "активных водителей"
+  "activeDriversCount": "активных водителей",
+  "errorBoundaryTitle": "Что-то пошло не так",
+  "errorBoundaryMessage": "Произошла непредвиденная ошибка. Попробуйте еще раз.",
+  "technicalDetails": "Технические детали",
+  "tryAgain": "Попробовать снова",
+  "reloadPage": "Перезагрузить страницу",
+  "documentsDesc": "Хранение файлов и документов",
+  "lightMode": "Светлый режим",
+  "darkMode": "Темный режим",
+  "balanceCheck": "Проверить баланс",
+  "upload": "Загрузить",
+  "supportedFiles": "Изображения, PDF, Excel, Word",
+  "dropFilesNow": "Перетащите файлы сюда"
 }
