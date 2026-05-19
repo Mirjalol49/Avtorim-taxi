@@ -613,10 +613,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     <AlertTriangleIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
                 </div>
                 <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Ogohlantirishlar yo'q
+                    {t('noWarnings')}
                 </p>
                 <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                    Barcha haydovchilar rejani bajardi
+                    {t('allDriversOnPlan')}
                 </p>
             </div>
         );
@@ -630,10 +630,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     }`}>
                         <div>
                             <p className={`text-[12px] font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                                {planItems.length} ta haydovchi to'lamagan
+                                {t('unpaidDriversCount', { count: planItems.length })}
                             </p>
                             <p className={`text-[11px] mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500'}`}>
-                                Jami qoldi: {fmtAmount(warnStats.totalRemaining)} UZS
+                                {t('totalRemaining')}: {fmtAmount(warnStats.totalRemaining)} UZS
                             </p>
                         </div>
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-500/15' : 'bg-red-100'}`}>
@@ -653,7 +653,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.03]'
                         }`}
                     >
-                        Ko'proq ko'rsatish ({all.length - visible.length} ta qoldi)
+                        {t('showMoreNotifications', { count: all.length - visible.length })}
                     </button>
                 )}
             </>
@@ -671,10 +671,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     <TrendingUpIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
                 </div>
                 <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    O'tkazmalar yo'q
+                    {t('noTransfers')}
                 </p>
                 <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                    Bot orqali yuborilgan o'tkazmalar bu yerda ko'rinadi
+                    {t('telegramTransfersHint')}
                 </p>
             </div>
         );
@@ -691,7 +691,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.03]'
                         }`}
                     >
-                        Ko'proq ko'rsatish ({transactions.length - visible.length} ta qoldi)
+                        {t('showMoreNotifications', { count: transactions.length - visible.length })}
                     </button>
                 )}
             </>
@@ -724,7 +724,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                 <BellIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                             </div>
                             <h2 className={`text-[15px] font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
-                                Bildirishnomalar
+                                {t('notifications')}
                             </h2>
                         </div>
 
@@ -732,7 +732,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             {unreadCount > 0 && (
                                 <button
                                     onClick={onMarkAllAsRead}
-                                    title="Barchasini o'qildi deb belgilash"
+                                    title={t('markAllAsRead')}
                                     className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-teal-400 hover:bg-teal-400/10' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
                                 >
                                     <CheckCheckIcon className="w-4 h-4" />
@@ -741,7 +741,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             {readIds.size > 0 && (
                                 <button
                                     onClick={onClearAllRead}
-                                    title="O'qilganlarni o'chirish"
+                                    title={t('clearReadNotifications')}
                                     className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
                                 >
                                     <TrashIcon className="w-4 h-4" />
@@ -759,8 +759,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                     {/* Tabs */}
                     <div className="flex">
                         {([
-                            { key: 'warnings' as Tab,     label: 'Ogohlantirishlar', count: unreadWarnings,     total: warnings.length },
-                            { key: 'transactions' as Tab, label: "O'tkazmalar",      count: unreadTransactions, total: transactions.length },
+                            { key: 'warnings' as Tab,     label: t('warnings'), count: unreadWarnings,     total: warnings.length },
+                            { key: 'transactions' as Tab, label: t('transfers'), count: unreadTransactions, total: transactions.length },
                         ] as const).map(tab => (
                             <button
                                 key={tab.key}
@@ -803,7 +803,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 {/* Footer */}
                 <div className={`flex-shrink-0 px-5 py-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
                     <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                        {notifications.length} ta bildirishnoma · So'nggi 14 soat
+                        {t('notificationFooter', { count: notifications.length })}
                     </p>
                 </div>
             </div>
@@ -818,7 +818,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 className={`relative p-2 rounded-xl transition-colors ${isDark
                     ? 'hover:bg-white/[0.08] text-gray-400 hover:text-white'
                     : 'hover:bg-black/[0.06] text-gray-500 hover:text-black'}`}
-                aria-label="Bildirishnomalar"
+                aria-label={t('notifications')}
             >
                 <BellIcon className="w-5 h-5" />
                 {unreadCount > 0 && (

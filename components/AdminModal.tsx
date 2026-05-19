@@ -27,10 +27,12 @@ const Spinner = () => (
 // ── Logout confirmation — proper floating modal ────────────────────────────
 const LogoutModal = ({
   isDark,
+  t,
   onCancel,
   onConfirm,
 }: {
   isDark: boolean;
+  t: (key: string) => string;
   onCancel: () => void;
   onConfirm: () => void;
 }) => createPortal(
@@ -52,11 +54,11 @@ const LogoutModal = ({
           <LogOutIcon className="w-7 h-7 text-red-500" />
         </div>
         <h3 className={`text-[18px] font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Tizimdan chiqish
+          {t('logoutConfirmTitle')}
         </h3>
         <p className={`text-[13px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          Hisobingizdan chiqmoqchimisiz?<br />
-          Barcha ma'lumotlaringiz saqlanib qoladi.
+          {t('logoutConfirmMessageLine1')}<br />
+          {t('logoutConfirmMessageLine2')}
         </p>
       </div>
 
@@ -73,13 +75,13 @@ const LogoutModal = ({
               : 'text-gray-700 hover:bg-gray-50 border-gray-100'
           }`}
         >
-          Bekor
+          {t('cancel')}
         </button>
         <button
           onClick={onConfirm}
           className="flex-1 py-4 text-[15px] font-bold text-red-500 hover:bg-red-500/[0.06] transition-colors active:scale-[0.98]"
         >
-          Chiqish
+          {t('logout')}
         </button>
       </div>
     </div>
@@ -157,11 +159,11 @@ const AdminModal: React.FC<AdminModalProps> = ({
     if (!file) return;
     setImageError('');
     if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-      setImageError('JPG, PNG, GIF yoki WEBP kerak');
+      setImageError(t('imageTypeError'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setImageError("Rasm 2MB dan kichik bo'lishi kerak");
+      setImageError(t('imageSize2MbError'));
       return;
     }
     setImageLoading(true);
@@ -180,8 +182,8 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly || isSaving) return;
-    if (name.trim().length < 2) { setNameError('Ism kamida 2 ta belgi'); return; }
-    if (newPassword.trim() && newPassword.length < 6) { setPwError('Parol kamida 6 ta belgi'); return; }
+    if (name.trim().length < 2) { setNameError(t('nameMin2Error')); return; }
+    if (newPassword.trim() && newPassword.length < 6) { setPwError(t('passwordMin6Error')); return; }
     setIsSaving(true);
     try {
       const payload: AdminUpdateData = {
@@ -254,7 +256,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
           isDark ? 'border-b border-white/[0.06]' : 'border-b border-black/[0.07]'
         } ${isDark ? 'bg-[#111827]' : 'bg-[#f5f5f7]'}`}>
           <h2 className={`text-[17px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Sozlamalar
+            {t('settings')}
           </h2>
           <button
             onClick={onClose}
@@ -347,18 +349,18 @@ const AdminModal: React.FC<AdminModalProps> = ({
 
             {/* ── Personal info section ── */}
             <div className="mx-4 mt-6">
-              <p className={sectionTitle}>Shaxsiy ma'lumotlar</p>
+              <p className={sectionTitle}>{t('personalInfo')}</p>
               <div className={`rounded-[20px] overflow-hidden ${isDark ? 'bg-[#1c2333]' : 'bg-white'}`}>
                 <div className="px-4 py-3.5">
                   <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    To'liq ism
+                    {t('fullName')}
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={e => { setName(e.target.value); setNameError(''); }}
                     disabled={isReadOnly || isSaving}
-                    placeholder="Ismingizni kiriting"
+                    placeholder={t('fullNamePlaceholder')}
                     className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed ${
                       nameError ? 'ring-2 ring-red-500/40' : ''
                     }`}
@@ -392,14 +394,14 @@ const AdminModal: React.FC<AdminModalProps> = ({
 
             {/* ── Security section ── */}
             <div className="mx-4 mt-6">
-              <p className={sectionTitle}>Xavfsizlik</p>
+              <p className={sectionTitle}>{t('security')}</p>
               <div className={`rounded-[20px] overflow-hidden divide-y ${
                 isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
               }`}>
                 {/* Current password — reveal on tap */}
                 <div className="px-4 py-3.5">
                   <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Joriy parol
+                    {t('currentPassword')}
                   </label>
                   <div className={`flex items-center rounded-[14px] px-4 py-3 font-mono border ${
                     isDark ? 'bg-[#0f1724] border-white/5 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'
@@ -412,11 +414,11 @@ const AdminModal: React.FC<AdminModalProps> = ({
 	                    <button
 	                      type="button"
 	                      onClick={() => setShowCurrentPw(v => !v)}
-	                      aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
+	                      aria-label={showCurrentPw ? t('hidePassword') : t('showPassword')}
 	                      className={`ml-2 p-1 rounded-lg transition-colors flex-shrink-0 ${
 	                        isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
 	                      }`}
-                      title={showCurrentPw ? 'Yashirish' : 'Ko\'rsatish'}
+                      title={showCurrentPw ? t('hidePassword') : t('showPassword')}
                     >
                       {showCurrentPw
                         ? <EyeOffIcon className="w-4 h-4" />
@@ -429,8 +431,8 @@ const AdminModal: React.FC<AdminModalProps> = ({
                 {!isReadOnly && (
                   <div className="px-4 py-3.5">
                     <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Yangi parol
-                      <span className={`ml-1.5 font-normal ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>(ixtiyoriy)</span>
+                      {t('newPassword')}
+                      <span className={`ml-1.5 font-normal ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('optionalShort')}</span>
                     </label>
                     <div className="relative">
                       <input
@@ -438,7 +440,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                         value={newPassword}
                         onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
                         disabled={isSaving}
-                        placeholder="Yangi parol kiriting"
+                        placeholder={t('newPasswordPlaceholder')}
                         className={`${inputCls} pr-11 disabled:opacity-50 ${
                           pwError ? 'ring-2 ring-red-500/40' : ''
                         }`}
@@ -446,7 +448,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
 	                      <button
 	                        type="button"
 	                        onClick={() => setShowNewPw(v => !v)}
-	                        aria-label={showNewPw ? 'Hide password' : 'Show password'}
+	                        aria-label={showNewPw ? t('hidePassword') : t('showPassword')}
 	                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${
 	                          isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
 	                        }`}
@@ -457,7 +459,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     {pwError
                       ? <p className="text-xs text-red-500 mt-1.5">{pwError}</p>
                       : <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                          Kamida 6 ta belgi
+                          {t('passwordMin6Hint')}
                         </p>
                     }
                   </div>
@@ -487,18 +489,18 @@ const AdminModal: React.FC<AdminModalProps> = ({
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
-                      Saqlandi
+                      {t('saved')}
                     </>
                   ) : isSaving ? (
-                    <><Spinner />Saqlanmoqda…</>
-                  ) : 'Saqlash'}
+                    <><Spinner />{t('saving')}</>
+                  ) : t('save')}
                 </button>
               </div>
             )}
 
             {/* ── Account actions section ── */}
             <div className="mx-4 mt-6 mb-8">
-              <p className={sectionTitle}>Hisob</p>
+              <p className={sectionTitle}>{t('account')}</p>
               <div className={`rounded-[20px] overflow-hidden divide-y ${
                 isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
               }`}>
@@ -518,10 +520,10 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-[14px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Ekranni qulflash
+                        {t('lockScreen')}
                       </p>
                       <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Parol bilan himoyalash
+                        {t('lockScreenHint')}
                       </p>
                     </div>
                     <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
@@ -544,10 +546,10 @@ const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-red-500">
-                        Chiqish
+                        {t('logout')}
                       </p>
                       <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Tizimdan chiqish
+                        {t('logoutHint')}
                       </p>
                     </div>
                     <ChevronRightIcon className="w-4 h-4 flex-shrink-0 text-red-400/60" />
@@ -564,6 +566,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
       {showLogoutModal && (
         <LogoutModal
           isDark={isDark}
+          t={t}
           onCancel={() => setShowLogoutModal(false)}
           onConfirm={() => { setShowLogoutModal(false); onClose(); onLogout?.(); }}
         />
