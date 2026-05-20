@@ -6,6 +6,12 @@ import { playLockSound } from '../../../../services/soundService';
 import { AdminUser } from '../../../core/types';
 import { clearAllCache } from '../../../core/utils/dataCache';
 
+const sanitizeStoredAdmin = (user: any): AdminUser | null => {
+    if (!user) return null;
+    const { password: _password, password_hash: _passwordHash, ...safeUser } = user;
+    return safeUser as AdminUser;
+};
+
 export const useAuth = () => {
     const { addToast } = useToast();
 
@@ -42,7 +48,11 @@ export const useAuth = () => {
 
     const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {
         const savedAdmin = localStorage.getItem('avtorim_admin_user');
-        return savedAdmin ? JSON.parse(savedAdmin) : null;
+        if (!savedAdmin) return null;
+        const safeAdmin = sanitizeStoredAdmin(JSON.parse(savedAdmin));
+        if (safeAdmin) localStorage.setItem('avtorim_admin_user', JSON.stringify(safeAdmin));
+        localStorage.removeItem('avtorim_admin_password');
+        return safeAdmin;
     });
 
     const [adminProfile, setAdminProfile] = useState<any>(() => {
@@ -99,8 +109,9 @@ export const useAuth = () => {
                 }
 
                 if (result.userData) {
-                    setAdminUser(result.userData);
-                    localStorage.setItem('avtorim_admin_user', JSON.stringify(result.userData));
+                    const safeUserData = sanitizeStoredAdmin(result.userData);
+                    setAdminUser(safeUserData);
+                    localStorage.setItem('avtorim_admin_user', JSON.stringify(safeUserData));
                 }
 
                 unsubscribeValidity = subscribeToAccountValidity(
@@ -110,8 +121,9 @@ export const useAuth = () => {
                         handleLogout();
                     },
                     (updatedData) => {
-                        setAdminUser(updatedData);
-                        localStorage.setItem('avtorim_admin_user', JSON.stringify(updatedData));
+                        const safeUpdatedData = sanitizeStoredAdmin(updatedData);
+                        setAdminUser(safeUpdatedData);
+                        localStorage.setItem('avtorim_admin_user', JSON.stringify(safeUpdatedData));
                     }
                 );
 
@@ -155,8 +167,10 @@ export const useAuth = () => {
         } else if (role === 'admin') {
             localStorage.setItem('avtorim_admin_auth', 'true');
             if (userData) {
-                setAdminUser(userData);
-                localStorage.setItem('avtorim_admin_user', JSON.stringify(userData));
+                const safeUserData = sanitizeStoredAdmin(userData);
+                setAdminUser(safeUserData);
+                localStorage.setItem('avtorim_admin_user', JSON.stringify(safeUserData));
+                localStorage.removeItem('avtorim_admin_password');
             }
         }
     };
@@ -173,6 +187,7 @@ export const useAuth = () => {
         localStorage.removeItem('avtorim_admin_auth');
         localStorage.removeItem('avtorim_role');
         localStorage.removeItem('avtorim_admin_user');
+        localStorage.removeItem('avtorim_admin_password');
         localStorage.removeItem('avtorim_viewer_profile');
         // Clear data cache so a different user logging in doesn't see stale data
         clearAllCache();

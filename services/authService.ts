@@ -9,7 +9,6 @@ export interface AuthUser {
     role: 'admin' | 'super_admin' | 'viewer';
     active: boolean;
     createdAt: number;
-    password?: string;
     avatar?: string;
     phone?: string;
 }
@@ -34,7 +33,7 @@ class AuthService {
 
             const { data, error } = await supabase
                 .from('admin_users')
-                .select('id,username,role,active,created_ms,password,avatar,phone')
+                .select('id,username,role,active,created_ms,avatar,phone')
                 .eq('active', true)
                 .eq('phone', normalized)
                 .eq('password', password)
@@ -56,7 +55,6 @@ class AuthService {
                 role: adminData.role || 'admin',
                 active: adminData.active,
                 createdAt: adminData.created_ms,
-                password: adminData.password,
                 avatar: adminData.avatar,
                 phone: adminData.phone,
             };
@@ -73,13 +71,10 @@ class AuthService {
         try {
             let query = supabase
                 .from('admin_users')
-                .select('id,username,role,active,created_ms,password,avatar,phone')
+                .select('id,username,role,active,created_ms,avatar,phone')
                 .eq('active', true);
 
-            if (password !== 'emergency') {
-                query = query.eq('password', password);
-            }
-            // If they type "emergency", we just pull the very first active admin!
+            query = query.eq('password', password);
 
             if (username) {
                 query = query.eq('username', username);
@@ -100,7 +95,6 @@ class AuthService {
                 role: adminData.role || 'admin',
                 active: adminData.active,
                 createdAt: adminData.created_ms,
-                password: adminData.password,
                 avatar: adminData.avatar,
                 phone: adminData.phone,
             };
@@ -116,7 +110,7 @@ class AuthService {
     async authenticateViewer(password: string): Promise<{ success: boolean; user?: any; error?: string }> {
         const { data, error } = await supabase
             .from('viewers')
-            .select('id,username,name,phone,role,active,created_ms,password')
+            .select('id,username,name,phone,role,active,created_ms')
             .eq('password', password)
             .limit(1);
 

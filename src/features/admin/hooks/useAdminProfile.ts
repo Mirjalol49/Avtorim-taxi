@@ -91,10 +91,6 @@ export const useAdminProfile = ({
                         localStorage.setItem('avtorim_viewer_profile', JSON.stringify(next));
                         return next;
                     });
-
-                    if (profileData.password) {
-                        localStorage.setItem('avtorim_admin_password', profileData.password);
-                    }
                 }
             };
 

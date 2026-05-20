@@ -1312,10 +1312,9 @@ const AppContent: React.FC = () => {
                   // AdminModal internally renders initials when avatar is falsy, and hasChanges() compares
                   // the initial value. If we substitute a DiceBear URL, the upload comparison breaks.
                   avatar: adminUser.avatar || undefined,
-                  password: adminUser.password,
                   phone: adminUser.phone
                 }
-                : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: undefined, password: '' })
+                : (adminProfile || { name: t.systemAdmin, role: t.manager, avatar: undefined })
             }
             onUpdate={handleUpdateProfile}
             userRole={userRole}

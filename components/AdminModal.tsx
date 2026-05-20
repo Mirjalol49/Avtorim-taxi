@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon, ChevronRightIcon, XIcon, PhoneIcon } from './Icons';
 
-type AdminModalData = { name: string; role: string; avatar?: string; password?: string; phone?: string };
+type AdminModalData = { name: string; role: string; avatar?: string; phone?: string };
 type AdminUpdateData = { name: string; role: string; avatar?: string; password?: string };
 
 interface AdminModalProps {
@@ -103,7 +103,6 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const [name, setName]                         = useState(adminData.name);
   const [avatar, setAvatar]                     = useState(adminData.avatar);
   const [newPassword, setNewPassword]           = useState('');
-  const [showCurrentPw, setShowCurrentPw]       = useState(true);
   const [showNewPw, setShowNewPw]               = useState(false);
   const [nameError, setNameError]               = useState('');
   const [pwError, setPwError]                   = useState('');
@@ -125,7 +124,6 @@ const AdminModal: React.FC<AdminModalProps> = ({
       setName(adminData.name);
       setAvatar(adminData.avatar);
       setNewPassword('');
-      setShowCurrentPw(true);
       setNameError('');
       setPwError('');
       setImageError('');
@@ -398,32 +396,23 @@ const AdminModal: React.FC<AdminModalProps> = ({
               <div className={`rounded-[20px] overflow-hidden divide-y ${
                 isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
               }`}>
-                {/* Current password — reveal on tap */}
                 <div className="px-4 py-3.5">
-                  <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {t('currentPassword')}
-                  </label>
-                  <div className={`flex items-center rounded-[14px] px-4 py-3 font-mono border ${
-                    isDark ? 'bg-[#0f1724] border-white/5 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'
+                  <div className={`flex items-start gap-3 rounded-[14px] px-4 py-3 border ${
+                    isDark ? 'bg-[#0f1724] border-white/5' : 'bg-gray-50 border-gray-200'
                   }`}>
-                    <span className="flex-1 text-[15px] tracking-[0.15em] select-all">
-                      {showCurrentPw
-                        ? (adminData.password || '—')
-                        : '•'.repeat(Math.max(6, (adminData.password || '••••••').length))}
+                    <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-50 text-blue-600'
+                    }`}>
+                      <LockIcon className="w-4 h-4" />
                     </span>
-	                    <button
-	                      type="button"
-	                      onClick={() => setShowCurrentPw(v => !v)}
-	                      aria-label={showCurrentPw ? t('hidePassword') : t('showPassword')}
-	                      className={`ml-2 p-1 rounded-lg transition-colors flex-shrink-0 ${
-	                        isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
-	                      }`}
-                      title={showCurrentPw ? t('hidePassword') : t('showPassword')}
-                    >
-                      {showCurrentPw
-                        ? <EyeOffIcon className="w-4 h-4" />
-                        : <EyeIcon className="w-4 h-4" />}
-                    </button>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[13px] font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                        {t('passwordHiddenTitle')}
+                      </p>
+                      <p className={`text-[12px] leading-relaxed mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {t('passwordHiddenHint')}
+                      </p>
+                    </div>
                   </div>
                 </div>
 

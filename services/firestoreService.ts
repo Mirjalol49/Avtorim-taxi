@@ -779,7 +779,7 @@ export const updateDriverLocation = async (driverId: string, location: LocationU
 export const authenticateAdminUser = async (password: string): Promise<any | null> => {
     const { data, error } = await supabase
         .from('admin_users')
-        .select('id,username,role,active,created_ms,password,avatar')
+        .select('id,username,role,active,created_ms,avatar')
         .eq('password', password)
         .eq('active', true)
         .limit(1)

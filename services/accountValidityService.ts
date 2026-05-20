@@ -6,11 +6,17 @@ export interface AccountValidityResult {
     userData?: any;
 }
 
+const sanitizeAccountData = (data: any) => {
+    if (!data) return data;
+    const { password: _password, password_hash: _passwordHash, ...safeData } = data;
+    return safeData;
+};
+
 export const checkAccountValidity = async (accountId: string): Promise<AccountValidityResult> => {
     try {
         const { data, error } = await supabase
             .from('admin_users')
-            .select('id,username,role,active,created_ms,password,avatar,phone')
+            .select('id,username,role,active,created_ms,avatar,phone')
             .eq('id', accountId)
             .single();
 
@@ -22,7 +28,7 @@ export const checkAccountValidity = async (accountId: string): Promise<AccountVa
             return { isValid: false, reason: 'Account has been disabled' };
         }
 
-        return { isValid: true, userData: data };
+        return { isValid: true, userData: sanitizeAccountData(data) };
     } catch {
         return { isValid: true };
     }
@@ -51,7 +57,7 @@ export const subscribeToAccountValidity = (
                 }
 
                 if (onUpdate && data) {
-                    onUpdate(data);
+                    onUpdate(sanitizeAccountData(data));
                 }
             }
         )
