@@ -4,6 +4,7 @@ import { AdminUser, AdminProfile } from '../../../core/types';
 import * as firestoreService from '../../../../services/firestoreService';
 import { uploadAdminAvatar } from '../../../../services/storageService';
 import { useToast } from '../../../../components/ToastNotification';
+import { authService } from '../../../../services/authService';
 
 interface UseAdminProfileProps {
     adminUser: AdminUser | null;
@@ -26,58 +27,63 @@ export const useAdminProfile = ({
 
     const handleUpdateProfile = async (profileData: any) => {
         setIsUpdating(true);
+        const nextProfileData = { ...profileData };
         try {
             const updatePromise = async () => {
                 if (adminUser) {
                     // Handle avatar upload if it's a data URI
-                    if (profileData.avatar && profileData.avatar.startsWith('data:image/')) {
+                    if (nextProfileData.avatar && nextProfileData.avatar.startsWith('data:image/')) {
                         try {
-                            const result = await uploadAdminAvatar(profileData.avatar, adminUser.username);
-                            profileData.avatar = result.url;
+                            const result = await uploadAdminAvatar(nextProfileData.avatar, adminUser.username);
+                            nextProfileData.avatar = result.url;
                         } catch (uploadError: any) {
                             void uploadError;
                             addToast('error', t('avatarFailed'));
-                            delete profileData.avatar;
+                            delete nextProfileData.avatar;
                         }
                     }
 
-                    const sanitizedUpdates = { ...profileData };
-                    if (sanitizedUpdates.name) {
-                        sanitizedUpdates.username = sanitizedUpdates.name;
-                        delete sanitizedUpdates.name;
+                    const sanitizedUpdates: Partial<AdminUser> = {};
+                    if (typeof nextProfileData.name === 'string' && nextProfileData.name.trim()) {
+                        sanitizedUpdates.username = nextProfileData.name.trim();
                     }
-                    // Strip client-only fields that have no matching DB column
-                    delete (sanitizedUpdates as any).updatedAt;
-                    delete (sanitizedUpdates as any).role; // role changes not allowed via profile edit
+                    if (typeof nextProfileData.password === 'string' && nextProfileData.password.trim()) {
+                        sanitizedUpdates.password = nextProfileData.password;
+                    }
+                    if (nextProfileData.avatar !== undefined) {
+                        sanitizedUpdates.avatar = nextProfileData.avatar;
+                    }
 
                     await firestoreService.updateAdminUser(adminUser.id, sanitizedUpdates, adminUser.id);
 
                     setAdminUser(prev => {
                         if (!prev) return null;
-                        const next = { ...prev, ...sanitizedUpdates };
+                        const { password: _password, ...safeUpdates } = sanitizedUpdates;
+                        const next = { ...prev, ...safeUpdates };
                         localStorage.setItem('avtorim_admin_user', JSON.stringify(next));
+                        authService.updateSessionUser(safeUpdates);
                         return next;
                     });
 
                 } else {
                     // Super Admin — only admin_profile columns: name, role, avatar, password
-                    if (profileData.avatar && profileData.avatar.startsWith('data:image/')) {
+                    if (nextProfileData.avatar && nextProfileData.avatar.startsWith('data:image/')) {
                         try {
-                            const result = await uploadAdminAvatar(profileData.avatar, 'admin');
-                            profileData.avatar = result.url;
+                            const result = await uploadAdminAvatar(nextProfileData.avatar, 'admin');
+                            nextProfileData.avatar = result.url;
                         } catch (uploadError: any) {
                             void uploadError;
                             addToast('error', t('avatarFailed'));
-                            delete profileData.avatar;
+                            delete nextProfileData.avatar;
                         }
                     }
 
                     // Only pass known admin_profile columns — nothing else
                     const profilePayload: any = {};
-                    if (profileData.name  !== undefined) profilePayload.name     = profileData.name;
-                    if (profileData.role  !== undefined) profilePayload.role     = profileData.role;
-                    if (profileData.avatar !== undefined) profilePayload.avatar  = profileData.avatar;
-                    if (profileData.password !== undefined && profileData.password) profilePayload.password = profileData.password;
+                    if (nextProfileData.name  !== undefined) profilePayload.name     = nextProfileData.name;
+                    if (nextProfileData.role  !== undefined) profilePayload.role     = nextProfileData.role;
+                    if (nextProfileData.avatar !== undefined) profilePayload.avatar  = nextProfileData.avatar;
+                    if (nextProfileData.password !== undefined && nextProfileData.password) profilePayload.password = nextProfileData.password;
 
                     await firestoreService.updateAdminProfile(profilePayload);
 
@@ -109,6 +115,7 @@ export const useAdminProfile = ({
             } else {
                 addToast('error', error?.message || t('profileUpdateFailed'));
             }
+            throw error;
         } finally {
             setIsUpdating(false);
         }

@@ -300,7 +300,7 @@ const AdminModal: React.FC<AdminModalProps> = ({
                         src={avatar}
                         alt={adminData.name}
                         className="w-full h-full object-cover"
-                        onError={e => { (e.currentTarget as HTMLImageElement).src = ''; setAvatar(undefined); }}
+                        onError={() => setAvatar(undefined)}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500 to-teal-700">

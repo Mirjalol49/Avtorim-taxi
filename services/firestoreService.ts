@@ -165,14 +165,16 @@ export const addAdminUser = async (user: any, performedBy: string) => {
 
 export const updateAdminUser = async (id: string, updates: any, performedBy: string) => {
     const dbUpdates: any = {};
-    if ('username' in updates) dbUpdates.username = updates.username;
-    if ('password' in updates) dbUpdates.password = updates.password;
-    if ('role' in updates) dbUpdates.role = updates.role;
-    if ('active' in updates) dbUpdates.active = updates.active;
-    if ('avatar' in updates) dbUpdates.avatar = updates.avatar;
+    if ('username' in updates && updates.username !== undefined) dbUpdates.username = updates.username;
+    if ('password' in updates && updates.password !== undefined) dbUpdates.password = updates.password;
+    if ('role' in updates && updates.role !== undefined) dbUpdates.role = updates.role;
+    if ('active' in updates && updates.active !== undefined) dbUpdates.active = updates.active;
+    if ('avatar' in updates && updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
 
-    const { error } = await supabase.from('admin_users').update(dbUpdates).eq('id', id);
-    if (error) throw error;
+    if (Object.keys(dbUpdates).length > 0) {
+        const { error } = await supabase.from('admin_users').update(dbUpdates).eq('id', id);
+        if (error) throw error;
+    }
 
     if (updates.active === false) {
         await invalidateUserSessions(id);
@@ -183,7 +185,7 @@ export const updateAdminUser = async (id: string, updates: any, performedBy: str
         target_id: id,
         performed_by: performedBy || null,
         fleet_id: performedBy || null,
-        details: { updates: JSON.stringify(updates) },
+        details: { updates: JSON.stringify(dbUpdates) },
         timestamp_ms: Date.now()
     });
 };

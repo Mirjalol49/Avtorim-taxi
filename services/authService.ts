@@ -165,6 +165,16 @@ class AuthService {
         }
     }
 
+    updateSessionUser(updates: Partial<AuthUser>): void {
+        const session = this.getSession();
+        if (!session) return;
+        const nextSession: AuthSession = {
+            ...session,
+            user: { ...session.user, ...updates },
+        };
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+    }
+
     async checkSessionValidity(): Promise<boolean> {
         const session = this.getSession();
         if (!session) return false;
