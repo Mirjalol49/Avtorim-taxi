@@ -94,41 +94,30 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
                         </div>
                     </div>
 
-                    <section className="rounded-[28px] border border-[#223344] bg-[#0f1b2a] p-5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] sm:p-6">
-                        <div className="mb-5">
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#18384a] text-[#99f6e4]">
-                                    <LockIcon className="h-4 w-4" />
-                                </span>
-                                <div className="min-w-0">
-                                    <h1 className="text-[24px] font-black leading-tight tracking-tight">
-                                        {t('securityCheck', 'Xavfsizlik tekshiruvi')}
-                                    </h1>
-                                    <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                        {adminName}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <p
-                                className={`rounded-2xl px-4 py-3 text-[14px] font-medium leading-snug ${
+                    <section className="rounded-[30px] border border-[#223344] bg-[#0f1b2a] p-6 shadow-[0_18px_36px_rgba(0,0,0,0.22)] sm:p-7">
+                        <div className="mb-6 text-center">
+                            <h1 className="text-[25px] font-black leading-tight tracking-tight">
+                                {t('securityCheck', 'Xavfsizlik tekshiruvi')}
+                            </h1>
+                            <p className="mt-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                {adminName}
+                            </p>
+                            {maskedPhone && !error && !locked && (
+                                <p className="mt-2 text-[12px] font-semibold text-slate-500">{maskedPhone}</p>
+                            )}
+                            {(error || locked) && (
+                                <p className={`mt-4 rounded-2xl px-4 py-3 text-[14px] font-semibold leading-snug ${
                                     error && !locked
                                         ? 'bg-[#3a1f27] text-red-100 border border-[#7f2d36]'
                                         : 'bg-[#182838] text-slate-300 border border-[#24384a]'
-                                }`}
-                            >
-                                {statusText}
-                            </p>
-                            {maskedPhone && !error && !locked && (
-                                <p className="mt-2 text-center text-[12px] font-semibold text-slate-500">{maskedPhone}</p>
+                                }`}>
+                                    {statusText}
+                                </p>
                             )}
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-3">
                             <div>
-                                <label htmlFor="lock-password" className="mb-2 block text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                                    {t('password')}
-                                </label>
                                 <div className={`relative rounded-2xl border bg-[#111827] transition-all duration-200 ${
                                     error ? 'border-[#f87171]' : 'border-[#2a3a4a] focus-within:border-[#5eead4]'
                                 }`}>
@@ -145,7 +134,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
                                         spellCheck={false}
                                         autoFocus
                                         disabled={loading || locked}
-                                        className="h-14 w-full rounded-2xl bg-transparent pl-11 pr-12 text-[15px] font-semibold tracking-[0.08em] text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="h-14 w-full rounded-2xl bg-transparent pl-11 pr-12 text-[15px] font-semibold tracking-[0.04em] text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
                                     />
                                     <button
                                         type="button"
