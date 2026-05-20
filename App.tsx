@@ -1154,11 +1154,6 @@ const AppContent: React.FC = () => {
                     cars={cars}
                     theme={theme}
                     isMobile={isMobile}
-                    onDayClick={(driverId, date) => {
-                      setTxInitialDriverId(driverId);
-                      setTxInitialDate(date);
-                      setIsTxModalOpen(true);
-                    }}
                     onClearDayMarkers={handleClearDayMarkers}
                   />
             } />

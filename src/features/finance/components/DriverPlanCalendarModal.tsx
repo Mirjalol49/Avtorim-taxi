@@ -33,7 +33,6 @@ interface Props {
     theme: 'dark' | 'light';
     monthData: DriverPlanMonthInfo | null;
     transactions: Transaction[];
-    onDayClick?: (driverId: string, date: Date) => void;
     onClearDayMarkers?: (driverId: string, date: Date) => Promise<void>;
     onMonthChange?: (newMonthKey: string) => void;
 }
@@ -103,7 +102,7 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     return null;
 };
 
-export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick, onClearDayMarkers, onMonthChange }) => {
+export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onClearDayMarkers, onMonthChange }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
     const monthNamesRaw = t('monthNames', { returnObjects: true });
@@ -819,14 +818,6 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     }
                 };
 
-                const handleAddTransaction = () => {
-                    if (!onDayClick) return;
-                    onDayClick(driverId, overrideDate);
-                    setOverrideDate(null);
-                    setOverrideError(null);
-                    setCustomPlanStr('');
-                };
-
                 return (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setOverrideDate(null); setOverrideError(null); }} />
@@ -892,43 +883,44 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     <span className="text-sm font-bold opacity-50">0</span>
                                 </button>
 
-                                {/* Custom discount */}
-                                <div className={`p-4 rounded-xl ${isDark ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="text-lg">💸</span>
-                                        <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{t('customPlan', 'Chegirma (Custom)')}</span>
+                                {/* Custom daily plan */}
+                                <div className={`rounded-xl border p-4 ${isDark ? 'bg-orange-500/10 border-orange-400/15' : 'bg-orange-50 border-orange-100'}`}>
+                                    <div className="mb-4 flex items-start gap-3">
+                                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg ${isDark ? 'bg-orange-400/15' : 'bg-white'}`}>💸</span>
+                                        <div className="min-w-0">
+                                            <p className={`font-bold leading-tight ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>
+                                                {t('customDailyPlan', 'Maxsus kunlik reja')}
+                                            </p>
+                                            <p className={`mt-1 text-xs leading-snug ${isDark ? 'text-orange-200/55' : 'text-orange-700/60'}`}>
+                                                {t('customDailyPlanHint', 'Faqat shu kun uchun reja summasini o‘zgartiring.')}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="space-y-2">
+                                        <label className={`block text-[10px] font-black uppercase tracking-[0.14em] ${isDark ? 'text-orange-200/50' : 'text-orange-700/55'}`}>
+                                            {t('amountUzs', 'Summa (UZS)')}
+                                        </label>
                                         <input
                                             type="number"
+                                            inputMode="numeric"
                                             value={customPlanStr}
                                             onChange={e => setCustomPlanStr(e.target.value)}
                                             placeholder={String(monthData.dailyPlan)}
-                                            className={`flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-orange-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white placeholder:text-gray-600' : 'bg-white border-orange-200 text-gray-900'}`}
+                                            className={`w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-orange-500/30 ${isDark ? 'bg-black/20 border-white/10 text-white placeholder:text-gray-600' : 'bg-white border-orange-200 text-gray-900 placeholder:text-orange-900/30'}`}
                                         />
                                         <button
+                                            type="button"
                                             disabled={overrideLoading || !customPlanStr}
                                             onClick={() => handleSave(async () => {
                                                 await clearMarkerTransactions();
                                                 await setDriverDayOverride(driverId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) });
                                             })}
-                                            className="px-4 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold rounded-lg transition-all disabled:opacity-40"
+                                            className="flex h-11 w-full items-center justify-center rounded-xl bg-orange-500 text-sm font-black text-white transition-all hover:bg-orange-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                                         >
                                             {overrideLoading ? '...' : t('save', 'Saqlash')}
                                         </button>
                                     </div>
                                 </div>
-
-                                {onDayClick && (
-                                    <button
-                                        disabled={overrideLoading}
-                                        onClick={handleAddTransaction}
-                                        className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-300' : 'bg-teal-50 hover:bg-teal-100 text-teal-700'}`}
-                                    >
-                                        <span className="font-semibold flex items-center gap-2">💰 {t('addTransaction', "To'lov qo'shish")}</span>
-                                        <span className="text-sm font-bold opacity-50">+</span>
-                                    </button>
-                                )}
                             </div>
                         </div>
                     </div>
