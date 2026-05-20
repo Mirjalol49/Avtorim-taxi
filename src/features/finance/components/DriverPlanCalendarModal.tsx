@@ -40,6 +40,21 @@ interface Props {
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
 const fmtCompact = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
 
+const MoneyInline: React.FC<{
+    prefix?: React.ReactNode;
+    amount: number;
+    sign?: '+' | '-' | '';
+    className?: string;
+}> = ({ prefix, amount, sign = '', className = '' }) => (
+    <span className={`inline-flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5 leading-tight ${className}`}>
+        {prefix && <span className="shrink-0">{prefix}</span>}
+        <span className="inline-flex shrink-0 items-baseline gap-0.5 whitespace-nowrap">
+            <span>{sign}{fmtCompact(amount).replace(' UZS', '')}</span>
+            <span className="text-[8px] sm:text-[9px] font-black uppercase opacity-70">UZS</span>
+        </span>
+    </span>
+);
+
 
 type DayStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'FUTURE' | 'FUTURE_OFF' | 'FUTURE_DISCOUNT' | 'NOT_WORKING' | 'REPAIR';
 
@@ -672,30 +687,47 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                     
                                                     if (d.status === 'PAID') {
                                                         return (
-                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                            <div className={`flex min-w-0 items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                                                 <div className="w-4 h-4 flex-shrink-0 -ml-0.5">
                                                                     <Lottie animationData={planDoneAnimation} loop={true} />
                                                                 </div>
-                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
-                                                                    {excess > 0 ? `${t('excess', 'Ortiqcha')} +${fmtCompact(excess)}` : t('fullyPaid', "To'liq to'landi")}
-                                                                </span>
+                                                                {excess > 0 ? (
+                                                                    <MoneyInline
+                                                                        prefix={t('excess', 'Ortiqcha')}
+                                                                        amount={excess}
+                                                                        sign="+"
+                                                                        className="text-[10px] sm:text-[11px] font-bold tracking-tight"
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
+                                                                        {t('fullyPaid', "To'liq to'landi")}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         );
                                                     } else if (d.debt > 0) {
                                                         return (
-                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                            <div className={`flex min-w-0 items-start gap-1.5 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
                                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
                                                                     <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clipRule="evenodd" />
                                                                 </svg>
-                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
-                                                                    {t('debtLabel', 'Qarz')}: -{fmtCompact(d.debt)}
-                                                                </span>
+                                                                <MoneyInline
+                                                                    prefix={`${t('debtLabel', 'Qarz')}:`}
+                                                                    amount={d.debt}
+                                                                    sign="-"
+                                                                    className="text-[10px] sm:text-[11px] font-bold tracking-tight"
+                                                                />
                                                             </div>
                                                         );
                                                     } else if (isOverpaid) {
                                                         return (
-                                                            <div className={`flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                                                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">{t('overpaidLabel', 'Ortiqcha')}: +{fmtCompact(excess)}</span>
+                                                            <div className={`flex min-w-0 items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                                <MoneyInline
+                                                                    prefix={`${t('overpaidLabel', 'Ortiqcha')}:`}
+                                                                    amount={excess}
+                                                                    sign="+"
+                                                                    className="text-[10px] sm:text-[11px] font-bold tracking-tight"
+                                                                />
                                                             </div>
                                                         );
                                                     } else if (d.income > 0) {
@@ -707,8 +739,12 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                                     }
                                                     return null;
                                                 })() : d.status === 'FUTURE_DISCOUNT' ? (
-                                                    <div className={`flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
-                                                        <span className="text-[10px] sm:text-[11px] font-bold">{t('discount', 'Chegirma')}: {fmtCompact(d.planForDay)}</span>
+                                                    <div className={`flex min-w-0 items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
+                                                        <MoneyInline
+                                                            prefix={`${t('discount', 'Chegirma')}:`}
+                                                            amount={d.planForDay}
+                                                            className="text-[10px] sm:text-[11px] font-bold"
+                                                        />
                                                     </div>
                                                 ) : null}
                                             </div>
