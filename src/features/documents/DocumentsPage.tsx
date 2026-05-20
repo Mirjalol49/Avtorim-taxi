@@ -596,10 +596,9 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
             role="dialog"
             aria-modal="true"
             aria-label={doc.name}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5 md:pl-64"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5"
             style={{
-                background: 'rgba(0,0,0,0.72)',
-                backdropFilter: 'blur(8px)',
+                background: isDark ? 'rgba(2,6,23,0.62)' : 'rgba(15,23,42,0.28)',
                 animation: 'docPreviewFade 0.2s ease-out',
             }}
             onClick={onClose}
@@ -610,12 +609,12 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
             `}</style>
 
             <div
-                className={`relative flex flex-col w-full max-w-5xl max-h-[calc(100vh-32px)] rounded-[28px] overflow-hidden shadow-2xl border ${
-                    isDark ? 'bg-[#101827] border-white/[0.08]' : 'bg-[#f5f5f7] border-white/50'
+                className={`relative flex flex-col w-full max-w-4xl max-h-[calc(100vh-32px)] rounded-[24px] overflow-hidden shadow-2xl border ${
+                    isDark ? 'bg-[#101827] border-white/[0.08]' : 'bg-white border-gray-200'
                 }`}
                 style={{
                     animation: 'docPreviewPop 0.28s cubic-bezier(0.22,1,0.36,1)',
-                    boxShadow: '0 32px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
+                    boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.45)' : '0 24px 70px rgba(15,23,42,0.22)',
                 }}
                 onClick={e => e.stopPropagation()}
             >
@@ -675,10 +674,10 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                 </div>
 
                 <div className={`flex-1 min-h-0 overflow-auto flex items-center justify-center p-3 sm:p-5 ${
-                    isDark ? 'bg-[#0b1326]' : 'bg-gray-100'
+                    isDark ? 'bg-[#0b1326]' : 'bg-slate-50'
                 }`}>
                     {cat === 'image' ? (
-                        <div className="relative w-full h-full min-h-[280px] flex items-center justify-center">
+                        <div className="relative w-full min-h-[260px] flex items-center justify-center">
                             {!imgLoaded && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${
@@ -691,7 +690,9 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                                 alt={doc.name}
                                 onLoad={() => setImgLoaded(true)}
                                 style={{ display: imgLoaded ? 'block' : 'none' }}
-                                className="max-w-full max-h-[calc(100vh-250px)] object-contain rounded-2xl shadow-2xl select-none"
+                                className={`max-w-full max-h-[calc(100vh-260px)] object-contain rounded-2xl select-none ${
+                                    isDark ? 'shadow-2xl' : 'shadow-lg'
+                                }`}
                             />
                         </div>
                     ) : (
