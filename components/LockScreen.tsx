@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useSound from 'use-sound';
+import { useTranslation } from 'react-i18next';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
+import { ArrowRightIcon, EyeIcon, EyeOffIcon, LockIcon } from './Icons';
 
 
 interface LockScreenProps {
@@ -10,10 +12,9 @@ interface LockScreenProps {
     onUnlock: (password: string) => Promise<boolean>;
 }
 
-const BG = 'hsl(176deg, 79%, 26%)';
-
 const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock }) => {
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError]       = useState(false);
     const [loading, setLoading]   = useState(false);
     const [shake, setShake]       = useState(false);
@@ -22,6 +23,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
 
     const [playCorrect]   = useSound(correctSound, { volume: 0.5 });
     const [playIncorrect] = useSound(incorrectSound, { volume: 0.5 });
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (lockout <= 0) return;
@@ -57,112 +59,140 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
 
     const locked = lockout > 0;
     const canSubmit = !loading && !locked && password.trim().length > 0;
+    const maskedPhone = adminPhone
+        ? adminPhone.replace(/(\+\d{3})\s?(\d{2})\s?(\d{3})\s?(\d{2})\s?(\d{2})/, '$1 $2 *** ** $5')
+        : '';
+    const statusText = locked
+        ? t('tooManyAttempts', { s: lockout })
+        : error
+            ? t('invalidPassword', "Parol noto'g'ri. Qayta urinib ko'ring")
+            : t('lockSubtitle', `${adminName}, parolni kiriting`);
 
     return (
         <div
-            className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
-            style={{ background: BG }}
+            className="min-h-screen relative overflow-hidden bg-[#0f766e] text-white"
         >
-            {/* Depth glows */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-                background: 'radial-gradient(ellipse 70% 55% at 50% 25%, hsl(176,79%,36%) 0%, transparent 70%)',
-            }} />
-            <div className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none" style={{
-                background: 'linear-gradient(to top, hsl(176,79%,20%), transparent)',
-            }} />
+            <div className="absolute inset-0 bg-[#0f766e]" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-[#0c5f59]" />
 
-            <div className={`relative z-10 w-full max-w-xs px-6 flex flex-col items-center ${shake ? 'animate-shake' : ''}`}>
-
-                {/* Padlock */}
-                <div className="mb-6 drop-shadow-2xl select-none">
-                    <img
-                        src="/images/lock.png"
-                        alt="lock"
-                        width={108}
-                        height={108}
-                        className="object-contain"
-                    />
-                </div>
-
-                {/* Title */}
-                <h1 className="text-2xl font-black text-white mb-1 text-center tracking-tight">
-                    Xavfsizlik Tekshiruvi
-                </h1>
-                <p className="text-sm font-medium text-center mb-8" style={{ color: 'rgba(255,255,255,0.60)' }}>
-                    {locked
-                        ? `Juda ko'p urinish. ${lockout}s kuting`
-                        : error
-                            ? 'Parol noto\'g\'ri. Qayta urinib ko\'ring'
-                            : `${adminName}, parolni kiriting`}
-                </p>
-
-                <form onSubmit={handleSubmit} className="w-full space-y-4">
-                    {/* Password input */}
-                    <div
-                        className={`rounded-2xl border-2 overflow-hidden transition-all ${
-                            error   ? 'border-red-300/50'
-                            : locked ? 'border-white/10'
-                            : 'border-white/25 focus-within:border-white/60'
-                        }`}
-                        style={{ background: 'rgba(255,255,255,0.13)' }}
-                    >
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={e => { setPassword(e.target.value); setError(false); }}
-                            placeholder="••••••••"
-                            autoComplete="current-password"
-                            autoCorrect="off"
-                            autoCapitalize="off"
-                            spellCheck={false}
-                            autoFocus
-                            disabled={loading || locked}
-                            className="w-full px-5 py-4 text-xl tracking-[0.6em] font-mono focus:outline-none bg-transparent text-white placeholder-white/30 text-center disabled:opacity-50"
+            <main className="relative z-10 min-h-screen flex items-center justify-center px-5 py-8 sm:px-6">
+                <div className={`w-full max-w-[440px] ${shake ? 'animate-shake' : ''}`}>
+                    <div className="mb-7 flex flex-col items-center text-center select-none">
+                        <img
+                            src="/images/taksapark-logo.png"
+                            alt="Taksapark"
+                            className="h-11 sm:h-12 object-contain mb-5"
+                            style={{ filter: 'brightness(0) invert(1)' }}
                         />
+                        <div className="relative flex h-20 w-20 items-center justify-center rounded-[26px] border border-white/20 bg-[#2f7772]">
+                            <img
+                                src="/images/lock.png"
+                                alt=""
+                                aria-hidden="true"
+                                className="h-14 w-14 object-contain"
+                            />
+                        </div>
                     </div>
 
-                    {/* Submit */}
-                    <button
-                        type="submit"
-                        disabled={!canSubmit}
-                        className="w-full py-4 rounded-2xl font-bold text-base transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2"
-                        style={{
-                            background: canSubmit
-                                ? 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.10) 100%)'
-                                : 'rgba(255,255,255,0.07)',
-                            color: canSubmit ? '#ffffff' : 'rgba(255,255,255,0.30)',
-                            border: `2px solid ${canSubmit ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.08)'}`,
-                            boxShadow: canSubmit ? '0 4px 24px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.18)' : 'none',
-                        }}
-                    >
-                        {loading ? (
-                            <>
-                                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                Tekshirilmoqda...
-                            </>
-                        ) : locked ? (
-                            <span className="font-mono">{lockout}s</span>
-                        ) : (
-                            <>
-                                Ochish
-                                <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                </svg>
-                            </>
-                        )}
-                    </button>
-                </form>
-            </div>
+                    <section className="rounded-[28px] border border-[#223344] bg-[#0f1b2a] p-5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] sm:p-6">
+                        <div className="mb-6">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#18384a] text-[#99f6e4]">
+                                    <LockIcon className="h-4 w-4" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h1 className="text-[24px] font-black leading-tight tracking-tight">
+                                        {t('securityCheck', 'Xavfsizlik tekshiruvi')}
+                                    </h1>
+                                    <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                        {adminName}
+                                    </p>
+                                </div>
+                            </div>
 
-            {/* Branding */}
-            <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-                <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'rgba(255,255,255,0.22)' }}>
-                    Secure Fleet Management v2.0
-                </p>
-            </div>
+                            <p
+                                className={`min-h-[40px] rounded-2xl px-4 py-3 text-[14px] font-medium leading-snug ${
+                                    error && !locked
+                                        ? 'bg-[#3a1f27] text-red-100 border border-[#7f2d36]'
+                                        : 'bg-[#182838] text-slate-300 border border-[#24384a]'
+                                }`}
+                            >
+                                {statusText}
+                                {maskedPhone && !error && !locked && (
+                                    <span className="mt-1 block text-[12px] font-semibold text-slate-500">{maskedPhone}</span>
+                                )}
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label htmlFor="lock-password" className="mb-2 block text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                                    {t('password')}
+                                </label>
+                                <div className={`relative rounded-2xl border bg-[#111827] transition-all duration-200 ${
+                                    error ? 'border-[#f87171]' : 'border-[#2a3a4a] focus-within:border-[#5eead4]'
+                                }`}>
+                                    <LockIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                    <input
+                                        id="lock-password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={e => { setPassword(e.target.value); setError(false); }}
+                                        placeholder={t('passwordPlaceholder')}
+                                        autoComplete="current-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck={false}
+                                        autoFocus
+                                        disabled={loading || locked}
+                                        className="h-14 w-full rounded-2xl bg-transparent pl-11 pr-12 text-[15px] font-semibold tracking-[0.08em] text-white outline-none placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(v => !v)}
+                                        disabled={loading || locked}
+                                        aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                                        className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40"
+                                    >
+                                        {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={!canSubmit}
+                                className={`group flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-black transition-all duration-200 ${
+                                    canSubmit
+                                        ? 'bg-[#2dd4bf] text-[#06211f] hover:bg-[#5eead4] active:scale-[0.985]'
+                                        : 'cursor-not-allowed bg-[#1f3040] text-slate-500'
+                                }`}
+                            >
+                                {loading ? (
+                                    <>
+                                        <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        {t('checking', 'Tekshirilmoqda...')}
+                                    </>
+                                ) : locked ? (
+                                    <span className="font-mono">{lockout}s</span>
+                                ) : (
+                                    <>
+                                        {t('unlock', 'Ochish')}
+                                        <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </section>
+
+                    <p className="mt-6 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white/[0.28]">
+                        {t('secureFleetManagement')}
+                    </p>
+                </div>
+            </main>
 
             <style>{`
                 @keyframes shake {
