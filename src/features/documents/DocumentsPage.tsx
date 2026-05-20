@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
     Document as Doc,
@@ -591,30 +592,32 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
 
     const hasNotes = Boolean(doc.description && doc.description.trim());
 
-    return (
+    return createPortal(
         <div
             role="dialog"
             aria-modal="true"
             aria-label={doc.name}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5"
-            style={{
-                background: isDark ? 'rgba(2,6,23,0.62)' : 'rgba(15,23,42,0.28)',
-                animation: 'docPreviewFade 0.2s ease-out',
-            }}
-            onClick={onClose}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 pointer-events-none"
+            style={{ animation: 'docPreviewFade 0.16s ease-out' }}
         >
+            <button
+                type="button"
+                aria-label={t('close')}
+                className="absolute inset-0 pointer-events-auto cursor-default bg-transparent"
+                onClick={onClose}
+            />
             <style>{`
                 @keyframes docPreviewFade { from { opacity: 0 } to { opacity: 1 } }
-                @keyframes docPreviewPop { from { opacity: 0; transform: scale(0.96) translateY(14px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+                @keyframes docPreviewPop { from { opacity: 0; transform: scale(0.98) translateY(10px) } to { opacity: 1; transform: scale(1) translateY(0) } }
             `}</style>
 
             <div
-                className={`relative flex flex-col w-full max-w-4xl max-h-[calc(100vh-32px)] rounded-[24px] overflow-hidden shadow-2xl border ${
+                className={`relative pointer-events-auto flex flex-col w-full max-w-[900px] max-h-[calc(100vh-96px)] rounded-[24px] overflow-hidden border ${
                     isDark ? 'bg-[#101827] border-white/[0.08]' : 'bg-white border-gray-200'
                 }`}
                 style={{
-                    animation: 'docPreviewPop 0.28s cubic-bezier(0.22,1,0.36,1)',
-                    boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.45)' : '0 24px 70px rgba(15,23,42,0.22)',
+                    animation: 'docPreviewPop 0.2s cubic-bezier(0.22,1,0.36,1)',
+                    boxShadow: isDark ? '0 22px 60px rgba(0,0,0,0.38)' : '0 22px 60px rgba(15,23,42,0.20)',
                 }}
                 onClick={e => e.stopPropagation()}
             >
@@ -677,7 +680,7 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                     isDark ? 'bg-[#0b1326]' : 'bg-slate-50'
                 }`}>
                     {cat === 'image' ? (
-                        <div className="relative w-full min-h-[260px] flex items-center justify-center">
+                        <div className="relative w-full min-h-[240px] flex items-center justify-center">
                             {!imgLoaded && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${
@@ -690,7 +693,7 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                                 alt={doc.name}
                                 onLoad={() => setImgLoaded(true)}
                                 style={{ display: imgLoaded ? 'block' : 'none' }}
-                                className={`max-w-full max-h-[calc(100vh-260px)] object-contain rounded-2xl select-none ${
+                                className={`max-w-full max-h-[calc(100vh-300px)] object-contain rounded-2xl select-none ${
                                     isDark ? 'shadow-2xl' : 'shadow-lg'
                                 }`}
                             />
@@ -738,7 +741,8 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
