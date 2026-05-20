@@ -278,7 +278,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                             <button
                                 key={l}
                                 type="button"
-                                onClick={() => i18n.changeLanguage(l)}
+                                onClick={() => {
+                                    localStorage.setItem('avtorim_lang', l);
+                                    i18n.changeLanguage(l);
+                                }}
                                 className={`h-10 flex-1 rounded-xl text-[12px] font-black uppercase tracking-[0.08em] transition-all ${
                                     lang === l
                                         ? 'bg-white text-[#0b1424] shadow-sm'

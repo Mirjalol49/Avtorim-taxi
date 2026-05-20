@@ -39,7 +39,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     // Language State
-    const [language, setLanguageState] = useState<Language>((i18n.language as Language) || 'uz');
+    const [language, setLanguageState] = useState<Language>(() => {
+        return (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
+    });
 
     // Derived state for legacy compatibility
     // Fallback to 'uz' if language is not one of the supported types
@@ -69,6 +71,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const setLanguage = (lang: Language) => {
         i18n.changeLanguage(lang);
+        localStorage.setItem('avtorim_lang', lang);
         setLanguageState(lang);
     };
 

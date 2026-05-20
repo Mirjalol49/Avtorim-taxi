@@ -3,6 +3,15 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import Backend from 'i18next-http-backend';
 
+const SUPPORTED_LANGUAGES = ['uz', 'ru', 'en'] as const;
+const DEFAULT_LANGUAGE = 'uz';
+const savedLanguage = typeof window !== 'undefined'
+    ? window.localStorage.getItem('avtorim_lang')
+    : null;
+const initialLanguage = savedLanguage && SUPPORTED_LANGUAGES.includes(savedLanguage as typeof SUPPORTED_LANGUAGES[number])
+    ? savedLanguage
+    : DEFAULT_LANGUAGE;
+
 i18n
     // load translation using http -> see /public/locales
     .use(Backend)
@@ -12,9 +21,9 @@ i18n
     .use(initReactI18next)
     // init i18next
     .init({
-        // English is the default fallback; Uzbek/Russian are supported
-        fallbackLng: 'en',
-        supportedLngs: ['uz', 'ru', 'en'],
+        lng: initialLanguage,
+        fallbackLng: DEFAULT_LANGUAGE,
+        supportedLngs: [...SUPPORTED_LANGUAGES],
         debug: process.env.NODE_ENV === 'development',
 
         interpolation: {
@@ -22,13 +31,13 @@ i18n
         },
 
         backend: {
-            loadPath: '/locales/{{lng}}/translation.json?v=2',
+            loadPath: '/locales/{{lng}}/translation.json?v=4',
         },
 
         detection: {
-            // Check global localStorage key first, then browser navigator
-            // Per-account language is applied on top of this in App.tsx after login.
-            order: ['localStorage', 'navigator'],
+            // First visit must be deterministic: Uzbek is default.
+            // Manual language switches persist in this key; browser navigator is intentionally ignored.
+            order: ['localStorage'],
             lookupLocalStorage: 'avtorim_lang',
             caches: ['localStorage'],
         }
