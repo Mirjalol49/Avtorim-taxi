@@ -622,7 +622,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                     ) : (
                         <div>
                             {/* Table header */}
-                            <div className={`grid gap-4 px-5 py-3 border-b text-[10px] font-bold uppercase tracking-widest ${isDark ? 'border-white/[0.06] text-gray-500' : 'border-gray-100 text-gray-400'}`}
+                            <div className={`hidden md:grid gap-4 px-5 py-3 border-b text-[10px] font-bold uppercase tracking-widest ${isDark ? 'border-white/[0.06] text-gray-500' : 'border-gray-100 text-gray-400'}`}
                                 style={{ gridTemplateColumns: userRole === 'admin' ? '1fr auto auto auto' : '1fr auto auto' }}>
                                 <span>{t('driverCol')}</span>
                                 <span className="text-right">{t('monthlySalary')}</span>
@@ -659,7 +659,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                         <div
                                             key={driver.id}
                                             style={{ gridTemplateColumns: userRole === 'admin' ? '1fr auto auto auto' : '1fr auto auto' }}
-                                            className={`grid gap-4 items-center px-5 py-4 transition-colors ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/60'}`}
+                                            className={`flex flex-col gap-4 px-4 py-4 transition-colors md:grid md:items-center md:gap-4 md:px-5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/60'}`}
                                         >
                                             {/* Driver */}
                                             <div className="flex items-center gap-3 min-w-0">
@@ -684,9 +684,12 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                             </div>
 
                                             {/* Fixed monthly salary — dynamic avans breakdown is in the History tab */}
-                                            <div className="text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            <div className="flex items-end justify-between gap-3 rounded-2xl p-3 md:block md:rounded-none md:p-0 md:text-right">
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest md:hidden ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {t('monthlySalary')}
+                                                </span>
+                                                <div className="flex min-w-0 items-baseline justify-end gap-1.5">
+                                                    <span className={`break-all text-right text-[17px] font-bold font-mono tabular-nums leading-tight md:text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                         {new Intl.NumberFormat('uz-UZ').format(driver.monthlySalary ?? 0)}
                                                     </span>
                                                     <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>UZS</span>
@@ -694,24 +697,29 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                             </div>
 
                                             {/* Status + last paid date */}
-                                            <div className="text-right space-y-1">
-                                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
-                                                    {badgeLabel}
+                                            <div className="flex items-center justify-between gap-3 md:block md:space-y-1 md:text-right">
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest md:hidden ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {t('lastSalaryPaid')}
                                                 </span>
-                                                <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                    {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt, monthNames) : '—'}
-                                                </p>
+                                                <div className="min-w-0 text-right">
+                                                    <span className={`inline-flex max-w-full items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold leading-tight ${badgeClass}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
+                                                        <span className="min-w-0 whitespace-normal text-right">{badgeLabel}</span>
+                                                    </span>
+                                                    <p className={`mt-1 text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                        {driver.lastSalaryPaidAt ? formatDate(driver.lastSalaryPaidAt, monthNames) : '—'}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             {/* Pay button */}
                                             {userRole === 'admin' && (
-                                                <div className="flex justify-end">
+                                                <div className="flex justify-stretch md:justify-end">
                                                     {(driver.monthlySalary ?? 0) > 0 && (
                                                         <button
                                                             onClick={() => setConfirmDriver(driver)}
                                                             disabled={payingId === driver.id}
-                                                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                            className={`w-full px-3.5 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 border disabled:opacity-50 disabled:cursor-not-allowed md:w-auto md:py-2 md:text-xs md:whitespace-nowrap ${
                                                                 isPaid
                                                                     ? isDark
                                                                         ? 'border-white/[0.08] text-gray-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.04]'
@@ -751,7 +759,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                     ) : (
                         <div>
                             {/* History table header */}
-                            <div className={`grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 border-b text-[10px] font-bold uppercase tracking-widest ${isDark ? 'border-white/[0.06] text-gray-500' : 'border-gray-100 text-gray-400'}`}>
+                            <div className={`hidden md:grid md:grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-4 px-5 py-3 border-b text-[10px] font-bold uppercase tracking-widest ${isDark ? 'border-white/[0.06] text-gray-500' : 'border-gray-100 text-gray-400'}`}>
                                 <span>{t('driverCol')}</span>
                                 <span className="text-right">{t('amountCol')}</span>
                                 <span className="text-right">{t('salaryPeriod')}</span>
@@ -765,7 +773,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                     return (
                                         <div
                                             key={tx.id}
-                                            className={`grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-5 py-4 transition-colors ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/60'}`}
+                                            className={`flex flex-col gap-3 px-4 py-4 transition-colors md:grid md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center md:gap-4 md:px-5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50/60'}`}
                                         >
                                             {/* Driver */}
                                             <div className="flex items-center gap-3 min-w-0">
@@ -782,13 +790,19 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                             </div>
 
                                             {/* Amount */}
-                                            <div className="text-right">
-                                                <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{new Intl.NumberFormat('uz-UZ').format(Math.round(tx.amount))}</span>
+                                            <div className="flex items-baseline justify-between gap-3 md:block md:text-right">
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest md:hidden ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {t('amountCol')}
+                                                </span>
+                                                <span className={`break-all text-right text-[15px] font-bold font-mono tabular-nums md:text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{new Intl.NumberFormat('uz-UZ').format(Math.round(tx.amount))}</span>
                                                 <span className={`text-[10px] ml-1 font-semibold ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>UZS</span>
                                             </div>
 
                                             {/* Period */}
-                                            <div className="text-right">
+                                            <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest md:hidden ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {t('salaryPeriod')}
+                                                </span>
                                                 {period ? (
                                                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
                                                         {periodLabel(period, monthNames)}
@@ -799,8 +813,13 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
                                             </div>
 
                                             {/* Date paid */}
-                                            <div className={`text-right text-xs tabular-nums ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                                {formatDate(tx.timestamp, monthNames)}
+                                            <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest md:hidden ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {t('paymentDate')}
+                                                </span>
+                                                <span className={`text-right text-xs tabular-nums ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                    {formatDate(tx.timestamp, monthNames)}
+                                                </span>
                                             </div>
                                         </div>
                                     );
