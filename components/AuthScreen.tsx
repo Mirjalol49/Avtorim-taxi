@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Language } from '../types';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
-import { ArrowRightIcon, EyeIcon, EyeOffIcon, LockIcon, LogInIcon, PhoneIcon, ShieldIcon } from './Icons';
+import { ArrowRightIcon, EyeIcon, EyeOffIcon, LockIcon, LogInIcon, PhoneIcon } from './Icons';
 
 
 interface AuthScreenProps {
@@ -108,15 +108,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     };
 
     const inputBase = 'h-14 w-full rounded-2xl border px-4 text-[15px] font-semibold outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60';
-    const inputChrome = 'bg-[#101827] border-white/10 text-white placeholder:text-slate-500 focus:border-teal-300/70 focus:ring-4 focus:ring-teal-300/10';
+    const inputChrome = 'bg-[#111827] border-[#2a3a4a] text-white placeholder:text-slate-500 focus:border-[#5eead4]';
 
     return (
         <div
-            className="min-h-screen relative overflow-hidden bg-[#07131f] text-white"
+            className="min-h-screen relative overflow-hidden bg-[#0f766e] text-white"
         >
-            <div className="absolute inset-0 bg-[linear-gradient(145deg,#07131f_0%,#0f766e_48%,#07131f_100%)] opacity-95" />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.08] to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/35 to-transparent" />
+            <div className="absolute inset-0 bg-[#0f766e]" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-[#0c5f59]" />
 
             <main className="relative z-10 min-h-screen flex items-center justify-center px-5 py-8 sm:px-6">
                 <div className={`w-full max-w-[440px] ${shake ? 'animate-shake' : ''}`}>
@@ -127,30 +126,27 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                             className="h-11 sm:h-12 object-contain mb-5"
                             style={{ filter: 'brightness(0) invert(1)' }}
                         />
-                        <div className={`relative flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/15 bg-white/10 shadow-2xl backdrop-blur-xl transition-all duration-500 ${success ? 'scale-105 border-emerald-300/60 bg-emerald-300/15' : ''}`}>
+                        <div className={`relative flex h-20 w-20 items-center justify-center rounded-[26px] border border-white/20 bg-[#2f7772] transition-all duration-300 ${success ? 'scale-[1.02] bg-[#2f7772]' : ''}`}>
                             <img
                                 src="/images/lock.png"
                                 alt=""
                                 aria-hidden="true"
                                 className="h-14 w-14 object-contain"
                             />
-                            <span className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-[#07131f] text-teal-200">
-                                <ShieldIcon className="h-4 w-4" />
-                            </span>
                         </div>
                     </div>
 
-                    <section className="rounded-[28px] border border-white/[0.12] bg-[#0b1424]/[0.82] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-6">
+                    <section className="rounded-[28px] border border-[#223344] bg-[#0f1b2a] p-5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] sm:p-6">
                         <div className="mb-6">
                             <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-teal-300/12 text-teal-200">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#18384a] text-[#99f6e4]">
                                     <LogInIcon className="h-4 w-4" />
                                 </span>
                                 <div className="min-w-0">
                                     <h1 className="text-[24px] font-black leading-tight tracking-tight">
                                         {t('welcome')}
                                     </h1>
-                                    <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-teal-100/50">
+                                    <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                                         {t('secureFleetAccess')}
                                     </p>
                                 </div>
@@ -159,10 +155,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                             <p
                                 className={`min-h-[40px] rounded-2xl px-4 py-3 text-[14px] font-medium leading-snug ${
                                     error && !locked
-                                        ? 'bg-red-500/10 text-red-100 ring-1 ring-red-300/20'
+                                        ? 'bg-[#3a1f27] text-red-100 border border-[#7f2d36]'
                                         : success
-                                            ? 'bg-emerald-400/10 text-emerald-100 ring-1 ring-emerald-300/20'
-                                            : 'bg-white/[0.04] text-slate-300'
+                                            ? 'bg-[#123629] text-emerald-100 border border-[#1f6f55]'
+                                            : 'bg-[#182838] text-slate-300 border border-[#24384a]'
                                 }`}
                             >
                                 {statusText}
@@ -181,11 +177,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                                 </div>
                                 <div className={`flex h-14 overflow-hidden rounded-2xl border transition-all duration-200 ${
                                     error && phoneDigits.length !== 9
-                                        ? 'border-red-300/50 ring-4 ring-red-300/10'
-                                        : 'border-white/10 focus-within:border-teal-300/70 focus-within:ring-4 focus-within:ring-teal-300/10'
-                                } bg-[#101827]`}>
-                                    <div className="flex items-center gap-2 border-r border-white/10 bg-white/[0.04] px-4 text-[15px] font-black text-teal-100">
-                                        <PhoneIcon className="h-4 w-4 text-teal-200" />
+                                        ? 'border-[#f87171]'
+                                        : 'border-[#2a3a4a] focus-within:border-[#5eead4]'
+                                } bg-[#111827]`}>
+                                    <div className="flex items-center gap-2 border-r border-[#2a3a4a] bg-[#182838] px-4 text-[15px] font-black text-[#ccfbf1]">
+                                        <PhoneIcon className="h-4 w-4 text-[#99f6e4]" />
                                         +998
                                     </div>
                                     <input
@@ -242,8 +238,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                                 disabled={!canSubmit || loading}
                                 className={`group flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-black transition-all duration-200 ${
                                     canSubmit && !loading
-                                        ? 'bg-teal-300 text-[#06211f] shadow-[0_14px_34px_rgba(45,212,191,0.22)] hover:bg-teal-200 active:scale-[0.985]'
-                                        : 'cursor-not-allowed bg-white/[0.06] text-slate-500'
+                                        ? 'bg-[#2dd4bf] text-[#06211f] hover:bg-[#5eead4] active:scale-[0.985]'
+                                        : 'cursor-not-allowed bg-[#1f3040] text-slate-500'
                                 }`}
                             >
                                 {success ? (
@@ -273,7 +269,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                         </form>
                     </section>
 
-                    <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-1.5 backdrop-blur-xl">
+                    <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/20 bg-[#175f59] p-1.5">
                         {(['uz', 'ru', 'en'] as Language[]).map(l => (
                             <button
                                 key={l}
@@ -284,8 +280,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                                 }}
                                 className={`h-10 flex-1 rounded-xl text-[12px] font-black uppercase tracking-[0.08em] transition-all ${
                                     lang === l
-                                        ? 'bg-white text-[#0b1424] shadow-sm'
-                                        : 'text-white/50 hover:bg-white/[0.06] hover:text-white'
+                                        ? 'bg-white text-[#0b1424]'
+                                        : 'text-white/60 hover:bg-white/10 hover:text-white'
                                 }`}
                                 aria-pressed={lang === l}
                             >
