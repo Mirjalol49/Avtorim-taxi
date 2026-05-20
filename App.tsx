@@ -206,12 +206,37 @@ const AppContent: React.FC = () => {
   });
 
   const [isLocked, setIsLocked] = useState(false);
+  const [lockHydrated, setLockHydrated] = useState(false);
+  const lockStorageKey = adminUser?.id ? `avtorim_locked_${adminUser.id}` : null;
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLocked(false);
+      setLockHydrated(true);
+      return;
+    }
+    if (!lockStorageKey) {
+      setLockHydrated(false);
+      return;
+    }
+    setIsLocked(localStorage.getItem(lockStorageKey) === '1');
+    setLockHydrated(true);
+  }, [isAuthenticated, lockStorageKey]);
+
+  const lockApp = () => {
+    if (lockStorageKey) localStorage.setItem(lockStorageKey, '1');
+    playLockSound();
+    setIsLocked(true);
+  };
 
   const handleUnlock = async (password: string): Promise<boolean> => {
     if (!adminUser?.phone) return false;
     const { authService } = await import('./services/authService');
     const result = await authService.authenticateAdminByPhone(adminUser.phone, password);
-    if (result.success) setIsLocked(false);
+    if (result.success) {
+      if (lockStorageKey) localStorage.removeItem(lockStorageKey);
+      setIsLocked(false);
+    }
     return result.success;
   };
 
@@ -701,6 +726,10 @@ const AppContent: React.FC = () => {
 
   if (!isAuthenticated) return <AuthScreen onAuthenticated={handleLogin} theme={theme} />;
 
+  if (isAuthenticated && adminUser?.id && !lockHydrated) {
+    return <PageSkeleton theme={theme} variant="generic" />;
+  }
+
   if (isAuthenticated && isLocked) return (
     <LockScreen
       adminName={adminUser?.username ?? 'Admin'}
@@ -878,7 +907,7 @@ const AppContent: React.FC = () => {
               )}
             </>
           )}
-          <button onClick={() => { playLockSound(); setIsLocked(true); }} className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm font-medium transition-colors mt-2 ${theme === 'dark' ? 'text-white/40 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}>
+          <button onClick={lockApp} className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm font-medium transition-colors mt-2 ${theme === 'dark' ? 'text-white/40 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}>
             <LogOutIcon className="w-4 h-4" />
             <span>{t.lockSystem}</span>
           </button>
@@ -1344,7 +1373,7 @@ const AppContent: React.FC = () => {
             userRole={userRole}
             theme={theme}
             onLogout={() => { playLockSound(); handleLogout(); }}
-            onLock={() => { playLockSound(); setIsLocked(true); }}
+            onLock={lockApp}
           />
         )}
       </React.Suspense>
