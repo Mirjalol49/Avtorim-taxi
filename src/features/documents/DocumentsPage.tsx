@@ -597,7 +597,7 @@ function PreviewLightbox({ doc, isDark, copied, onClose, onCopy }: LightboxProps
             role="dialog"
             aria-modal="true"
             aria-label={doc.name}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 pointer-events-none"
+            className="fixed inset-y-0 left-0 right-0 md:left-64 z-[9999] flex items-center justify-center p-4 sm:p-6 pointer-events-none"
             style={{ animation: 'docPreviewFade 0.16s ease-out' }}
         >
             <button
