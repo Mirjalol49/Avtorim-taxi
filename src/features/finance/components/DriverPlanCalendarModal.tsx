@@ -34,6 +34,7 @@ interface Props {
     monthData: DriverPlanMonthInfo | null;
     transactions: Transaction[];
     onDayClick?: (driverId: string, date: Date) => void;
+    onClearDayMarkers?: (driverId: string, date: Date) => Promise<void>;
     onMonthChange?: (newMonthKey: string) => void;
 }
 
@@ -77,14 +78,7 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
             <circle cx="12" cy="12" r="10" />
         </svg>
     );
-    if (status === 'DAY_OFF') return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-blue-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-            <line x1="9" y1="9" x2="9.01" y2="9" />
-            <line x1="15" y1="9" x2="15.01" y2="9" />
-        </svg>
-    );
+    if (status === 'DAY_OFF') return null;
     if (status === 'FUTURE_OFF') return (
         <div className="w-3.5 h-3.5"><Lottie animationData={restAnimation} loop={true} /></div>
     );
@@ -109,7 +103,7 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     return null;
 };
 
-export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick, onMonthChange }) => {
+export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onDayClick, onClearDayMarkers, onMonthChange }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
     const monthNamesRaw = t('monthNames', { returnObjects: true });
@@ -540,10 +534,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
                             {([
                                 { status: 'PAID'    as DayStatus, label: t('legendPaid', "To'liq to'landi") },
-                                { status: 'PARTIAL' as DayStatus, label: t('legendPartial', 'Qisman') },
                                 { status: 'UNPAID'  as DayStatus, label: t('legendDebt', 'Qarz') },
                                 { status: 'DAY_OFF' as DayStatus, label: <span className="flex items-center gap-1"><div className="w-3.5 h-3.5 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div> {t('legendDayOff', 'Dam olish')}</span> },
-                                { status: 'NOT_WORKING' as DayStatus, label: `❌ ${t('notWorking', 'Ishlamagan')}` },
+                                { status: 'NOT_WORKING' as DayStatus, label: t('notWorking', 'Ishlamagan') },
                             ]).map(({ status, label }) => (
                                 <div key={status} className="flex items-center gap-1.5">
                                     <StatusIcon status={status} />
@@ -587,14 +580,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     <div
                                         key={d.day}
                                         onClick={() => {
-                                            if (isFuture) {
-                                                setOverrideDate(d.date);
-                                                const existingOverride = monthData.driver.dayOverrides?.[d.dayStr];
-                                                setCustomPlanStr(existingOverride?.type === 'DISCOUNT' ? String(existingOverride.customPlan || '') : '');
-                                            } else if (onDayClick && isClickable) {
-                                                const [year, month] = monthData.monthKey.split('-').map(Number);
-                                                onDayClick(monthData.driver.id, new Date(year, month - 1, d.day));
-                                            }
+                                            setOverrideDate(d.date);
+                                            const existingOverride = monthData.driver.dayOverrides?.[d.dayStr];
+                                            setCustomPlanStr(existingOverride?.type === 'DISCOUNT' ? String(existingOverride.customPlan || '') : '');
                                         }}
                                         className={`relative flex flex-col min-h-[64px] sm:min-h-[90px] md:min-h-[110px] rounded-lg sm:rounded-2xl p-1 sm:p-3 transition-all duration-150 overflow-hidden group ${
                                             isClickable ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md' : 'cursor-default'
@@ -814,6 +802,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
             {overrideDate && (() => {
                 const dKey = `${overrideDate.getFullYear()}-${String(overrideDate.getMonth() + 1).padStart(2, '0')}-${String(overrideDate.getDate()).padStart(2, '0')}`;
                 const driverId = monthData.driver.id;
+                const clearMarkerTransactions = () => onClearDayMarkers?.(driverId, overrideDate);
 
                 const handleSave = async (fn: () => Promise<void>) => {
                     setOverrideError(null);
@@ -830,6 +819,14 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     }
                 };
 
+                const handleAddTransaction = () => {
+                    if (!onDayClick) return;
+                    onDayClick(driverId, overrideDate);
+                    setOverrideDate(null);
+                    setOverrideError(null);
+                    setCustomPlanStr('');
+                };
+
                 return (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setOverrideDate(null); setOverrideError(null); }} />
@@ -839,7 +836,9 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                         {overrideDate.getDate()} {monthNames[overrideDate.getMonth()]}
                                     </h3>
-                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Kelajak rejasini o'zgartirish</p>
+                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        {t('daySettingsSubtitle', "Kun rejasini sozlash")}
+                                    </p>
                                 </div>
                                 <button onClick={() => { setOverrideDate(null); setOverrideError(null); }} className={`p-2 rounded-full ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
                                     <XIcon className="w-4 h-4" />
@@ -857,30 +856,39 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 {/* Standard */}
                                 <button
                                     disabled={overrideLoading}
-                                    onClick={() => handleSave(() => clearDriverDayOverride(driverId, dKey))}
+                                    onClick={() => handleSave(async () => {
+                                        await clearDriverDayOverride(driverId, dKey);
+                                        await clearMarkerTransactions();
+                                    })}
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-white/[0.06] hover:bg-white/10 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
                                 >
-                                    <span className="font-semibold flex items-center gap-2">↩️ Standart</span>
+                                    <span className="font-semibold flex items-center gap-2">↩️ {t('standardPlan', 'Standart')}</span>
                                     <span className={`text-sm font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fmt(monthData.dailyPlan)}</span>
                                 </button>
 
                                 {/* Day off */}
                                 <button
                                     disabled={overrideLoading}
-                                    onClick={() => handleSave(() => setDriverDayOverride(driverId, dKey, { type: 'OFF' }))}
+                                    onClick={() => handleSave(async () => {
+                                        await clearMarkerTransactions();
+                                        await setDriverDayOverride(driverId, dKey, { type: 'OFF' });
+                                    })}
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}
                                 >
-                                    <span className="font-semibold flex items-center gap-2"><div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div> Dam olish</span>
+                                    <span className="font-semibold flex items-center gap-2"><div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div> {t('dayOffLabel', 'Dam olish')}</span>
                                     <span className="text-sm font-bold opacity-50">0</span>
                                 </button>
 
                                 {/* Not working */}
                                 <button
                                     disabled={overrideLoading}
-                                    onClick={() => handleSave(() => setDriverDayOverride(driverId, dKey, { type: 'NOT_WORKING' }))}
+                                    onClick={() => handleSave(async () => {
+                                        await clearMarkerTransactions();
+                                        await setDriverDayOverride(driverId, dKey, { type: 'NOT_WORKING' });
+                                    })}
                                     className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
                                 >
-                                    <span className="font-semibold flex items-center gap-2">❌ Ishlamagan</span>
+                                    <span className="font-semibold flex items-center gap-2">❌ {t('notWorkingLabel', 'Ishlamagan')}</span>
                                     <span className="text-sm font-bold opacity-50">0</span>
                                 </button>
 
@@ -888,7 +896,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                 <div className={`p-4 rounded-xl ${isDark ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="text-lg">💸</span>
-                                        <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Chegirma (Custom)</span>
+                                        <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{t('customPlan', 'Chegirma (Custom)')}</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <input
@@ -900,13 +908,27 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                         />
                                         <button
                                             disabled={overrideLoading || !customPlanStr}
-                                            onClick={() => handleSave(() => setDriverDayOverride(driverId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) }))}
+                                            onClick={() => handleSave(async () => {
+                                                await clearMarkerTransactions();
+                                                await setDriverDayOverride(driverId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) });
+                                            })}
                                             className="px-4 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold rounded-lg transition-all disabled:opacity-40"
                                         >
-                                            {overrideLoading ? '...' : 'Saqlash'}
+                                            {overrideLoading ? '...' : t('save', 'Saqlash')}
                                         </button>
                                     </div>
                                 </div>
+
+                                {onDayClick && (
+                                    <button
+                                        disabled={overrideLoading}
+                                        onClick={handleAddTransaction}
+                                        className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-300' : 'bg-teal-50 hover:bg-teal-100 text-teal-700'}`}
+                                    >
+                                        <span className="font-semibold flex items-center gap-2">💰 {t('addTransaction', "To'lov qo'shish")}</span>
+                                        <span className="text-sm font-bold opacity-50">+</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

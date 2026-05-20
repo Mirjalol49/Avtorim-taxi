@@ -365,6 +365,34 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleClearDayMarkers = async (driverId: string, date: Date) => {
+    const toKey = (value: number | Date) => {
+      const d = value instanceof Date ? value : new Date(value);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const dayKey = toKey(date);
+    const markerIds = transactions
+      .filter(tx =>
+        tx.driverId === driverId &&
+        tx.status !== 'DELETED' &&
+        (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) &&
+        toKey(tx.timestamp) === dayKey
+      )
+      .map(tx => tx.id);
+
+    if (markerIds.length === 0) return;
+
+    await firestoreService.deleteTransactionsBatch(
+      markerIds,
+      { adminName: adminUser?.username || 'Admin', count: markerIds.length, totalAmount: 0 },
+      carsFleetId
+    );
+
+    setTransactions(prev => prev.map(tx =>
+      markerIds.includes(tx.id) ? { ...tx, status: 'DELETED' as any } : tx
+    ));
+  };
+
   const closeConfirmModal = () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
@@ -1131,6 +1159,7 @@ const AppContent: React.FC = () => {
                       setTxInitialDate(date);
                       setIsTxModalOpen(true);
                     }}
+                    onClearDayMarkers={handleClearDayMarkers}
                   />
             } />
 

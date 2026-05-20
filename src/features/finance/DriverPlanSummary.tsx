@@ -32,6 +32,7 @@ interface DriverPlanSummaryProps {
     filterDriverId: string; // 'all' or a driver id
     theme: 'dark' | 'light';
     onDayClick?: (driverId: string, date: Date) => void;
+    onClearDayMarkers?: (driverId: string, date: Date) => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ const monthRange = (start: Date, end: Date): string[] => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
-    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onDayClick
+    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onDayClick, onClearDayMarkers
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
@@ -375,6 +376,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 monthData={liveModalData as DriverPlanMonthInfo | null}
                 transactions={transactions}
                 onDayClick={onDayClick}
+                onClearDayMarkers={onClearDayMarkers}
                 onMonthChange={(newMonthKey) => setSelectedKey(prev => prev ? { ...prev, monthKey: newMonthKey } : null)}
             />
         </div>
