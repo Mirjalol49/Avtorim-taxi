@@ -52,9 +52,24 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
         setTimeout(() => onAuthenticated(role, data), 1200);
     };
 
+    const translateAuthError = (msg?: string) => {
+        if (!msg) return t('invalidPhoneOrPassword');
+        const normalized = msg.toLowerCase();
+        if (normalized.includes('phone') || normalized.includes('password') || normalized.includes('credentials')) {
+            return t('invalidPhoneOrPassword');
+        }
+        if (normalized.includes('disabled')) {
+            return t('accountDisabled');
+        }
+        if (normalized.includes('authentication system')) {
+            return t('authSystemError');
+        }
+        return msg;
+    };
+
     const handleFailedLogin = (msg?: string) => {
         setError(true);
-        setErrorMsg(msg || t('invalidPassword'));
+        setErrorMsg(translateAuthError(msg));
         playIncorrect();
         triggerShake();
         const next = loginAttempts + 1;
