@@ -66,7 +66,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
         ? t('tooManyAttempts', { s: lockout })
         : error
             ? t('invalidPassword', "Parol noto'g'ri. Qayta urinib ko'ring")
-            : t('lockSubtitle', `${adminName}, parolni kiriting`);
+            : t('enterPassword', 'Parolni kiriting');
 
     return (
         <div
@@ -95,7 +95,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
                     </div>
 
                     <section className="rounded-[28px] border border-[#223344] bg-[#0f1b2a] p-5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] sm:p-6">
-                        <div className="mb-6">
+                        <div className="mb-5">
                             <div className="mb-2 flex items-center gap-2">
                                 <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#18384a] text-[#99f6e4]">
                                     <LockIcon className="h-4 w-4" />
@@ -111,17 +111,17 @@ const LockScreen: React.FC<LockScreenProps> = ({ adminName, adminPhone, onUnlock
                             </div>
 
                             <p
-                                className={`min-h-[40px] rounded-2xl px-4 py-3 text-[14px] font-medium leading-snug ${
+                                className={`rounded-2xl px-4 py-3 text-[14px] font-medium leading-snug ${
                                     error && !locked
                                         ? 'bg-[#3a1f27] text-red-100 border border-[#7f2d36]'
                                         : 'bg-[#182838] text-slate-300 border border-[#24384a]'
                                 }`}
                             >
                                 {statusText}
-                                {maskedPhone && !error && !locked && (
-                                    <span className="mt-1 block text-[12px] font-semibold text-slate-500">{maskedPhone}</span>
-                                )}
                             </p>
+                            {maskedPhone && !error && !locked && (
+                                <p className="mt-2 text-center text-[12px] font-semibold text-slate-500">{maskedPhone}</p>
+                            )}
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
