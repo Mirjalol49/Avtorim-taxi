@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon, InfoIcon } from './Icons';
 import { Car, CarDocument } from '../src/core/types';
 import { supabase } from '../supabase';
@@ -25,6 +26,7 @@ const DOC_SLOTS: { category: CarDocument['category']; label: string }[] = [
 ];
 
 const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingCar, theme, isLockedByVikup }) => {
+  const { t } = useTranslation();
   const [name,         setName]         = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [avatar,       setAvatar]       = useState('');   // CDN URL or preview URL
@@ -408,8 +410,8 @@ const CarModal: React.FC<CarModalProps> = ({ isOpen, onClose, onSubmit, editingC
           {/* ── Status ── */}
           <div className={`p-6 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'bg-surface-2 border border-white/[0.05]' : 'bg-slate-50/70 border border-slate-100 shadow-sm'}`}>
             <div>
-              <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Ta'mirda (In Repair)</p>
-              <p className={`text-[13px] mt-1 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>Avtomobil ta'mirlanayotganligini belgilash</p>
+              <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{t('carModalInRepair', "Ta'mirda")}</p>
+              <p className={`text-[13px] mt-1 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>{t('carModalInRepairDesc', "Avtomobil ta'mirlanayotganligini belgilash")}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer group">
               <input type="checkbox" className="sr-only peer" checked={inRepair} onChange={e => setInRepair(e.target.checked)} />

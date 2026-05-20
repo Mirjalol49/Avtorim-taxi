@@ -741,6 +741,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <div className="space-y-2">
               <DocUploadBox category="driver_license" label={t('driverModalLicense', 'Haydovchilik guvohnomasi')} />
               <DocUploadBox category="passport" label={t('driverModalPassport', 'Pasport')} />
+              <DocUploadBox category="other" label={t('driverModalOtherDocuments', 'Boshqa hujjatlar')} />
             </div>
             {docError && <p className="text-xs text-red-500 mt-2">{docError}</p>}
           </div>

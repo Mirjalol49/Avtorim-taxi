@@ -186,6 +186,11 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         const incomeByCategory: Record<string, number> = {};
         const expenseByCategory: Record<string, number> = {};
         const paymentMethods: Record<string, number> = { cash: 0, card: 0, transfer: 0 };
+        const netProfitByPayment: Record<string, { income: number; expense: number; net: number }> = {
+            cash: { income: 0, expense: 0, net: 0 },
+            card: { income: 0, expense: 0, net: 0 },
+            transfer: { income: 0, expense: 0, net: 0 },
+        };
         const driverIncome: Record<string, { id: string; name: string; amount: number }> = {};
         
         const getExpenseCat = (desc: string): string => {
@@ -198,20 +203,19 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             return 'Boshqa';
         };
 
-        const highCostCarsObj: Record<string, { id: string; name: string; amount: number; avatar?: string; latestComment?: string }> = {};
-
         filteredTransactions.forEach(tx => {
             if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.DELETED) return;
+            const pm = (((tx as any).paymentMethod as string) || 'cash') as 'cash' | 'card' | 'transfer';
+            if (!netProfitByPayment[pm]) netProfitByPayment[pm] = { income: 0, expense: 0, net: 0 };
 
             // Payment Methods (for bar widget)
             if (tx.amount > 0 && (tx as any).paymentMethod) {
-                const pm = (tx as any).paymentMethod as string;
                 paymentMethods[pm] = (paymentMethods[pm] || 0) + tx.amount;
             }
 
             if (tx.type === TransactionType.INCOME && (tx as any).category !== 'deposit_topup') {
-                const pm = ((tx as any).paymentMethod as string) || 'cash';
                 incomeByCategory[pm] = (incomeByCategory[pm] || 0) + tx.amount;
+                netProfitByPayment[pm].income += tx.amount;
                 const did = (tx as any).driverId;
                 const dname = (tx as any).driverName;
                 if (did && dname) {
@@ -223,33 +227,7 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
                     ? 'Maosh'
                     : getExpenseCat((tx as any).description || '');
                 expenseByCategory[cat] = (expenseByCategory[cat] || 0) + tx.amount;
-                
-                // Track repair costs for cars
-                if (cat === "Ta'mirlash") {
-                    let cid = (tx as any).carId;
-                    let cName = (tx as any).carName;
-
-                    if (!cid && tx.driverId) {
-                        const driver = drivers.find(d => d.id === tx.driverId);
-                        if (driver) {
-                            cid = cars.find(c => c.assignedDriverId === driver.id)?.id;
-                        }
-                    }
-
-                    if (cid) {
-                        const car = cars.find(c => c.id === cid);
-                        if (!cName) {
-                            cName = car ? car.name : 'Noma\'lum avto';
-                        }
-                        if (!highCostCarsObj[cid]) {
-                            highCostCarsObj[cid] = { id: cid, name: cName, amount: 0, avatar: car?.avatar, latestComment: tx.description };
-                        } else if (!highCostCarsObj[cid].latestComment && tx.description) {
-                            // If we encounter a description later and didn't have one, save it
-                            highCostCarsObj[cid].latestComment = tx.description;
-                        }
-                        highCostCarsObj[cid].amount += tx.amount;
-                    }
-                }
+                netProfitByPayment[pm].expense += tx.amount;
             }
         });
 
@@ -257,9 +235,9 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             .sort((a, b) => b.amount - a.amount)
             .slice(0, 5);
 
-        const highCostCars = Object.values(highCostCarsObj)
-            .sort((a, b) => b.amount - a.amount)
-            .slice(0, 3);
+        Object.values(netProfitByPayment).forEach(item => {
+            item.net = item.income - item.expense;
+        });
 
         // Format for Recharts — top 6 slices, merge rest into 'Boshqa'
         const formatForPie = (data: Record<string, number>) => {
@@ -274,8 +252,10 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         };
 
         let totalPlanTarget = 0;
-        let totalPlanIncome = 0;
+        let totalPaidTowardPlan = 0;
         let totalActualDebt = 0;
+        let totalPrepaid = 0;
+        let totalRawPlanIncome = 0;
         
         const fStart = new Date(filters.startDate);
         const fEnd = new Date(filters.endDate);
@@ -316,35 +296,35 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
 
                 let driverIncome = 0;
                 filteredTransactions.forEach(tx => {
-                    if (tx.driverId === driver.id && tx.type === TransactionType.INCOME && tx.status !== PaymentStatus.REVERSED && tx.status !== PaymentStatus.REFUNDED && tx.status !== PaymentStatus.DELETED) {
+                    if (
+                        tx.driverId === driver.id &&
+                        tx.type === TransactionType.INCOME &&
+                        (tx as any).category !== 'deposit_topup' &&
+                        (tx as any).category !== 'DEPOSIT' &&
+                        tx.status !== PaymentStatus.REVERSED &&
+                        tx.status !== PaymentStatus.REFUNDED &&
+                        tx.status !== PaymentStatus.DELETED
+                    ) {
                         driverIncome += tx.amount;
                     }
                 });
 
                 totalPlanTarget += driverTarget;
-                totalPlanIncome += driverIncome;
-                if (driverTarget > driverIncome) {
-                    totalActualDebt += (driverTarget - driverIncome);
-                }
+                totalRawPlanIncome += driverIncome;
+                totalPaidTowardPlan += Math.min(driverIncome, driverTarget);
+                totalActualDebt += Math.max(driverTarget - driverIncome, 0);
+                totalPrepaid += Math.max(driverIncome - driverTarget, 0);
             });
-
-            let otherIncome = 0;
-            filteredTransactions.forEach(tx => {
-                if (tx.type === TransactionType.INCOME && tx.status !== PaymentStatus.REVERSED && tx.status !== PaymentStatus.REFUNDED && tx.status !== PaymentStatus.DELETED) {
-                    const isCounted = driversToProcess.some(d => d.id === tx.driverId);
-                    if (!isCounted) {
-                        otherIncome += tx.amount;
-                    }
-                }
-            });
-            totalPlanIncome += otherIncome;
         }
         
         const planFulfillment = {
             target: totalPlanTarget,
-            income: totalPlanIncome,
+            income: totalPaidTowardPlan,
+            paidTowardPlan: totalPaidTowardPlan,
             actualDebt: totalActualDebt,
-            percentage: totalPlanTarget > 0 ? Math.min(100, Math.round((totalPlanIncome / totalPlanTarget) * 100)) : 0
+            prepaid: totalPrepaid,
+            rawIncome: totalRawPlanIncome,
+            percentage: totalPlanTarget > 0 ? Math.min(100, Math.round((totalPaidTowardPlan / totalPlanTarget) * 100)) : 0
         };
 
         // --- Fleet Utilization ---
@@ -372,12 +352,13 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
                 .filter(([, v]) => v > 0)
                 .map(([name, value]) => ({ name, value }))
                 .sort((a, b) => b.value - a.value),
+            netProfitByPayment,
+            totalNetProfit: Object.values(netProfitByPayment).reduce((sum, item) => sum + item.net, 0),
             topEarners,
-            highCostCars,
             planFulfillment,
             fleetStats
         };
-    }, [filteredTransactions]);
+    }, [filteredTransactions, filters.driverId, filters.startDate, filters.endDate, drivers, cars, transactions]);
 
     return {
         filters, setFilters,

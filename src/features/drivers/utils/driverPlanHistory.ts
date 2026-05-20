@@ -1,5 +1,6 @@
 import { Driver, DriverPlanHistoryEntry, DriverDayOverride } from '../../../core/types/driver.types';
 import { Car } from '../../../core/types/car.types';
+import type { Transaction } from '../../../core/types/transaction.types';
 import { getEffectivePlanForDay, getDayOverrideType } from '../../cars/utils/planHistory';
 
 /**
@@ -62,6 +63,64 @@ export function getCarIdForDriverDate(driver: Driver | null | undefined, date: D
     }
 
     return null;
+}
+
+export interface TransactionCarSnapshot {
+    id?: string | null;
+    name: string;
+    licensePlate?: string;
+    label: string;
+}
+
+const parseCarLabel = (label: string, id?: string | null): TransactionCarSnapshot => {
+    const parts = label.split(/\s+[—-]\s+/);
+    const name = parts[0]?.trim() || label;
+    const licensePlate = parts.length > 1 ? parts.slice(1).join(' — ').trim() : undefined;
+    return { id, name, licensePlate, label };
+};
+
+export function getCarForDriverDate(
+    driver: Driver | null | undefined,
+    date: Date,
+    cars: Car[],
+    fallbackCar?: Car | null
+): Car | null {
+    const carId = getCarIdForDriverDate(driver, date, fallbackCar);
+    if (!carId) return null;
+    return cars.find(c => c.id === carId) ?? null;
+}
+
+export function resolveTransactionCarSnapshot(
+    tx: Transaction,
+    driver: Driver | null | undefined,
+    cars: Car[],
+    fallbackCar?: Car | null
+): TransactionCarSnapshot | null {
+    if (tx.carName) {
+        return parseCarLabel(tx.carName, tx.carId);
+    }
+
+    if (tx.carId) {
+        const car = cars.find(c => c.id === tx.carId);
+        if (car) {
+            return {
+                id: car.id,
+                name: car.name,
+                licensePlate: car.licensePlate,
+                label: `${car.name} — ${car.licensePlate}`,
+            };
+        }
+    }
+
+    const historicalCar = getCarForDriverDate(driver, new Date(tx.timestamp), cars, fallbackCar);
+    if (!historicalCar) return null;
+
+    return {
+        id: historicalCar.id,
+        name: historicalCar.name,
+        licensePlate: historicalCar.licensePlate,
+        label: `${historicalCar.name} — ${historicalCar.licensePlate}`,
+    };
 }
 
 function toDateKey(date: Date): string {

@@ -31,7 +31,7 @@ interface DriverPlanSummaryProps {
     endDate: Date;
     filterDriverId: string; // 'all' or a driver id
     theme: 'dark' | 'light';
-    onClearDayMarkers?: (driverId: string, date: Date) => Promise<void>;
+    onOpenTransactionForDay?: (driverId: string, date: Date) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ const monthRange = (start: Date, end: Date): string[] => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
-    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onClearDayMarkers
+    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onOpenTransactionForDay
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
@@ -241,24 +241,32 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     return (
         <div className="flex flex-col gap-6">
             {/* Top Summary Banner */}
-            <div className={`flex flex-wrap items-center justify-between p-6 rounded-[24px] shadow-sm border ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-slate-100/60'}`}>
-                <div className="flex flex-col">
+            <div className={`grid grid-cols-1 gap-5 p-6 rounded-[24px] shadow-sm border sm:grid-cols-3 sm:items-center ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-slate-100/60'}`}>
+                <div className="flex min-w-0 flex-col">
                     <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
                         {t('totalPlanLabel', 'Jami Reja')}
                     </span>
-                    <span className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                    <span className={`text-[26px] sm:text-3xl font-bold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         {fmt(totalTarget)}
                     </span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex min-w-0 flex-col sm:items-center">
+                    <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        {t('totalPaidLabel', "Jami To'ladi")}
+                    </span>
+                    <span className={`text-[26px] sm:text-3xl font-bold leading-tight tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        {fmt(totalActual)}
+                    </span>
+                </div>
+                <div className="flex min-w-0 flex-col sm:items-end">
                     <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
                         {t('stillRemaining', 'Hali Qolgan')}
                     </span>
-                    <div className="flex items-center gap-2">
-                        <span className={`text-3xl font-medium tracking-tight ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className={`text-[26px] sm:text-3xl font-medium leading-tight tracking-tight ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {totalRemaining <= 0 ? `+${fmt(-totalRemaining)}` : `-${fmt(totalRemaining)}`}
                         </span>
-                        {totalRemaining > 0 && <span className="text-3xl font-light text-rose-500">→</span>}
+                        {totalRemaining > 0 && <span className="text-[26px] sm:text-3xl font-light text-rose-500">→</span>}
                     </div>
                 </div>
             </div>
@@ -374,8 +382,8 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
                 theme={theme}
                 monthData={liveModalData as DriverPlanMonthInfo | null}
                 transactions={transactions}
-                onClearDayMarkers={onClearDayMarkers}
                 onMonthChange={(newMonthKey) => setSelectedKey(prev => prev ? { ...prev, monthKey: newMonthKey } : null)}
+                onOpenTransactionForDay={onOpenTransactionForDay}
             />
         </div>
     );

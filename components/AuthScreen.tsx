@@ -123,7 +123,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     };
 
     const inputBase = 'h-14 w-full rounded-2xl border px-4 text-[15px] font-semibold outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60';
-    const inputChrome = 'bg-[#111827] border-[#2a3a4a] text-white placeholder:text-slate-500 focus:border-[#5eead4]';
+    const inputChrome = 'bg-[#111827] border-[#2a3a4a] text-white placeholder:text-slate-500/45 focus:border-[#5eead4]';
 
     return (
         <div
@@ -212,7 +212,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                                         autoComplete="tel"
                                         disabled={success || locked}
                                         autoFocus
-                                        className="min-w-0 flex-1 bg-transparent px-4 text-[17px] font-bold tracking-[0.08em] text-white outline-none placeholder:text-slate-600 disabled:opacity-60"
+                                        className="min-w-0 flex-1 bg-transparent px-4 text-[17px] font-bold tracking-[0.08em] text-white outline-none placeholder:text-slate-600/40 disabled:opacity-60"
                                     />
                                 </div>
                             </div>

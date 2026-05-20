@@ -1,13 +1,11 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import { XIcon, AlertTriangleIcon } from '../../../../components/Icons';
 import MonthPicker from '../../../../components/MonthPicker';
 import { Driver, Transaction, TransactionType } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { PaymentStatus } from '../../../core/types/transaction.types';
 import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../../drivers/utils/driverPlanHistory';
-import { setDriverDayOverride, clearDriverDayOverride } from '../../../../services/firestoreService';
 import Lottie from 'lottie-react';
 import restAnimation from '../../../../Images/rest.json';
 import planDoneAnimation from '../../../../Images/plan_done.json';
@@ -33,8 +31,8 @@ interface Props {
     theme: 'dark' | 'light';
     monthData: DriverPlanMonthInfo | null;
     transactions: Transaction[];
-    onClearDayMarkers?: (driverId: string, date: Date) => Promise<void>;
     onMonthChange?: (newMonthKey: string) => void;
+    onOpenTransactionForDay?: (driverId: string, date: Date) => void;
 }
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
@@ -102,16 +100,11 @@ const StatusIcon: React.FC<{ status: DayStatus }> = ({ status }) => {
     return null;
 };
 
-export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onClearDayMarkers, onMonthChange }) => {
+export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, theme, monthData, transactions, onMonthChange, onOpenTransactionForDay }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
     const monthNamesRaw = t('monthNames', { returnObjects: true });
     const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-    
-    const [overrideDate, setOverrideDate] = React.useState<Date | null>(null);
-    const [overrideLoading, setOverrideLoading] = React.useState(false);
-    const [overrideError, setOverrideError] = React.useState<string | null>(null);
-    const [customPlanStr, setCustomPlanStr] = React.useState('');
 
     const todayStr = useMemo(() => {
         const now = new Date();
@@ -579,9 +572,7 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                                     <div
                                         key={d.day}
                                         onClick={() => {
-                                            setOverrideDate(d.date);
-                                            const existingOverride = monthData.driver.dayOverrides?.[d.dayStr];
-                                            setCustomPlanStr(existingOverride?.type === 'DISCOUNT' ? String(existingOverride.customPlan || '') : '');
+                                            onOpenTransactionForDay?.(monthData.driver.id, d.date);
                                         }}
                                         className={`relative flex flex-col min-h-[64px] sm:min-h-[90px] md:min-h-[110px] rounded-lg sm:rounded-2xl p-1 sm:p-3 transition-all duration-150 overflow-hidden group ${
                                             isClickable ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md' : 'cursor-default'
@@ -797,135 +788,6 @@ export const DriverPlanCalendarModal: React.FC<Props> = ({ isOpen, onClose, them
                     </div>
                 </div>
 
-            {/* Day Override Mini-Modal */}
-            {overrideDate && (() => {
-                const dKey = `${overrideDate.getFullYear()}-${String(overrideDate.getMonth() + 1).padStart(2, '0')}-${String(overrideDate.getDate()).padStart(2, '0')}`;
-                const driverId = monthData.driver.id;
-                const clearMarkerTransactions = () => onClearDayMarkers?.(driverId, overrideDate);
-
-                const handleSave = async (fn: () => Promise<void>) => {
-                    setOverrideError(null);
-                    setOverrideLoading(true);
-                    try {
-                        await fn();
-                        setOverrideDate(null);
-                        setCustomPlanStr('');
-                    } catch (err: any) {
-                        console.error('Override save error:', err);
-                        setOverrideError(err?.message ?? 'Xatolik yuz berdi. DB migration run qiling.');
-                    } finally {
-                        setOverrideLoading(false);
-                    }
-                };
-
-                return (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setOverrideDate(null); setOverrideError(null); }} />
-                        <div className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 ${isDark ? 'bg-[#1a2540] border border-white/[0.08]' : 'bg-white border border-gray-200'}`}>
-                            <div className="flex justify-between items-center mb-5">
-                                <div>
-                                    <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                        {overrideDate.getDate()} {monthNames[overrideDate.getMonth()]}
-                                    </h3>
-                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        {t('daySettingsSubtitle', "Kun rejasini sozlash")}
-                                    </p>
-                                </div>
-                                <button onClick={() => { setOverrideDate(null); setOverrideError(null); }} className={`p-2 rounded-full ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
-                                    <XIcon className="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            {/* Error banner */}
-                            {overrideError && (
-                                <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold">
-                                    ⚠ {overrideError}
-                                </div>
-                            )}
-
-                            <div className="space-y-3">
-                                {/* Standard */}
-                                <button
-                                    disabled={overrideLoading}
-                                    onClick={() => handleSave(async () => {
-                                        await clearDriverDayOverride(driverId, dKey);
-                                        await clearMarkerTransactions();
-                                    })}
-                                    className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-white/[0.06] hover:bg-white/10 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
-                                >
-                                    <span className="font-semibold flex items-center gap-2">↩️ {t('standardPlan', 'Standart')}</span>
-                                    <span className={`text-sm font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fmt(monthData.dailyPlan)}</span>
-                                </button>
-
-                                {/* Day off */}
-                                <button
-                                    disabled={overrideLoading}
-                                    onClick={() => handleSave(async () => {
-                                        await clearMarkerTransactions();
-                                        await setDriverDayOverride(driverId, dKey, { type: 'OFF' });
-                                    })}
-                                    className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}
-                                >
-                                    <span className="font-semibold flex items-center gap-2"><div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={restAnimation} loop={true} /></div> {t('dayOffLabel', 'Dam olish')}</span>
-                                    <span className="text-sm font-bold opacity-50">0</span>
-                                </button>
-
-                                {/* Not working */}
-                                <button
-                                    disabled={overrideLoading}
-                                    onClick={() => handleSave(async () => {
-                                        await clearMarkerTransactions();
-                                        await setDriverDayOverride(driverId, dKey, { type: 'NOT_WORKING' });
-                                    })}
-                                    className={`w-full py-3.5 px-4 rounded-xl flex justify-between items-center transition-all active:scale-[0.98] disabled:opacity-50 ${isDark ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
-                                >
-                                    <span className="font-semibold flex items-center gap-2">❌ {t('notWorkingLabel', 'Ishlamagan')}</span>
-                                    <span className="text-sm font-bold opacity-50">0</span>
-                                </button>
-
-                                {/* Custom daily plan */}
-                                <div className={`rounded-xl border p-4 ${isDark ? 'bg-orange-500/10 border-orange-400/15' : 'bg-orange-50 border-orange-100'}`}>
-                                    <div className="mb-4 flex items-start gap-3">
-                                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg ${isDark ? 'bg-orange-400/15' : 'bg-white'}`}>💸</span>
-                                        <div className="min-w-0">
-                                            <p className={`font-bold leading-tight ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>
-                                                {t('customDailyPlan', 'Maxsus kunlik reja')}
-                                            </p>
-                                            <p className={`mt-1 text-xs leading-snug ${isDark ? 'text-orange-200/55' : 'text-orange-700/60'}`}>
-                                                {t('customDailyPlanHint', 'Faqat shu kun uchun reja summasini o‘zgartiring.')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className={`block text-[10px] font-black uppercase tracking-[0.14em] ${isDark ? 'text-orange-200/50' : 'text-orange-700/55'}`}>
-                                            {t('amountUzs', 'Summa (UZS)')}
-                                        </label>
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            value={customPlanStr}
-                                            onChange={e => setCustomPlanStr(e.target.value)}
-                                            placeholder={String(monthData.dailyPlan)}
-                                            className={`w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-orange-500/30 ${isDark ? 'bg-black/20 border-white/10 text-white placeholder:text-gray-600' : 'bg-white border-orange-200 text-gray-900 placeholder:text-orange-900/30'}`}
-                                        />
-                                        <button
-                                            type="button"
-                                            disabled={overrideLoading || !customPlanStr}
-                                            onClick={() => handleSave(async () => {
-                                                await clearMarkerTransactions();
-                                                await setDriverDayOverride(driverId, dKey, { type: 'DISCOUNT', customPlan: Number(customPlanStr) });
-                                            })}
-                                            className="flex h-11 w-full items-center justify-center rounded-xl bg-orange-500 text-sm font-black text-white transition-all hover:bg-orange-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                                        >
-                                            {overrideLoading ? '...' : t('save', 'Saqlash')}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })()}
         </div>,
         document.body
     );

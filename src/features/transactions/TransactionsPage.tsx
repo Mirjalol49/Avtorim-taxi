@@ -35,6 +35,7 @@ import cardAnimation from '../../../Images/card.json';
 import restAnimation from '../../../Images/rest.json';
 import depositAnimation from '../../../Images/deposit.json';
 import { LicensePlate } from '../../components/ui/LicensePlate';
+import { resolveTransactionCarSnapshot } from '../drivers/utils/driverPlanHistory';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const EXPENSE_CATEGORIES = [
@@ -621,6 +622,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                 transactions.filter(tx => tx.category !== 'ledger_config').map(tx => {
                                     const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
                                     const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
+                                    const driverCarSnapshot = driver
+                                        ? resolveTransactionCarSnapshot(
+                                            tx,
+                                            driver,
+                                            cars,
+                                            cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted) ?? null
+                                        )
+                                        : null;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
                                     const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car
                                         ? detectCategory(tx.description) : null;
@@ -698,21 +707,20 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                                 </div>
                                                                 {(driver?.isDeleted || driver) && (
                                                                     <div className={`flex flex-col mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                                        {(() => {
-                                                                            const liveCar = driver ? cars.find(c => c.assignedDriverId === driver.id) : undefined;
-                                                                            return liveCar ? (
-                                                                                <>
-                                                                                    <span className="text-[11px] font-semibold whitespace-normal">{liveCar.name}</span>
+                                                                        {driverCarSnapshot ? (
+                                                                            <>
+                                                                                <span className="text-[11px] font-semibold whitespace-normal">{driverCarSnapshot.name}</span>
+                                                                                {driverCarSnapshot.licensePlate && (
                                                                                     <div className="mt-1 w-fit">
-                                                                                        <LicensePlate plate={liveCar.licensePlate} size="sm" />
+                                                                                        <LicensePlate plate={driverCarSnapshot.licensePlate} size="sm" />
                                                                                     </div>
-                                                                                </>
-                                                                            ) : driver?.licensePlate ? (
-                                                                                <div className="mt-1 w-fit">
-                                                                                    <LicensePlate plate={driver.licensePlate} size="sm" />
-                                                                                </div>
-                                                                            ) : null;
-                                                                        })()}
+                                                                                )}
+                                                                            </>
+                                                                        ) : driver?.licensePlate ? (
+                                                                            <div className="mt-1 w-fit">
+                                                                                <LicensePlate plate={driver.licensePlate} size="sm" />
+                                                                            </div>
+                                                                        ) : null}
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -817,6 +825,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         transactions.filter(tx => tx.category !== 'ledger_config').map(tx => {
                             const driver = tx.driverId ? drivers.find(d => d.id === tx.driverId) : undefined;
                             const car = tx.carId ? cars.find(c => c.id === tx.carId) : undefined;
+                            const driverCarSnapshot = driver
+                                ? resolveTransactionCarSnapshot(
+                                    tx,
+                                    driver,
+                                    cars,
+                                    cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted) ?? null
+                                )
+                                : null;
                             const isDeleted = tx.status === PaymentStatus.DELETED;
                             const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car ? detectCategory(tx.description) : null;
                             const descText = tx.description === 'Salary Refund: Manual Action' ? t('salaryRefundDescription') : tx.description || '—';
@@ -852,21 +868,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 <div className={`text-[11px] font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
                                                     {(car && !tx.driverId) ? (
                                                         <LicensePlate plate={car.licensePlate} size="sm" />
-                                                    ) : driver ? (() => {
-                                                        const liveCar = cars.find(c => c.assignedDriverId === driver.id);
-                                                        return liveCar ? (
+                                                    ) : driver ? (
+                                                        driverCarSnapshot ? (
                                                             <div className="flex flex-col mt-0.5">
-                                                                <span className="font-semibold whitespace-normal">{liveCar.name}</span>
-                                                                <div className="mt-1 w-fit">
-                                                                    <LicensePlate plate={liveCar.licensePlate} size="sm" />
-                                                                </div>
+                                                                <span className="font-semibold whitespace-normal">{driverCarSnapshot.name}</span>
+                                                                {driverCarSnapshot.licensePlate && (
+                                                                    <div className="mt-1 w-fit">
+                                                                        <LicensePlate plate={driverCarSnapshot.licensePlate} size="sm" />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ) : driver.licensePlate ? (
                                                             <div className="mt-1 w-fit">
                                                                 <LicensePlate plate={driver.licensePlate} size="sm" />
                                                             </div>
-                                                        ) : null;
-                                                    })() : (
+                                                        ) : null
+                                                    ) : (
                                                         t('expense')
                                                     )}
                                                 </div>

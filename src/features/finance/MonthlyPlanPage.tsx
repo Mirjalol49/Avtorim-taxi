@@ -14,7 +14,7 @@ interface MonthlyPlanPageProps {
     cars: Car[];
     theme: 'dark' | 'light';
     isMobile?: boolean;
-    onClearDayMarkers?: (driverId: string, date: Date) => Promise<void>;
+    onOpenTransactionForDay?: (driverId: string, date: Date) => void;
 }
 
 export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
@@ -23,7 +23,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     cars,
     theme,
     isMobile = false,
-    onClearDayMarkers
+    onOpenTransactionForDay
 }) => {
     const { t } = useTranslation();
     
@@ -146,7 +146,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                 endDate={endDate}
                 filterDriverId={driverId}
                 theme={theme}
-                onClearDayMarkers={onClearDayMarkers}
+                onOpenTransactionForDay={onOpenTransactionForDay}
             />
         </div>
     );

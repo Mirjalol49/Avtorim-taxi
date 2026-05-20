@@ -1,9 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transaction, Driver, Language, TransactionType } from '../../core/types';
+import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { useFinanceStats } from './hooks/useFinanceStats';
-import { calcDriverDebt } from '../drivers/utils/debtUtils';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
@@ -24,7 +23,6 @@ import {
     PieChart, Pie, Cell
 } from 'recharts';
 import { MetricCard } from '../../../components/MetricCard';
-import { LicensePlate } from '../../components/ui/LicensePlate';
 
 
 interface FinancePageProps {
@@ -56,22 +54,6 @@ export const FinancePage: React.FC<FinancePageProps> = ({
     } = useFinanceStats(allTransactions, cars, drivers);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
-    
-    // Top Debtors: rank non-deleted drivers by debt
-    const topDebtors = React.useMemo(() => {
-        let currentDrivers = nonDeletedDrivers;
-        if (filters.driverId !== 'all') {
-            currentDrivers = currentDrivers.filter(d => d.id === filters.driverId);
-        }
-        return currentDrivers.map(d => {
-            const car = cars.find(c => c.assignedDriverId === d.id);
-            const debtInfo = calcDriverDebt(d, car, allTransactions);
-            return { driver: d, debt: debtInfo.netDebt };
-        })
-        .filter(d => d.debt > 0)
-        .sort((a, b) => b.debt - a.debt)
-        .slice(0, 5);
-    }, [nonDeletedDrivers, cars, allTransactions, filters.driverId]);
 
     const EXPENSE_COLORS = ['#f43f5e', '#fb923c', '#fbbf24', '#38bdf8', '#34d399', '#94a3b8'];
     const PAYMENT_COLORS = { cash: '#34d399', card: '#0f766e', transfer: '#f59e0b' };
@@ -85,6 +67,24 @@ export const FinancePage: React.FC<FinancePageProps> = ({
     // Income donut uses payment-method colors — max 3 slices, no rainbow
     const COLORS = [PAYMENT_COLORS.cash, PAYMENT_COLORS.card, PAYMENT_COLORS.transfer];
     const getIncomeLabel = (key: string) => getPaymentLabel(key);
+    const netProfitRows = ['cash', 'card', 'transfer']
+        .map(key => ({
+            key,
+            label: getPaymentLabel(key),
+            color: PAYMENT_COLORS[key as keyof typeof PAYMENT_COLORS],
+            ...((advancedStats.netProfitByPayment?.[key]) ?? { income: 0, expense: 0, net: 0 }),
+        }))
+        .filter(row => row.key === 'cash' || row.key === 'card' || row.income > 0 || row.expense > 0 || row.net !== 0);
+    const totalPureProfit = advancedStats.totalNetProfit ?? netProfitRows.reduce((sum, row) => sum + row.net, 0);
+    const netProfitChartRows = netProfitRows
+        .map(row => ({ ...row, value: Math.abs(row.net) }))
+        .filter(row => row.value > 0);
+    const totalNetProfitAbs = netProfitChartRows.reduce((sum, row) => sum + row.value, 0);
+    const formatFullMoney = (value: number, withSign = false) => {
+        const rounded = Math.round(Math.abs(value));
+        const sign = withSign && value !== 0 ? (value > 0 ? '+' : '-') : '';
+        return `${sign}${rounded.toLocaleString('uz-UZ')} UZS`;
+    };
 
     
     const [driverModalOpen, setDriverModalOpen] = React.useState(false);
@@ -119,9 +119,6 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                         {(() => {
                             const selectedDriver = filters.driverId && filters.driverId !== 'all'
                                 ? nonDeletedDrivers.find(d => d.id === filters.driverId)
-                                : null;
-                            const selectedCar = selectedDriver
-                                ? cars.find(c => c.assignedDriverId === selectedDriver.id)
                                 : null;
                             return (
                                 <>
@@ -327,7 +324,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                         {t('incomeAndExpenseCategories', 'Tushum va Xarajat Kategoriyalari')}
                     </h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
                         {/* Income Donut */}
                         <div className="flex flex-col items-center relative">
                             <h4 className={`text-xs font-bold tracking-wider uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('incomes', 'Tushumlar')}</h4>
@@ -430,43 +427,117 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-                </div>
+	                        </div>
 
-                {/* Bottom Row: Secondary Analytics Widgets */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* Column 1 */}
-                    <div className="flex flex-col gap-6">
-                        {/* Plan Fulfillment */}
-                        <div className={`p-5 rounded-3xl border shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                        {/* Net Profit Donut */}
+                        <div className="flex flex-col items-center relative">
+                            <h4 className={`text-xs font-bold tracking-wider uppercase mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('pureNetProfit', 'Sof foyda')}</h4>
+                            {netProfitChartRows.length > 0 ? (
+                                <div className="h-[220px] w-full relative max-w-[220px] mx-auto">
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1 z-0">
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('total', 'Jami')}</span>
+                                        <span className={`text-xl font-black pointer-events-auto ${totalPureProfit >= 0 ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600' : theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`}>
+                                            <NumberTooltip value={totalPureProfit} label={t('pureNetProfit', 'Sof foyda')} theme={theme}>
+                                                <span className="cursor-help">{totalPureProfit >= 0 ? '+' : '-'}{formatNumberSmart(Math.abs(totalPureProfit), true, language).replace(' UZS', '')}</span>
+                                            </NumberTooltip>
+                                        </span>
+                                    </div>
+                                    <ResponsiveContainer width="100%" height="100%" className="z-10 relative">
+                                        <PieChart>
+                                            <Pie
+                                                data={netProfitChartRows}
+                                                cx="50%" cy="50%" innerRadius={70} outerRadius={90}
+                                                paddingAngle={5} dataKey="value" stroke="none"
+                                            >
+                                                {netProfitChartRows.map((entry, index) => (
+                                                    <Cell key={`net-profit-cell-${entry.key}-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                content={({ active, payload }) => {
+                                                    const row = payload?.[0]?.payload as typeof netProfitChartRows[number] | undefined;
+                                                    if (!active || !row) return null;
+                                                    const netTone = row.net >= 0
+                                                        ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+                                                        : theme === 'dark' ? 'text-rose-400' : 'text-rose-600';
+                                                    return (
+                                                        <div className={`min-w-[180px] rounded-2xl border p-3 shadow-2xl ${theme === 'dark' ? 'bg-[#151e2e] border-white/[0.08] text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: row.color }} />
+                                                                <span className="text-xs font-black uppercase tracking-wider">{row.label}</span>
+                                                            </div>
+                                                            <div className="space-y-2 text-[12px]">
+                                                                <div className="flex justify-between gap-5">
+                                                                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{t('pureNetProfit', 'Sof foyda')}</span>
+                                                                    <span className={`font-black ${netTone}`}>{row.net >= 0 ? '+' : '-'}{formatNumberSmart(Math.abs(row.net), true, language)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between gap-5">
+                                                                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{t('income', 'Tushum')}</span>
+                                                                    <span className="font-bold">{formatNumberSmart(row.income, true, language)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between gap-5">
+                                                                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{t('expense', 'Xarajat')}</span>
+                                                                    <span className="font-bold">{formatNumberSmart(row.expense, true, language)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="h-[220px] flex items-center justify-center opacity-50"><p className="text-sm">Ma'lumot yo'q</p></div>
+                            )}
+                            <div className="w-full mt-2 flex flex-wrap gap-4 justify-center px-2">
+                                {netProfitRows.map(row => {
+                                    const pct = totalNetProfitAbs > 0 ? ((Math.abs(row.net) / totalNetProfitAbs) * 100).toFixed(0) : '0';
+                                    return (
+                                        <div key={row.key} className="flex items-center gap-1.5 text-[11px]">
+                                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: row.color }} />
+                                            <span className={`font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{row.label} ({pct}%)</span>
+                                            <NumberTooltip value={row.net} label={`${row.label} ${t('pureNetProfit', 'Sof foyda')}`} theme={theme}>
+                                                <span className={`font-bold cursor-help ${row.net >= 0 ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600' : theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`}>
+                                                    {row.net >= 0 ? '+' : '-'}{formatNumberSmart(Math.abs(row.net), true, language)}
+                                                </span>
+                                            </NumberTooltip>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+	                    </div>
+	                </div>
+
+	                {/* Operations Widgets */}
+	                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+	                    {/* Plan Fulfillment */}
+	                    <div className={`p-5 rounded-3xl border shadow-lg xl:col-span-2 ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                             <h3 className={`text-sm md:text-base font-bold flex items-center gap-2 mb-4 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                 <TrendingUpIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
                                 {t('planFulfillment', 'Reja Bajarilishi')}
                             </h3>
-                            <div className="flex flex-col gap-3">
-                                <div className="flex flex-wrap justify-between items-end gap-2">
-                                    <span className={`text-3xl font-black font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                        {advancedStats.planFulfillment.percentage}%
-                                    </span>
-                                    <div className="flex gap-4 text-right">
-                                        <div>
-                                            <div className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`}>{t('debt', 'Qarz')}</div>
-                                            <NumberTooltip value={advancedStats.planFulfillment.actualDebt} label={t('debt', 'Qarz')} theme={theme}>
-                                                <div className={`text-xs font-bold cursor-help ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    {formatNumberSmart(advancedStats.planFulfillment.actualDebt, true, language)}
-                                                </div>
-                                            </NumberTooltip>
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                    <div className="min-w-0">
+                                        <div className={`text-[34px] leading-none font-black font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                            {advancedStats.planFulfillment.percentage}%
                                         </div>
-                                        <div>
-                                            <div className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('income', 'Tushum')}</div>
-                                            <NumberTooltip value={advancedStats.planFulfillment.income} label={t('income', 'Tushum')} theme={theme}>
-                                                <div className={`text-xs font-bold cursor-help ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                    {formatNumberSmart(advancedStats.planFulfillment.income, true, language)}
-                                                </div>
-                                            </NumberTooltip>
+                                        <div className={`mt-1 text-[12px] font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            {formatFullMoney(advancedStats.planFulfillment.paidTowardPlan)} / {formatFullMoney(advancedStats.planFulfillment.target)}
                                         </div>
+                                    </div>
+                                    <div className={`rounded-2xl px-4 py-3 text-[12px] font-bold ${theme === 'dark' ? 'bg-white/[0.04] text-gray-300' : 'bg-slate-50 text-slate-600'}`}>
+                                        <span className={theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}>
+                                            {formatFullMoney(advancedStats.planFulfillment.paidTowardPlan)}
+                                        </span>
+                                        <span className="mx-2 opacity-50">+</span>
+                                        <span className={theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}>
+                                            {formatFullMoney(advancedStats.planFulfillment.actualDebt)}
+                                        </span>
+                                        <span className="mx-2 opacity-50">=</span>
+                                        <span>{formatFullMoney(advancedStats.planFulfillment.target)}</span>
                                     </div>
                                 </div>
                                 <div className={`w-full h-3 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'}`}>
@@ -475,17 +546,43 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                         style={{ width: `${advancedStats.planFulfillment.percentage}%` }}
                                     />
                                 </div>
-                                <div className="flex justify-between items-center text-[11px] font-medium mt-1">
-                                    <span className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}>{t('totalExpectedPlan', 'Jami kutilgan reja')}</span>
-                                    <NumberTooltip value={advancedStats.planFulfillment.target} label="Jami kutilgan reja" theme={theme}>
-                                        <span className={`cursor-help ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{formatNumberSmart(advancedStats.planFulfillment.target, true, language)}</span>
-                                    </NumberTooltip>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/[0.08] bg-white/[0.03]' : 'border-gray-100 bg-slate-50/70'}`}>
+                                        <div className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                            {t('totalExpectedPlan', 'Jami kutilgan reja')}
+                                        </div>
+                                        <NumberTooltip value={advancedStats.planFulfillment.target} label={t('planFulfillmentTooltip', "Reja bajarilishi: rejaga to'langan + qolgan qarz = jami kutilgan reja")} theme={theme}>
+                                            <div className={`mt-2 cursor-help text-[17px] font-black tabular-nums leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                                {formatFullMoney(advancedStats.planFulfillment.target)}
+                                            </div>
+                                        </NumberTooltip>
+                                    </div>
+                                    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/[0.06]' : 'border-emerald-100 bg-emerald-50/70'}`}>
+                                        <div className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                            {t('paidTowardPlan', "Rejaga to'langan")}
+                                        </div>
+                                        <NumberTooltip value={advancedStats.planFulfillment.paidTowardPlan} label={t('paidTowardPlan', "Rejaga to'langan")} theme={theme}>
+                                            <div className={`mt-2 cursor-help text-[17px] font-black tabular-nums leading-tight ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                                                {formatFullMoney(advancedStats.planFulfillment.paidTowardPlan)}
+                                            </div>
+                                        </NumberTooltip>
+                                    </div>
+                                    <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-rose-500/20 bg-rose-500/[0.06]' : 'border-rose-100 bg-rose-50/70'}`}>
+                                        <div className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-rose-400' : 'text-rose-700'}`}>
+                                            {t('debt', 'Qarz')}
+                                        </div>
+                                        <NumberTooltip value={advancedStats.planFulfillment.actualDebt} label={t('debt', 'Qarz')} theme={theme}>
+                                            <div className={`mt-2 cursor-help text-[17px] font-black tabular-nums leading-tight ${theme === 'dark' ? 'text-rose-300' : 'text-rose-700'}`}>
+                                                {formatFullMoney(advancedStats.planFulfillment.actualDebt)}
+                                            </div>
+                                        </NumberTooltip>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                    </div>
 
-                        {/* Fleet Utilization */}
-                        <div className={`p-5 rounded-3xl border shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                    {/* Fleet Utilization */}
+                    <div className={`p-5 rounded-3xl border shadow-lg ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
                             <h3 className={`text-sm md:text-base font-bold flex items-center gap-2 mb-4 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                 <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                                 {t('fleetStatus', 'Avtopark Holati')}
@@ -519,129 +616,9 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                                     <span className="text-[10px] uppercase tracking-wider text-gray-500 mt-1">{t('total', 'Jami')}</span>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Top Debtors */}
-                        <div className={`p-5 rounded-3xl border shadow-lg flex-1 ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                            <h3 className={`text-sm md:text-base font-bold flex items-center gap-2 mb-4 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-rose-400' : 'text-rose-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                {t('topDebtors', 'Qarzdorlar (Top 5)')}
-                            </h3>
-                            <div className="space-y-3">
-                                {topDebtors.length === 0 ? (
-                                    <div className="text-center opacity-50 py-4 text-sm">Ma'lumot yo'q</div>
-                                ) : (
-                                    topDebtors.map((item: any, idx: number) => {
-                                        const driver = item.driver;
-                                        const avatar = driver?.avatar;
-                                        const carModel = driver?.carModel || 'Noma\'lum';
-                                        const plate = driver?.licensePlate || 'Noma\'lum';
-
-                                        return (
-                                            <div key={driver.id} className={`flex items-center gap-3.5 p-2 rounded-xl transition-all ${theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.03]'}`}>
-                                                <div className="relative">
-                                                    {avatar ? (
-                                                        <img src={avatar} alt={driver.name} className="w-10 h-10 rounded-full object-cover shadow-sm ring-1 ring-black/5" />
-                                                    ) : (
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${theme === 'dark' ? 'bg-surface-2 text-gray-300 ring-1 ring-white/10' : 'bg-gray-100 text-gray-600 ring-1 ring-black/5'}`}>
-                                                            {driver.name.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                    <div className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm ${theme === 'dark' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
-                                                        {idx + 1}
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    <p className={`text-sm font-bold truncate leading-none mb-1.5 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
-                                                    <div className={`flex items-center gap-2 text-[11px] font-medium leading-none ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        <span className="truncate max-w-[80px]">{carModel}</span>
-                                                        <LicensePlate plate={plate} size="sm" />
-                                                    </div>
-                                                </div>
-                                                <NumberTooltip value={-item.debt} label={t('debt', 'Qarz')} align="right" theme={theme}>
-                                                    <div className={`text-sm font-black cursor-help ${theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`}>
-                                                        -{formatNumberSmart(item.debt, true, language)}
-                                                    </div>
-                                                </NumberTooltip>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </div>
                     </div>
-
-                    {/* Column 2 */}
-                    <div className="flex flex-col gap-6">
-                        
-                        {/* High Cost Cars */}
-                        <div className={`p-5 rounded-3xl border shadow-lg flex-1 ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                            <h3 className={`text-sm md:text-base font-bold flex items-center gap-2 mb-4 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                {t('highCostCars', 'Xarajatli Avtomobillar (Top 3)')}
-                            </h3>
-                            <div className="space-y-4">
-                                {advancedStats.highCostCars.length === 0 ? (
-                                    <div className="text-center opacity-50 py-4 text-sm">Ma'lumot yo'q</div>
-                                ) : (
-                                    advancedStats.highCostCars.map((carItem: any, idx: number) => {
-                                        const car = cars.find((c: any) => c.id === carItem.id);
-                                        const carModel = car?.name || carItem.name;
-                                        const plate = car?.licensePlate || 'Noma\'lum';
-                                        const avatar = car?.avatar || carItem.avatar;
-                                        const latestComment = carItem.latestComment;
-
-                                        return (
-                                            <div key={carItem.id} className={`flex flex-col p-3 rounded-2xl transition-all ${theme === 'dark' ? 'hover:bg-white/[0.04] bg-white/[0.02]' : 'hover:bg-black/[0.03] bg-gray-50'}`}>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative">
-                                                            {avatar ? (
-                                                                <img src={avatar} alt={carModel} className="w-10 h-10 rounded-full object-cover shadow-sm ring-1 ring-black/5" />
-                                                            ) : (
-                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${theme === 'dark' ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30' : 'bg-amber-100 text-amber-700 ring-1 ring-amber-200'}`}>
-                                                                    {idx + 1}
-                                                                </div>
-                                                            )}
-                                                            {avatar && (
-                                                                <div className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm ${theme === 'dark' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                                                                    {idx + 1}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex flex-col gap-1 mt-0.5">
-                                                            <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{carModel}</span>
-                                                            <div>
-                                                                <LicensePlate plate={plate} size="sm" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`text-sm font-black ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>
-                                                        {formatNumberSmart(carItem.amount, true, language)}
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Latest Comment Bubble */}
-                                                {latestComment && (
-                                                    <div className={`mt-3 ml-12 px-3 py-2 text-xs rounded-xl rounded-tl-sm shadow-sm inline-block max-w-[85%] relative border ${
-                                                        theme === 'dark' 
-                                                            ? 'bg-[#1a2332] text-gray-300 border-white/[0.06]' 
-                                                            : 'bg-white text-gray-600 border-gray-200'
-                                                    }`}>
-                                                        <span className={`not-italic font-medium line-clamp-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>"{latestComment}"</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </div>
-
-
                 </div>
             </div>
         </div>
-    </div>
     );
 };

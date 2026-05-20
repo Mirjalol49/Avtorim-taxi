@@ -30,6 +30,7 @@ import * as firestoreService from './services/firestoreService';
 import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllReadNotifications, sendNotification } from './services/notificationService';
 
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
+import { getCarIdForDriverDate } from './src/features/drivers/utils/driverPlanHistory';
 import { playLockSound } from './services/soundService';
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 import { clearChunkRecoveryState, isChunkLoadError, recoverFromChunkLoadError } from './src/utils/chunkRecovery';
@@ -145,6 +146,7 @@ const AppContent: React.FC = () => {
   const [txInitialType, setTxInitialType] = useState<TransactionType | undefined>(undefined);
   const [txInitialDate, setTxInitialDate] = useState<Date | undefined>(undefined);
   const [txInitialDepositTopup, setTxInitialDepositTopup] = useState(false);
+  const [txInitialShowPlanException, setTxInitialShowPlanException] = useState(false);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isSuperAdminOpen, setIsSuperAdminOpen] = useState(false);
@@ -323,22 +325,49 @@ const AppContent: React.FC = () => {
   const handleAddTransaction = async (data: Omit<Transaction, 'id'>) => {
     try {
       const driver = data.driverId ? drivers.find(d => d.id === data.driverId) : undefined;
-      const car = driver
-        ? (cars.find(c => c.assignedDriverId === driver.id) ?? null)
-        : undefined;
+      const transactionDate = new Date((data as any).timestamp ?? Date.now());
+      const currentAssignedCar = driver
+        ? (cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted) ?? null)
+        : null;
+      const historicalCarId = driver
+        ? getCarIdForDriverDate(driver, transactionDate, currentAssignedCar)
+        : null;
+      const car = historicalCarId
+        ? (cars.find(c => c.id === historicalCarId) ?? null)
+        : (data.carId ? (cars.find(c => c.id === data.carId) ?? null) : null);
 
       const payload: Omit<Transaction, 'id'> = { ...data };
       if (driver) (payload as any).driverName = driver.name;
       // Don't attach car info for deposit top-ups — the HAYDOVCHI column should show the driver, not the car
       if (car && (data as any).category !== 'deposit_topup') {
-        payload.carName = `${car.name} — ${car.licensePlate}`;
+        if (!(payload as any).carName) payload.carName = `${car.name} — ${car.licensePlate}`;
         if (!(payload as any).carId) (payload as any).carId = car.id;
       }
+
+      const toDayKey = (value: number | Date) => {
+        const d = value instanceof Date ? value : new Date(value);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const replacesDayMarker =
+        data.driverId &&
+        (data as any).category !== 'deposit_topup' &&
+        (data.type === TransactionType.INCOME || data.type === TransactionType.DAY_OFF || data.type === TransactionType.NOT_WORKING);
+
+      const dayMarkerIdsToDelete = replacesDayMarker
+        ? transactions
+            .filter(tx =>
+              tx.driverId === data.driverId &&
+              tx.status !== 'DELETED' &&
+              (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) &&
+              toDayKey(tx.timestamp) === toDayKey((payload as any).timestamp ?? Date.now())
+            )
+            .map(tx => tx.id)
+        : [];
 
       // Snapshot deposit balance BEFORE saving (deposit drivers only)
       const isDepositDriver = driver && (driver as any).driverType === 'deposit';
       const balanceBefore = isDepositDriver && driver
-        ? calcDriverFinance(driver, car ?? null, transactions).remainingDeposit
+        ? calcDriverFinance(driver, currentAssignedCar ?? car ?? null, transactions).remainingDeposit
         : null;
 
       const newTxId = await firestoreService.addTransaction(payload as any, carsFleetId);
@@ -348,15 +377,26 @@ const AppContent: React.FC = () => {
         setTransactions(prev => [...prev, { ...payload, id: newTxId, timestamp: (payload as any).timestamp ?? Date.now() } as Transaction]);
       }
 
+      if (newTxId && dayMarkerIdsToDelete.length > 0) {
+        await firestoreService.deleteTransactionsBatch(
+          dayMarkerIdsToDelete,
+          { adminName: adminUser?.username || 'Admin', count: dayMarkerIdsToDelete.length, totalAmount: 0 },
+          carsFleetId
+        );
+        setTransactions(prev => prev.map(tx =>
+          dayMarkerIdsToDelete.includes(tx.id) ? { ...tx, status: 'DELETED' as any } : tx
+        ));
+      }
+
       // Check threshold crossing for deposit drivers
       if (isDepositDriver && driver && balanceBefore !== null && newTxId) {
         // Simulate the new transaction to get balance after
         const fakeTx = {
-          ...data,
+          ...payload,
           id: newTxId,
-          timestamp: (data as any).timestamp ?? Date.now(),
+          timestamp: (payload as any).timestamp ?? Date.now(),
         } as any;
-        const balanceAfter = calcDriverFinance(driver, car ?? null, [...transactions, fakeTx]).remainingDeposit;
+        const balanceAfter = calcDriverFinance(driver, currentAssignedCar ?? car ?? null, [...transactions, fakeTx]).remainingDeposit;
 
         const warnThreshold = (driver as any).depositWarningThreshold ?? 1_000_000;
         if (balanceBefore > warnThreshold && balanceAfter <= warnThreshold) {
@@ -390,32 +430,13 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleClearDayMarkers = async (driverId: string, date: Date) => {
-    const toKey = (value: number | Date) => {
-      const d = value instanceof Date ? value : new Date(value);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
-    const dayKey = toKey(date);
-    const markerIds = transactions
-      .filter(tx =>
-        tx.driverId === driverId &&
-        tx.status !== 'DELETED' &&
-        (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) &&
-        toKey(tx.timestamp) === dayKey
-      )
-      .map(tx => tx.id);
-
-    if (markerIds.length === 0) return;
-
-    await firestoreService.deleteTransactionsBatch(
-      markerIds,
-      { adminName: adminUser?.username || 'Admin', count: markerIds.length, totalAmount: 0 },
-      carsFleetId
-    );
-
-    setTransactions(prev => prev.map(tx =>
-      markerIds.includes(tx.id) ? { ...tx, status: 'DELETED' as any } : tx
-    ));
+  const openTransactionForPlanDay = (driverId: string, date: Date) => {
+    setTxInitialDriverId(driverId);
+    setTxInitialType(TransactionType.INCOME);
+    setTxInitialDate(date);
+    setTxInitialDepositTopup(false);
+    setTxInitialShowPlanException(true);
+    setIsTxModalOpen(true);
   };
 
   const closeConfirmModal = () => {
@@ -1183,7 +1204,7 @@ const AppContent: React.FC = () => {
                     cars={cars}
                     theme={theme}
                     isMobile={isMobile}
-                    onClearDayMarkers={handleClearDayMarkers}
+                    onOpenTransactionForDay={openTransactionForPlanDay}
                   />
             } />
 
@@ -1257,6 +1278,7 @@ const AppContent: React.FC = () => {
                 setTxInitialType(undefined);
                 setTxInitialDate(undefined);
                 setTxInitialDepositTopup(false);
+                setTxInitialShowPlanException(false);
             }}
             onSubmit={handleAddTransaction}
             drivers={nonDeletedDrivers}
@@ -1268,6 +1290,7 @@ const AppContent: React.FC = () => {
             initialType={txInitialType}
             initialDate={txInitialDate}
             initialIsDepositTopup={txInitialDepositTopup}
+            initialShowPlanException={txInitialShowPlanException}
           />
         )}
 

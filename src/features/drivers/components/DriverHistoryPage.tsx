@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
-import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../utils/driverPlanHistory';
-import { getEffectivePlanForDay } from '../../cars/utils/planHistory';
+import { getEffectivePlanForDriverDay, getDriverDayOverrideType, resolveTransactionCarSnapshot } from '../utils/driverPlanHistory';
+import type { TransactionCarSnapshot } from '../utils/driverPlanHistory';
 import DatePicker from '../../../../components/DatePicker';
 import Lottie from 'lottie-react';
 import cardAnimation from '../../../../Images/card.json';
@@ -17,6 +17,7 @@ import { LicensePlate } from '../../../components/ui/LicensePlate';
 interface Props {
     driver: Driver;
     car: Car | null;
+    cars: Car[];
     transactions: Transaction[];
     theme: 'light' | 'dark';
     onClose: () => void;
@@ -47,7 +48,7 @@ interface DailyHistory {
     overrideType?: string; 
     isDayOff: boolean;
     status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'NOT_WORKING';
-    carName: string; 
+    carSnapshots: TransactionCarSnapshot[];
     transactions: Transaction[];
 }
 
@@ -71,6 +72,7 @@ const WalletIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const generateDailyTimeline = (
     driver: Driver, 
     fallbackCar: Car | null, 
+    cars: Car[],
     planTxs: Transaction[]
 ): MonthGroup[] => {
     const today = new Date();
@@ -145,11 +147,31 @@ const generateDailyTimeline = (
             }
         }
         
-        let carName = driver.carModel || 'Noma\'lum avto';
-        const carTx = dayTxs.find(t => t.carName);
-        if (carTx && carTx.carName) {
-            carName = carTx.carName;
+        const carSnapshots = dayTxs
+            .map(tx => resolveTransactionCarSnapshot(tx, driver, cars, fallbackCar))
+            .filter((snapshot): snapshot is TransactionCarSnapshot => Boolean(snapshot));
+
+        if (carSnapshots.length === 0) {
+            const daySnapshot = resolveTransactionCarSnapshot(
+                {
+                    id: `day-${key}`,
+                    driverId: driver.id,
+                    driverName: driver.name,
+                    amount: 0,
+                    type: TransactionType.INCOME,
+                    timestamp: current.getTime(),
+                    status: PaymentStatus.ACTIVE,
+                } as Transaction,
+                driver,
+                cars,
+                fallbackCar
+            );
+            if (daySnapshot) carSnapshots.push(daySnapshot);
         }
+
+        const uniqueCarSnapshots = Array.from(
+            new Map(carSnapshots.map(snapshot => [snapshot.id || snapshot.label, snapshot])).values()
+        );
 
         daysArr.push({
             dateKey: key,
@@ -161,7 +183,7 @@ const generateDailyTimeline = (
             overrideType,
             isDayOff,
             status,
-            carName,
+            carSnapshots: uniqueCarSnapshots,
             transactions: dayTxs
         });
         
@@ -199,7 +221,7 @@ const generateDailyTimeline = (
     return Array.from(monthGroups.values());
 };
 
-export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, theme, onClose }) => {
+export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transactions, theme, onClose }) => {
     const isDark = theme === 'dark';
     const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
@@ -233,7 +255,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
     const depositTxs  = allDriverTxs.filter(tx => tx.category === 'deposit_topup' || (tx as any).useDeposit);
     const salaryTxs   = allDriverTxs.filter(tx => tx.category === 'salary_payment');
 
-    const timeline = useMemo(() => generateDailyTimeline(driver, car, planTxs), [driver, car, planTxs]);
+    const timeline = useMemo(() => generateDailyTimeline(driver, car, cars, planTxs), [driver, car, cars, planTxs]);
 
     const filteredTimeline = useMemo(() => {
         let groups = timeline;
@@ -315,6 +337,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
     const divider = isDark ? 'divide-[#38383A]' : 'divide-[#E5E5EA]';
 
     const isSalary = driver.driverType === 'salary';
+    const hasDateFilter = Boolean(startDate || endDate);
 
     const TABS: { id: Tab; icon: React.ReactNode | string; label: string; count: number }[] = [
         { id: 'daily_history', icon: '📅', label: t('historyTab', 'Tarix'), count: 0 },
@@ -327,7 +350,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[250] flex flex-col"
+            className="fixed inset-y-0 right-0 left-0 md:left-64 z-[45] flex flex-col"
             style={{
                 background: bg,
                 transform: visible ? 'translateY(0)' : 'translateY(100%)',
@@ -364,9 +387,9 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                         </div>
                         <div className="flex flex-col min-w-0">
                             <h1 className={`text-[20px] sm:text-[22px] font-bold tracking-tight mb-1 truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h1>
-                            <span className={`text-[12px] sm:text-[13px] font-medium mb-1.5 truncate ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>{driver.carModel || 'Noma\'lum avto'}</span>
+                            <span className={`text-[12px] sm:text-[13px] font-medium mb-1.5 truncate ${isDark ? 'text-[#EBEBF5]/60' : 'text-[#3C3C43]/60'}`}>{car?.name || driver.carModel || 'Noma\'lum avto'}</span>
                             <div className="scale-90 origin-left">
-                                <LicensePlate plate={driver.licensePlate || ''} size="sm" />
+                                <LicensePlate plate={car?.licensePlate || driver.licensePlate || ''} size="sm" />
                             </div>
                         </div>
                     </div>
@@ -442,41 +465,55 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                 </div>
                             )}
 
-                            {/* Filters Align Right */}
-                            <div className="flex justify-end px-2 sm:px-0 max-w-3xl mx-auto w-full">
-                                <div className="flex items-center gap-2">
-                                    <div className={`flex items-center p-1 rounded-[14px] shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-white/5' : 'bg-[#F2F2F7] border-gray-200'}`}>
-                                        <div className="w-[120px] sm:w-32">
-                                            <DatePicker 
-                                                label="Boshlanish"
-                                                value={startDate} 
-                                                onChange={setStartDate} 
-                                                theme={theme} 
-                                                placeholder="Boshlanish" 
-                                                hideLabel
+                            {/* Date range filter */}
+                            <div className={`max-w-3xl mx-auto w-full rounded-3xl border p-4 sm:p-5 shadow-sm ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                                <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className={`flex items-center gap-2 mb-3 ${muted}`}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" />
+                                                <path d="M16 2v4M8 2v4M3 10h18" />
+                                            </svg>
+                                            <span className="text-[11px] font-black uppercase tracking-widest">
+                                                {t('dateRange', "Sana oralig'i")}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-end gap-3">
+                                            <DatePicker
+                                                label={t('fromDate', 'Boshlanish sanasi')}
+                                                value={startDate}
+                                                onChange={setStartDate}
+                                                theme={theme}
+                                                placeholder={t('fromDate', 'Boshlanish sanasi')}
+                                                labelClassName={muted}
+                                            />
+                                            <div className={`hidden sm:flex h-12 items-center justify-center px-1 pb-0.5 text-sm font-bold ${muted}`}>-</div>
+                                            <DatePicker
+                                                label={t('toDate', 'Tugash sanasi')}
+                                                value={endDate}
+                                                onChange={setEndDate}
+                                                theme={theme}
+                                                placeholder={t('toDate', 'Tugash sanasi')}
+                                                labelClassName={muted}
                                             />
                                         </div>
-                                        <span className={`px-1.5 ${muted}`}>-</span>
-                                        <div className="w-[120px] sm:w-32">
-                                            <DatePicker 
-                                                label="Tugash"
-                                                value={endDate} 
-                                                onChange={setEndDate} 
-                                                theme={theme} 
-                                                placeholder="Boshlanish - Tugash" 
-                                                hideLabel
-                                            />
-                                        </div>
-                                        {(startDate || endDate) && (
-                                            <button 
-                                                onClick={() => { setStartDate(null); setEndDate(null); }}
-                                                className={`p-2 ml-1 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-gray-400' : 'bg-white hover:bg-gray-50 text-gray-500 shadow-sm'}`}
-                                                title="Tozalash"
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                                            </button>
-                                        )}
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setStartDate(null); setEndDate(null); }}
+                                        disabled={!hasDateFilter}
+                                        className={`h-12 px-4 rounded-2xl text-[13px] font-bold border transition-all active:scale-[0.98] ${
+                                            hasDateFilter
+                                                ? isDark
+                                                    ? 'bg-white/[0.06] border-white/[0.1] text-white hover:bg-white/[0.1]'
+                                                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                                                : isDark
+                                                    ? 'bg-white/[0.03] border-white/[0.06] text-white/25 cursor-not-allowed'
+                                                    : 'bg-gray-50/60 border-gray-200 text-gray-300 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        {t('clear', 'Tozalash')}
+                                    </button>
                                 </div>
                             </div>
 
@@ -553,6 +590,20 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, transactions, 
                                                             ))}
                                                             {day.transactions.filter(tx => tx.description && tx.type !== TransactionType.DAY_OFF).length === 0 && (
                                                                 <div className={`text-[13px] italic ${muted}`}>{t('noComment', 'Izohsiz')}</div>
+                                                            )}
+                                                            {day.carSnapshots.length > 0 && (
+                                                                <div className={`mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-medium ${muted}`}>
+                                                                    <span>{t('drivenCar', 'Haydalgan avto')}:</span>
+                                                                    {day.carSnapshots.map(snapshot => (
+                                                                        <span
+                                                                            key={snapshot.id || snapshot.label}
+                                                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 ${isDark ? 'bg-white/[0.04] border-white/[0.06] text-white/70' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
+                                                                        >
+                                                                            <span className="font-semibold">{snapshot.name}</span>
+                                                                            {snapshot.licensePlate && <LicensePlate plate={snapshot.licensePlate} size="sm" />}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
                                                             )}
                                                         </div>
 

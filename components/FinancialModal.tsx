@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon, CarIcon } from './Icons';
+import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon, CarIcon, CalendarIcon, RefreshIcon } from './Icons';
 import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
 import { useToast } from './ToastNotification';
 import { toDateKey } from '../services/daysOffService';
+import { setDriverDayOverride, clearDriverDayOverride } from '../services/firestoreService';
 import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
+import { getPlanForDriverDate } from '../src/features/drivers/utils/driverPlanHistory';
 import Lottie from 'lottie-react';
 import cardAnimation from '../Images/card.json';
 import restAnimation from '../Images/rest.json';
@@ -34,6 +36,7 @@ const OTHER_CATEGORIES = [
 ];
 
 const ALL_CATEGORY_LABELS = OTHER_CATEGORIES.map(c => c.label);
+const fmtInputNumber = (v: string) => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 const isCategoryActive = (description: string, catLabel: string) =>
     description === catLabel ||
@@ -47,7 +50,7 @@ const getActiveCategory = (description: string) =>
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<Transaction, 'id'>, id?: string) => void;
+  onSubmit: (data: Omit<Transaction, 'id'>, id?: string) => void | Promise<void>;
   drivers: Driver[];
   cars?: Car[];
   transactions?: Transaction[];
@@ -58,13 +61,14 @@ interface FinancialModalProps {
   initialDate?: Date;
   initialTransaction?: Transaction;
   initialIsDepositTopup?: boolean;
+  initialShowPlanException?: boolean;
 }
 
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit,
   drivers, cars = [], transactions = [],
   theme, fleetId = '',
-  initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup,
+  initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup, initialShowPlanException,
 }) => {
   const { t, i18n } = useTranslation();
   const { addToast } = useToast();
@@ -90,6 +94,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [chequeImage,   setChequeImage]   = useState<string | null>(null);
   const [chequeError,   setChequeError]   = useState<string | null>(null);
+  const [planExceptionEnabled, setPlanExceptionEnabled] = useState(false);
+  const [planExceptionAmount, setPlanExceptionAmount] = useState('');
+  const [planExceptionDisplayAmount, setPlanExceptionDisplayAmount] = useState('');
   const chequeRef = useRef<HTMLInputElement>(null);
 
   // ── Init / reset ────────────────────────────────────────────────────────────
@@ -157,7 +164,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   }, [isOpen, paymentMethod, processImageFile]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const fmtDisplay = (v: string) => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const fmtDisplay = fmtInputNumber;
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,9 +173,24 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDisplayAmount(fmtDisplay(raw));
   };
 
+  const handlePlanExceptionAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setPlanExceptionAmount(raw);
+    setPlanExceptionDisplayAmount(fmtDisplay(raw));
+  };
+
   // ── Derived ──────────────────────────────────────────────────────────────────
   const selectedDriver  = drivers.find(d => d.id === driverId) ?? null;
   const selectedCar     = cars.find(c => c.id === carId) ?? null;
+  const selectedDriverCar = selectedDriver
+    ? (cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null)
+    : null;
+  const selectedDateKey = toDateKey(date);
+  const existingDayOverride = selectedDriver?.dayOverrides?.[selectedDateKey];
+  const hasExistingCustomPlan = existingDayOverride?.type === 'DISCOUNT' && typeof existingDayOverride.customPlan === 'number';
+  const standardPlanForDate = selectedDriver ? getPlanForDriverDate(selectedDriver, date, selectedDriverCar) : 0;
+  const showPlanExceptionSection = Boolean(selectedDriver && type !== TransactionType.EXPENSE);
+  const isPlanMarkerType = type === TransactionType.DAY_OFF || type === TransactionType.NOT_WORKING;
   const filteredDrivers = drivers.filter(d =>
     d.name.toLowerCase().includes(driverSearch.toLowerCase()) ||
     (d.carModel ?? '').toLowerCase().includes(driverSearch.toLowerCase()) ||
@@ -225,6 +247,18 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       ? { type: 'salary', balance: salaryInfo.netSalary, gross: salaryInfo.gross }
       : null;
 
+  useEffect(() => {
+    if (!isOpen || !selectedDriver) return;
+
+    const existingCustom = selectedDriver.dayOverrides?.[selectedDateKey];
+    const hasCustom = existingCustom?.type === 'DISCOUNT' && typeof existingCustom.customPlan === 'number';
+    const amountValue = hasCustom ? String(existingCustom.customPlan) : '';
+
+    setPlanExceptionEnabled(hasCustom);
+    setPlanExceptionAmount(amountValue);
+    setPlanExceptionDisplayAmount(fmtDisplay(amountValue));
+  }, [isOpen, selectedDriver?.id, selectedDateKey, initialShowPlanException]);
+
   if (!isOpen) return null;
 
   // ── Submit ───────────────────────────────────────────────────────────────────
@@ -262,6 +296,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       setChequeError(t('cardImageRequiredToast', "Karta orqali to'lovda chek rasmi talab qilinadi"));
       return;
     }
+    if (showPlanExceptionSection && type === TransactionType.INCOME && planExceptionEnabled) {
+      const customPlan = Number(planExceptionAmount);
+      if (!planExceptionAmount || isNaN(customPlan) || customPlan < 0) {
+        addToast('error', t('customDailyPlanAmountToast', 'Maxsus kunlik reja summasini kiriting'));
+        return;
+      }
+    }
 
     const timestamp = new Date(date);
     const now = new Date();
@@ -291,7 +332,24 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       }
     }
 
-    onSubmit(payload, initialTransaction?.id);
+    if (selectedDriver) {
+      const shouldClearCustomPlan = hasExistingCustomPlan && (
+        type === TransactionType.DAY_OFF ||
+        type === TransactionType.NOT_WORKING ||
+        (type === TransactionType.INCOME && !planExceptionEnabled)
+      );
+
+      if (type === TransactionType.INCOME && planExceptionEnabled) {
+        await setDriverDayOverride(selectedDriver.id, selectedDateKey, {
+          type: 'DISCOUNT',
+          customPlan: Number(planExceptionAmount),
+        });
+      } else if (shouldClearCustomPlan) {
+        await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
+      }
+    }
+
+    await onSubmit(payload, initialTransaction?.id);
 
     resetAndClose();
   };
@@ -304,6 +362,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDate(new Date());
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     setExpenseTarget('driver'); setUseDeposit(false); setIsDepositTopup(false);
+    setPlanExceptionEnabled(false);
+    setPlanExceptionAmount(''); setPlanExceptionDisplayAmount('');
     onClose();
   };
 
@@ -566,6 +626,139 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {/* Date */}
             <DatePicker label={t('time') || 'Vaqt'} value={date} onChange={setDate} theme={theme} />
+
+            {/* Daily plan exception */}
+            {showPlanExceptionSection && (
+              <div className={`rounded-2xl border overflow-hidden transition-all ${
+                isDark ? 'bg-surface-2/50 border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'
+              }`}>
+                <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      planExceptionEnabled
+                        ? isDark ? 'bg-teal-500/15 text-teal-300' : 'bg-teal-50 text-teal-700'
+                        : isDark ? 'bg-white/[0.05] text-gray-400' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <CalendarIcon className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {t('customDailyPlan', 'Maxsus kunlik reja')}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 truncate ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                        {isPlanMarkerType
+                          ? t('customDailyPlanClearedByMarker', 'Dam olish yoki ishlamagan kun tanlansa, maxsus reja bekor qilinadi.')
+                          : (planExceptionEnabled
+                            ? t('customDailyPlanActiveHint', 'Bu kun uchun alohida reja ishlatiladi')
+                            : t('customDailyPlanModalHint', 'Faqat tanlangan kun rejasini o‘zgartirish'))}
+                      </p>
+                    </div>
+                  </div>
+                  {planExceptionEnabled && !isPlanMarkerType && (
+                    <div className="flex items-baseline gap-1 flex-shrink-0">
+                      <span className={`text-[12px] font-black tabular-nums ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
+                        {fmt(Number(planExceptionAmount || 0))}
+                      </span>
+                      <span className={`text-[10px] font-bold ${isDark ? 'text-teal-300/60' : 'text-teal-700/60'}`}>UZS</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`px-4 pb-4 pt-1 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+                  {isPlanMarkerType ? (
+                    <p className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      isDark ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'
+                    }`}>
+                      {t('customDailyPlanClearedByMarker', 'Dam olish yoki ishlamagan kun tanlansa, maxsus reja bekor qilinadi.')}
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !planExceptionEnabled;
+                          setPlanExceptionEnabled(next);
+                          if (next && !planExceptionAmount) {
+                            const value = String(hasExistingCustomPlan ? existingDayOverride?.customPlan ?? '' : standardPlanForDate);
+                            setPlanExceptionAmount(value);
+                            setPlanExceptionDisplayAmount(fmtDisplay(value));
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-3 transition-all ${
+                          planExceptionEnabled
+                            ? isDark ? 'border-teal-500/40 bg-teal-500/10 text-teal-300' : 'border-teal-300 bg-teal-50 text-teal-700'
+                            : isDark ? 'border-white/[0.08] bg-surface-2 text-gray-300' : 'border-gray-200 bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <span className="text-sm font-bold min-w-0">{t('enableCustomDailyPlan', 'Maxsus rejani yoqish')}</span>
+                        <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                          planExceptionEnabled ? 'bg-teal-500' : isDark ? 'bg-white/[0.14]' : 'bg-gray-300'
+                        }`}>
+                          <span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            planExceptionEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                        </span>
+                      </button>
+
+                      {planExceptionEnabled && (
+                        <div className="space-y-3">
+                          <div className={`grid grid-cols-2 gap-2 rounded-xl p-2 ${isDark ? 'bg-black/10' : 'bg-gray-50'}`}>
+                            <div>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/35' : 'text-gray-400'}`}>
+                                {t('standardPlan', 'Standart')}
+                              </p>
+                              <p className={`mt-1 text-sm font-black ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                                {fmt(standardPlanForDate)} <span className="text-[10px] opacity-60">UZS</span>
+                              </p>
+                            </div>
+                            <div>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/35' : 'text-gray-400'}`}>
+                                {t('effectivePlanLabel', 'Joriy reja')}
+                              </p>
+                              <p className="mt-1 text-sm font-black text-teal-500">
+                                {fmt(Number(planExceptionAmount || 0))} <span className="text-[10px] opacity-60">UZS</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>{t('amountUzsLabel', 'SUMMA (UZS)')}</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={planExceptionDisplayAmount}
+                                onChange={handlePlanExceptionAmountChange}
+                                className={`${inputClass} h-12 pr-14 font-black tabular-nums`}
+                                placeholder={fmt(standardPlanForDate)}
+                              />
+                              <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                            </div>
+                          </div>
+
+                          {hasExistingCustomPlan && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPlanExceptionEnabled(false);
+                                setPlanExceptionAmount('');
+                                setPlanExceptionDisplayAmount('');
+                              }}
+                              className={`inline-flex items-center gap-2 text-xs font-bold transition-colors ${
+                                isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                              }`}
+                            >
+                              <RefreshIcon className="w-3.5 h-3.5" />
+                              {t('resetToStandardPlan', 'Standart rejaga qaytarish')}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Debt warning */}
             {type === TransactionType.INCOME && driverDebtInfo && driverDebtInfo.remaining > 0 && (

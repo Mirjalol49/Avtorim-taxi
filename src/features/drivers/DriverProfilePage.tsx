@@ -51,6 +51,32 @@ function getFriendlyDocName(doc: any, t: (key: string, fallback: string) => stri
     return (fn.split('.').slice(0,-1).join('.')||fn).replace(/[_-]/g,' ');
 }
 
+const DOC_CATEGORY_ORDER = ['driver_license', 'passport', 'other', 'car_registration', 'car_insurance'];
+
+function groupDriverDocuments(docs: any[], t: (key: string, fallback: string) => string) {
+    const grouped = new Map<string, { key: string; title: string; docs: any[] }>();
+
+    docs.forEach((doc) => {
+        const key = doc.category || doc.name || 'other';
+        const existing = grouped.get(key);
+        if (existing) {
+            existing.docs.push(doc);
+        } else {
+            grouped.set(key, {
+                key,
+                title: getFriendlyDocName(doc, t),
+                docs: [doc],
+            });
+        }
+    });
+
+    return Array.from(grouped.values()).sort((a, b) => {
+        const ai = DOC_CATEGORY_ORDER.indexOf(a.key);
+        const bi = DOC_CATEGORY_ORDER.indexOf(b.key);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+}
+
 export const DriverProfilePage: React.FC<Props> = ({
     drivers, cars, transactions, theme, userRole, onEditDriver, onDeleteDriver, onAddTransaction, onOpenDepositTopup
 }) => {
@@ -68,18 +94,37 @@ export const DriverProfilePage: React.FC<Props> = ({
     const [showHistory, setShowHistory] = useState(false);
 
     useEffect(() => {
-        if (driver?.id) {
+        if (!driver?.id) return;
+
+        let cancelled = false;
+        const fetchDocuments = async () => {
             setDocsLoading(true);
-            supabase.from('drivers').select('documents').eq('id', driver.id).single()
-                .then(({ data, error }) => {
-                    if (!error && data?.documents) {
-                        setDocs(data.documents);
-                    } else {
-                        setDocs([]);
-                    }
-                    setDocsLoading(false);
-                });
-        }
+            const { data, error } = await supabase.from('drivers').select('documents').eq('id', driver.id).single();
+            if (cancelled) return;
+
+            if (!error && data?.documents) {
+                setDocs(data.documents);
+            } else {
+                setDocs([]);
+            }
+            setDocsLoading(false);
+        };
+
+        void fetchDocuments();
+
+        const channel = supabase
+            .channel(`driver_documents_${driver.id}`)
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `id=eq.${driver.id}` },
+                () => { void fetchDocuments(); }
+            )
+            .subscribe();
+
+        return () => {
+            cancelled = true;
+            supabase.removeChannel(channel);
+        };
     }, [driver?.id]);
 
     useEffect(() => {
@@ -114,6 +159,7 @@ export const DriverProfilePage: React.FC<Props> = ({
     const bdr = isDark ? 'border-white/[0.07]' : 'border-gray-200';
     const txt = isDark ? 'text-white' : 'text-gray-900';
     const muted = isDark ? 'text-white/40' : 'text-gray-500';
+    const groupedDocs = groupDriverDocuments(docs, t);
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -246,49 +292,64 @@ export const DriverProfilePage: React.FC<Props> = ({
                     )}
 
                     {/* Documents */}
-                    {!docsLoading && docs.length > 0 && (
+                    {!docsLoading && groupedDocs.length > 0 && (
                         <div className={`p-5 rounded-3xl border ${bg}`}>
                             <p className={`text-[13px] font-bold uppercase tracking-widest mb-6 ${txt} flex items-center gap-2`}>
                                 <span className="opacity-50 text-[18px]">📄</span> {t('documents', 'HUJJATLAR').toUpperCase()}
                             </p>
                             <div className="space-y-4">
-                                {docs.map((doc:any, idx:number) => {
-                                    const isImage = doc.type?.startsWith('image/');
-                                    const friendlyName = getFriendlyDocName(doc, t);
-                                    
+                                {groupedDocs.map((group) => {
                                     return (
-                                        <div key={idx} className="flex gap-4 items-center">
-                                            {/* Left side preview */}
-                                            <div className={`w-[80px] h-[80px] rounded-2xl border flex-shrink-0 overflow-hidden ${isDark ? 'border-white/10 bg-surface-2' : 'border-gray-200 bg-gray-50'}`}>
-                                                {isImage ? (
-                                                    <img src={doc.data} alt={doc.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-3xl">📄</div>
-                                                )}
-                                            </div>
-                                            
-                                            {/* Right side content */}
-                                            <div className="flex flex-col py-1">
-                                                <p className={`text-[15px] font-bold ${txt} mb-2`}>{friendlyName}</p>
-                                                
-                                                <div className="flex gap-2">
-                                                    {isImage && (
-                                                        <button 
-                                                            onClick={() => setViewingDoc({ name: doc.name, data: doc.data })}
-                                                            className={`flex items-center px-3 py-1.5 rounded-lg border text-[12px] font-medium transition-colors ${isDark ? 'border-white/20 text-white/80 hover:bg-white/10' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 opacity-60"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                                                            {t('view', "Ko'rish")}
-                                                        </button>
-                                                    )}
-                                                    <button 
-                                                        onClick={() => forceDownload(doc.data, doc.name)}
-                                                        className={`flex items-center px-3 py-1.5 rounded-lg border text-[12px] font-medium transition-colors ${isDark ? 'border-white/20 text-white/80 hover:bg-white/10' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 opacity-60"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                                                        {t('download', 'Yuklab olish')}
-                                                    </button>
+                                        <div key={group.key} className={`rounded-2xl border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-gray-200 bg-gray-50/70'}`}>
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <div className="min-w-0">
+                                                    <p className={`text-[15px] font-bold ${txt}`}>{group.title}</p>
+                                                    <p className={`text-[11px] font-semibold mt-0.5 ${muted}`}>
+                                                        {group.docs.length} {t('driverModalFileCount', 'ta fayl')}
+                                                    </p>
                                                 </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {group.docs.map((doc: any, idx: number) => {
+                                                    const isImage = doc.type?.startsWith('image/');
+                                                    const pageLabel = group.docs.length > 1 ? `${idx + 1}` : '';
+                                                    return (
+                                                        <div
+                                                            key={`${doc.name}-${idx}`}
+                                                            className={`relative w-[74px] h-[74px] rounded-2xl border overflow-hidden text-left transition-transform active:scale-95 ${isDark ? 'border-white/10 bg-surface-2' : 'border-gray-200 bg-white'}`}
+                                                            title={doc.name}
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => isImage ? setViewingDoc({ name: doc.name, data: doc.data }) : window.open(doc.data, '_blank', 'noopener,noreferrer')}
+                                                                className="absolute inset-0"
+                                                            >
+                                                                {isImage ? (
+                                                                    <img src={doc.data} alt={doc.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-red-400">
+                                                                        <span className="text-2xl">📄</span>
+                                                                        <span className="text-[10px] font-black">PDF</span>
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                            {pageLabel && (
+                                                                <span className="absolute left-1.5 top-1.5 min-w-5 h-5 px-1 rounded-full bg-black/70 text-white text-[10px] font-black flex items-center justify-center">
+                                                                    {pageLabel}
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => forceDownload(doc.data, doc.name)}
+                                                                className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center shadow-sm hover:bg-black/85"
+                                                                aria-label={t('download', 'Yuklab olish')}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     );
@@ -533,6 +594,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                 <DriverHistoryPage
                     driver={driver}
                     car={car}
+                    cars={cars}
                     transactions={transactions}
                     theme={theme}
                     onClose={() => setShowHistory(false)}
