@@ -123,7 +123,7 @@ export const useTransactionsPaginated = (
                 if (stale()) return;
             }
             try {
-                const result = await fetchTransactionsPage(fleet, cursor, 100, filtersRef.current);
+                const result = await fetchTransactionsPage(fleet, cursor, 50, filtersRef.current);
                 if (stale()) return;
 
                 if (reset) {

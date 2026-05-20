@@ -3,6 +3,8 @@ import { Transaction } from '../../../core/types';
 import { subscribeToTransactions } from '../../../../services/firestoreService';
 import { readCache, writeCache } from '../../../core/utils/dataCache';
 
+const INITIAL_TX_RENDER_LIMIT = 50;
+
 export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
         // most visible empty-state flash in the entire app.
         const cached = readCache<Transaction>(`transactions_${fleetId}`);
         if (cached.length > 0) {
-            setTransactions(cached);
+            setTransactions(cached.slice(0, INITIAL_TX_RENDER_LIMIT));
             setLoading(false); // unblock UI immediately — fetchAll will update silently
         }
         // ────────────────────────────────────────────────────────────────────────

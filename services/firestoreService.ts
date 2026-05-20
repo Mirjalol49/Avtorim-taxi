@@ -33,6 +33,11 @@ const transformTxRow = (r: any): Transaction => ({
     category: r.category ?? undefined,
 } as Transaction);
 
+const TX_LIST_COLUMNS = 'id,fleet_id,driver_id,driver_name,car_id,car_name,amount,type,description,note,timestamp_ms,status,payment_method,reversed_at,reversed_by,reversal_reason,original_transaction_id,use_deposit,category';
+const TX_INITIAL_LIMIT = 50;
+const TX_BACKFILL_PAGE_SIZE = 100;
+const TX_BACKFILL_MAX_ROWS = 500;
+
 // ==================== CURSOR-BASED PAGINATED FETCH ====================
 
 export interface TxPageFilters {
@@ -52,7 +57,7 @@ export interface TxPageResult {
 export const fetchTransactionsPage = async (
     fleetId: string,
     cursor?: number | null,
-    limit = 100,
+    limit = TX_INITIAL_LIMIT,
     filters: TxPageFilters = {},
 ): Promise<TxPageResult> => {
     const controller = new AbortController();
@@ -61,7 +66,7 @@ export const fetchTransactionsPage = async (
         let q = supabase
             .from('transactions')
             // cheque_image is base64 — never fetch it in list queries, only in detail view
-            .select('id,fleet_id,driver_id,driver_name,car_id,car_name,amount,type,description,note,timestamp_ms,status,payment_method,reversed_at,reversed_by,reversal_reason,original_transaction_id,use_deposit,category')
+            .select(TX_LIST_COLUMNS)
             .eq('fleet_id', fleetId)
             .neq('status', 'DELETED')
             .order('timestamp_ms', { ascending: false })
@@ -476,34 +481,65 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
     const transformTx = transformTxRow;
     let cache: Transaction[] = [];
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let backfillTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const mergeRows = (rows: Transaction[]) => {
+        const byId = new Map(cache.map(tx => [tx.id, tx]));
+        for (const row of rows) byId.set(row.id, row);
+        cache = Array.from(byId.values())
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, TX_BACKFILL_MAX_ROWS);
+        callback(cache);
+    };
+
+    const backfillOlderRows = async (cursor: number | null) => {
+        if (cancelled || !cursor || cache.length >= TX_BACKFILL_MAX_ROWS) return;
+        try {
+            const result = await fetchTransactionsPage(fleetId, cursor, TX_BACKFILL_PAGE_SIZE);
+            if (cancelled) return;
+            mergeRows(result.data);
+            if (result.nextCursor && cache.length < TX_BACKFILL_MAX_ROWS) {
+                backfillTimer = setTimeout(() => backfillOlderRows(result.nextCursor), 350);
+            }
+        } catch (err: any) {
+            if (!cancelled) console.warn('[PWA] Transaction backfill paused:', err.message);
+        }
+    };
 
     const fetchAll = async () => {
         const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 15000); // Increased to 15s
+        const abort = setTimeout(() => controller.abort(), 7000);
         try {
             const { data, error } = await supabase
                 .from('transactions')
                 // Exclude cheque_image (base64) from the list view — only fetch it when opening a specific transaction
-                .select('id,fleet_id,driver_id,driver_name,car_id,car_name,amount,type,description,note,timestamp_ms,status,payment_method,reversed_at,reversed_by,reversal_reason,original_transaction_id,use_deposit,category')
+                .select(TX_LIST_COLUMNS)
                 .eq('fleet_id', fleetId)
                 .neq('status', 'DELETED')
                 .order('timestamp_ms', { ascending: false })
-                // ⚠️ Egress guard: cap to 500 most recent rows. DataContext only needs
-                // this for the balance-check modal. The TransactionsPage uses the
-                // separate cursor-paginated hook (useTransactionsPaginated) which has
-                // its own limit. Fetching ALL rows with no bound was the #2 egress culprit.
-                .limit(500)
+                .limit(TX_INITIAL_LIMIT + 1)
                 .abortSignal(controller.signal);
             clearTimeout(abort);
             if (error) throw error;
             if (data) {
-                cache = data.map(transformTx);
+                const rows = data ?? [];
+                const hasMore = rows.length > TX_INITIAL_LIMIT;
+                const page = hasMore ? rows.slice(0, TX_INITIAL_LIMIT) : rows;
+                const nextCursor = hasMore && page.length > 0 ? page[page.length - 1].timestamp_ms : null;
+                cache = page.map(transformTx);
                 callback(cache);
+                if (backfillTimer) clearTimeout(backfillTimer);
+                if (nextCursor) {
+                    backfillTimer = setTimeout(() => backfillOlderRows(nextCursor), 1200);
+                }
             }
         } catch (err: any) {
             clearTimeout(abort);
-            console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
-            setTimeout(fetchAll, 3000);
+            if (!cancelled) {
+                console.warn('[PWA] Fetch transactions failed, retrying in 3s...', err.message);
+                setTimeout(fetchAll, 3000);
+            }
         }
     };
 
@@ -550,7 +586,9 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
 
     return {
         unsubscribe: () => {
+            cancelled = true;
             if (debounceTimer) clearTimeout(debounceTimer);
+            if (backfillTimer) clearTimeout(backfillTimer);
             supabase.removeChannel(channel);
         },
         refetch: fetchAll,
