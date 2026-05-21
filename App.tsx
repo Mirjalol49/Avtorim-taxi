@@ -23,6 +23,7 @@ import Skeleton from './components/Skeleton';
 import PageSkeleton from './components/PageSkeleton';
 import { CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, Tab } from './types';
+import { appendDriverPlanChange } from './src/features/drivers/utils/driverPlanHistory';
 import { AuthProvider, useAuthContext } from './src/features/auth/context/AuthContext';
 import { UIProvider, useUIContext } from './src/features/shared/context/UIContext';
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
@@ -465,7 +466,11 @@ const AppContent: React.FC = () => {
         const { id, ...updateData } = driverData;
         const existingDriver = drivers.find(d => d.id === id);
         const wasInactive = Boolean(existingDriver?.isDeleted || existingDriver?.quitDate);
-        const isRehire = wasInactive && (updateData.quitDate === null || updateData.quitDate === undefined) && Boolean(assignedCarId);
+        const selectedStartDate = updateData.startDate || Date.now();
+        const existingQuitDate = existingDriver?.quitDate ?? null;
+        const submittedQuitDate = updateData.quitDate ?? null;
+        const startsAfterQuit = Boolean(existingQuitDate && selectedStartDate > existingQuitDate);
+        const isRehire = wasInactive && (submittedQuitDate === null || startsAfterQuit);
 
         // Explicitly null-clear contract fields when switching away from lease_to_own
         if (updateData.driverType !== 'lease_to_own') {
@@ -477,10 +482,21 @@ const AppContent: React.FC = () => {
           updateData.quitDate = null;
         }
         if (isRehire) {
-          assignmentEffectiveFrom = updateData.startDate || Date.now();
+          assignmentEffectiveFrom = selectedStartDate;
           updateData.isDeleted = false;
           updateData.quitDate = null;
-          updateData.startDate = existingDriver?.startDate || updateData.startDate || Date.now();
+          updateData.startDate = selectedStartDate;
+          if (!assignedCarId && existingDriver) {
+            updateData.planHistory = appendDriverPlanChange(
+              existingDriver.planHistory,
+              0,
+              existingDriver.dailyPlan || 0,
+              null,
+              existingDriver.createdAt,
+              null,
+              selectedStartDate
+            );
+          }
         } else if (wasInactive && updateData.quitDate === null) {
           updateData.quitDate = existingDriver?.quitDate || null;
         }
@@ -579,6 +595,20 @@ const AppContent: React.FC = () => {
 
   const handleEditDriverClick = (driver: Driver) => {
     setEditingDriver(driver);
+    setIsDriverModalOpen(true);
+  };
+
+  const handleRehireDriverClick = (driver: Driver) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setEditingDriver({
+      ...driver,
+      isDeleted: true,
+      startDate: today.getTime(),
+      quitDate: null,
+      carModel: '',
+      licensePlate: '',
+    });
     setIsDriverModalOpen(true);
   };
 
@@ -1191,6 +1221,7 @@ const AppContent: React.FC = () => {
                 theme={theme}
                 userRole={userRole}
                 onEditDriver={handleEditDriverClick}
+                onRehireDriver={handleRehireDriverClick}
                 onDeleteDriver={handleDeleteDriver}
                 onAddTransaction={handleAddTransaction}
                 onOpenDepositTopup={(driverId) => {

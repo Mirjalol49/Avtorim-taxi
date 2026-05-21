@@ -388,6 +388,8 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
 
     const isSalary = driver.driverType === 'salary';
     const hasDateFilter = Boolean(startDate || endDate);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
     const TABS: { id: Tab; icon: React.ReactNode | string; label: string; count: number }[] = [
         { id: 'daily_history', icon: '📅', label: t('historyTab', 'Tarix'), count: 0 },
@@ -414,7 +416,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                 style={{ background: isDark ? 'rgba(28,28,30,0.85)' : 'rgba(242,242,247,0.85)', backdropFilter: 'blur(20px)' }}
             >
                 {/* Navigation Bar */}
-                <div className="flex items-center justify-between px-4 h-14 w-full">
+                <div className="flex items-center justify-between px-4 lg:px-8 h-14 w-full">
                     <button onClick={handleClose} className={`flex items-center gap-1.5 text-[17px] -ml-2 px-2 py-1 rounded-lg active:opacity-50 transition-opacity ${isDark ? 'text-[#0A84FF]' : 'text-[#007AFF]'}`}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="15 18 9 12 15 6"/>
@@ -426,7 +428,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                 </div>
 
                 {/* Hero Section - Dual Cards */}
-                <div className="px-4 sm:px-6 pb-2 pt-4 flex flex-col sm:flex-row gap-4 justify-center w-full max-w-3xl mx-auto">
+                <div className="px-4 sm:px-6 lg:px-8 pb-3 pt-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.55fr)] gap-4 w-full max-w-[1480px] mx-auto">
                     {/* Left: Profile Card */}
                     <div className={`flex-1 flex items-center gap-4 rounded-3xl p-4 sm:p-5 shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                         <div className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] flex-shrink-0 rounded-full overflow-hidden ring-4 ring-gray-50 dark:ring-white/5 bg-gray-100 dark:bg-white/5">
@@ -459,7 +461,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                 </div>
 
                 {/* iOS Segmented Control */}
-                <div className={`mt-2 mb-6 p-1 rounded-xl flex w-full max-w-[320px] mx-auto shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-[#F2F2F7] border-[#E5E5EA]'}`}>
+                <div className={`mt-2 mb-6 p-1 rounded-xl flex w-full max-w-[420px] mx-auto shadow-sm border ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-[#F2F2F7] border-[#E5E5EA]'}`}>
                     {TABS.map(t => (
                         <button
                             key={t.id}
@@ -478,14 +480,14 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
 
             {/* ── Scrollable Content ────────────────────────────────────── */}
             <div className="flex-1 overflow-y-auto pb-safe">
-                <div className="w-full max-w-4xl mx-auto px-4 py-6">
+                <div className="w-full max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
                     {/* ═══════════ DAILY HISTORY ═══════════ */}
                     {tab === 'daily_history' && (
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                             {/* Summary Cards */}
                             {periodSummary && (
-                                <div className="flex flex-col sm:flex-row gap-4 w-full px-2 sm:px-0 max-w-3xl mx-auto">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
                                     {/* Jami To'langan */}
                                     <div className={`flex-1 rounded-3xl p-5 shadow-sm border flex items-center justify-between ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                                         <div className="flex flex-col min-w-0 pr-2">
@@ -516,7 +518,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                             )}
 
                             {workPeriodSummaries.length > 0 && (
-                                <div className={`max-w-3xl mx-auto w-full rounded-3xl border p-4 sm:p-5 shadow-sm ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                                <div className={`w-full rounded-3xl border p-4 sm:p-5 shadow-sm ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                                     <div className="flex items-center justify-between gap-3 mb-4">
                                         <div>
                                             <p className={`text-[11px] font-black uppercase tracking-widest ${muted}`}>
@@ -532,7 +534,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                     </div>
                                     <div className="space-y-2">
                                         {workPeriodSummaries.map((period, index) => {
-                                            const isActivePeriod = !period.endDate;
+                                            const isActivePeriod = !period.endDate || period.endDate >= todayStart.getTime();
                                             const debtTone = period.totalDebt > 0
                                                 ? 'text-[#FF3B30] dark:text-[#FF453A]'
                                                 : period.totalDebt < 0
@@ -543,7 +545,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                                     key={period.id}
                                                     className={`rounded-2xl border p-3 sm:p-4 ${isActivePeriod ? (isDark ? 'bg-[#0A84FF]/10 border-[#0A84FF]/25' : 'bg-[#007AFF]/5 border-[#007AFF]/20') : (isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-gray-50 border-gray-200')}`}
                                                 >
-                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                                    <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`h-7 w-7 rounded-full flex items-center justify-center text-[12px] font-black ${isActivePeriod ? 'bg-[#007AFF] text-white' : isDark ? 'bg-white/[0.08] text-white/70' : 'bg-white text-gray-600 border border-gray-200'}`}>
@@ -566,7 +568,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="grid grid-cols-3 gap-2 sm:min-w-[300px]">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 xl:min-w-[440px]">
                                                             <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-black/15' : 'bg-white'}`}>
                                                                 <p className={`text-[10px] uppercase tracking-widest font-black ${muted}`}>{t('expected', 'Kutilgan')}</p>
                                                                 <p className={`text-[13px] font-black mt-1 ${txt}`}>{fmtCompact(period.totalExpected)} <span className="text-[10px]">UZS</span></p>
@@ -591,7 +593,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                             )}
 
                             {/* Date range filter */}
-                            <div className={`max-w-3xl mx-auto w-full rounded-3xl border p-4 sm:p-5 shadow-sm ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                            <div className={`w-full rounded-3xl border p-4 sm:p-5 shadow-sm ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
                                 <div className="flex flex-col lg:flex-row lg:items-end gap-4">
                                     <div className="flex-1 min-w-0">
                                         <div className={`flex items-center gap-2 mb-3 ${muted}`}>
@@ -648,7 +650,7 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                     <p className="text-[15px] font-medium">{t('noHistory', 'Tarix topilmadi')}</p>
                                 </div>
                             ) : (
-                                <div className="max-w-3xl mx-auto w-full space-y-3">
+                                <div className="w-full space-y-3">
                                     {filteredTimeline.map(group => (
                                         <div key={group.monthKey} className="space-y-2">
                                             <button 

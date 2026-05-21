@@ -144,19 +144,20 @@ export function getDriverWorkPeriods(driver: Driver | null | undefined, fallback
     }
 
     if (active) {
+        const endDate = driver.quitDate ? dayEnd(driver.quitDate) : null;
         periods.push({
             ...active,
-            endDate: driver.isDeleted && driver.quitDate ? dayEnd(driver.quitDate) : null,
+            endDate: endDate !== null ? (endDate >= active.startDate ? endDate : active.startDate) : null,
         });
     }
 
     if (periods.length === 0) {
         const startDate = dayStart(driver.startDate || driver.createdAt || Date.now());
-        const endDate = driver.isDeleted && driver.quitDate ? dayEnd(driver.quitDate) : null;
+        const endDate = driver.quitDate ? dayEnd(driver.quitDate) : null;
         periods.push({
             id: `legacy-${startDate}`,
             startDate,
-            endDate,
+            endDate: endDate !== null ? (endDate >= startDate ? endDate : startDate) : null,
             carId: fallbackCar?.id ?? null,
             plan: driver.dailyPlan || fallbackCar?.dailyPlan || 0,
         });
@@ -237,7 +238,7 @@ export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, 
         }
     }
 
-    if (!hasPlanHistory && driver.isDeleted && driver.quitDate) {
+    if (driver.quitDate) {
         const targetDateMidnight = new Date(date);
         targetDateMidnight.setHours(0, 0, 0, 0);
         

@@ -7,6 +7,7 @@ import { Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { PaymentStatus, Transaction, TransactionType } from '../../core/types/transaction.types';
 import { calcDriverFinance } from './utils/debtUtils';
+import { getDriverWorkPeriods } from './utils/driverPlanHistory';
 
 import { DriverAvatar } from './components/DriverAvatar';
 import { LicensePlate } from '../../components/ui/LicensePlate';
@@ -29,6 +30,7 @@ interface Props {
     theme: 'light' | 'dark';
     userRole: 'admin' | 'viewer';
     onEditDriver?: (driver: Driver) => void;
+    onRehireDriver?: (driver: Driver) => void;
     onDeleteDriver?: (id: string) => void;
     onAddTransaction?: (data: Omit<Transaction, 'id'>) => void;
     onOpenDepositTopup?: (driverId: string) => void;
@@ -58,11 +60,21 @@ function getFriendlyDocName(doc: any, t: (key: string, fallback: string) => stri
 const DOC_CATEGORY_ORDER = ['driver_license', 'passport', 'other', 'car_registration', 'car_insurance'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+function isDriverCurrentlyWorking(driver: Driver | undefined): boolean {
+    if (!driver || driver.isDeleted) return false;
+    if (!driver.quitDate) return true;
+    const quitEnd = new Date(driver.quitDate);
+    quitEnd.setHours(23, 59, 59, 999);
+    return quitEnd.getTime() >= Date.now();
+}
+
 function resolveDriverProfileCar(driver: Driver | undefined, cars: Car[], transactions: Transaction[]): Car | null {
     if (!driver) return null;
 
-    const activeAssigned = cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted);
-    if (activeAssigned) return activeAssigned;
+    if (isDriverCurrentlyWorking(driver)) {
+        const activeAssigned = cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted);
+        return activeAssigned ?? null;
+    }
 
     const latestPlanCarId = [...(driver.planHistory ?? [])]
         .sort((a, b) => b.effectiveFrom - a.effectiveFrom)
@@ -119,7 +131,7 @@ function groupDriverDocuments(docs: any[], t: (key: string, fallback: string) =>
 }
 
 export const DriverProfilePage: React.FC<Props> = ({
-    drivers, cars, transactions, theme, userRole, onEditDriver, onDeleteDriver, onAddTransaction, onOpenDepositTopup, onQuickAssign
+    drivers, cars, transactions, theme, userRole, onEditDriver, onRehireDriver, onDeleteDriver, onAddTransaction, onOpenDepositTopup, onQuickAssign
 }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -201,6 +213,7 @@ export const DriverProfilePage: React.FC<Props> = ({
     const initial = finance?.depositAmount ?? driver.depositAmount ?? 0;
     const depositPct = initial > 0 ? Math.max(0, Math.min(100, (remaining / initial) * 100)) : 0;
     const isLow = dt === 'deposit' && remaining <= (driver.depositWarningThreshold ?? 1_000_000);
+    const isWorkingNow = isDriverCurrentlyWorking(driver);
 
     const bg = isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-gray-200';
     const bdr = isDark ? 'border-white/[0.07]' : 'border-gray-200';
@@ -237,6 +250,11 @@ export const DriverProfilePage: React.FC<Props> = ({
     const formatDriverDocDate = (ms: number | null) => ms
         ? new Intl.DateTimeFormat(t('localeCode', 'uz-UZ'), { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(ms))
         : t('notSpecified', 'Kiritilmagan');
+    const workPeriods = getDriverWorkPeriods(driver, car);
+    const latestPeriods = [...workPeriods].sort((a, b) => b.startDate - a.startDate).slice(0, 3);
+    const formatShortDate = (ms?: number | null) => ms
+        ? new Intl.DateTimeFormat(t('localeCode', 'uz-UZ'), { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(ms))
+        : t('nowWorking', 'Hozir ishlayapti');
 
     const openLicenseModal = () => {
         if (userRole !== 'admin') return;
@@ -312,7 +330,15 @@ export const DriverProfilePage: React.FC<Props> = ({
                 </div>
                 
                 {userRole === 'admin' && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {!isWorkingNow && onRehireDriver && (
+                            <button
+                                onClick={() => onRehireDriver(driver)}
+                                className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border transition-all active:scale-95 flex items-center gap-2 ${isDark ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}`}
+                            >
+                                <CarIcon className="w-4 h-4" /> {t('rehireDriverAction', 'Qayta ishga olish')}
+                            </button>
+                        )}
                         <button
                             onClick={() => onEditDriver?.(driver)}
                             className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border transition-all active:scale-95 flex items-center gap-2 ${isDark ? 'border-teal-500/30 text-teal-400 hover:bg-teal-500/10' : 'border-teal-200 text-teal-700 hover:bg-teal-50'}`}
@@ -382,6 +408,79 @@ export const DriverProfilePage: React.FC<Props> = ({
                         </div>
                     </div>
 
+                    {latestPeriods.length > 0 && (
+                        <div className={`p-5 rounded-3xl border ${bg}`}>
+                            <div className="flex items-start justify-between gap-3 mb-4">
+                                <div>
+                                    <p className={`text-[11px] font-black uppercase tracking-wider ${muted}`}>
+                                        {t('workPeriods', 'Ish davrlari')}
+                                    </p>
+                                    <p className={`text-[13px] mt-1 leading-snug ${muted}`}>
+                                        {t('rehireHistory', 'Ishga kirish, chiqish va qayta ishga olish tarixi')}
+                                    </p>
+                                </div>
+                                <span className={`min-w-7 h-7 px-2 rounded-full text-[12px] font-black flex items-center justify-center ${isDark ? 'bg-white/[0.06] text-white/60' : 'bg-slate-100 text-slate-500'}`}>
+                                    {workPeriods.length}
+                                </span>
+                            </div>
+                            <div className="space-y-3">
+                                {latestPeriods.map((period, index) => {
+                                    const periodCar = period.carId ? cars.find(c => c.id === period.carId) : null;
+                                    const isActivePeriod = !period.endDate;
+                                    return (
+                                        <div
+                                            key={period.id}
+                                            className={`rounded-2xl border p-3 ${isActivePeriod
+                                                ? isDark ? 'border-teal-500/25 bg-teal-500/10' : 'border-teal-200 bg-teal-50/70'
+                                                : isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50/80'
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`w-6 h-6 rounded-full text-[11px] font-black flex items-center justify-center ${isActivePeriod ? 'bg-teal-600 text-white' : isDark ? 'bg-white/[0.08] text-white/60' : 'bg-white text-slate-500'}`}>
+                                                            {workPeriods.length - index}
+                                                        </span>
+                                                        <p className={`text-[13px] font-black ${txt}`}>
+                                                            {isActivePeriod ? t('currentPeriod', 'Hozirgi davr') : t('previousPeriod', 'Oldingi davr')}
+                                                        </p>
+                                                    </div>
+                                                    <p className={`mt-2 text-[12px] font-semibold ${muted}`}>
+                                                        {formatShortDate(period.startDate)} - {formatShortDate(period.endDate)}
+                                                    </p>
+                                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                        <span className={`text-[11px] font-bold ${muted}`}>{t('drivenCar', 'Haydagan avto')}:</span>
+                                                        {periodCar ? (
+                                                            <>
+                                                                <span className={`text-[12px] font-black ${txt}`}>{periodCar.name}</span>
+                                                                <LicensePlate plate={periodCar.licensePlate} size="sm" />
+                                                            </>
+                                                        ) : (
+                                                            <span className={`text-[12px] font-bold ${muted}`}>{t('notAssigned', 'Biriktirilmagan')}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className={`shrink-0 rounded-xl px-3 py-2 text-right ${isDark ? 'bg-black/20' : 'bg-white'}`}>
+                                                    <p className={`text-[10px] font-black uppercase tracking-wide ${muted}`}>{t('dailyPlan', 'Kunlik reja')}</p>
+                                                    <p className={`mt-1 text-[12px] font-black font-mono ${txt}`}>{fmt(period.plan)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {workPeriods.length > 3 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHistory(true)}
+                                    className={`mt-3 w-full h-10 rounded-2xl text-[12px] font-black border transition-colors ${isDark ? 'border-white/[0.08] text-white/60 hover:bg-white/[0.05]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    {t('viewAllPeriods', 'Barcha davrlarni ko‘rish')}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {/* Car Details */}
                     {car ? (
                         <div className={`flex rounded-3xl border overflow-hidden p-2 gap-4 shadow-sm ${bg}`}>
@@ -395,9 +494,12 @@ export const DriverProfilePage: React.FC<Props> = ({
                             
                             {/* Right Side: Details & Plan */}
                             <div className="flex-1 flex flex-col justify-center py-2 pr-4 min-w-0">
+                                <p className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${isWorkingNow ? (isDark ? 'text-teal-300' : 'text-teal-700') : muted}`}>
+                                    {isWorkingNow ? t('currentAssignedCar', 'Hozirgi avtomobil') : t('previousAssignedCar', 'Oldingi avtomobil')}
+                                </p>
                                 <div className="flex items-start justify-between gap-3 mb-2">
                                     <p className={`text-[18px] sm:text-[20px] font-bold truncate leading-tight ${txt}`}>{car.name}</p>
-                                    {userRole === 'admin' && onQuickAssign && (
+                                    {isWorkingNow && userRole === 'admin' && onQuickAssign && (
                                         <button
                                             type="button"
                                             onClick={() => setAssignOpen(true)}
@@ -419,7 +521,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                                         </p>
                                     </div>
                                 )}
-                                {userRole === 'admin' && onQuickAssign && (
+                                {isWorkingNow && userRole === 'admin' && onQuickAssign && (
                                     <button
                                         type="button"
                                         onClick={() => setAssignOpen(true)}
@@ -427,6 +529,11 @@ export const DriverProfilePage: React.FC<Props> = ({
                                     >
                                         {t('quickAssignManage', 'Biriktirishni boshqarish')}
                                     </button>
+                                )}
+                                {!isWorkingNow && (
+                                    <p className={`mt-3 rounded-2xl px-3 py-2 text-[12px] font-bold leading-snug ${isDark ? 'bg-white/[0.04] text-white/55' : 'bg-slate-50 text-slate-500'}`}>
+                                        {t('historicalCarHint', 'Bu avtomobil eski ish davridan. Hozirgi biriktirish emas.')}
+                                    </p>
                                 )}
                             </div>
                         </div>
@@ -437,11 +544,17 @@ export const DriverProfilePage: React.FC<Props> = ({
                                     <CarIcon className="w-7 h-7" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className={`text-[15px] font-black ${txt}`}>{t('carNotAssigned', 'Avtomobil biriktirilmagan')}</p>
-                                    <p className={`text-[12px] font-medium mt-1 ${muted}`}>{t('quickAssignDriverCarHint', 'Haydovchiga avtomobilni shu yerdan tez biriktiring')}</p>
+                                    <p className={`text-[15px] font-black ${txt}`}>
+                                        {isWorkingNow ? t('carNotAssigned', 'Avtomobil biriktirilmagan') : t('noHistoricalCar', 'Avtomobil tarixi topilmadi')}
+                                    </p>
+                                    <p className={`text-[12px] font-medium mt-1 ${muted}`}>
+                                        {isWorkingNow
+                                            ? t('quickAssignDriverCarHint', 'Haydovchiga avtomobilni shu yerdan tez biriktiring')
+                                            : t('inactiveDriverNoCarHint', "Bu haydovchi hozir ishlamaydi, faol biriktirish ko'rsatilmaydi.")}
+                                    </p>
                                 </div>
                             </div>
-                            {userRole === 'admin' && onQuickAssign && (
+                            {isWorkingNow && userRole === 'admin' && onQuickAssign && (
                                 <button
                                     type="button"
                                     onClick={() => setAssignOpen(true)}

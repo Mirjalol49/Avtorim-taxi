@@ -73,6 +73,14 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     : availableCars;
 
   const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
+  const editingQuitDate = editingDriver ? ((editingDriver as any).quitDate ?? null) : null;
+  const isRehireDraft = Boolean(editingDriver && (editingDriver.isDeleted || editingQuitDate) && !quitDate);
+  const modalTitle = isRehireDraft
+    ? t('rehireDriverTitle', 'Haydovchini qayta ishga olish')
+    : editingDriver ? t('editDriver') : t('addDriver');
+  const submitLabel = isRehireDraft
+    ? t('rehireDriverAction', 'Qayta ishga olish')
+    : editingDriver ? t('save') : t('add');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -405,7 +413,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           style={theme === 'dark' ? { background: '#222a3d' } : undefined}
         >
           <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {editingDriver ? t('editDriver') : t('addDriver')}
+            {modalTitle}
           </h3>
           <button onClick={onClose} className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
             <XIcon className="w-6 h-6" />
@@ -462,7 +470,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 label={t('driverModalStartDate', 'Ish boshlagan sana')}
                 hideLabel
                 value={startDate ? new Date(startDate) : new Date()}
-                onChange={(d: Date) => setStartDate(d.getTime())}
+                onChange={(d: Date) => {
+                  const nextStart = d.getTime();
+                  setStartDate(nextStart);
+                  if (quitDate && nextStart > quitDate) {
+                    setQuitDate(null);
+                  }
+                }}
                 theme={theme}
               />
             </div>
@@ -478,6 +492,15 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               />
             </div>
           </div>
+          {isRehireDraft && (
+            <div className={`rounded-2xl border px-4 py-3 text-[13px] font-semibold ${
+              theme === 'dark'
+                ? 'border-teal-500/25 bg-teal-500/10 text-teal-200'
+                : 'border-teal-200 bg-teal-50 text-teal-800'
+            }`}>
+              {t('driverRehireHint', 'Qayta ishga olish rejimi: eski chiqish sanasi yopiladi va yangi ish davri boshlanadi.')}
+            </div>
+          )}
           
 
           {/* Driver payment type */}
@@ -818,7 +841,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             </button>
             <button type="submit" disabled={isSubmitting}
               className={`px-6 py-2.5 bg-[#0f766e] text-white hover:bg-[#0a5c56] rounded-xl text-sm font-bold transition-all active:scale-95 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
-              {isSubmitting ? t('saving') : (editingDriver ? t('save') : t('add'))}
+              {isSubmitting ? t('saving') : submitLabel}
             </button>
           </div>
         </form>
