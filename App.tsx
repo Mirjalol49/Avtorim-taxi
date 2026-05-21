@@ -33,6 +33,7 @@ import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { getCarIdForDriverDate } from './src/features/drivers/utils/driverPlanHistory';
 import { playLockSound } from './services/soundService';
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
+import { useDriverDocumentReminders } from './hooks/useDriverDocumentReminders';
 import { clearChunkRecoveryState, isChunkLoadError, recoverFromChunkLoadError } from './src/utils/chunkRecovery';
 
 const lazyWithReload = <T extends { default: React.ComponentType<any> }>(
@@ -132,6 +133,9 @@ const AppContent: React.FC = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const fleetId = userRole === 'viewer'
+    ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+    : adminUser?.id;
 
   // Disable context menu globally for the app
   useEffect(() => {
@@ -190,6 +194,13 @@ const AppContent: React.FC = () => {
     cars,
     transactions,
     adminUserId:   adminUser?.id   ?? '',
+    adminUserName: adminUser?.username ?? 'Admin',
+    enabled: isAuthenticated && userRole === 'admin',
+  });
+
+  useDriverDocumentReminders({
+    drivers,
+    adminUserId: adminUser?.id ?? '',
     adminUserName: adminUser?.username ?? 'Admin',
     enabled: isAuthenticated && userRole === 'admin',
   });
@@ -448,9 +459,14 @@ const AppContent: React.FC = () => {
       const { assignedCarId, previousCarId, ...driverData } = data;
 
       let driverId: string;
+      let assignmentEffectiveFrom: number | undefined;
 
       if (data.id) {
         const { id, ...updateData } = driverData;
+        const existingDriver = drivers.find(d => d.id === id);
+        const wasInactive = Boolean(existingDriver?.isDeleted || existingDriver?.quitDate);
+        const isRehire = wasInactive && (updateData.quitDate === null || updateData.quitDate === undefined) && Boolean(assignedCarId);
+
         // Explicitly null-clear contract fields when switching away from lease_to_own
         if (updateData.driverType !== 'lease_to_own') {
           updateData.totalContractAmount = null;
@@ -459,6 +475,14 @@ const AppContent: React.FC = () => {
         }
         if (updateData.quitDate === null || updateData.quitDate === undefined) {
           updateData.quitDate = null;
+        }
+        if (isRehire) {
+          assignmentEffectiveFrom = updateData.startDate || Date.now();
+          updateData.isDeleted = false;
+          updateData.quitDate = null;
+          updateData.startDate = existingDriver?.startDate || updateData.startDate || Date.now();
+        } else if (wasInactive && updateData.quitDate === null) {
+          updateData.quitDate = existingDriver?.quitDate || null;
         }
         await firestoreService.updateDriver(id, updateData, carsFleetId);
         driverId = id;
@@ -503,7 +527,7 @@ const AppContent: React.FC = () => {
         await unassignCar(previousCarId);
       }
       if (assignedCarId && assignedCarId !== previousCarId) {
-        await assignCar(assignedCarId, driverId);
+        await assignCar(assignedCarId, driverId, assignmentEffectiveFrom);
       }
 
       // Automatically sync the car's daily plan if this is a lease-to-own driver
@@ -589,7 +613,7 @@ const AppContent: React.FC = () => {
             adminName: adminProfile?.name || t.unknownAdmin,
             reason: 'Manual deletion by admin'
           }, adminUser?.id);
-          if (assignedCar) await unassignCar(assignedCar.id);
+          if (assignedCar) await unassignCar(assignedCar.id, Date.now());
         } catch {
           if (driver) setDrivers(ds => [...ds, driver]);
           addToast('error', t.driverDeleteFailed);
@@ -639,6 +663,31 @@ const AppContent: React.FC = () => {
     }
 
     await _doSaveCar(data);
+  };
+
+  const handleQuickAssignment = async ({ driverId, carId, effectiveFrom, replaceExisting }: { driverId: string; carId: string | null; effectiveFrom?: number; replaceExisting?: boolean }) => {
+    const currentCar = cars.find(c => c.assignedDriverId === driverId && !c.isDeleted);
+    const targetCar = carId ? cars.find(c => c.id === carId && !c.isDeleted) : null;
+    const changeAt = effectiveFrom ?? Date.now();
+
+    if (carId && !targetCar) {
+      throw new Error(t.carNotFound || 'Avtomobil topilmadi');
+    }
+    if (targetCar?.assignedDriverId && targetCar.assignedDriverId !== driverId) {
+      if (!replaceExisting) {
+        throw new Error(t.carAlreadyAssigned || 'Bu avtomobil boshqa haydovchiga biriktirilgan');
+      }
+      await unassignCar(targetCar.id, changeAt);
+    }
+
+    if (currentCar && currentCar.id !== carId) {
+      await unassignCar(currentCar.id, changeAt);
+    }
+    if (targetCar && targetCar.id !== currentCar?.id) {
+      await assignCar(targetCar.id, driverId, changeAt);
+    }
+
+    addToast('success', t.assignmentUpdated || 'Biriktirish yangilandi');
   };
 
   const handleRepairPromptPause = async () => {
@@ -1105,6 +1154,7 @@ const AppContent: React.FC = () => {
               transactions={transactions}
               drivers={drivers}
               cars={cars}
+              fleetId={fleetId}
               isDataLoading={contextDataLoading}
               theme={theme}
               isMobile={isMobile}
@@ -1149,6 +1199,7 @@ const AppContent: React.FC = () => {
                   setTxInitialDepositTopup(true);
                   setIsTxModalOpen(true);
                 }}
+                onQuickAssign={handleQuickAssignment}
               />
             } />
 
@@ -1177,6 +1228,7 @@ const AppContent: React.FC = () => {
                 onEditCar={(car) => { setEditingCar(car); setIsCarModalOpen(true); }}
                 onDeleteCar={handleDeleteCar}
                 onSaveCar={handleSaveCar}
+                onQuickAssign={handleQuickAssignment}
               />
             } />
 

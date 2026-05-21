@@ -13,6 +13,10 @@ export interface DriverDocument {
     type: string;      // MIME type
     data: string;      // base64 data URL
     category: 'driver_license' | 'passport' | 'car_registration' | 'car_insurance' | 'other';
+    /** Optional document expiration date in epoch ms. */
+    expiryMs?: number | null;
+    /** Notify this many days before expiry. Defaults to 2 for driver license docs. */
+    reminderDaysBefore?: number | null;
 }
 
 export type DriverPaymentType = 'deposit' | 'salary' | 'lease_to_own';

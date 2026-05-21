@@ -54,6 +54,11 @@ export interface TxPageResult {
     nextCursor: number | null;
 }
 
+export interface TxSubscriptionMeta {
+    complete: boolean;
+    source: 'initial' | 'backfill' | 'realtime';
+}
+
 export const fetchTransactionsPage = async (
     fleetId: string,
     cursor?: number | null,
@@ -435,7 +440,7 @@ export const updateDriver = async (id: string, driver: Partial<Driver>, _fleetId
 };
 
 export const deleteDriver = async (id: string, auditInfo?: { adminName: string; reason?: string }, fleetId?: string) => {
-    const { error } = await supabase.from('drivers').update({ is_deleted: true }).eq('id', id);
+    const { error } = await supabase.from('drivers').update({ is_deleted: true, quit_date: Date.now() }).eq('id', id);
     if (error) throw error;
 
     if (auditInfo) {
@@ -475,22 +480,24 @@ export const clearDriverDayOverride = async (driverId: string, dateKey: string) 
 
 // ==================== TRANSACTIONS ====================
 
-export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void, fleetId?: string) => {
+export const subscribeToTransactions = (callback: (transactions: Transaction[], meta?: TxSubscriptionMeta) => void, fleetId?: string) => {
     if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
     const transformTx = transformTxRow;
     let cache: Transaction[] = [];
+    let isComplete = false;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     let backfillTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
-    const mergeRows = (rows: Transaction[]) => {
+    const mergeRows = (rows: Transaction[], meta: TxSubscriptionMeta) => {
         const byId = new Map(cache.map(tx => [tx.id, tx]));
         for (const row of rows) byId.set(row.id, row);
         cache = Array.from(byId.values())
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, TX_BACKFILL_MAX_ROWS);
-        callback(cache);
+        isComplete = meta.complete;
+        callback(cache, meta);
     };
 
     const backfillOlderRows = async (cursor: number | null) => {
@@ -498,8 +505,9 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
         try {
             const result = await fetchTransactionsPage(fleetId, cursor, TX_BACKFILL_PAGE_SIZE);
             if (cancelled) return;
-            mergeRows(result.data);
-            if (result.nextCursor && cache.length < TX_BACKFILL_MAX_ROWS) {
+            const shouldContinue = Boolean(result.nextCursor) && cache.length + result.data.length < TX_BACKFILL_MAX_ROWS;
+            mergeRows(result.data, { complete: !shouldContinue, source: 'backfill' });
+            if (shouldContinue) {
                 backfillTimer = setTimeout(() => backfillOlderRows(result.nextCursor), 350);
             }
         } catch (err: any) {
@@ -528,7 +536,8 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                 const page = hasMore ? rows.slice(0, TX_INITIAL_LIMIT) : rows;
                 const nextCursor = hasMore && page.length > 0 ? page[page.length - 1].timestamp_ms : null;
                 cache = page.map(transformTx);
-                callback(cache);
+                isComplete = !nextCursor;
+                callback(cache, { complete: isComplete, source: 'initial' });
                 if (backfillTimer) clearTimeout(backfillTimer);
                 if (nextCursor) {
                     backfillTimer = setTimeout(() => backfillOlderRows(nextCursor), 1200);
@@ -555,7 +564,7 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, ({ new: row }) => {
             if (row.status === 'DELETED') return;
             cache = [transformTx(row), ...cache];
-            callback(cache);
+            callback(cache, { complete: isComplete, source: 'realtime' });
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, ({ new: row }) => {
             if (row.status === 'DELETED') {
@@ -567,11 +576,11 @@ export const subscribeToTransactions = (callback: (transactions: Transaction[]) 
                     ? [...cache.slice(0, idx), item, ...cache.slice(idx + 1)]
                     : [item, ...cache];
             }
-            callback(cache);
+            callback(cache, { complete: isComplete, source: 'realtime' });
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'transactions', filter: `fleet_id=eq.${fleetId}` }, ({ old: row }) => {
             cache = cache.filter(t => t.id !== row.id);
-            callback(cache);
+            callback(cache, { complete: isComplete, source: 'realtime' });
         })
         .subscribe((() => {
             let subscribedCount = 0;

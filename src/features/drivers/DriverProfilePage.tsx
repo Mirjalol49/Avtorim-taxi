@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../supabase';
 import { Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import { Transaction, TransactionType } from '../../core/types/transaction.types';
+import { PaymentStatus, Transaction, TransactionType } from '../../core/types/transaction.types';
 import { calcDriverFinance } from './utils/debtUtils';
 
 import { DriverAvatar } from './components/DriverAvatar';
@@ -12,8 +13,10 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { forceDownload } from '../../../utils/downloadHelper';
 import { DriverHistoryPage } from './components/DriverHistoryPage';
 import {
-    ChevronLeftIcon, EditIcon, TrashIcon, CarIcon
+    ChevronLeftIcon, EditIcon, TrashIcon, CarIcon, EyeIcon, DownloadIcon, CalendarIcon, XIcon
 } from '../../../components/Icons';
+import DatePicker from '../../../components/DatePicker';
+import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
 import PageSkeleton from '../../../components/PageSkeleton';
 import Lottie from 'lottie-react';
 import chequeAnimation from '../../../Images/cheque.json';
@@ -29,6 +32,7 @@ interface Props {
     onDeleteDriver?: (id: string) => void;
     onAddTransaction?: (data: Omit<Transaction, 'id'>) => void;
     onOpenDepositTopup?: (driverId: string) => void;
+    onQuickAssign?: (payload: { driverId: string; carId: string | null; effectiveFrom?: number; replaceExisting?: boolean }) => Promise<void>;
 }
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
@@ -52,6 +56,43 @@ function getFriendlyDocName(doc: any, t: (key: string, fallback: string) => stri
 }
 
 const DOC_CATEGORY_ORDER = ['driver_license', 'passport', 'other', 'car_registration', 'car_insurance'];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function resolveDriverProfileCar(driver: Driver | undefined, cars: Car[], transactions: Transaction[]): Car | null {
+    if (!driver) return null;
+
+    const activeAssigned = cars.find(c => c.assignedDriverId === driver.id && !c.isDeleted);
+    if (activeAssigned) return activeAssigned;
+
+    const latestPlanCarId = [...(driver.planHistory ?? [])]
+        .sort((a, b) => b.effectiveFrom - a.effectiveFrom)
+        .find(entry => entry.carId)?.carId;
+    if (latestPlanCarId) {
+        const planCar = cars.find(c => c.id === latestPlanCarId);
+        if (planCar) return planCar;
+    }
+
+    const normalizedDriverPlate = (driver.licensePlate || '').replace(/\s+/g, '').toLowerCase();
+    if (normalizedDriverPlate) {
+        const plateCar = cars.find(c => (c.licensePlate || '').replace(/\s+/g, '').toLowerCase() === normalizedDriverPlate);
+        if (plateCar) return plateCar;
+    }
+
+    const driverCarName = (driver.carModel || '').trim().toLowerCase();
+    if (driverCarName) {
+        const nameCar = cars.find(c => (c.name || '').trim().toLowerCase() === driverCarName);
+        if (nameCar) return nameCar;
+    }
+
+    const latestTxWithCar = transactions
+        .filter(tx => tx.driverId === driver.id && tx.carId && tx.status !== PaymentStatus.DELETED)
+        .sort((a, b) => b.timestamp - a.timestamp)[0];
+    if (latestTxWithCar?.carId) {
+        return cars.find(c => c.id === latestTxWithCar.carId) ?? null;
+    }
+
+    return null;
+}
 
 function groupDriverDocuments(docs: any[], t: (key: string, fallback: string) => string) {
     const grouped = new Map<string, { key: string; title: string; docs: any[] }>();
@@ -78,7 +119,7 @@ function groupDriverDocuments(docs: any[], t: (key: string, fallback: string) =>
 }
 
 export const DriverProfilePage: React.FC<Props> = ({
-    drivers, cars, transactions, theme, userRole, onEditDriver, onDeleteDriver, onAddTransaction, onOpenDepositTopup
+    drivers, cars, transactions, theme, userRole, onEditDriver, onDeleteDriver, onAddTransaction, onOpenDepositTopup, onQuickAssign
 }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -86,12 +127,18 @@ export const DriverProfilePage: React.FC<Props> = ({
     const isDark = theme === 'dark';
     
     const driver = drivers.find(d => d.id === id);
-    const car = driver ? cars.find(c => c.assignedDriverId === driver.id) : null;
+    const car = useMemo(() => resolveDriverProfileCar(driver, cars, transactions), [driver, cars, transactions]);
     
     const [docs, setDocs] = useState<any[]>([]);
     const [docsLoading, setDocsLoading] = useState(true);
     const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
     const [showHistory, setShowHistory] = useState(false);
+    const [assignOpen, setAssignOpen] = useState(false);
+    const [licenseModalOpen, setLicenseModalOpen] = useState(false);
+    const [licenseExpiryDraft, setLicenseExpiryDraft] = useState<Date | null>(null);
+    const [licenseReminderDraft, setLicenseReminderDraft] = useState(2);
+    const [licenseSaving, setLicenseSaving] = useState(false);
+    const [licenseError, setLicenseError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!driver?.id) return;
@@ -159,7 +206,81 @@ export const DriverProfilePage: React.FC<Props> = ({
     const bdr = isDark ? 'border-white/[0.07]' : 'border-gray-200';
     const txt = isDark ? 'text-white' : 'text-gray-900';
     const muted = isDark ? 'text-white/40' : 'text-gray-500';
-    const groupedDocs = groupDriverDocuments(docs, t);
+    const groupedDocs = groupDriverDocuments(docs.filter((doc: any) => Boolean(doc.data)), t);
+    const driverLicenseDoc = docs.find((doc: any) => doc.category === 'driver_license' && doc.expiryMs);
+    const driverLicenseExpiry = typeof driverLicenseDoc?.expiryMs === 'number' ? Number(driverLicenseDoc.expiryMs) : null;
+    const driverLicenseReminderDays = Number(driverLicenseDoc?.reminderDaysBefore ?? 2);
+    const driverLicenseDaysLeft = driverLicenseExpiry
+        ? Math.ceil((new Date(driverLicenseExpiry).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / DAY_MS)
+        : null;
+    const driverLicenseStatus = driverLicenseDaysLeft === null
+        ? 'missing'
+        : driverLicenseDaysLeft < 0
+            ? 'expired'
+            : driverLicenseDaysLeft <= driverLicenseReminderDays
+                ? 'warning'
+                : 'valid';
+    const driverLicenseStatusClass = driverLicenseStatus === 'expired'
+        ? isDark ? 'border-red-500/25 bg-red-500/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'
+        : driverLicenseStatus === 'warning'
+            ? isDark ? 'border-amber-500/25 bg-amber-500/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700'
+            : driverLicenseStatus === 'valid'
+                ? isDark ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : isDark ? 'border-white/10 bg-white/[0.03] text-white/45' : 'border-gray-200 bg-gray-50 text-gray-500';
+    const driverLicenseStatusLabel = driverLicenseStatus === 'expired'
+        ? t('expiredDocument', 'Muddati tugagan')
+        : driverLicenseStatus === 'warning'
+            ? t('expiresSoon', 'Tez orada tugaydi')
+            : driverLicenseStatus === 'valid'
+                ? t('validDocument', 'Amalda')
+                : t('notSpecified', 'Kiritilmagan');
+    const formatDriverDocDate = (ms: number | null) => ms
+        ? new Intl.DateTimeFormat(t('localeCode', 'uz-UZ'), { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(ms))
+        : t('notSpecified', 'Kiritilmagan');
+
+    const openLicenseModal = () => {
+        if (userRole !== 'admin') return;
+        setLicenseExpiryDraft(driverLicenseExpiry ? new Date(driverLicenseExpiry) : null);
+        setLicenseReminderDraft(driverLicenseReminderDays || 2);
+        setLicenseError(null);
+        setLicenseModalOpen(true);
+    };
+
+    const saveLicenseExpiry = async () => {
+        if (!driver?.id) return;
+        setLicenseSaving(true);
+        setLicenseError(null);
+        const previousDocs = docs;
+        try {
+            const expiryMs = licenseExpiryDraft ? licenseExpiryDraft.getTime() : null;
+            const reminderDays = Math.max(0, Number(licenseReminderDraft) || 0);
+            const nextDocs = [...docs];
+            const idx = nextDocs.findIndex((doc: any) => doc.category === 'driver_license');
+
+            if (idx >= 0) {
+                nextDocs[idx] = { ...nextDocs[idx], expiryMs, reminderDaysBefore: reminderDays };
+            } else {
+                nextDocs.push({
+                    name: t('driverModalLicense', 'Haydovchilik guvohnomasi'),
+                    type: 'application/x-driver-license-metadata',
+                    data: '',
+                    category: 'driver_license',
+                    expiryMs,
+                    reminderDaysBefore: reminderDays,
+                });
+            }
+
+            setDocs(nextDocs);
+            const { error } = await supabase.from('drivers').update({ documents: nextDocs }).eq('id', driver.id);
+            if (error) throw error;
+            setLicenseModalOpen(false);
+        } catch (err: any) {
+            setDocs(previousDocs);
+            setLicenseError(err?.message || t('errorOccurred', 'Xatolik yuz berdi'));
+        } finally {
+            setLicenseSaving(false);
+        }
+    };
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -262,7 +383,7 @@ export const DriverProfilePage: React.FC<Props> = ({
                     </div>
 
                     {/* Car Details */}
-                    {car && (
+                    {car ? (
                         <div className={`flex rounded-3xl border overflow-hidden p-2 gap-4 shadow-sm ${bg}`}>
                             {/* Left Side: Large Image */}
                             <div className={`w-[130px] h-[130px] sm:w-[150px] sm:h-[150px] flex-shrink-0 rounded-[20px] overflow-hidden ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
@@ -274,7 +395,18 @@ export const DriverProfilePage: React.FC<Props> = ({
                             
                             {/* Right Side: Details & Plan */}
                             <div className="flex-1 flex flex-col justify-center py-2 pr-4 min-w-0">
-                                <p className={`text-[18px] sm:text-[20px] font-bold truncate leading-tight mb-2 ${txt}`}>{car.name}</p>
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <p className={`text-[18px] sm:text-[20px] font-bold truncate leading-tight ${txt}`}>{car.name}</p>
+                                    {userRole === 'admin' && onQuickAssign && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setAssignOpen(true)}
+                                            className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black border transition-colors ${isDark ? 'border-teal-500/25 text-teal-300 hover:bg-teal-500/10' : 'border-teal-200 text-teal-700 hover:bg-teal-50'}`}
+                                        >
+                                            {t('quickAssignChange', 'Almashtirish')}
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="mb-4 inline-flex shadow-sm rounded-[6px]">
                                     <LicensePlate plate={car.licensePlate} size="lg" />
                                 </div>
@@ -287,9 +419,110 @@ export const DriverProfilePage: React.FC<Props> = ({
                                         </p>
                                     </div>
                                 )}
+                                {userRole === 'admin' && onQuickAssign && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setAssignOpen(true)}
+                                        className={`mt-3 w-full h-10 rounded-2xl text-[12px] font-black border transition-colors ${isDark ? 'border-white/[0.08] text-white/60 hover:bg-white/[0.05]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                        {t('quickAssignManage', 'Biriktirishni boshqarish')}
+                                    </button>
+                                )}
                             </div>
                         </div>
+                    ) : (
+                        <div className={`rounded-3xl border p-5 shadow-sm ${bg}`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-white/[0.05] text-white/35' : 'bg-slate-100 text-slate-400'}`}>
+                                    <CarIcon className="w-7 h-7" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className={`text-[15px] font-black ${txt}`}>{t('carNotAssigned', 'Avtomobil biriktirilmagan')}</p>
+                                    <p className={`text-[12px] font-medium mt-1 ${muted}`}>{t('quickAssignDriverCarHint', 'Haydovchiga avtomobilni shu yerdan tez biriktiring')}</p>
+                                </div>
+                            </div>
+                            {userRole === 'admin' && onQuickAssign && (
+                                <button
+                                    type="button"
+                                    onClick={() => setAssignOpen(true)}
+                                    className="mt-4 w-full h-11 rounded-2xl bg-[#0f766e] text-white text-sm font-black hover:bg-[#0b5f59] transition-colors"
+                                >
+                                    {t('assignCar', 'Biriktirish')}
+                                </button>
+                            )}
+                        </div>
                     )}
+
+                    <div className={`p-5 rounded-3xl border ${bg}`}>
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                                <p className={`text-[11px] font-black uppercase tracking-wider ${muted}`}>
+                                    {t('driverLicenseValidity', 'Haydovchilik huquqi muddati')}
+                                </p>
+                                {driverLicenseStatus !== 'missing' && (
+                                    <p className={`text-[13px] mt-1 leading-snug ${muted}`}>
+                                        {t('driverLicenseValidityDesc', 'Haydovchilik guvohnomasi va eslatma nazorati')}
+                                    </p>
+                                )}
+                            </div>
+                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                                driverLicenseStatus === 'missing'
+                                    ? isDark ? 'bg-white/[0.05] text-white/40' : 'bg-slate-100 text-slate-400'
+                                    : isDark ? 'bg-teal-500/10 text-teal-300' : 'bg-teal-50 text-teal-700'
+                            }`}>
+                                <span className="text-xl">🪪</span>
+                            </div>
+                        </div>
+                        {driverLicenseStatus === 'missing' ? (
+                            <button
+                                type="button"
+                                onClick={openLicenseModal}
+                                disabled={userRole !== 'admin'}
+                                className={`w-full text-left rounded-2xl border px-4 py-3 transition-all ${userRole === 'admin' ? 'active:scale-[0.99]' : 'cursor-default'} ${
+                                isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50/80'
+                            }`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                        isDark ? 'bg-white/[0.05] text-white/45' : 'bg-white text-slate-400'
+                                    }`}>
+                                        <span className="text-lg">+</span>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className={`text-[14px] font-black leading-tight ${txt}`}>
+                                            {t('driverLicenseNotSetTitle', 'Muddati kiritilmagan')}
+                                        </p>
+                                        <p className={`mt-0.5 text-[12px] font-medium leading-snug ${muted}`}>
+                                            {t('driverLicenseNotSetHint', 'Eslatma uchun guvohnoma muddatini kiriting')}
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={openLicenseModal}
+                                disabled={userRole !== 'admin'}
+                                className={`w-full text-left rounded-2xl border p-4 transition-all ${userRole === 'admin' ? 'active:scale-[0.99]' : 'cursor-default'} ${driverLicenseStatusClass}`}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[12px] font-black uppercase tracking-wide">
+                                            {t('driverModalLicense', 'Haydovchilik guvohnomasi')}
+                                        </p>
+                                        <p className="mt-1 text-[18px] font-black tabular-nums leading-tight">
+                                            {formatDriverDocDate(driverLicenseExpiry)}
+                                        </p>
+                                        <p className="mt-1 text-[11px] font-semibold opacity-75">
+                                            {t('reminderBeforeText', '{{days}} kun oldin eslatadi').replace('{{days}}', String(driverLicenseReminderDays))}
+                                        </p>
+                                    </div>
+                                    <span className="shrink-0 text-[11px] font-black uppercase tracking-wide opacity-80">
+                                        {driverLicenseStatusLabel}
+                                    </span>
+                                </div>
+                            </button>
+                        )}
+                    </div>
 
                     {/* Documents */}
                     {!docsLoading && groupedDocs.length > 0 && (
@@ -310,43 +543,63 @@ export const DriverProfilePage: React.FC<Props> = ({
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                                                 {group.docs.map((doc: any, idx: number) => {
                                                     const isImage = doc.type?.startsWith('image/');
                                                     const pageLabel = group.docs.length > 1 ? `${idx + 1}` : '';
+                                                    const openDocument = () => {
+                                                        if (isImage) {
+                                                            setViewingDoc({ name: doc.name, data: doc.data });
+                                                        } else {
+                                                            window.open(doc.data, '_blank', 'noopener,noreferrer');
+                                                        }
+                                                    };
                                                     return (
                                                         <div
                                                             key={`${doc.name}-${idx}`}
-                                                            className={`relative w-[74px] h-[74px] rounded-2xl border overflow-hidden text-left transition-transform active:scale-95 ${isDark ? 'border-white/10 bg-surface-2' : 'border-gray-200 bg-white'}`}
+                                                            className={`rounded-2xl border p-2 ${isDark ? 'border-white/10 bg-surface-2' : 'border-gray-200 bg-white'}`}
                                                             title={doc.name}
                                                         >
                                                             <button
                                                                 type="button"
-                                                                onClick={() => isImage ? setViewingDoc({ name: doc.name, data: doc.data }) : window.open(doc.data, '_blank', 'noopener,noreferrer')}
-                                                                className="absolute inset-0"
+                                                                onClick={openDocument}
+                                                                className={`relative w-full h-[82px] rounded-xl overflow-hidden text-left transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 ${isDark ? 'ring-offset-surface-2' : 'ring-offset-white'}`}
+                                                                aria-label={`${t('view', "Ko'rish")}: ${doc.name || group.title}`}
                                                             >
                                                                 {isImage ? (
                                                                     <img src={doc.data} alt={doc.name} className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-red-400">
                                                                         <span className="text-2xl">📄</span>
-                                                                        <span className="text-[10px] font-black">PDF</span>
-                                                                    </div>
+                                                                            <span className="text-[10px] font-black">PDF</span>
+                                                                        </div>
+                                                                    )}
+                                                                {pageLabel && (
+                                                                    <span className="absolute left-2 top-2 min-w-6 h-6 px-1 rounded-full bg-black/70 text-white text-[11px] font-black flex items-center justify-center">
+                                                                        {pageLabel}
+                                                                    </span>
                                                                 )}
                                                             </button>
-                                                            {pageLabel && (
-                                                                <span className="absolute left-1.5 top-1.5 min-w-5 h-5 px-1 rounded-full bg-black/70 text-white text-[10px] font-black flex items-center justify-center">
-                                                                    {pageLabel}
-                                                                </span>
-                                                            )}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => forceDownload(doc.data, doc.name)}
-                                                                className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center shadow-sm hover:bg-black/85"
-                                                                aria-label={t('download', 'Yuklab olish')}
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                                                            </button>
+                                                            <div className="mt-2 flex items-center justify-center gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={openDocument}
+                                                                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${isDark ? 'bg-white/[0.06] text-white hover:bg-white/[0.1]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                                                    aria-label={`${t('view', "Ko'rish")}: ${doc.name || group.title}`}
+                                                                    title={t('view', "Ko'rish")}
+                                                                >
+                                                                    <EyeIcon className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => forceDownload(doc.data, doc.name)}
+                                                                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${isDark ? 'bg-teal-500/15 text-teal-200 hover:bg-teal-500/25' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
+                                                                    aria-label={`${t('download', 'Yuklab olish')}: ${doc.name || group.title}`}
+                                                                    title={t('download', 'Yuklab olish')}
+                                                                >
+                                                                    <DownloadIcon className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
@@ -526,38 +779,45 @@ export const DriverProfilePage: React.FC<Props> = ({
             </div>
 
             {/* Document Viewer Modal */}
-            {viewingDoc && (
+            {viewingDoc && typeof document !== 'undefined' && createPortal(
                 <div 
-                    className="fixed inset-y-0 right-0 left-0 md:left-64 z-[300] flex items-center justify-center p-4 sm:p-8 bg-black/60 backdrop-blur-sm" 
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm"
                     onClick={() => setViewingDoc(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="driver-document-viewer-title"
                 >
                     <div 
-                        className={`relative w-full max-w-[800px] max-h-[90vh] rounded-[32px] overflow-hidden shadow-2xl flex flex-col ${isDark ? 'bg-[#151a23] border border-white/10' : 'bg-white'}`} 
+                        className={`relative w-full max-w-[760px] max-h-[calc(100dvh-32px)] sm:max-h-[calc(100dvh-48px)] rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col ${isDark ? 'bg-[#151a23] border border-white/10' : 'bg-white'}`}
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className={`flex items-center justify-between p-5 pb-4 ${isDark ? 'bg-[#151a23]' : 'bg-white'}`}>
-                            <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                        <div className={`flex items-center justify-between gap-3 p-4 sm:p-5 ${isDark ? 'bg-[#151a23]' : 'bg-white'}`}>
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[16px] sm:rounded-[18px] flex items-center justify-center shrink-0 ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
                                 </div>
-                                <div>
-                                    <h3 className={`font-bold text-[16px] leading-tight ${txt}`}>{t('viewDocument', "Hujjatni ko'rish")}</h3>
-                                    <p className={`text-[12px] flex items-center gap-1.5 mt-0.5 ${muted}`}>
-                                        <span className="opacity-70">📄</span> {viewingDoc.name || t('file', 'Fayl')}
+                                <div className="min-w-0">
+                                    <h3 id="driver-document-viewer-title" className={`font-bold text-[15px] sm:text-[16px] leading-tight ${txt}`}>{t('viewDocument', "Hujjatni ko'rish")}</h3>
+                                    <p className={`text-[12px] flex items-center gap-1.5 mt-0.5 truncate ${muted}`}>
+                                        <span className="opacity-70 shrink-0">📄</span> <span className="truncate">{viewingDoc.name || t('file', 'Fayl')}</span>
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                                 <button 
                                     onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)} 
-                                    className={`w-12 h-12 flex items-center justify-center rounded-[18px] border transition-colors active:scale-95 ${isDark ? 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10' : 'border-blue-100 text-blue-600 hover:bg-blue-50'}`}
+                                    className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-[16px] sm:rounded-[18px] border transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${isDark ? 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10' : 'border-blue-100 text-blue-600 hover:bg-blue-50'}`}
+                                    aria-label={t('download', 'Yuklab olish')}
+                                    title={t('download', 'Yuklab olish')}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 </button>
                                 <button 
                                     onClick={() => setViewingDoc(null)} 
-                                    className={`w-12 h-12 flex items-center justify-center rounded-[18px] border transition-colors active:scale-95 ${isDark ? 'border-white/10 text-white/70 hover:bg-white/10' : 'border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
+                                    className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-[16px] sm:rounded-[18px] border transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${isDark ? 'border-white/10 text-white/70 hover:bg-white/10' : 'border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
+                                    aria-label={t('close', 'Yopish')}
+                                    title={t('close', 'Yopish')}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                 </button>
@@ -565,28 +825,29 @@ export const DriverProfilePage: React.FC<Props> = ({
                         </div>
 
                         {/* Content Area */}
-                        <div className={`flex-1 p-8 md:p-12 overflow-y-auto flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-[#f4f7fc]'}`}>
+                        <div className={`flex-1 min-h-0 p-3 sm:p-6 md:p-8 overflow-auto flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-[#f4f7fc]'}`}>
                             <img 
                                 src={viewingDoc.data} 
                                 alt={viewingDoc.name} 
-                                className="w-full max-w-[600px] rounded-2xl shadow-sm object-contain max-h-[65vh]" 
+                                className="w-full max-w-[620px] rounded-2xl shadow-sm object-contain max-h-[calc(100dvh-210px)] sm:max-h-[calc(100dvh-240px)]"
                             />
                         </div>
 
                         {/* Footer */}
-                        <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#151a23] border-t border-white/5' : 'bg-white border-t border-gray-100'}`}>
-                            <p className={`text-[12px] ${muted}`}>
+                        <div className={`p-4 sm:p-5 flex items-center justify-between gap-3 ${isDark ? 'bg-[#151a23] border-t border-white/5' : 'bg-white border-t border-gray-100'}`}>
+                            <p className={`text-[12px] leading-snug ${muted}`}>
                                 {t('clickOutsideOr', 'Tashqariga bosing yoki')} <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono mx-0.5 ${isDark ? 'bg-white/10' : 'bg-gray-100 border border-gray-200'}`}>Esc</kbd> {t('toClose', 'yopish uchun')}
                             </p>
                             <button 
                                 onClick={() => setViewingDoc(null)} 
-                                className={`text-[14px] font-bold ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                                className={`shrink-0 text-[14px] font-bold ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
                             >
                                 {t('close', 'Yopish')}
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* History Full Modal */}
@@ -599,6 +860,81 @@ export const DriverProfilePage: React.FC<Props> = ({
                     theme={theme}
                     onClose={() => setShowHistory(false)}
                 />
+            )}
+
+            {onQuickAssign && (
+                <QuickAssignmentModal
+                    isOpen={assignOpen}
+                    mode="driver"
+                    driver={driver}
+                    car={car}
+                    drivers={drivers}
+                    cars={cars}
+                    theme={theme}
+                    onClose={() => setAssignOpen(false)}
+                    onSave={onQuickAssign}
+                />
+            )}
+
+            {licenseModalOpen && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[330] flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm" onMouseDown={() => setLicenseModalOpen(false)}>
+                    <div className={`w-full max-w-md rounded-[28px] border shadow-2xl overflow-hidden ${isDark ? 'bg-[#111827] border-white/[0.08]' : 'bg-white border-slate-200'}`} onMouseDown={e => e.stopPropagation()}>
+                        <div className={`px-5 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-slate-100'} flex items-start justify-between gap-4`}>
+                            <div>
+                                <p className={`text-[11px] font-black uppercase tracking-[0.18em] ${muted}`}>{t('driverLicenseValidity', 'Haydovchilik huquqi muddati')}</p>
+                                <h2 className={`text-xl font-black mt-1 ${txt}`}>{t('driverLicenseExpiryDate', 'Amal qilish muddati')}</h2>
+                            </div>
+                            <button type="button" onClick={() => setLicenseModalOpen(false)} className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.06] text-white/70' : 'bg-slate-100 text-slate-500'}`}>
+                                <XIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <DatePicker
+                                label={t('driverLicenseExpiryDate', 'Amal qilish muddati')}
+                                value={licenseExpiryDraft}
+                                onChange={(d: Date | null) => setLicenseExpiryDraft(d)}
+                                isClearable
+                                theme={theme}
+                            />
+                            <div>
+                                <label className={`block text-[11px] font-black uppercase tracking-widest mb-2 ${muted}`}>
+                                    {t('remindBefore', 'Eslatish')}
+                                </label>
+                                <div className={`rounded-2xl border px-4 py-3 flex items-center gap-3 ${isDark ? 'border-white/[0.08] bg-white/[0.04]' : 'border-slate-200 bg-slate-50'}`}>
+                                    <CalendarIcon className={`w-5 h-5 ${muted}`} />
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="365"
+                                        value={licenseReminderDraft}
+                                        onChange={e => setLicenseReminderDraft(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                                        className={`w-full bg-transparent outline-none text-base font-black ${txt}`}
+                                    />
+                                    <span className={`text-sm font-bold ${muted}`}>{t('daysBeforeShort', 'kun oldin')}</span>
+                                </div>
+                            </div>
+                            {licenseError && <p className="text-sm font-bold text-red-500">{licenseError}</p>}
+                        </div>
+                        <div className={`px-5 py-4 border-t ${isDark ? 'border-white/[0.08] bg-white/[0.03]' : 'border-slate-100 bg-slate-50'} flex justify-between gap-3`}>
+                            <button
+                                type="button"
+                                onClick={() => setLicenseExpiryDraft(null)}
+                                className={`px-4 py-2.5 rounded-xl text-sm font-bold ${isDark ? 'text-white/65 hover:bg-white/[0.06]' : 'text-slate-600 hover:bg-slate-100'}`}
+                            >
+                                {t('clear', 'Tozalash')}
+                            </button>
+                            <div className="flex gap-3">
+                                <button type="button" onClick={() => setLicenseModalOpen(false)} className={`px-4 py-2.5 rounded-xl text-sm font-bold ${isDark ? 'text-white/65 hover:bg-white/[0.06]' : 'text-slate-600 hover:bg-slate-100'}`}>
+                                    {t('cancel', 'Bekor qilish')}
+                                </button>
+                                <button type="button" disabled={licenseSaving} onClick={saveLicenseExpiry} className="px-5 py-2.5 rounded-xl text-sm font-black bg-[#0f766e] text-white hover:bg-[#0b5f59] disabled:opacity-60">
+                                    {licenseSaving ? t('saving', 'Saqlanmoqda...') : t('save', 'Saqlash')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );

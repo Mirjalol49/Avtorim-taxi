@@ -47,6 +47,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [startDate, setStartDate] = useState<number>(Date.now());
   const [daysOffPerMonth, setDaysOffPerMonth] = useState<number>(0);
   const [quitDate, setQuitDate] = useState<number | null>(null);
+  const [driverLicenseExpiry, setDriverLicenseExpiry] = useState<number | null>(null);
+  const [driverLicenseReminderDays, setDriverLicenseReminderDays] = useState<number>(2);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -96,7 +98,13 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setDocuments([]);
       // Load documents on-demand (excluded from realtime subscription to save egress)
       supabase.from('drivers').select('documents').eq('id', editingDriver.id).single()
-        .then(({ data }) => { if (data?.documents) setDocuments(data.documents); });
+        .then(({ data }) => {
+          const loadedDocs = data?.documents ?? [];
+          setDocuments(loadedDocs);
+          const licenseDoc = loadedDocs.find((doc: DriverDocument) => doc.category === 'driver_license' && doc.expiryMs);
+          setDriverLicenseExpiry(licenseDoc?.expiryMs ?? null);
+          setDriverLicenseReminderDays(Number(licenseDoc?.reminderDaysBefore ?? 2));
+        });
     } else {
       setName('');
       setPhone('+998 ');
@@ -115,6 +123,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setStartDate(Date.now());
       setDaysOffPerMonth(0);
       setQuitDate(null);
+      setDriverLicenseExpiry(null);
+      setDriverLicenseReminderDays(2);
       setSelectedCarId('');
       setError(null);
       setDocError(null);
@@ -162,6 +172,16 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         avatarFileRef.current = null;
       }
 
+      const documentsWithMeta = documents.map((doc) => (
+        doc.category === 'driver_license'
+          ? {
+              ...doc,
+              expiryMs: driverLicenseExpiry,
+              reminderDaysBefore: Math.max(0, driverLicenseReminderDays || 0),
+            }
+          : doc
+      ));
+
       await onSubmit({
         id: editingDriver?.id,
         name,
@@ -180,7 +200,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         startDate,
         daysOffPerMonth,
         quitDate: quitDate || null,
-        documents,
+        documents: documentsWithMeta,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
         assignedCarId: selectedCarId || null,
@@ -266,7 +286,15 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           if (error) throw error;
           
           const url = supabase.storage.from('car-damages').getPublicUrl(path).data.publicUrl;
-          resolve({ name: file.name, type: contentType, data: url, category });
+          resolve({
+            name: file.name,
+            type: contentType,
+            data: url,
+            category,
+            ...(category === 'driver_license'
+              ? { expiryMs: driverLicenseExpiry, reminderDaysBefore: Math.max(0, driverLicenseReminderDays || 0) }
+              : {}),
+          });
         } catch (err) {
           reject(err);
         }
@@ -489,8 +517,8 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             </p>
           </div>
 
-          {/* Conditional amount field */}
-          {driverType === 'salary' ? (
+          {/* Type-specific fields */}
+          {driverType === 'salary' && (
             <div>
               <label className={labelClass}>{t('driverModalSalaryLabel', 'Oylik maosh')}</label>
               <div className="relative">
@@ -510,7 +538,9 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 {t('driverModalSalaryDesc', "Har oyda haydovchiga to'lanadigan maosh. Reja bajarilmasa ayiriladi.")}
               </p>
             </div>
-          ) : (
+          )}
+
+          {driverType === 'lease_to_own' && (
             <div className="space-y-4">
               <div>
                 <label className={labelClass}>{t('driverModalContractTotal', 'Mashina narxi (Shartnoma jami)')}</label>
@@ -738,6 +768,41 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <p className={sectionTitle}>
               <span>👤</span> {t('driverModalDocuments', 'Haydovchi hujjatlari')}
             </p>
+            <div className={`mb-3 rounded-xl border p-4 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <p className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                    {t('driverLicenseValidity', 'Haydovchilik huquqi muddati')}
+                  </p>
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {t('driverLicenseValidityHint', 'Haydovchilik guvohnomasi tugashidan oldin eslatadi')}
+                  </p>
+                </div>
+                <span className={`px-2 py-1 rounded-lg text-[11px] font-black ${theme === 'dark' ? 'bg-teal-500/10 text-teal-300' : 'bg-teal-50 text-teal-700'}`}>
+                  {driverLicenseReminderDays} {t('daysBeforeShort', 'kun oldin')}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3">
+                <DatePicker
+                  label={t('driverLicenseExpiryDate', 'Amal qilish muddati')}
+                  value={driverLicenseExpiry ? new Date(driverLicenseExpiry) : null}
+                  onChange={(d: Date | null) => setDriverLicenseExpiry(d ? d.getTime() : null)}
+                  isClearable
+                  theme={theme}
+                />
+                <div>
+                  <label className={labelClass}>{t('remindBefore', 'Eslatish')}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="365"
+                    value={driverLicenseReminderDays}
+                    onChange={e => setDriverLicenseReminderDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </div>
             <div className="space-y-2">
               <DocUploadBox category="driver_license" label={t('driverModalLicense', 'Haydovchilik guvohnomasi')} />
               <DocUploadBox category="passport" label={t('driverModalPassport', 'Pasport')} />

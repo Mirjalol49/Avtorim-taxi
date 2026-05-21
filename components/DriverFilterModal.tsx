@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Driver } from '../src/core/types/driver.types';
 import { Car } from '../src/core/types/car.types';
 import { LicensePlate } from '../src/components/ui/LicensePlate';
+import { XIcon } from './Icons';
 
 interface DriverFilterModalProps {
     isOpen: boolean;
@@ -88,11 +89,27 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                 className={`relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[32px] shadow-2xl overflow-hidden ${
                     isDark ? 'bg-[#1a1f2c]/85 border border-white/10' : 'bg-[#eef0f3]/90'
                 } backdrop-blur-2xl ring-1 ring-black/5`}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="driver-filter-title"
                 onMouseDown={e => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="pt-7 pb-4 px-6 flex-shrink-0 flex flex-col items-center justify-center relative">
-                    <h2 className={`text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label={t('close', 'Yopish')}
+                        title={t('close', 'Yopish')}
+                        className={`absolute right-5 top-5 w-11 h-11 rounded-full flex items-center justify-center border transition-all active:scale-95 ${
+                            isDark
+                                ? 'bg-white/[0.06] border-white/[0.08] text-gray-300 hover:bg-white/[0.10] hover:text-white'
+                                : 'bg-white/80 border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 shadow-sm'
+                        }`}
+                    >
+                        <XIcon className="w-5 h-5" />
+                    </button>
+                    <h2 id="driver-filter-title" className={`text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         {t('selectDriver', 'Haydovchini tanlang')}
                     </h2>
                     <p className={`text-[13px] mt-1 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -117,7 +134,15 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                             className={`flex-1 bg-transparent text-[15px] outline-none font-medium ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
                         />
                         {search && (
-                            <button onClick={() => setSearch('')} className={`text-xs ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>✕</button>
+                            <button
+                                type="button"
+                                onClick={() => setSearch('')}
+                                aria-label={t('clearSearch', 'Qidiruvni tozalash')}
+                                title={t('clearSearch', 'Qidiruvni tozalash')}
+                                className={`text-xs ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                ✕
+                            </button>
                         )}
                     </div>
                 </div>

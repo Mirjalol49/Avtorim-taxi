@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface NumberTooltipProps {
     value: number;
@@ -6,14 +6,16 @@ interface NumberTooltipProps {
     label?: string;
     /** 'center' (default) | 'right' | 'left' — align tooltip relative to trigger */
     align?: 'center' | 'right' | 'left';
+    showSign?: boolean;
     children: React.ReactNode;
     theme: 'light' | 'dark';
 }
 
 const NumberTooltip: React.FC<NumberTooltipProps> = ({
-    value, label, align = 'center', children, theme,
+    value, label, align = 'center', showSign = true, children, theme,
 }) => {
     const [visible, setVisible] = useState(false);
+    const showTimer = useRef<number | null>(null);
 
     const isDark = theme === 'dark';
     const sign   = value >= 0 ? '+' : '−';
@@ -31,13 +33,28 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
     const arrowLeft  = align === 'left'  ? '14px' : align === 'center' ? '50%' : undefined;
     const arrowXform = align === 'center' ? 'translateX(-50%)' : undefined;
 
+    useEffect(() => () => {
+        if (showTimer.current) window.clearTimeout(showTimer.current);
+    }, []);
+
+    const showTooltip = () => {
+        if (showTimer.current) window.clearTimeout(showTimer.current);
+        showTimer.current = window.setTimeout(() => setVisible(true), 220);
+    };
+
+    const hideTooltip = () => {
+        if (showTimer.current) window.clearTimeout(showTimer.current);
+        showTimer.current = null;
+        setVisible(false);
+    };
+
     return (
         <div
             className="relative inline-flex justify-end"
-            onMouseEnter={() => setVisible(true)}
-            onMouseLeave={() => setVisible(false)}
-            onFocus={() => setVisible(true)}
-            onBlur={() => setVisible(false)}
+            onMouseEnter={showTooltip}
+            onMouseLeave={hideTooltip}
+            onFocus={showTooltip}
+            onBlur={hideTooltip}
         >
             {children}
 
@@ -45,7 +62,7 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
                 <div
                     role="tooltip"
                     className={`absolute bottom-full mb-2.5 z-50 pointer-events-none ${posX}`}
-                    style={{ animation: 'ttIn 120ms ease-out both' }}
+                    style={{ animation: 'ttIn 100ms ease-out both' }}
                 >
                     <div className={`px-3.5 py-2.5 rounded-xl border shadow-xl text-right min-w-[148px] ${
                         isDark
@@ -62,7 +79,7 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
                                 ? isDark ? 'text-teal-300' : 'text-teal-700'
                                 : isDark ? 'text-red-400'  : 'text-red-600'
                         }`}>
-                            {sign}{exact}
+                            {showSign ? sign : value < 0 ? '−' : ''}{exact}
                             <span className={`ml-1.5 text-[10px] font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
                         </p>
                     </div>

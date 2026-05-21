@@ -7,7 +7,7 @@ import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
 import { useToast } from './ToastNotification';
 import { toDateKey } from '../services/daysOffService';
-import { setDriverDayOverride, clearDriverDayOverride } from '../services/firestoreService';
+import { setDriverDayOverride, clearDriverDayOverride, deleteTransactionsBatch } from '../services/firestoreService';
 import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
 import { getPlanForDriverDate } from '../src/features/drivers/utils/driverPlanHistory';
 import Lottie from 'lottie-react';
@@ -97,6 +97,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [planExceptionEnabled, setPlanExceptionEnabled] = useState(false);
   const [planExceptionAmount, setPlanExceptionAmount] = useState('');
   const [planExceptionDisplayAmount, setPlanExceptionDisplayAmount] = useState('');
+  const [isRestoringDay, setIsRestoringDay] = useState(false);
   const chequeRef = useRef<HTMLInputElement>(null);
 
   // ── Init / reset ────────────────────────────────────────────────────────────
@@ -191,6 +192,27 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const standardPlanForDate = selectedDriver ? getPlanForDriverDate(selectedDriver, date, selectedDriverCar) : 0;
   const showPlanExceptionSection = Boolean(selectedDriver && type !== TransactionType.EXPENSE);
   const isPlanMarkerType = type === TransactionType.DAY_OFF || type === TransactionType.NOT_WORKING;
+  const dayMarkerTransactions = useMemo(() => {
+    if (!selectedDriver) return [];
+    return transactions.filter(tx =>
+      tx.driverId === selectedDriver.id &&
+      tx.status !== PaymentStatus.DELETED &&
+      (tx.status as string) !== 'DELETED' &&
+      (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) &&
+      toDateKey(new Date(tx.timestamp)) === selectedDateKey
+    );
+  }, [selectedDriver?.id, selectedDateKey, transactions]);
+  const hasRestorableDayMarker = Boolean(
+    selectedDriver &&
+    (
+      dayMarkerTransactions.length > 0 ||
+      existingDayOverride?.type === 'OFF' ||
+      existingDayOverride?.type === 'NOT_WORKING'
+    )
+  );
+  const restoreMarkerLabel = dayMarkerTransactions.some(tx => tx.type === TransactionType.NOT_WORKING) || existingDayOverride?.type === 'NOT_WORKING'
+    ? t('notWorkingTitle', 'Ishlamagan kun')
+    : t('dayOffTitle', 'Dam olish kuni');
   const filteredDrivers = drivers.filter(d =>
     d.name.toLowerCase().includes(driverSearch.toLowerCase()) ||
     (d.carModel ?? '').toLowerCase().includes(driverSearch.toLowerCase()) ||
@@ -260,6 +282,32 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   }, [isOpen, selectedDriver?.id, selectedDateKey, initialShowPlanException]);
 
   if (!isOpen) return null;
+
+  const handleRestoreStandardDay = async () => {
+    if (!selectedDriver || !hasRestorableDayMarker) return;
+
+    setIsRestoringDay(true);
+    try {
+      const markerIds = dayMarkerTransactions.map(tx => tx.id).filter(Boolean);
+      if (markerIds.length > 0) {
+        await deleteTransactionsBatch(
+          markerIds,
+          { adminName: 'Admin', count: markerIds.length, totalAmount: 0 },
+          fleetId
+        );
+      }
+      if (existingDayOverride?.type === 'OFF' || existingDayOverride?.type === 'NOT_WORKING') {
+        await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
+      }
+      addToast('success', t('restoreStandardDaySuccess', 'Kun standart rejaga qaytarildi'));
+      resetAndClose();
+    } catch (error) {
+      console.error('Failed to restore standard day', error);
+      addToast('error', t('restoreStandardDayError', 'Kunni tiklashda xatolik yuz berdi'));
+    } finally {
+      setIsRestoringDay(false);
+    }
+  };
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -626,6 +674,35 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {/* Date */}
             <DatePicker label={t('time') || 'Vaqt'} value={date} onChange={setDate} theme={theme} />
+
+            {hasRestorableDayMarker && (
+              <div className={`rounded-2xl border p-4 ${
+                isDark ? 'bg-blue-500/[0.08] border-blue-400/25' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className={`text-sm font-black ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
+                      {t('dayMarkedAs', 'Kun belgisi')}: {restoreMarkerLabel}
+                    </p>
+                    <p className={`mt-1 text-xs leading-relaxed ${isDark ? 'text-blue-200/70' : 'text-blue-700/75'}`}>
+                      {t('restoreStandardDayHint', 'Agar bu tasodifan tanlangan bo‘lsa, kunni standart rejaga qaytaring.')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRestoreStandardDay}
+                    disabled={isRestoringDay}
+                    className={`shrink-0 rounded-xl px-3 py-2 text-xs font-black transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${
+                      isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-blue-800 shadow-sm hover:bg-blue-100'
+                    }`}
+                  >
+                    {isRestoringDay
+                      ? t('restoringDay', 'Tiklanmoqda...')
+                      : t('restoreStandardDay', 'Standart kunga qaytarish')}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Daily plan exception */}
             {showPlanExceptionSection && (

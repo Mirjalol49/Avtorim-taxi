@@ -72,6 +72,14 @@ export interface TransactionCarSnapshot {
     label: string;
 }
 
+export interface DriverWorkPeriod {
+    id: string;
+    startDate: number;
+    endDate?: number | null;
+    carId?: string | null;
+    plan: number;
+}
+
 const parseCarLabel = (label: string, id?: string | null): TransactionCarSnapshot => {
     const parts = label.split(/\s+[—-]\s+/);
     const name = parts[0]?.trim() || label;
@@ -88,6 +96,86 @@ export function getCarForDriverDate(
     const carId = getCarIdForDriverDate(driver, date, fallbackCar);
     if (!carId) return null;
     return cars.find(c => c.id === carId) ?? null;
+}
+
+const dayStart = (value: number | Date): number => {
+    const date = value instanceof Date ? new Date(value) : new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+};
+
+const dayEnd = (value: number | Date): number => {
+    const date = value instanceof Date ? new Date(value) : new Date(value);
+    date.setHours(23, 59, 59, 999);
+    return date.getTime();
+};
+
+export function getDriverWorkPeriods(driver: Driver | null | undefined, fallbackCar?: Car | null): DriverWorkPeriod[] {
+    if (!driver) return [];
+
+    const history = [...(driver.planHistory ?? [])].sort((a, b) => a.effectiveFrom - b.effectiveFrom);
+    const periods: DriverWorkPeriod[] = [];
+    let active: DriverWorkPeriod | null = null;
+
+    for (const entry of history) {
+        const start = dayStart(entry.effectiveFrom);
+        const isWorkingEntry = entry.plan > 0 && Boolean(entry.carId);
+
+        if (isWorkingEntry) {
+            if (active) {
+                const previousEnd = start - 1;
+                periods.push({ ...active, endDate: previousEnd >= active.startDate ? previousEnd : active.startDate });
+            }
+            active = {
+                id: `${periods.length + 1}-${start}`,
+                startDate: start,
+                endDate: null,
+                carId: entry.carId ?? fallbackCar?.id ?? null,
+                plan: entry.plan,
+            };
+            continue;
+        }
+
+        if (active) {
+            const end = dayEnd(entry.effectiveFrom);
+            periods.push({ ...active, endDate: end >= active.startDate ? end : active.startDate });
+            active = null;
+        }
+    }
+
+    if (active) {
+        periods.push({
+            ...active,
+            endDate: driver.isDeleted && driver.quitDate ? dayEnd(driver.quitDate) : null,
+        });
+    }
+
+    if (periods.length === 0) {
+        const startDate = dayStart(driver.startDate || driver.createdAt || Date.now());
+        const endDate = driver.isDeleted && driver.quitDate ? dayEnd(driver.quitDate) : null;
+        periods.push({
+            id: `legacy-${startDate}`,
+            startDate,
+            endDate,
+            carId: fallbackCar?.id ?? null,
+            plan: driver.dailyPlan || fallbackCar?.dailyPlan || 0,
+        });
+    }
+
+    return periods.sort((a, b) => a.startDate - b.startDate);
+}
+
+export function getDriverWorkPeriodForDate(
+    driver: Driver | null | undefined,
+    date: Date,
+    fallbackCar?: Car | null
+): DriverWorkPeriod | null {
+    const target = dayStart(date);
+    return [...getDriverWorkPeriods(driver, fallbackCar)].sort((a, b) => b.startDate - a.startDate).find(period => {
+        const start = dayStart(period.startDate);
+        const end = period.endDate ? dayEnd(period.endDate) : Number.POSITIVE_INFINITY;
+        return target >= start && target <= end;
+    }) ?? null;
 }
 
 export function resolveTransactionCarSnapshot(
@@ -132,8 +220,10 @@ function toDateKey(date: Date): string {
  */
 export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, date: Date, fallbackCar?: Car | null): number {
     if (!driver) return 0;
+    const hasPlanHistory = Boolean(driver.planHistory?.length);
     
-    // Check lifecycle: before joined (including the join day itself as free)
+    // Start date is still authoritative for legacy seeded history. Quit/rehire
+    // gaps are represented by planHistory rows below.
     const startMs = driver.startDate || driver.createdAt;
     if (startMs) {
         const targetDateMidnight = new Date(date);
@@ -142,15 +232,12 @@ export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, 
         const startDateMidnight = new Date(startMs);
         startDateMidnight.setHours(0, 0, 0, 0);
         
-        // 1. If target date is strictly before the start date -> 0
-        // 2. The start date itself IS charged.
         if (targetDateMidnight.getTime() < startDateMidnight.getTime()) {
             return 0;
         }
     }
 
-    // Check lifecycle: after fired
-    if (driver.isDeleted && driver.quitDate) {
+    if (!hasPlanHistory && driver.isDeleted && driver.quitDate) {
         const targetDateMidnight = new Date(date);
         targetDateMidnight.setHours(0, 0, 0, 0);
         
@@ -229,7 +316,8 @@ export function appendDriverPlanChange(
     currentPlan: number,
     carId?: string | null,
     driverCreatedAt?: number,
-    legacyCarId?: string | null
+    legacyCarId?: string | null,
+    effectiveFrom?: number
 ): DriverPlanHistoryEntry[] {
     const base: DriverPlanHistoryEntry[] = (existing && existing.length > 0)
         ? [...existing]
@@ -239,7 +327,7 @@ export function appendDriverPlanChange(
     // If plan and carId are the same, don't append
     if (last && last.plan === newPlan && last.carId === carId) return base;
 
-    const todayMidnight = new Date();
+    const todayMidnight = effectiveFrom ? new Date(effectiveFrom) : new Date();
     todayMidnight.setHours(0, 0, 0, 0);
 
     return [...base, { plan: newPlan, effectiveFrom: todayMidnight.getTime(), carId }];

@@ -6,7 +6,7 @@ import { calcDriverDebt } from '../../drivers/utils/debtUtils';
 import { getEffectivePlanForDriverDay, getCarIdForDriverDate } from '../../drivers/utils/driverPlanHistory';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[]) => {
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
     const [targetDate, setTargetDate] = useState<Date>(new Date());
 
     // Dashboard view mode state (chart/grid)

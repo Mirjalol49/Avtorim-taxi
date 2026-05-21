@@ -5,7 +5,7 @@ import { appendDriverPlanChange } from '../src/features/drivers/utils/driverPlan
 
 const toMs = (v: any) => (typeof v === 'number' ? v : v ? Number(v) : Date.now());
 
-const endCarAssignment = async (carId: string, driverId: string) => {
+const endCarAssignment = async (carId: string, driverId: string, effectiveFrom?: number) => {
     const { data } = await supabase
         .from('car_assignments_history')
         .select('id')
@@ -16,18 +16,18 @@ const endCarAssignment = async (carId: string, driverId: string) => {
         .limit(1)
         .maybeSingle();
     if (data) {
-        await supabase.from('car_assignments_history').update({ end_ms: Date.now() }).eq('id', data.id);
+        await supabase.from('car_assignments_history').update({ end_ms: effectiveFrom ?? Date.now() }).eq('id', data.id);
     }
 };
 
-const startCarAssignment = async (carId: string, driverId: string) => {
+const startCarAssignment = async (carId: string, driverId: string, effectiveFrom?: number) => {
     const { data } = await supabase.from('cars').select('fleet_id').eq('id', carId).single();
     if (!data?.fleet_id) return;
     await supabase.from('car_assignments_history').insert({
         car_id: carId,
         driver_id: driverId,
         fleet_id: data.fleet_id,
-        start_ms: Date.now()
+        start_ms: effectiveFrom ?? Date.now()
     });
 };
 
@@ -252,7 +252,7 @@ export const updateCar = async (id: string, car: Partial<Car>) => {
     }
 };
 
-export const assignCar = async (carId: string, driverId: string) => {
+export const assignCar = async (carId: string, driverId: string, effectiveFrom?: number) => {
     // 1. Assign the car
     const { error } = await supabase.from('cars').update({ assigned_driver_id: driverId }).eq('id', carId);
     if (error) throw error;
@@ -269,16 +269,18 @@ export const assignCar = async (carId: string, driverId: string) => {
             newPlan,
             driverData.daily_plan ?? 0,
             carId,
-            toMs(driverData.created_ms)
+            toMs(driverData.created_ms),
+            undefined,
+            effectiveFrom
         );
         await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
     }
 
     // 4. Record history
-    await startCarAssignment(carId, driverId);
+    await startCarAssignment(carId, driverId, effectiveFrom);
 };
 
-export const unassignCar = async (carId: string) => {
+export const unassignCar = async (carId: string, effectiveFrom?: number) => {
     const { data: carData } = await supabase.from('cars').select('assigned_driver_id').eq('id', carId).single();
     const driverId = carData?.assigned_driver_id;
 
@@ -294,11 +296,13 @@ export const unassignCar = async (carId: string) => {
                 0,
                 driverData.daily_plan ?? 0,
                 null,
-                toMs(driverData.created_ms)
+                toMs(driverData.created_ms),
+                undefined,
+                effectiveFrom
             );
             await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
         }
-        await endCarAssignment(carId, driverId);
+        await endCarAssignment(carId, driverId, effectiveFrom);
     }
 };
 

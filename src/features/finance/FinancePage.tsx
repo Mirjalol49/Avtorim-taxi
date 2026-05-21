@@ -50,6 +50,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
         availableYears,
         monthlyAnalyticsData,
         yearlyAnalyticsTotals,
+        financeStats,
         advancedStats
     } = useFinanceStats(allTransactions, cars, drivers);
 
@@ -93,7 +94,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
         <div className="space-y-6 animate-fadeIn">
             {/* Analytics Header Filters */}
             <div className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
                     <DatePicker
                         label={t('fromDate') || 'Boshlanish sanasi'}
                         value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
@@ -190,6 +191,21 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     </div>
 
                     <CustomSelect
+                        label={t('transactionType', "O'tkazma turi")}
+                        value={filters.type}
+                        onChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
+                        options={[
+                            { id: 'all', name: t('all', 'Barchasi') },
+                            { id: 'income', name: t('income', 'Tushum') },
+                            { id: 'expense', name: t('expense', 'Xarajat') },
+                            { id: 'deposit', name: t('deposit', 'Depozit') },
+                        ]}
+                        theme={theme}
+                        icon={BanknoteIcon}
+                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
+                    />
+
+                    <CustomSelect
                         label={t('paymentMethodFilter', 'To\'lov usuli')}
                         value={filters.paymentMethod}
                         onChange={(val) => setFilters(prev => ({ ...prev, paymentMethod: val }))}
@@ -226,13 +242,41 @@ export const FinancePage: React.FC<FinancePageProps> = ({
             </div>
 
             {/* Yearly Stats Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 <MetricCard title={`${analyticsYear} ${t('totalIncome')}`} value={yearlyAnalyticsTotals.income} type="income" icon={TrendingUpIcon} isDark={theme === 'dark'} />
                 <MetricCard title={`${analyticsYear} ${t('totalExpense')}`} value={yearlyAnalyticsTotals.expense} type="expense" icon={TrendingDownIcon} isDark={theme === 'dark'} />
-                <div className="sm:col-span-2 lg:col-span-1">
+                <MetricCard title={`${analyticsYear} ${t('deposit', 'Depozit')}`} value={yearlyAnalyticsTotals.depositTotal} type="income" icon={WalletIcon} isDark={theme === 'dark'} />
+                <div className="sm:col-span-2 xl:col-span-1">
                     <MetricCard title={`${analyticsYear} ${t('netProfit')}`} value={yearlyAnalyticsTotals.netProfit} type="profit" icon={WalletIcon} isDark={theme === 'dark'} showPlusSign />
                 </div>
             </div>
+
+            {(financeStats.depositTopup > 0 || financeStats.depositUsed > 0) && (
+                <div className={`rounded-3xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
+                    <div>
+                        <p className={`text-[12px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                            {t('depositMovements', 'Depozit harakati')}
+                        </p>
+                        <p className={`mt-1 text-[13px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {t('depositMovementsDesc', 'Depozit to‘ldirish tushumga qo‘shiladi, depozitdan ishlatish esa alohida ko‘rsatiladi')}
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:min-w-[360px]">
+                        <NumberTooltip value={financeStats.depositTopup} label={t('depositTopup', "Depozit to'ldirildi")} theme={theme}>
+                            <div className={`rounded-2xl border p-3 cursor-help ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                                <p className={`text-[11px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>{t('depositTopup', "Depozit to'ldirildi")}</p>
+                                <p className={`mt-1 text-[18px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatFullMoney(financeStats.depositTopup)}</p>
+                            </div>
+                        </NumberTooltip>
+                        <NumberTooltip value={financeStats.depositUsed} label={t('depositUsed', 'Depozitdan ishlatildi')} theme={theme}>
+                            <div className={`rounded-2xl border p-3 cursor-help ${theme === 'dark' ? 'bg-slate-500/10 border-white/[0.08]' : 'bg-slate-50 border-slate-200'}`}>
+                                <p className={`text-[11px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}`}>{t('depositUsed', 'Depozitdan ishlatildi')}</p>
+                                <p className={`mt-1 text-[18px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatFullMoney(financeStats.depositUsed)}</p>
+                            </div>
+                        </NumberTooltip>
+                    </div>
+                </div>
+            )}
 
             {/* Monthly Analytics Chart */}
             <div className={`w-full h-[300px] sm:h-[400px] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>

@@ -11,6 +11,18 @@ interface FinanceFilters {
     paymentMethod: string;
 }
 
+const isInactivePayment = (tx: Transaction) =>
+    tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.DELETED;
+
+const isDepositTopup = (tx: Transaction) =>
+    (tx as any).category === 'deposit_topup';
+
+const isDepositUsage = (tx: Transaction) =>
+    (tx as any).useDeposit === true;
+
+const isRealIncome = (tx: Transaction) =>
+    tx.type === TransactionType.INCOME && !isDepositUsage(tx);
+
 export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], drivers: Driver[] = []) => {
     const { i18n } = useTranslation();
     const language = i18n.language; // Use i18n language
@@ -62,7 +74,13 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
                 driverMatch = tx.driverId === filters.driverId;
             }
             let typeMatch = true;
-            if (filters.type !== 'all') {
+            if (filters.type === 'deposit') {
+                typeMatch = isDepositTopup(tx) || isDepositUsage(tx);
+            } else if (filters.type === TransactionType.INCOME) {
+                typeMatch = isRealIncome(tx);
+            } else if (filters.type === TransactionType.EXPENSE) {
+                typeMatch = tx.type === TransactionType.EXPENSE && !isDepositUsage(tx);
+            } else if (filters.type !== 'all') {
                 typeMatch = tx.type === filters.type;
             }
             let methodMatch = true;
@@ -89,16 +107,25 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
     // Finance Tab Stats (Cards) - Exclude DELETED transactions
     const financeStats = useMemo(() => {
         const income = filteredTransactions
-            .filter(t => t.type === TransactionType.INCOME && t.status !== PaymentStatus.DELETED)
+            .filter(t => isRealIncome(t) && t.status !== PaymentStatus.DELETED)
             .reduce((sum, t) => sum + t.amount, 0);
         const expense = filteredTransactions
-            .filter(t => t.type === TransactionType.EXPENSE && t.status !== PaymentStatus.DELETED)
+            .filter(t => t.type === TransactionType.EXPENSE && !isDepositUsage(t) && t.status !== PaymentStatus.DELETED)
             .reduce((sum, t) => sum + t.amount, 0);
+        const depositTopup = filteredTransactions
+            .filter(t => isDepositTopup(t) && t.status !== PaymentStatus.DELETED)
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        const depositUsed = filteredTransactions
+            .filter(t => isDepositUsage(t) && t.status !== PaymentStatus.DELETED)
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
         return {
             income,
             expense,
-            netProfit: income - expense
+            netProfit: income - expense,
+            depositTopup,
+            depositUsed,
+            depositTotal: depositTopup
         };
     }, [filteredTransactions]);
 
@@ -132,10 +159,10 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             if (d.getFullYear() === analyticsYear) {
                 const key = `${d.getFullYear()}-${d.getMonth()}`;
                 if (monthlyData[key]) {
-                    if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.DELETED) return;
-                    if (tx.type === TransactionType.INCOME) {
+                    if (isInactivePayment(tx)) return;
+                    if (isRealIncome(tx)) {
                         monthlyData[key].Income += tx.amount;
-                    } else {
+                    } else if (tx.type === TransactionType.EXPENSE && !isDepositUsage(tx)) {
                         monthlyData[key].Expense += tx.amount;
                     }
                 }
@@ -149,16 +176,24 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
     const yearlyAnalyticsTotals = useMemo(() => {
         let yearlyIncome = 0;
         let yearlyExpense = 0;
+        let yearlyDepositTopup = 0;
+        let yearlyDepositUsed = 0;
 
         const source = filteredTransactions;
         source.forEach(tx => {
-            if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.DELETED) return;
+            if (isInactivePayment(tx)) return;
 
             const d = new Date(tx.timestamp);
             if (d.getFullYear() === analyticsYear) {
-                if (tx.type === TransactionType.INCOME) {
+                if (isDepositTopup(tx)) {
+                    yearlyDepositTopup += Math.abs(tx.amount);
+                }
+                if (isDepositUsage(tx)) {
+                    yearlyDepositUsed += Math.abs(tx.amount);
+                }
+                if (isRealIncome(tx)) {
                     yearlyIncome += tx.amount;
-                } else {
+                } else if (tx.type === TransactionType.EXPENSE && !isDepositUsage(tx)) {
                     yearlyExpense += tx.amount;
                 }
             }
@@ -167,7 +202,10 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         return {
             income: yearlyIncome,
             expense: yearlyExpense,
-            netProfit: yearlyIncome - yearlyExpense
+            netProfit: yearlyIncome - yearlyExpense,
+            depositTopup: yearlyDepositTopup,
+            depositUsed: yearlyDepositUsed,
+            depositTotal: yearlyDepositTopup
         };
     }, [filteredTransactions, analyticsYear]);
 
@@ -186,6 +224,7 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         const incomeByCategory: Record<string, number> = {};
         const expenseByCategory: Record<string, number> = {};
         const paymentMethods: Record<string, number> = { cash: 0, card: 0, transfer: 0 };
+        const depositMovements: Record<string, number> = { topup: 0, used: 0 };
         const netProfitByPayment: Record<string, { income: number; expense: number; net: number }> = {
             cash: { income: 0, expense: 0, net: 0 },
             card: { income: 0, expense: 0, net: 0 },
@@ -204,16 +243,22 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         };
 
         filteredTransactions.forEach(tx => {
-            if (tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.DELETED) return;
+            if (isInactivePayment(tx)) return;
             const pm = (((tx as any).paymentMethod as string) || 'cash') as 'cash' | 'card' | 'transfer';
             if (!netProfitByPayment[pm]) netProfitByPayment[pm] = { income: 0, expense: 0, net: 0 };
 
             // Payment Methods (for bar widget)
-            if (tx.amount > 0 && (tx as any).paymentMethod) {
+            if (tx.amount > 0 && (tx as any).paymentMethod && isRealIncome(tx)) {
                 paymentMethods[pm] = (paymentMethods[pm] || 0) + tx.amount;
             }
 
-            if (tx.type === TransactionType.INCOME && (tx as any).category !== 'deposit_topup') {
+            if (isDepositTopup(tx)) {
+                depositMovements.topup += Math.abs(tx.amount);
+            }
+            if (isDepositUsage(tx)) {
+                depositMovements.used += Math.abs(tx.amount);
+            }
+            if (isRealIncome(tx)) {
                 incomeByCategory[pm] = (incomeByCategory[pm] || 0) + tx.amount;
                 netProfitByPayment[pm].income += tx.amount;
                 const did = (tx as any).driverId;
@@ -222,7 +267,7 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
                     if (!driverIncome[did]) driverIncome[did] = { id: did, name: dname, amount: 0 };
                     driverIncome[did].amount += tx.amount;
                 }
-            } else if (tx.type === TransactionType.EXPENSE) {
+            } else if (tx.type === TransactionType.EXPENSE && !isDepositUsage(tx)) {
                 const cat = (tx as any).category === 'salary_payment'
                     ? 'Maosh'
                     : getExpenseCat((tx as any).description || '');
@@ -354,6 +399,7 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
                 .sort((a, b) => b.value - a.value),
             netProfitByPayment,
             totalNetProfit: Object.values(netProfitByPayment).reduce((sum, item) => sum + item.net, 0),
+            depositMovements,
             topEarners,
             planFulfillment,
             fleetStats

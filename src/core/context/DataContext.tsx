@@ -11,6 +11,7 @@ interface DataContextType {
     setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>;
     transactions: Transaction[];
     txLoading: boolean;
+    txHydrating: boolean;
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     notifications: Notification[];
     unreadCount: number;
@@ -46,7 +47,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const { drivers, setDrivers, loading: driversLoadingRaw } = useDrivers(fleetId, refreshTrigger);
-    const { transactions, setTransactions, loading: txLoadingRaw } = useTransactions(fleetId, refreshTrigger);
+    const { transactions, setTransactions, loading: txLoadingRaw, hydrating: txHydratingRaw } = useTransactions(fleetId, refreshTrigger);
     const {
         notifications,
         unreadCount,
@@ -63,7 +64,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Previously 6s caused transactions to appear empty while still fetching
     // (the dual-fetch fetchAll can take up to 9s on a cold Supabase instance).
     const [timedOut, setTimedOut] = React.useState(false);
-    const combinedLoading = driversLoadingRaw || txLoadingRaw;
+    const combinedLoading = driversLoadingRaw || txLoadingRaw || txHydratingRaw;
     React.useEffect(() => {
         if (!combinedLoading) { setTimedOut(false); return; }
         const t = setTimeout(() => setTimedOut(true), 11000);
@@ -74,6 +75,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // This means pages that only need drivers won't wait for transactions and vice versa.
     const effectiveDriversLoading = driversLoadingRaw && !timedOut;
     const effectiveTxLoading = txLoadingRaw && !timedOut;
+    const effectiveTxHydrating = txHydratingRaw && !timedOut;
 
     return (
         <DataContext.Provider value={{
@@ -82,6 +84,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setDrivers,
             transactions,
             txLoading: effectiveTxLoading,
+            txHydrating: effectiveTxHydrating,
             setTransactions,
             notifications,
             unreadCount,

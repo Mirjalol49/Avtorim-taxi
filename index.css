@@ -80,14 +80,40 @@
     to   { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes softScaleIn {
+    from { opacity: 0; transform: scale(0.985) translateY(10px); filter: blur(2px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+
+@keyframes sheetInUp {
+    from { opacity: 0; transform: translateY(18px) scale(0.99); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes progressSheen {
+    from { transform: translateX(-120%); }
+    to   { transform: translateX(120%); }
+}
+
+@keyframes imageReveal {
+    from { opacity: 0; transform: scale(1.015); filter: blur(4px); }
+    to   { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
 :root {
     --ease-ios: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-ios-control: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-ios-spring: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-fast: 150ms;
+    --motion-base: 240ms;
+    --motion-slow: 420ms;
 }
 
 .animate-fadeIn  { animation: fadeIn  0.32s var(--ease-ios) both; }
 .animate-slideIn { animation: slideInRight 0.28s var(--ease-ios) both; }
 .ios-smooth { transition-timing-function: var(--ease-ios-control); }
+.ios-enter { animation: softScaleIn 0.42s var(--ease-ios-spring) both; }
+.ios-sheet { animation: sheetInUp 0.36s var(--ease-ios-spring) both; }
 
 /* ===== GLOBAL STYLES ===== */
 body {
@@ -96,6 +122,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--color-bg);
     color: var(--color-text);
+    scroll-behavior: smooth;
 }
 
 code { font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace; }
@@ -116,12 +143,86 @@ button, a, [role='button'] {
     -webkit-tap-highlight-color: transparent;
 }
 
+button,
+a,
+[role='button'],
+input,
+textarea,
+select {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform, filter;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-ios-control);
+}
+
+button:not(:disabled),
+a[href],
+[role='button'] {
+    cursor: pointer;
+}
+
+button:not(:disabled):active,
+a[href]:active,
+[role='button']:active {
+    transform: scale(0.985);
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):focus,
+textarea:focus,
+select:focus {
+    box-shadow: 0 0 0 4px var(--color-accent-light);
+}
+
+img {
+    animation: imageReveal 0.34s var(--ease-ios) both;
+}
+
+main,
+[class*='animate-fadeIn'] {
+    will-change: transform, opacity;
+}
+
+:where(.rounded-2xl, .rounded-3xl, .rounded-\[24px\], .rounded-\[28px\]):where(.border, [class*='shadow']) {
+    transition-property: background-color, border-color, box-shadow, transform, opacity, filter;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: var(--ease-ios-spring);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    :where(.rounded-2xl, .rounded-3xl, .rounded-\[24px\], .rounded-\[28px\]):where(.border, [class*='shadow']):hover {
+        transform: translateY(-1px);
+    }
+}
+
+:where(.fixed.inset-0, .fixed.inset-y-0, [role='dialog']) > :where(.rounded-2xl, .rounded-3xl, .rounded-\[24px\]) {
+    animation: modalPop 0.32s var(--ease-ios-spring) both;
+}
+
+:where(.custom-scrollbar, main, aside, nav) {
+    scroll-behavior: smooth;
+}
+
+:where(.h-2, .h-2\.5, .h-3, .h-3\.5, .h-4).rounded-full > :where([style*='width']) {
+    position: relative;
+    overflow: hidden;
+    transition: width 0.85s var(--ease-ios-spring), background-color var(--motion-base) var(--ease-ios-control);
+}
+
+:where(.h-2, .h-2\.5, .h-3, .h-3\.5, .h-4).rounded-full > :where([style*='width'])::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.34), transparent);
+    animation: progressSheen 2.4s var(--ease-ios) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
+        transform: none !important;
     }
 }
 

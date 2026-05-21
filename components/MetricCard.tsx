@@ -1,4 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import NumberTooltip from './NumberTooltip';
+import { formatNumberSmart } from '../utils/formatNumber';
 
 interface MetricCardProps {
     title: string;
@@ -10,6 +13,8 @@ interface MetricCardProps {
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({ title, value, type, icon: Icon, isDark, showPlusSign }) => {
+    const { i18n } = useTranslation();
+    const language = ['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz';
     const config = {
         income: {
             titleColor: isDark ? 'text-blue-500' : 'text-blue-600',
@@ -28,11 +33,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, type, icon
         }
     }[type];
 
-    const formattedValue = value.toLocaleString();
-    const displayValue = showPlusSign && value > 0 ? `+${formattedValue}` : formattedValue;
+    const compactValue = formatNumberSmart(Math.abs(value), false, language).replace(' UZS', '');
+    const displayValue = `${showPlusSign && value > 0 ? '+' : value < 0 ? '-' : ''}${compactValue}`;
 
     return (
-        <div className={`relative overflow-hidden isolate rounded-3xl p-6 flex flex-col justify-between min-h-[140px] hover:-translate-y-1 transition-all duration-300 ease-out ${
+        <div className={`relative overflow-visible isolate rounded-3xl p-6 flex flex-col justify-between min-h-[140px] hover:-translate-y-1 transition-all duration-300 ease-out ${
             isDark 
                 ? 'bg-[#141519] border border-white/5 hover:shadow-2xl hover:shadow-black/50' 
                 : 'bg-white border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] hover:shadow-lg'
@@ -46,11 +51,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, type, icon
             </div>
 
             {/* Value (Hero) */}
-            <div className="mt-4 relative z-10">
-                <h3 className={`text-4xl font-bold tracking-tight break-words ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                    {displayValue}
-                    <span className="text-base font-medium text-slate-400 ml-1.5">UZS</span>
-                </h3>
+            <div className="mt-4 relative z-10 min-w-0">
+                <NumberTooltip value={value} label={title} theme={isDark ? 'dark' : 'light'} align="left" showSign={!!showPlusSign}>
+                    <h3 className={`inline-flex max-w-full items-baseline gap-2 whitespace-nowrap font-black tracking-tight tabular-nums ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        <span className="min-w-0 text-[clamp(28px,2.8vw,42px)] leading-none">
+                            {displayValue}
+                        </span>
+                        <span className="shrink-0 text-[15px] font-bold text-slate-400">UZS</span>
+                    </h3>
+                </NumberTooltip>
             </div>
 
             {/* Whimsical Glow Orb */}

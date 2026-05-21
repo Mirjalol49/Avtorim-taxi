@@ -8,6 +8,7 @@ const INITIAL_TX_RENDER_LIMIT = 50;
 export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hydrating, setHydrating] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const refetchRef = useRef<(() => void) | null>(null);
 
@@ -23,6 +24,7 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
         if (cached.length > 0) {
             setTransactions(cached.slice(0, INITIAL_TX_RENDER_LIMIT));
             setLoading(false); // unblock UI immediately — fetchAll will update silently
+            setHydrating(true);
         }
         // ────────────────────────────────────────────────────────────────────────
 
@@ -33,17 +35,24 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
         }
 
         // Only show the spinner on first-ever load (no cache yet)
-        if (cached.length === 0) setLoading(true);
+        if (cached.length === 0) {
+            setLoading(true);
+            setHydrating(true);
+        }
 
         // Bail out after 10s if data never arrives.
         // With 5s AbortController + 3s retry gap, data arrives in ≤9s on cold Supabase.
-        const timeout = setTimeout(() => setLoading(false), 10000);
+        const timeout = setTimeout(() => {
+            setLoading(false);
+            setHydrating(false);
+        }, 10000);
 
         const { unsubscribe, refetch } = subscribeToTransactions(
-            (data) => {
-                clearTimeout(timeout);
+            (data, meta) => {
+                if (meta?.complete) clearTimeout(timeout);
                 setTransactions(data);
                 setLoading(false);
+                setHydrating(!meta?.complete);
                 setError(null);
                 // Persist fresh data so the next load is instant.
                 // writeCache guards against oversized payloads automatically.
@@ -81,5 +90,5 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
         return () => document.removeEventListener('visibilitychange', handleVisibility);
     }, []);
 
-    return { transactions, setTransactions, loading, error };
+    return { transactions, setTransactions, loading, hydrating, error };
 };

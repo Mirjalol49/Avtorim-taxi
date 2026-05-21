@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Driver } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction, TransactionType, PaymentStatus } from '../../../core/types/transaction.types';
-import { getEffectivePlanForDriverDay, getDriverDayOverrideType, resolveTransactionCarSnapshot } from '../utils/driverPlanHistory';
-import type { TransactionCarSnapshot } from '../utils/driverPlanHistory';
+import { getEffectivePlanForDriverDay, getDriverDayOverrideType, getDriverWorkPeriodForDate, getDriverWorkPeriods, resolveTransactionCarSnapshot } from '../utils/driverPlanHistory';
+import type { DriverWorkPeriod, TransactionCarSnapshot } from '../utils/driverPlanHistory';
 import DatePicker from '../../../../components/DatePicker';
 import Lottie from 'lottie-react';
 import cardAnimation from '../../../../Images/card.json';
@@ -50,6 +50,7 @@ interface DailyHistory {
     status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'DAY_OFF' | 'NOT_WORKING';
     carSnapshots: TransactionCarSnapshot[];
     transactions: Transaction[];
+    workPeriodId?: string | null;
 }
 
 interface MonthGroup {
@@ -59,6 +60,14 @@ interface MonthGroup {
     totalPaid: number;
     totalExpected: number;
     totalDebt: number;
+}
+
+interface WorkPeriodSummary extends DriverWorkPeriod {
+    totalPaid: number;
+    totalExpected: number;
+    totalDebt: number;
+    carName?: string;
+    licensePlate?: string;
 }
 
 const WalletIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -77,9 +86,11 @@ const generateDailyTimeline = (
 ): MonthGroup[] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const workPeriods = getDriverWorkPeriods(driver, fallbackCar);
     
-    // Determine start date
-    let startMs = driver.createdAt;
+    let startMs = workPeriods.length > 0
+        ? Math.min(...workPeriods.map(period => period.startDate))
+        : (driver.startDate || driver.createdAt);
     if (!startMs) {
         if (planTxs.length > 0) {
             startMs = Math.min(...planTxs.map(t => t.timestamp));
@@ -105,25 +116,43 @@ const generateDailyTimeline = (
         }
     });
 
-    // If the driver has a quit date, don't show days after that date
-    let current = new Date(today);
-    if (driver.quitDate) {
-        const quitDay = new Date(driver.quitDate);
-        quitDay.setHours(0, 0, 0, 0);
-        if (quitDay.getTime() < current.getTime()) {
-            current = quitDay;
-        }
-    }
+    const lastPeriodEnd = workPeriods.length > 0
+        ? Math.max(...workPeriods.map(period => period.endDate ?? today.getTime()))
+        : today.getTime();
+    let current = new Date(Math.min(today.getTime(), lastPeriodEnd));
+    current.setHours(0, 0, 0, 0);
     
     while (current.getTime() >= start.getTime()) {
         const key = `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`;
         const dayTxs = txMapByDay.get(key) || [];
         
         const overrideType = getDriverDayOverrideType(driver, current, fallbackCar);
+        const workPeriod = getDriverWorkPeriodForDate(driver, current, fallbackCar);
         let expectedPlan = getEffectivePlanForDriverDay(driver, current, fallbackCar);
         
         const hasDayOffTx = dayTxs.some(t => t.type === TransactionType.DAY_OFF || t.type === TransactionType.NOT_WORKING);
         const isDayOff = overrideType === 'OFF' || overrideType === 'NOT_WORKING' || hasDayOffTx;
+
+        // Fired drivers often lose their current car assignment, which can append a
+        // terminal zero-plan history row. For history, keep charging the historical
+        // fallback car plan through the official quit day so old unpaid days remain visible.
+        if (
+            expectedPlan <= 0 &&
+            driver.isDeleted &&
+            driver.quitDate &&
+            fallbackCar?.dailyPlan &&
+            !isDayOff &&
+            overrideType !== 'REPAIR' &&
+            overrideType !== 'DISCOUNT'
+        ) {
+            const quitDay = new Date(driver.quitDate);
+            quitDay.setHours(0, 0, 0, 0);
+            const startDay = new Date(driver.startDate || driver.createdAt || start.getTime());
+            startDay.setHours(0, 0, 0, 0);
+            if (current.getTime() >= startDay.getTime() && current.getTime() <= quitDay.getTime()) {
+                expectedPlan = fallbackCar.dailyPlan;
+            }
+        }
         
         const paidAmount = dayTxs
             .filter(t => t.type === TransactionType.INCOME)
@@ -184,7 +213,8 @@ const generateDailyTimeline = (
             isDayOff,
             status,
             carSnapshots: uniqueCarSnapshots,
-            transactions: dayTxs
+            transactions: dayTxs,
+            workPeriodId: workPeriod?.id ?? null
         });
         
         current.setDate(current.getDate() - 1);
@@ -256,6 +286,26 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
     const salaryTxs   = allDriverTxs.filter(tx => tx.category === 'salary_payment');
 
     const timeline = useMemo(() => generateDailyTimeline(driver, car, cars, planTxs), [driver, car, cars, planTxs]);
+
+    const workPeriodSummaries = useMemo<WorkPeriodSummary[]>(() => {
+        const allDays = timeline.flatMap(group => group.days);
+        return getDriverWorkPeriods(driver, car).map((period, index) => {
+            const carForPeriod = period.carId ? cars.find(c => c.id === period.carId) : null;
+            const periodDays = allDays.filter(day => day.workPeriodId === period.id);
+            const snapshotForPeriod = periodDays.flatMap(day => day.carSnapshots)[0];
+            const totalPaid = periodDays.reduce((sum, day) => sum + day.paidAmount, 0);
+            const totalExpected = periodDays.filter(day => !day.isDayOff).reduce((sum, day) => sum + day.expectedPlan, 0);
+            return {
+                ...period,
+                id: period.id || `period-${index}`,
+                totalPaid,
+                totalExpected,
+                totalDebt: totalExpected - totalPaid,
+                carName: carForPeriod?.name || snapshotForPeriod?.name || (index === 0 ? car?.name : undefined) || driver.carModel || undefined,
+                licensePlate: carForPeriod?.licensePlate || snapshotForPeriod?.licensePlate || (index === 0 ? car?.licensePlate : undefined) || driver.licensePlate || undefined,
+            };
+        });
+    }, [driver, car, cars, timeline]);
 
     const filteredTimeline = useMemo(() => {
         let groups = timeline;
@@ -461,6 +511,81 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></svg>
                                             )}
                                         </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {workPeriodSummaries.length > 0 && (
+                                <div className={`max-w-3xl mx-auto w-full rounded-3xl border p-4 sm:p-5 shadow-sm ${isDark ? 'bg-[#1C1C1E] border-[#38383A]' : 'bg-white border-[#E5E5EA]'}`}>
+                                    <div className="flex items-center justify-between gap-3 mb-4">
+                                        <div>
+                                            <p className={`text-[11px] font-black uppercase tracking-widest ${muted}`}>
+                                                {t('workPeriods', 'Ish davrlari')}
+                                            </p>
+                                            <h3 className={`text-[17px] font-bold mt-1 ${txt}`}>
+                                                {t('rehireHistory', 'Ishga kirish, chiqish va qayta ishga olish tarixi')}
+                                            </h3>
+                                        </div>
+                                        <span className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-bold ${isDark ? 'bg-white/[0.06] text-white/70' : 'bg-gray-100 text-gray-600'}`}>
+                                            {workPeriodSummaries.length}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {workPeriodSummaries.map((period, index) => {
+                                            const isActivePeriod = !period.endDate;
+                                            const debtTone = period.totalDebt > 0
+                                                ? 'text-[#FF3B30] dark:text-[#FF453A]'
+                                                : period.totalDebt < 0
+                                                    ? 'text-[#34C759] dark:text-[#30D158]'
+                                                    : muted;
+                                            return (
+                                                <div
+                                                    key={period.id}
+                                                    className={`rounded-2xl border p-3 sm:p-4 ${isActivePeriod ? (isDark ? 'bg-[#0A84FF]/10 border-[#0A84FF]/25' : 'bg-[#007AFF]/5 border-[#007AFF]/20') : (isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-gray-50 border-gray-200')}`}
+                                                >
+                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`h-7 w-7 rounded-full flex items-center justify-center text-[12px] font-black ${isActivePeriod ? 'bg-[#007AFF] text-white' : isDark ? 'bg-white/[0.08] text-white/70' : 'bg-white text-gray-600 border border-gray-200'}`}>
+                                                                    {index + 1}
+                                                                </span>
+                                                                <span className={`text-[14px] font-black ${txt}`}>
+                                                                    {isActivePeriod ? t('currentWorkPeriod', 'Hozirgi davr') : t('previousWorkPeriod', 'Oldingi davr')}
+                                                                </span>
+                                                            </div>
+                                                            <p className={`mt-2 text-[13px] font-semibold ${muted}`}>
+                                                                {fmtDate(period.startDate)} - {period.endDate ? fmtDate(period.endDate) : t('stillWorking', 'Hozir ishlayapti')}
+                                                            </p>
+                                                            {(period.carName || period.licensePlate) && (
+                                                                <div className={`mt-2 flex flex-wrap items-center gap-1.5 text-[12px] font-medium ${muted}`}>
+                                                                    <span>{t('drivenCar', 'Haydalgan avto')}:</span>
+                                                                    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-white/75' : 'bg-white border-gray-200 text-gray-700'}`}>
+                                                                        {period.carName && <span className="font-semibold">{period.carName}</span>}
+                                                                        {period.licensePlate && <LicensePlate plate={period.licensePlate} size="sm" />}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2 sm:min-w-[300px]">
+                                                            <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-black/15' : 'bg-white'}`}>
+                                                                <p className={`text-[10px] uppercase tracking-widest font-black ${muted}`}>{t('expected', 'Kutilgan')}</p>
+                                                                <p className={`text-[13px] font-black mt-1 ${txt}`}>{fmtCompact(period.totalExpected)} <span className="text-[10px]">UZS</span></p>
+                                                            </div>
+                                                            <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-black/15' : 'bg-white'}`}>
+                                                                <p className={`text-[10px] uppercase tracking-widest font-black ${muted}`}>{t('paid', "To'langan")}</p>
+                                                                <p className="text-[13px] font-black mt-1 text-[#34C759] dark:text-[#30D158]">{fmtCompact(period.totalPaid)} <span className="text-[10px]">UZS</span></p>
+                                                            </div>
+                                                            <div className={`rounded-xl px-3 py-2 ${isDark ? 'bg-black/15' : 'bg-white'}`}>
+                                                                <p className={`text-[10px] uppercase tracking-widest font-black ${muted}`}>{period.totalDebt < 0 ? t('excess', 'Ortiqcha') : t('debt', 'Qarz')}</p>
+                                                                <p className={`text-[13px] font-black mt-1 ${debtTone}`}>
+                                                                    {period.totalDebt > 0 ? '−' : period.totalDebt < 0 ? '+' : ''}{fmtCompact(period.totalDebt)} <span className="text-[10px]">UZS</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}

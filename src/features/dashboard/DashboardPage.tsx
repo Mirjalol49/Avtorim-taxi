@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from './hooks/useDashboardStats';
+import { useDashboardSummary } from './hooks/useDashboardSummary';
 import DateFilter from '../../../components/DateFilter';
 import DatePicker from '../../../components/DatePicker';
-import NumberTooltip from '../../../components/NumberTooltip';
 import Skeleton from '../../../components/Skeleton';
 import {
     TrendingUpIcon, TrendingDownIcon, WalletIcon, MedalIcon
 } from '../../../components/Icons';
-import { formatNumberSmart } from '../../../utils/formatNumber';
 import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import Lottie from 'lottie-react';
@@ -20,6 +19,7 @@ interface DashboardPageProps {
     transactions: Transaction[];
     drivers: Driver[];
     cars: Car[];
+    fleetId?: string;
     isDataLoading: boolean;
     // language, t removed - using hooks
     theme: 'light' | 'dark';
@@ -30,6 +30,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     transactions,
     drivers,
     cars,
+    fleetId,
     isDataLoading,
     theme,
     isMobile
@@ -45,11 +46,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     const {
         timeFilter, setTimeFilter,
         targetDate, setTargetDate,
-        totalIncome, totalExpense, netProfit,
         todayStats
     } = useDashboardStats(transactions, drivers, cars);
+    const { summary, loading: summaryLoading } = useDashboardSummary(fleetId, timeFilter, transactions[0]);
 
     const isDark = theme === 'dark';
+    const showStatsSkeleton = isDataLoading || summaryLoading;
 
     const [statusSearch, setStatusSearch] = useState('');
     const [showAllCompleted, setShowAllCompleted] = useState(false);
@@ -81,7 +83,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* MAIN STATS ROW - FULL WIDTH */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {isDataLoading ? (
+                {showStatsSkeleton ? (
                     <>
                         <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-6" style={{ background: 'linear-gradient(135deg,#0a6b62,#0f766e)' }}>
                             <div className="flex flex-col gap-3">
@@ -107,10 +109,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     </>
                 ) : (
                     <>
-                        <MetricCard title={t('totalIncome')} value={totalIncome} type="income" icon={TrendingUpIcon} isDark={isDark} />
-                        <MetricCard title={t('totalExpense')} value={totalExpense} type="expense" icon={TrendingDownIcon} isDark={isDark} />
+                        <MetricCard title={t('totalIncome')} value={summary.totalIncome} type="income" icon={TrendingUpIcon} isDark={isDark} />
+                        <MetricCard title={t('totalExpense')} value={summary.totalExpense} type="expense" icon={TrendingDownIcon} isDark={isDark} />
                         <div className="sm:col-span-2 lg:col-span-1">
-                            <MetricCard title={t('netProfit')} value={netProfit} type="profit" icon={WalletIcon} isDark={isDark} showPlusSign />
+                            <MetricCard title={t('netProfit')} value={summary.netProfit} type="profit" icon={WalletIcon} isDark={isDark} showPlusSign />
                         </div>
                     </>
                 )}
