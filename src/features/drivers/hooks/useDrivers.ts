@@ -2,22 +2,26 @@ import { useState, useEffect, useRef } from 'react';
 import { Driver } from '../../../core/types';
 import { subscribeToDrivers } from '../../../../services/firestoreService';
 import { readCache, writeCache } from '../../../core/utils/dataCache';
+import { collectionSignature } from '../../../core/utils/stableCollection';
 
 export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const refetchRef = useRef<(() => void) | null>(null);
+    const signatureRef = useRef('');
 
     useEffect(() => {
         // Keep loading=true while fleetId is not yet resolved (auth still in progress).
         if (!fleetId) return;
+        signatureRef.current = '';
 
         // ── Pattern 1: Serve stale cache INSTANTLY ──────────────────────────────
         // On every mount/fleetId change, show the last-known data in <1ms so the
         // user never sees an empty grid while the subscription is being established.
         const cached = readCache<Driver>(`drivers_${fleetId}`);
         if (cached.length > 0) {
+            signatureRef.current = collectionSignature(cached);
             setDrivers(cached);
             setLoading(false); // unblock UI immediately — subscription will update silently
         }
@@ -37,11 +41,14 @@ export const useDrivers = (fleetId?: string, refreshTrigger?: number) => {
         const { unsubscribe, refetch } = subscribeToDrivers(
             (data) => {
                 clearTimeout(timeout);
-                setDrivers(data);
+                const nextSignature = collectionSignature(data);
+                if (nextSignature !== signatureRef.current) {
+                    signatureRef.current = nextSignature;
+                    setDrivers(data);
+                    writeCache(`drivers_${fleetId}`, data);
+                }
                 setLoading(false);
                 setError(null);
-                // Persist fresh data so the next load is instant
-                writeCache(`drivers_${fleetId}`, data);
             },
             fleetId,
         );

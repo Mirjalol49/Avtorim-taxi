@@ -17,6 +17,12 @@ const EMPTY_SUMMARY: DashboardSummary = {
     rowCount: 0,
 };
 
+const sameSummary = (a: DashboardSummary, b: DashboardSummary) =>
+    a.totalIncome === b.totalIncome &&
+    a.totalExpense === b.totalExpense &&
+    a.netProfit === b.netProfit &&
+    a.rowCount === b.rowCount;
+
 const SUMMARY_COLUMNS = 'amount,type,status,timestamp_ms,use_deposit,category';
 const PAGE_SIZE = 1000;
 const MAX_SUMMARY_ROWS = 20000;
@@ -119,7 +125,7 @@ export const useDashboardSummary = (
         let cancelled = false;
         const cached = readCache<DashboardSummary>(cacheKey)[0];
         if (cached) {
-            setSummary(cached);
+            setSummary(prev => sameSummary(prev, cached) ? prev : cached);
             setLoading(false);
             setValidating(true);
         } else {
@@ -131,7 +137,7 @@ export const useDashboardSummary = (
             fetchDashboardSummary(fleetId, filter)
                 .then((next) => {
                     if (cancelled) return;
-                    setSummary(next);
+                    setSummary(prev => sameSummary(prev, next) ? prev : next);
                     setLoading(false);
                     setValidating(false);
                     writeCache(cacheKey, [next]);

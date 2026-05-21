@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Transaction } from '../../../core/types';
 import { subscribeToTransactions } from '../../../../services/firestoreService';
 import { readCache, writeCache } from '../../../core/utils/dataCache';
-
-const INITIAL_TX_RENDER_LIMIT = 50;
+import { collectionSignature, mergeById } from '../../../core/utils/stableCollection';
 
 export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -11,10 +10,12 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [hydrating, setHydrating] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const refetchRef = useRef<(() => void) | null>(null);
+    const signatureRef = useRef('');
 
     useEffect(() => {
         // Keep loading=true while fleetId is not yet resolved (auth still in progress).
         if (!fleetId) return;
+        signatureRef.current = '';
 
         // ── Pattern 1: Serve stale cache INSTANTLY ──────────────────────────────
         // Transactions are the slowest resource (dual-fetch, can take 5–9s on a cold
@@ -22,7 +23,8 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
         // most visible empty-state flash in the entire app.
         const cached = readCache<Transaction>(`transactions_${fleetId}`);
         if (cached.length > 0) {
-            setTransactions(cached.slice(0, INITIAL_TX_RENDER_LIMIT));
+            signatureRef.current = collectionSignature(cached);
+            setTransactions(cached);
             setLoading(false); // unblock UI immediately — fetchAll will update silently
             setHydrating(true);
         }
@@ -50,13 +52,27 @@ export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
         const { unsubscribe, refetch } = subscribeToTransactions(
             (data, meta) => {
                 if (meta?.complete) clearTimeout(timeout);
-                setTransactions(data);
+                let cacheData: Transaction[] | null = null;
+                setTransactions(prev => {
+                    const shouldPreserveFullList = !meta?.complete && (meta?.source === 'initial' || meta?.source === 'backfill') && prev.length > data.length;
+                    const next = shouldPreserveFullList
+                        ? mergeById(prev, data, (a, b) => b.timestamp - a.timestamp)
+                        : data;
+                    const nextSignature = collectionSignature(next);
+                    if (nextSignature === signatureRef.current) {
+                        cacheData = null;
+                        return prev;
+                    }
+                    signatureRef.current = nextSignature;
+                    cacheData = next;
+                    return next;
+                });
                 setLoading(false);
                 setHydrating(!meta?.complete);
                 setError(null);
                 // Persist fresh data so the next load is instant.
                 // writeCache guards against oversized payloads automatically.
-                writeCache(`transactions_${fleetId}`, data);
+                if (cacheData) writeCache(`transactions_${fleetId}`, cacheData);
             },
             fleetId,
         );

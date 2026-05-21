@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboardIcon, UsersIcon, BanknoteIcon, PlusIcon, CarIcon, EditIcon, MenuIcon, XIcon, GlobeIcon, CalendarIcon, LogOutIcon, WalletIcon, SunIcon, MoonIcon, ListIcon, ShieldIcon, NotesIcon, FolderOpenIcon, AlertTriangleIcon
@@ -24,6 +24,7 @@ import PageSkeleton from './components/PageSkeleton';
 import { CITY_CENTER } from './constants';
 import { Driver, Transaction, TransactionType, DriverStatus, Language, Tab } from './types';
 import { appendDriverPlanChange } from './src/features/drivers/utils/driverPlanHistory';
+import { collectionSignature } from './src/core/utils/stableCollection';
 import { AuthProvider, useAuthContext } from './src/features/auth/context/AuthContext';
 import { UIProvider, useUIContext } from './src/features/shared/context/UIContext';
 import { DataProvider, useDataContext } from './src/core/context/DataContext';
@@ -162,6 +163,7 @@ const AppContent: React.FC = () => {
   const [carsLoading, setCarsLoading] = useState(true);
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
+  const carsSignatureRef = useRef('');
 
   const carsFleetId = userRole === 'viewer'
     ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
@@ -169,17 +171,23 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!carsFleetId) {
+      carsSignatureRef.current = '';
       // No fleet ID yet — don't block the UI indefinitely
       const t = setTimeout(() => setCarsLoading(false), 6000);
       return () => clearTimeout(t);
     }
 
+    carsSignatureRef.current = '';
     setCarsLoading(true);
     const timeout = setTimeout(() => setCarsLoading(false), 5000);
 
     const { unsubscribe } = subscribeToCars((data) => {
         clearTimeout(timeout);
-        setCars(data);
+        const nextSignature = collectionSignature(data);
+        if (nextSignature !== carsSignatureRef.current) {
+          carsSignatureRef.current = nextSignature;
+          setCars(data);
+        }
         setCarsLoading(false);
     }, carsFleetId);
     
