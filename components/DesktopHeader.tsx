@@ -6,6 +6,7 @@ import {
 import { Tab } from '../types';
 import NotificationBell from './NotificationBell';
 import { Notification } from '../services/notificationService';
+import { Car } from '../src/core/types/car.types';
 
 interface DesktopHeaderProps {
   theme: 'dark' | 'light';
@@ -24,7 +25,8 @@ interface DesktopHeaderProps {
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
   onDeleteNotification: (id: string) => void;
-  onClearAllRead: () => void;
+  onClearAllRead: (ids?: string[]) => void;
+  cars?: Car[];
 }
 
 const DesktopHeader: React.FC<DesktopHeaderProps> = ({
@@ -43,7 +45,8 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification,
-  onClearAllRead
+  onClearAllRead,
+  cars = []
 }) => {
   const { t, i18n } = useTranslation();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -158,6 +161,7 @@ const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           onMarkAllAsRead={onMarkAllAsRead}
           onDeleteNotification={onDeleteNotification}
           onClearAllRead={onClearAllRead}
+          cars={cars}
         />
 
         {/* LANGUAGE SELECTOR */}

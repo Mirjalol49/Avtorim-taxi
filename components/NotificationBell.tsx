@@ -36,7 +36,7 @@ interface NotificationBellProps {
     onMarkAsRead: (id: string) => void;
     onMarkAllAsRead: () => void;
     onDeleteNotification: (id: string) => void;
-    onClearAllRead: () => void;
+    onClearAllRead: (ids?: string[]) => void;
     cars?: Car[];
 }
 
@@ -164,6 +164,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         return finalWarnings.sort((a, b) => b.createdAt - a.createdAt);
     }, [notifications]);
     const transactions = useMemo(() => notifications.filter(isTransaction), [notifications]);
+    const visibleNotificationIds = useMemo(
+        () => Array.from(new Set([...warnings, ...transactions].map(n => n.id))),
+        [warnings, transactions]
+    );
 
     const unreadWarnings     = warnings.filter(n => !readIds.has(n.id)).length;
     const unreadTransactions = transactions.filter(n => !readIds.has(n.id)).length;
@@ -599,6 +603,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         return renderGenericItem(notification, isRead);
     };
 
+    const clearVisibleNotifications = () => {
+        if (visibleNotificationIds.length === 0) return;
+        onClearAllRead(visibleNotificationIds);
+    };
+
     // ─── Warnings tab content ───────────────────────────────────────────────
     const renderWarningsTab = () => {
         const planItems = warnings.filter(isPlanReminder);
@@ -738,9 +747,9 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                                     <CheckCheckIcon className="w-4 h-4" />
                                 </button>
                             )}
-                            {readIds.size > 0 && (
+                            {visibleNotificationIds.length > 0 && (
                                 <button
-                                    onClick={onClearAllRead}
+                                    onClick={clearVisibleNotifications}
                                     title={t('clearReadNotifications')}
                                     className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
                                 >

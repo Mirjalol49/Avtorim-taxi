@@ -7,24 +7,47 @@ export const useNotifications = (adminUser: AdminUser | null, userRole: UserRole
     const [unreadCount, setUnreadCount] = useState(0);
     const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
 
-    // Local set of IDs dismissed by the user this session — survives realtime overwrites
+    // Local set of IDs dismissed by the user — survives realtime overwrites and page reloads.
     const localDismissedRef = useRef<Set<string>>(new Set());
+    const dismissStorageKeyRef = useRef<string | null>(null);
+
+    const persistDismissed = useCallback(() => {
+        const key = dismissStorageKeyRef.current;
+        if (!key) return;
+        try {
+            localStorage.setItem(key, JSON.stringify([...localDismissedRef.current]));
+        } catch {
+            // localStorage may be unavailable; in-memory dismissal still prevents realtime bounce-back.
+        }
+    }, []);
 
     /** Call this when the user deletes one notification */
     const dismissNotification = useCallback((id: string) => {
         localDismissedRef.current.add(id);
+        persistDismissed();
         setNotifications(prev => prev.filter(n => n.id !== id));
         setUnreadCount(prev => Math.max(0, prev - 1));
-    }, []);
+    }, [persistDismissed]);
 
-    /** Call this when the user clears all read notifications */
-    const dismissReadNotifications = useCallback((readIds: Set<string>) => {
-        readIds.forEach(id => localDismissedRef.current.add(id));
-        setNotifications(prev => prev.filter(n => !readIds.has(n.id)));
-    }, []);
+    /** Call this when the user clears visible/read notifications */
+    const dismissReadNotifications = useCallback((ids: Set<string>) => {
+        ids.forEach(id => localDismissedRef.current.add(id));
+        persistDismissed();
+        setNotifications(prev => prev.filter(n => !ids.has(n.id)));
+        setUnreadCount(prev => Math.max(0, prev - ids.size));
+    }, [persistDismissed]);
 
     useEffect(() => {
         if (!adminUser?.id) return;
+
+        const storageKey = `avtorim.dismissedNotifications.${adminUser.id}`;
+        dismissStorageKeyRef.current = storageKey;
+        try {
+            const stored = localStorage.getItem(storageKey);
+            localDismissedRef.current = new Set<string>(stored ? JSON.parse(stored) : []);
+        } catch {
+            localDismissedRef.current = new Set<string>();
+        }
 
         const unsubscribe = subscribeToNotifications(
             adminUser.id,

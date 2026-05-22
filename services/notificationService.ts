@@ -221,20 +221,24 @@ export const deleteNotification = async (notificationId: string, userId: string)
     }
 };
 
-export const clearAllReadNotifications = async (userId: string): Promise<void> => {
+export const clearAllReadNotifications = async (userId: string, notificationIds: string[] = []): Promise<void> => {
     try {
         const { data: reads } = await supabase
             .from('notification_reads')
             .select('notification_id')
             .eq('user_id', userId);
         const readIds = (reads ?? []).map(r => r.notification_id);
-        if (readIds.length === 0) return;
+        const ids = Array.from(new Set([...readIds, ...notificationIds].filter(Boolean)));
+        if (ids.length === 0) return;
 
-        // Try to hard-delete all read notification rows permanently
-        await supabase.from('notifications').delete().in('id', readIds);
+        // Try to hard-delete selected notification rows permanently.
+        // Explicit IDs avoid a race where "mark all read" has not reached the DB yet.
+        const { error: hardDeleteError } = await supabase.from('notifications').delete().in('id', ids);
 
         // Check which ones STILL exist (failed to hard-delete due to RLS)
-        const { data: remaining } = await supabase.from('notifications').select('id').in('id', readIds);
+        const { data: remaining } = hardDeleteError
+            ? { data: ids.map(id => ({ id })) }
+            : await supabase.from('notifications').select('id').in('id', ids);
         const remainingIds = new Set((remaining ?? []).map(r => r.id));
 
         if (remainingIds.size === 0) return; // All deleted successfully!

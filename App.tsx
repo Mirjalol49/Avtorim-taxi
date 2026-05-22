@@ -125,7 +125,6 @@ const AppContent: React.FC = () => {
     notifications,
     unreadCount,
     readNotificationIds,
-    setNotifications,
     setReadNotificationIds,
     setUnreadCount,
     dismissNotification,
@@ -1042,6 +1041,7 @@ const AppContent: React.FC = () => {
           unreadCount={unreadCount}
           readIds={readNotificationIds}
           userId={adminUser?.id || 'global'}
+          cars={cars}
           onMarkAsRead={async (id) => {
             const userId = adminUser?.id || 'global';
             await markNotificationAsRead(id, userId);
@@ -1067,20 +1067,14 @@ const AppContent: React.FC = () => {
           }}
           onDeleteNotification={async (id) => {
             const userId = adminUser?.id || 'global';
-            // Optimistic update
-            setNotifications(prev => prev.filter(n => n.id !== id));
-            if (!readNotificationIds.has(id)) {
-              setUnreadCount(prev => Math.max(0, prev - 1));
-            }
-
+            dismissNotification(id);
             await deleteNotification(id, userId);
           }}
-          onClearAllRead={async () => {
+          onClearAllRead={async (ids = []) => {
             const userId = adminUser?.id || 'global';
-            // Optimistic update
-            setNotifications(prev => prev.filter(n => !readNotificationIds.has(n.id)));
-
-            await clearAllReadNotifications(userId);
+            const idsToDismiss = ids.length > 0 ? ids : Array.from(readNotificationIds);
+            dismissReadNotifications(new Set(idsToDismiss));
+            await clearAllReadNotifications(userId, idsToDismiss);
           }}
         />
 
@@ -1153,10 +1147,11 @@ const AppContent: React.FC = () => {
                 dismissNotification(id);
                 await deleteNotification(id, userId);
               }}
-              onClearAllRead={async () => {
+              onClearAllRead={async (ids = []) => {
                 const userId = adminUser?.id || 'global';
-                dismissReadNotifications(readNotificationIds);
-                await clearAllReadNotifications(userId);
+                const idsToDismiss = ids.length > 0 ? ids : Array.from(readNotificationIds);
+                dismissReadNotifications(new Set(idsToDismiss));
+                await clearAllReadNotifications(userId, idsToDismiss);
               }}
             />
           </div>
