@@ -58,10 +58,20 @@ const DriversPage: React.FC<DriversPageProps> = ({
         return carFilteredList.filter(d => (d.driverType || 'deposit') === typeFilter);
     }, [carFilteredList, typeFilter]);
 
+    const sortedDrivers = useMemo(() => {
+        return [...filteredDrivers].sort((a, b) => {
+            const aHasCar = cars.some(c => c.assignedDriverId === a.id);
+            const bHasCar = cars.some(c => c.assignedDriverId === b.id);
+            if (aHasCar && !bHasCar) return -1;
+            if (!aHasCar && bHasCar) return 1;
+            return 0;
+        });
+    }, [filteredDrivers, cars]);
+
     const ITEMS_PER_PAGE = 12;
-    const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / ITEMS_PER_PAGE));
+    const totalPages = Math.max(1, Math.ceil(sortedDrivers.length / ITEMS_PER_PAGE));
     const safePage = Math.min(currentPage, totalPages);
-    const paginatedDrivers = filteredDrivers.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+    const paginatedDrivers = sortedDrivers.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
     const withCarCount = rawFiltered.filter(d => cars.some(c => c.assignedDriverId === d.id)).length;
     const noCarCount = rawFiltered.filter(d => !cars.some(c => c.assignedDriverId === d.id)).length;
@@ -69,6 +79,13 @@ const DriversPage: React.FC<DriversPageProps> = ({
     const depositCount = carFilteredList.filter(d => (d.driverType || 'deposit') === 'deposit').length;
     const salaryCount = carFilteredList.filter(d => d.driverType === 'salary').length;
     const vikupCount = carFilteredList.filter(d => d.driverType === 'lease_to_own').length;
+    const hasActiveFilters = Boolean(searchQuery.trim()) || carFilter !== 'all' || typeFilter !== 'all';
+    const resetFilters = () => {
+        setSearchQuery('');
+        setCarFilter('all');
+        setTypeFilter('all');
+        setCurrentPage(1);
+    };
 
     // ── Loading skeleton (after all hooks) ──────────────────────────────────
     if (isDataLoading) {
@@ -76,19 +93,19 @@ const DriversPage: React.FC<DriversPageProps> = ({
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {/* Fleet debt summary removed per user request - focusing on driver management */}
 
             {/* ── Toolbar ── */}
-            <div className="flex flex-col gap-3 mb-6">
-                <div className="flex gap-2.5">
+            <div className={`rounded-[24px] border p-3 sm:p-4 shadow-sm ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-white/90 border-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]'}`}>
+                <div className="flex flex-col xl:flex-row gap-3 xl:items-center">
                     <div className="flex-1 relative">
                         <SearchIcon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${theme === 'dark' ? 'text-white/25' : 'text-gray-400'}`} />
                         <input
                             type="text"
-                            className={`w-full pl-10 pr-4 py-2.5 rounded-[14px] border text-[13px] font-medium outline-none transition-all ${theme === 'dark'
-                                ? 'bg-surface border-white/[0.07] text-white placeholder-white/25 focus:border-teal-500/40'
-                                : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500/60'
+                            className={`w-full pl-10 pr-10 py-3 rounded-2xl border text-[14px] font-medium outline-none transition-all ${theme === 'dark'
+                                ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-white/25 focus:border-teal-500/40'
+                                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-teal-500/60'
                             }`}
                             placeholder={t('searchDriverPlaceholder')}
                             value={searchQuery}
@@ -102,59 +119,62 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         )}
                     </div>
 
-                    <button
-                        onClick={() => exportDriversToExcel(filteredDrivers, 'Haydovchilar')}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-[13px] font-semibold border transition-all active:scale-95 flex-shrink-0 ${theme === 'dark'
-                            ? 'bg-surface border-white/[0.07] text-white/40 hover:text-emerald-400 hover:border-emerald-500/25'
-                            : 'bg-white border-gray-200 text-gray-400 hover:text-emerald-600 hover:border-emerald-300'
-                        }`}
-                        title="Excel"
-                    >
-                        <DownloadIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Excel</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => exportDriversToExcel(filteredDrivers, cars, transactions, 'Haydovchilar')}
+                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-bold border transition-all active:scale-95 flex-shrink-0 ${theme === 'dark'
+                                ? 'bg-white/[0.04] border-white/[0.08] text-white/45 hover:text-emerald-300 hover:border-emerald-500/25'
+                                : 'bg-white border-slate-200 text-slate-500 hover:text-emerald-700 hover:border-emerald-300'
+                            }`}
+                            title="Excel"
+                        >
+                            <DownloadIcon className="w-4 h-4" />
+                            <span className="hidden sm:inline">Excel</span>
+                        </button>
 
-                    {userRole === 'admin' && (
+                        {userRole === 'admin' && (
                         <button
                             onClick={onAddDriver}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] font-bold text-[13px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95 shadow-sm flex-shrink-0"
+                            className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-bold text-[13px] bg-[#0f766e] hover:bg-[#0a5c56] text-white transition-all active:scale-95 shadow-sm flex-shrink-0"
                         >
                             <PlusIcon className="w-4 h-4" />
                             <span>{t('add')}</span>
                         </button>
-                    )}
+                        )}
 
-                    {/* View Toggle */}
-                    <div className={`flex items-center p-1 rounded-[14px] border ${theme === 'dark' ? 'bg-surface border-white/[0.07]' : 'bg-gray-100/70 border-gray-200'}`}>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-[10px] transition-all ${viewMode === 'grid'
-                                ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
-                                : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                        <div className={`flex items-center p-1 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-slate-100 border-slate-200'}`}>
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                aria-label={t('gridView', 'Grid view')}
+                                className={`p-2 rounded-xl transition-all ${viewMode === 'grid'
+                                    ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm'
+                                    : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-slate-500 hover:text-slate-700'
                                 }`}
-                        >
-                            <GridIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-[10px] transition-all ${viewMode === 'list'
-                                ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm border border-teal-100'
-                                : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-gray-500 hover:text-gray-700'
+                            >
+                                <GridIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('list')}
+                                aria-label={t('listView', 'List view')}
+                                className={`p-2 rounded-xl transition-all ${viewMode === 'list'
+                                    ? theme === 'dark' ? 'bg-teal-500 text-white shadow-sm' : 'bg-white text-teal-700 shadow-sm'
+                                    : theme === 'dark' ? 'text-white/35 hover:text-white/60' : 'text-slate-500 hover:text-slate-700'
                                 }`}
-                        >
-                            <ListIcon className="w-4 h-4" />
-                        </button>
+                            >
+                                <ListIcon className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-end justify-between gap-3 overflow-hidden">
-                    <div className="flex flex-wrap items-end gap-4 w-full md:w-auto">
+                <div className="mt-3 flex flex-col 2xl:flex-row 2xl:items-end justify-between gap-3 overflow-hidden">
+                    <div className="flex flex-wrap items-end gap-3 w-full">
                         {/* Car Status Filter */}
                         <div className="flex flex-col">
                             <span className={`text-[10px] font-semibold uppercase tracking-wider ml-2 mb-1.5 ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
                                 {t('car', 'Avtomobil')}
                             </span>
-                            <div className={`flex items-center p-1 rounded-xl sm:rounded-2xl transition-colors ${theme === 'dark' ? 'bg-[#1c1c1e]' : 'bg-[#f4f4f5]'}`}>
+                            <div className={`flex items-center p-1 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
                                 {([
                                     { key: 'all', label: t('all', 'Barchasi'), count: rawFiltered.length },
                                     { key: 'with-car', label: t('withCar', 'Mashina bor'), count: withCarCount },
@@ -165,7 +185,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                         <button
                                             key={f.key}
                                             onClick={() => { setCarFilter(f.key); setTypeFilter('all'); setCurrentPage(1); }}
-                                            className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all ${
+                                            className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all ${
                                                 active
                                                     ? theme === 'dark' ? 'bg-[#2c2c2e] text-white shadow-sm' : 'bg-white text-black shadow-sm'
                                                     : theme === 'dark' ? 'text-white/50 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
@@ -190,7 +210,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                             <span className={`text-[10px] font-semibold uppercase tracking-wider ml-2 mb-1.5 ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'}`}>
                                 {t('category', 'Toifa')}
                             </span>
-                            <div className={`flex items-center p-1 rounded-xl sm:rounded-2xl transition-colors ${theme === 'dark' ? 'bg-[#1c1c1e]' : 'bg-[#f4f4f5]'}`}>
+                            <div className={`flex items-center p-1 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
                                 {([
                                     { key: 'all', label: t('all', 'Barchasi'), count: carFilteredList.length },
                                     { key: 'deposit', label: t('standard', 'Standart'), count: depositCount },
@@ -203,7 +223,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                                         <button
                                             key={f.key}
                                             onClick={() => { setTypeFilter(f.key as DriverTypeFilter); setCurrentPage(1); }}
-                                            className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all ${
+                                            className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all ${
                                                 active
                                                     ? theme === 'dark' ? 'bg-[#2c2c2e] text-white shadow-sm' : 'bg-white text-black shadow-sm'
                                                     : theme === 'dark' ? 'text-white/50 hover:text-white/80' : 'text-gray-500 hover:text-gray-700'
@@ -224,16 +244,26 @@ const DriversPage: React.FC<DriversPageProps> = ({
                         </div>
                     </div>
                     
-                    <span className={`text-[12px] whitespace-nowrap ${theme === 'dark' ? 'text-white/25' : 'text-gray-400'}`}>
-                        {filteredDrivers.length} {t('driversCount', 'ta haydovchi')}
-                    </span>
+                    <div className="flex items-center justify-between gap-3 2xl:justify-end">
+                        {hasActiveFilters && (
+                            <button
+                                onClick={resetFilters}
+                                className={`px-3 py-2 rounded-xl text-[12px] font-bold transition-colors ${theme === 'dark' ? 'bg-white/[0.05] text-white/50 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-800'}`}
+                            >
+                                {t('clearFilters', 'Tozalash')}
+                            </button>
+                        )}
+                        <span className={`text-[12px] whitespace-nowrap ${theme === 'dark' ? 'text-white/30' : 'text-slate-500'}`}>
+                            {filteredDrivers.length} / {drivers.length} {t('driversCount', 'ta haydovchi')}
+                        </span>
+                    </div>
                 </div>
             </div>
 
             {filteredDrivers.length > 0 ? (
                 <>
                     {viewMode === 'grid' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                             {paginatedDrivers.map(driver => (
                                 <DriverCard
                                     key={driver.id}
@@ -287,7 +317,7 @@ const DriversPage: React.FC<DriversPageProps> = ({
                             </div>
                             
                             {/* Mobile Card View Fallback */}
-                            <div className="md:hidden grid grid-cols-1 gap-6">
+                            <div className="md:hidden grid grid-cols-1 gap-4">
                                 {paginatedDrivers.map(driver => (
                                     <DriverCard
                                         key={driver.id}

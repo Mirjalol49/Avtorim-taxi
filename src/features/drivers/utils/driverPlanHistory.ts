@@ -144,7 +144,7 @@ export function getDriverWorkPeriods(driver: Driver | null | undefined, fallback
     }
 
     if (active) {
-        const endDate = driver.quitDate ? dayEnd(driver.quitDate) : null;
+        const endDate = driver.isDeleted && driver.quitDate ? dayEnd(driver.quitDate) : null;
         periods.push({
             ...active,
             endDate: endDate !== null ? (endDate >= active.startDate ? endDate : active.startDate) : null,
@@ -153,7 +153,7 @@ export function getDriverWorkPeriods(driver: Driver | null | undefined, fallback
 
     if (periods.length === 0) {
         const startDate = dayStart(driver.startDate || driver.createdAt || Date.now());
-        const endDate = driver.quitDate ? dayEnd(driver.quitDate) : null;
+        const endDate = driver.isDeleted && driver.quitDate ? dayEnd(driver.quitDate) : null;
         periods.push({
             id: `legacy-${startDate}`,
             startDate,
@@ -238,7 +238,7 @@ export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, 
         }
     }
 
-    if (driver.quitDate) {
+    if (driver.isDeleted && driver.quitDate) {
         const targetDateMidnight = new Date(date);
         targetDateMidnight.setHours(0, 0, 0, 0);
         

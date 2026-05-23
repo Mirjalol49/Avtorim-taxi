@@ -444,6 +444,22 @@ const AppContent: React.FC = () => {
           ).catch(() => {});
         }
       }
+
+      if (newTxId) {
+        const successMessage =
+          (payload as any).category === 'deposit_topup'
+            ? t.depositTopupSaved
+            : payload.type === TransactionType.INCOME
+              ? t.incomeTransactionSaved
+              : payload.type === TransactionType.EXPENSE
+                ? t.expenseTransactionSaved
+                : payload.type === TransactionType.DAY_OFF
+                  ? t.dayOffSaved
+                  : payload.type === TransactionType.NOT_WORKING
+                    ? t.notWorkingSaved
+                    : t.transactionSaved;
+        addToast('success', successMessage || t.transactionSaved || t.saved, 3200);
+      }
     } catch {
       addToast('error', t.transactionSaveFailed);
     }

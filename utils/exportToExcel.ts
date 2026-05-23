@@ -1,7 +1,8 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { Transaction, TransactionType, PaymentStatus } from '../src/core/types';
 import { Driver } from '../src/core/types/driver.types';
 import { Car } from '../src/core/types/car.types';
+import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,7 +22,7 @@ const fmtTime = (ms: number) => {
 const fmtDateTime = (ms: number) => `${fmtDate(ms)} ${fmtTime(ms)}`;
 
 const downloadWorkbook = (wb: XLSX.WorkBook, filename: string) => {
-    XLSX.writeFile(wb, `${filename}.xlsx`);
+    XLSX.writeFile(wb, `${filename}.xlsx`, { compression: true, cellStyles: true });
 };
 
 const applyHeaderStyle = (ws: XLSX.WorkSheet, range: XLSX.Range) => {
@@ -38,6 +39,26 @@ const applyHeaderStyle = (ws: XLSX.WorkSheet, range: XLSX.Range) => {
             },
         };
     }
+};
+
+const setCellStyle = (ws: XLSX.WorkSheet, addr: string, style: any) => {
+    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+    ws[addr].s = { ...(ws[addr].s || {}), ...style };
+};
+
+const applyRangeStyle = (ws: XLSX.WorkSheet, rangeRef: string, style: any) => {
+    const range = XLSX.utils.decode_range(rangeRef);
+    for (let r = range.s.r; r <= range.e.r; r++) {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+            setCellStyle(ws, XLSX.utils.encode_cell({ r, c }), style);
+        }
+    }
+};
+
+const driverTypeLabel = (type?: string) => {
+    if (type === 'salary') return 'Oylik maosh';
+    if (type === 'lease_to_own') return 'Vikup';
+    return 'Standart';
 };
 
 // ─── Transactions ──────────────────────────────────────────────────────────────
@@ -125,33 +146,218 @@ export const exportTransactionsToExcel = (
 
 // ─── Drivers ──────────────────────────────────────────────────────────────────
 
-export const exportDriversToExcel = (drivers: Driver[], filename = 'Haydovchilar') => {
-    const rows = drivers
-        .filter(d => !d.isDeleted)
-        .map((d, i) => ({
-            '#': i + 1,
-            'Ism': d.name,
-            'Telefon': d.phone || '—',
-            'Mashina modeli': (d as any).carModel || '—',
-            'Mashina raqami': (d as any).licensePlate || '—',
-            'Holat': d.status === 'ACTIVE' ? 'Faol' : d.status === 'OFFLINE' ? 'Offline' : d.status,
-            "Kunlik reja (UZS)": (d as any).dailyPlan ?? 0,
-            'Balans (UZS)': d.balance ?? 0,
-            "Qo'shilgan sana": d.createdAt ? fmtDate(d.createdAt) : '—',
-        }));
+export const exportDriversToExcel = (
+    drivers: Driver[],
+    carsOrFilename: Car[] | string = 'Haydovchilar',
+    transactionsOrFilename: Transaction[] | string = [],
+    filenameArg?: string
+) => {
+    const cars = Array.isArray(carsOrFilename) ? carsOrFilename : [];
+    const transactions = Array.isArray(transactionsOrFilename) ? transactionsOrFilename : [];
+    const filename = typeof carsOrFilename === 'string'
+        ? carsOrFilename
+        : typeof transactionsOrFilename === 'string'
+            ? transactionsOrFilename
+            : (filenameArg || 'Haydovchilar');
+    const activeDrivers = drivers.filter(d => !d.isDeleted);
+    if (activeDrivers.length === 0) return;
 
-    if (rows.length === 0) return;
+    const currentCarByDriverId = new Map(
+        cars
+            .filter(c => !c.isDeleted && c.assignedDriverId)
+            .map(c => [c.assignedDriverId as string, c])
+    );
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [
-        { wch: 5 }, { wch: 22 }, { wch: 16 }, { wch: 20 },
-        { wch: 16 }, { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 16 },
+    const rows = activeDrivers.map((d, i) => {
+        const currentCar = currentCarByDriverId.get(d.id) ?? null;
+        const finance = calcDriverFinance(d, currentCar, transactions);
+        const driverType = d.driverType ?? 'deposit';
+        const depositRemaining = driverType === 'deposit' ? finance.remainingDeposit : 0;
+        const startDate = d.startDate || d.createdAt;
+        return {
+            index: i + 1,
+            name: d.name || '—',
+            phone: d.phone || '—',
+            type: driverTypeLabel(driverType),
+            carName: currentCar?.name || 'Biriktirilmagan',
+            plate: currentCar?.licensePlate || '—',
+            dailyPlan: currentCar?.dailyPlan ?? 0,
+            depositRemaining,
+            startDate: startDate ? fmtDate(startDate) : '—',
+            quitDate: d.quitDate ? fmtDate(d.quitDate) : '—',
+        };
+    });
+
+    const assignedCount = rows.filter(r => r.carName !== 'Biriktirilmagan').length;
+    const unassignedCount = rows.length - assignedCount;
+    const totalDailyPlan = rows.reduce((s, r) => s + r.dailyPlan, 0);
+    const totalDepositRemaining = rows.reduce((s, r) => s + r.depositRemaining, 0);
+
+    const headers = [
+        '#',
+        'Haydovchi',
+        'Telefon',
+        'Toifa',
+        'Joriy avtomobil',
+        'Davlat raqami',
+        'Kunlik reja (UZS)',
+        'Depozit qoldiq (UZS)',
+        'Ish boshlagan sana',
+        'Ishdan ketgan sana',
     ];
 
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    applyHeaderStyle(ws, range);
+    const data = rows.map(r => [
+        r.index,
+        r.name,
+        r.phone,
+        r.type,
+        r.carName,
+        r.plate,
+        r.dailyPlan,
+        r.depositRemaining,
+        r.startDate,
+        r.quitDate,
+    ]);
+
+    const sheetData = [
+        ['Haydovchilar ro\'yxati'],
+        [`Yangilangan: ${fmtDateTime(Date.now())}`],
+        [],
+        ['Jami haydovchilar', rows.length, 'Biriktirilgan', assignedCount, 'Mashinasiz', unassignedCount, 'Jami kunlik reja', totalDailyPlan, 'Depozit qoldiq', totalDepositRemaining],
+        [],
+        headers,
+        ...data,
+        [],
+        ['', '', '', '', '', 'JAMI:', totalDailyPlan, totalDepositRemaining, '', ''],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+    ];
+    ws['!cols'] = [
+        { wch: 6 },
+        { wch: 24 },
+        { wch: 19 },
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+    ];
+    ws['!rows'] = [
+        { hpt: 30 },
+        { hpt: 20 },
+        { hpt: 8 },
+        { hpt: 34 },
+        { hpt: 8 },
+        { hpt: 32 },
+    ];
+    (ws as any)['!autofilter'] = { ref: `A6:J${6 + rows.length}` };
+
+    setCellStyle(ws, 'A1', {
+        font: { bold: true, sz: 20, color: { rgb: '0F172A' } },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+        alignment: { horizontal: 'left', vertical: 'center' },
+    });
+    setCellStyle(ws, 'A2', {
+        font: { sz: 10, color: { rgb: '64748B' } },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+        alignment: { horizontal: 'left', vertical: 'center' },
+    });
+    applyRangeStyle(ws, 'A4:J4', {
+        font: { bold: true, sz: 10, color: { rgb: '0F172A' } },
+        fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+            top: { style: 'thin', color: { rgb: '99F6E4' } },
+            bottom: { style: 'thin', color: { rgb: '99F6E4' } },
+            left: { style: 'thin', color: { rgb: 'CCFBF1' } },
+            right: { style: 'thin', color: { rgb: 'CCFBF1' } },
+        },
+    });
+    ['B4', 'D4', 'F4', 'H4', 'J4'].forEach(addr => {
+        if (ws[addr]) {
+            ws[addr].s = {
+                ...ws[addr].s,
+                font: { bold: true, sz: 12, color: { rgb: '0F766E' } },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                numFmt: '#,##0',
+            };
+            ws[addr].z = '#,##0';
+        }
+    });
+
+    const headerRowIndex = 5;
+    for (let c = 0; c < headers.length; c++) {
+        setCellStyle(ws, XLSX.utils.encode_cell({ r: headerRowIndex, c }), {
+            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+            fill: { patternType: 'solid', fgColor: { rgb: '0F766E' } },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: {
+                top: { style: 'thin', color: { rgb: '0A5C56' } },
+                bottom: { style: 'thin', color: { rgb: '0A5C56' } },
+                right: { style: 'thin', color: { rgb: '0A5C56' } },
+            },
+        });
+    }
+
+    for (let r = 0; r < rows.length; r++) {
+        const sheetRow = headerRowIndex + 1 + r;
+        const row = rows[r];
+        for (let c = 0; c < headers.length; c++) {
+            const addr = XLSX.utils.encode_cell({ r: sheetRow, c });
+            const isMoney = c === 6 || c === 7;
+            const isCentered = [0, 3, 5, 8, 9].includes(c);
+            const fill = r % 2 === 0 ? 'FFFFFF' : 'F8FAFC';
+            const amountColor = isMoney
+                ? c === 7 && row.depositRemaining > 0 && row.depositRemaining <= 1_000_000
+                    ? 'B45309'
+                    : '0F172A'
+                : '0F172A';
+            setCellStyle(ws, addr, {
+                font: { sz: 11, color: { rgb: amountColor }, bold: isMoney || c === 1 },
+                fill: { patternType: 'solid', fgColor: { rgb: fill } },
+                alignment: { horizontal: isMoney ? 'right' : isCentered ? 'center' : 'left', vertical: 'center' },
+                border: { bottom: { style: 'thin', color: { rgb: 'E2E8F0' } } },
+                numFmt: isMoney ? '#,##0' : undefined,
+            });
+            if (isMoney && ws[addr]) ws[addr].z = '#,##0';
+            if (c === 4 && row.carName === 'Biriktirilmagan') {
+                ws[addr].s = {
+                    ...ws[addr].s,
+                    font: { sz: 11, bold: true, color: { rgb: 'B45309' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: 'FFFBEB' } },
+                };
+            }
+        }
+    }
+
+    const totalRow = headerRowIndex + rows.length + 2;
+    applyRangeStyle(ws, `A${totalRow + 1}:J${totalRow + 1}`, {
+        font: { bold: true, sz: 11, color: { rgb: '0F172A' } },
+        fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+        alignment: { vertical: 'center' },
+        border: {
+            top: { style: 'thin', color: { rgb: '99F6E4' } },
+            bottom: { style: 'thin', color: { rgb: '99F6E4' } },
+        },
+    });
+    ['G', 'H'].forEach(col => {
+        const addr = `${col}${totalRow + 1}`;
+        if (ws[addr]) ws[addr].z = '#,##0';
+    });
 
     const wb = XLSX.utils.book_new();
+    wb.Props = {
+        Title: 'Haydovchilar ro\'yxati',
+        Subject: 'Taksapark haydovchilar eksporti',
+        Author: 'Taksapark',
+        CreatedDate: new Date(),
+    };
     XLSX.utils.book_append_sheet(wb, ws, 'Haydovchilar');
     downloadWorkbook(wb, filename);
 };
