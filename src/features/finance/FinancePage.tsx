@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transaction, Driver, Language } from '../../core/types';
+import { Transaction, Driver, Language, TransactionType } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { useFinanceStats } from './hooks/useFinanceStats';
+import { useAuthContext } from '../auth/context/AuthContext';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import DatePicker from '../../../components/DatePicker';
 import CustomSelect from '../../../components/CustomSelect';
@@ -16,6 +17,7 @@ import {
     WalletIcon,
     BanknoteIcon,
     DownloadIcon,
+    FilterIcon,
 } from '../../../components/Icons';
 import { exportFinanceSummaryToExcel } from '../../../utils/exportToExcel';
 import {
@@ -42,17 +44,22 @@ export const FinancePage: React.FC<FinancePageProps> = ({
 }) => {
     const { t, i18n } = useTranslation();
     const language = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz') as Language;
+    const { adminUser, userRole, adminProfile } = useAuthContext();
+    const fleetId = userRole === 'viewer'
+        ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+        : adminUser?.id;
 
     // useFinanceStats now manages language internally
     const {
         filters, setFilters,
+        expenseCategories,
         analyticsYear, setAnalyticsYear,
         availableYears,
         monthlyAnalyticsData,
         yearlyAnalyticsTotals,
         financeStats,
         advancedStats
-    } = useFinanceStats(allTransactions, cars, drivers);
+    } = useFinanceStats(allTransactions, cars, drivers, fleetId);
 
     const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
 
@@ -94,7 +101,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
         <div className="space-y-6 animate-fadeIn">
             {/* Analytics Header Filters */}
             <div className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-4">
                     <DatePicker
                         label={t('fromDate') || 'Boshlanish sanasi'}
                         value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
@@ -193,15 +200,48 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     <CustomSelect
                         label={t('transactionType', "O'tkazma turi")}
                         value={filters.type}
-                        onChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
-                        options={[
-                            { id: 'all', name: t('all', 'Barchasi') },
-                            { id: 'income', name: t('income', 'Tushum') },
-                            { id: 'expense', name: t('expense', 'Xarajat') },
+                        onChange={(val) => setFilters(prev => ({
+                            ...prev,
+                            type: val,
+                            category: val === TransactionType.EXPENSE ? prev.category : 'all',
+                        }))}
+                            options={[
+                                { id: 'all', name: t('all', 'Barchasi') },
+                            { id: TransactionType.INCOME, name: t('income', 'Tushum') },
+                            { id: TransactionType.EXPENSE, name: t('expense', 'Xarajat') },
                             { id: 'deposit', name: t('deposit', 'Depozit') },
                         ]}
                         theme={theme}
                         icon={BanknoteIcon}
+                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
+                    />
+
+                    <CustomSelect
+                        label={t('expenseCategoryFilter', 'Kategoriya')}
+                        value={filters.category}
+                        onChange={(val) => setFilters(prev => ({
+                            ...prev,
+                            category: val,
+                            type: val === 'all' ? prev.type : TransactionType.EXPENSE,
+                        }))}
+                        options={[
+                            { id: 'all', name: t('allCategories', 'Barchasi') },
+                            ...expenseCategories.map(category => {
+                                const label = category.tKey ? t(category.tKey, category.label) : category.label;
+                                return {
+                                    id: category.id,
+                                    name: label,
+                                    node: (
+                                        <div className="flex items-center gap-2">
+                                            <span>{category.icon}</span>
+                                            <span>{label}</span>
+                                        </div>
+                                    ),
+                                };
+                            }),
+                        ]}
+                        theme={theme}
+                        icon={FilterIcon}
                         labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
                     />
 

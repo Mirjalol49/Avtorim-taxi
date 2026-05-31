@@ -44,6 +44,22 @@ const PAGE_SIZE = 20;
 
 const fmtAmount = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
+const parseNotificationAmount = (value?: string | null) => {
+    if (!value) return null;
+    const match = value.match(/([+-]?\d[\d\s,.]*)\s*(?:UZS|so'?m|сум)/i);
+    if (!match) return null;
+
+    const parsed = Number(match[1].replace(/[^\d-]/g, ''));
+    if (!Number.isFinite(parsed) || parsed === 0) return null;
+    return Math.abs(parsed);
+};
+
+const getNotificationAmount = (n: Notification) => {
+    const rawAmount = Number((n as any).deliveryTracking?.amount);
+    if (Number.isFinite(rawAmount) && rawAmount !== 0) return Math.abs(rawAmount);
+    return parseNotificationAmount(n.title) ?? parseNotificationAmount(n.message);
+};
+
 function isPlanReminder(n: Notification) {
     return ((n as any).deliveryTracking?.reminderType === 'daily_plan');
 }
@@ -58,7 +74,11 @@ function isDocumentReminder(n: Notification) {
 }
 
 function isTransaction(n: Notification) {
-    return n.type === 'payment_reminder' && !isPlanReminder(n) && !isDepositWarning(n) && !isDocumentReminder(n);
+    return n.type === 'payment_reminder'
+        && !isPlanReminder(n)
+        && !isDepositWarning(n)
+        && !isDocumentReminder(n)
+        && getNotificationAmount(n) !== null;
 }
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -315,7 +335,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         const dt         = (notification as any).deliveryTracking ?? {};
         const txType     = dt.txType     as 'income' | 'expense' | undefined;
         const method     = dt.method     as 'cash' | 'card' | null;
-        const amount     = dt.amount     as number | undefined;
+        const amount     = getNotificationAmount(notification);
         const driverName = dt.driverName as string | undefined;
         const carName    = dt.carName    as string | undefined;
         const carPlate   = dt.carPlate   as string | undefined;
@@ -327,9 +347,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
         const isIncome = txType ? txType === 'income'
             : notification.title.includes('Kirim') || notification.title.includes('💵') || notification.title.includes('💳');
-        const amountDisplay = amount != null
-            ? fmtAmount(amount)
-            : (notification.title.match(/([\d\s,]+)\s*UZS/)?.[1]?.trim() ?? '');
+        const amountDisplay = amount != null ? fmtAmount(amount) : '';
         const nameDisplay = driverName
             ?? notification.title.replace(/[💵💳💸]\s*(?:Kirim|Chiqim):\s*/, '').replace(/\s*—.*$/, '').trim();
 
@@ -886,7 +904,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 {/* Footer */}
                 <div className={`flex-shrink-0 px-5 py-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
                     <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                        {t('notificationFooter', { count: notifications.length })}
+                        {t('notificationFooter', { count: visibleNotificationIds.length })}
                     </p>
                 </div>
             </div>
