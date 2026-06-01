@@ -165,8 +165,11 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
     const hasContent = title.trim() || content.trim();
 
-    const cardBg = isDark ? 'bg-surface' : 'bg-white';
-    const cardBorder = isDark ? 'border-white/[0.08]' : 'border-gray-200';
+    const cardBg = isDark ? 'bg-[#111827]' : 'bg-white';
+    const cardBorder = isDark ? 'border-white/[0.10]' : 'border-slate-200';
+    const editorSurface = isDark
+        ? 'bg-white/[0.04] border-white/[0.08]'
+        : 'bg-slate-50/80 border-slate-200/80';
 
     const pad = (n: number) => String(n).padStart(2, '0');
     const dateStr = reminderAt ? (() => { const d = new Date(reminderAt); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; })() : '';
@@ -191,26 +194,29 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-md" onClick={onClose}>
             <div
                 onClick={e => e.stopPropagation()}
-                className={`w-full max-w-lg rounded-2xl border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${cardBg} ${cardBorder}`}
+                role="dialog"
+                aria-modal="true"
+                className={`w-full max-w-2xl rounded-[28px] border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${cardBg} ${cardBorder}`}
             >
                 {/* Color bar */}
-                <div className={`flex items-center gap-1.5 px-4 pt-4 pb-2`}>
+                <div className="flex items-center gap-2 px-6 pt-5 pb-3">
                     {ALL_COLORS.map(c => (
                         <button
                             key={c}
                             title={COLOR_MAP[c].label}
+                            aria-label={COLOR_MAP[c].label}
                             onClick={() => setColor(c)}
-                            className={`w-5 h-5 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? `ring-2 ring-offset-2 ${isDark ? 'ring-offset-[#1c1c1e]' : 'ring-offset-white'} ${COLOR_MAP[c].ring} scale-110` : 'opacity-50 hover:opacity-100 hover:scale-110'}`}
+                            className={`w-7 h-7 rounded-full transition-all ${COLOR_MAP[c].dot} ${color === c ? `ring-[3px] ring-offset-2 ${isDark ? 'ring-offset-[#111827]' : 'ring-offset-white'} ${COLOR_MAP[c].ring} scale-110` : 'opacity-70 hover:opacity-100 hover:scale-105'}`}
                         />
                     ))}
                     <div className="flex-1" />
                     <button
                         onClick={() => setIsPinned(p => !p)}
                         title={isPinned ? 'Unpin' : 'Pin'}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${isPinned ? 'text-amber-400' : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all ${isPinned ? 'bg-amber-400/15 text-amber-400' : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.06]' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
                     >
                         <PinIcon pinned={isPinned} />
                     </button>
@@ -221,28 +227,31 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     placeholder={labels.title}
-                    className={`w-full px-4 py-2 text-lg font-bold bg-transparent border-none outline-none resize-none placeholder-opacity-30 ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'}`}
-                    style={{ backgroundColor: 'transparent' }} // Force transparency if global styles interfere
+                    className={`w-full px-6 pt-3 pb-1 text-3xl font-black tracking-tight bg-transparent border-none outline-none resize-none focus:shadow-none placeholder:font-black ${isDark ? 'text-white placeholder:text-white/18' : 'text-slate-950 placeholder:text-slate-300'}`}
+                    style={{ backgroundColor: 'transparent', boxShadow: 'none' }}
                 />
 
                 {/* Content */}
-                <textarea
-                    ref={contentRef}
-                    value={content}
-                    onChange={e => { setContent(e.target.value); autoResize(); }}
-                    onInput={autoResize}
-                    placeholder={labels.takNote}
-                    rows={5}
-                    className={`w-full px-4 py-2 pb-4 text-sm bg-transparent border-none outline-none resize-none min-h-[120px] max-h-[60vh] overflow-y-auto placeholder-opacity-30 ${isDark ? 'text-gray-200 placeholder-gray-600' : 'text-gray-700 placeholder-gray-300'}`}
-                />
+                <div className={`mx-6 mt-4 rounded-3xl border ${editorSurface}`}>
+                    <textarea
+                        ref={contentRef}
+                        value={content}
+                        onChange={e => { setContent(e.target.value); autoResize(); }}
+                        onInput={autoResize}
+                        placeholder={labels.takNote}
+                        rows={6}
+                        className={`w-full px-5 py-4 text-[15px] leading-7 bg-transparent border-none outline-none resize-none min-h-[190px] max-h-[55vh] overflow-y-auto focus:shadow-none ${isDark ? 'text-slate-100 placeholder:text-white/20' : 'text-slate-700 placeholder:text-slate-400/60'}`}
+                        style={{ backgroundColor: 'transparent', boxShadow: 'none' }}
+                    />
+                </div>
 
                 {/* Reminder */}
-                <div className="mx-4 mb-3">
+                <div className="mx-6 mt-4 mb-4">
                     {!showReminder ? (
                         <button
                             type="button"
                             onClick={() => setShowReminder(true)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                            className={`inline-flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all border ${
                                 reminderAt
                                     ? isDark
                                         ? 'bg-amber-500/10 border-amber-500/25 text-amber-400'
@@ -453,18 +462,18 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
 
                 {/* Save error */}
                 {saveError && (
-                    <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
+                    <div className="mx-6 mb-3 px-4 py-3 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm font-semibold">
                         ⚠ {saveError}
                     </div>
                 )}
 
                 {/* Footer */}
-                <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+                <div className={`flex items-center justify-between gap-3 px-6 py-5 border-t ${isDark ? 'border-white/[0.06] bg-black/10' : 'border-slate-100 bg-slate-50/60'}`}>
                     <div className="flex gap-2">
                         {onDelete && !confirmDel && (
                             <button
                                 onClick={() => setConfirmDel(true)}
-                                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                                className={`text-sm px-4 py-2.5 rounded-2xl font-bold transition-all ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
                             >
                                 {labels.delete}
                             </button>
@@ -483,14 +492,14 @@ const NoteEditor: React.FC<EditorProps> = ({ note, theme, saveError, isSaving, l
                     <div className="flex gap-2">
                         <button
                             onClick={onClose}
-                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${isDark ? 'text-gray-400 hover:bg-white/[0.06]' : 'text-gray-500 hover:bg-gray-100'}`}
+                            className={`text-sm px-5 py-3 rounded-2xl font-bold transition-all ${isDark ? 'text-gray-400 hover:bg-white/[0.06]' : 'text-slate-500 hover:bg-white'}`}
                         >
                             {labels.cancel}
                         </button>
                         <button
                             onClick={() => { if (hasContent) onSave({ title, content, color, isPinned, reminderAt }); else onClose(); }}
                             disabled={isSaving}
-                            className="text-xs px-4 py-1.5 rounded-lg font-bold bg-[#0f766e] text-white hover:bg-teal-600 transition-all active:scale-95 disabled:opacity-50 min-w-[50px]"
+                            className="text-sm px-7 py-3 rounded-2xl font-black bg-[#0f766e] text-white hover:bg-teal-700 transition-all active:scale-95 disabled:opacity-50 min-w-[96px] shadow-sm"
                         >
                             {isSaving ? '...' : labels.save}
                         </button>
@@ -537,7 +546,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
     const colorCfg = COLOR_MAP[note.color];
     const isDue = note.reminderAt && note.reminderAt <= Date.now();
     
-    const bg = isDark ? 'bg-surface hover:bg-surface-2' : 'bg-white hover:bg-gray-50';
+    const bg = isDark ? 'bg-surface hover:bg-surface-2' : 'bg-white hover:bg-slate-50';
     
     const borderBase = isDark ? 'border-white/[0.08]' : 'border-gray-200';
     const borderDue = isDue ? 'border-l-[4px] border-l-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-red-500/20' : '';
@@ -545,7 +554,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, theme, onClick, onTogglePin, 
     return (
         <div
             onClick={onClick}
-            className={`group relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col ${bg} ${borderBase} ${borderDue}`}
+            className={`group no-card-lift relative rounded-2xl border p-4 cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 hover:shadow-md flex flex-col ${bg} ${borderBase} ${borderDue}`}
         >
             <div className="flex items-start justify-between gap-3 mb-2">
                 <h3 className={`font-semibold text-lg leading-snug line-clamp-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>

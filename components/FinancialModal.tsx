@@ -15,6 +15,15 @@ import cardAnimation from '../Images/card.json';
 import restAnimation from '../Images/rest.json';
 import chequeAnimation from '../Images/cheque.json';
 import depositAnimation from '../Images/deposit.json';
+import {
+  buildExpenseCategoryList,
+  DEFAULT_EXPENSE_CATEGORIES,
+  deleteCustomExpenseCategory,
+  ExpenseCategoryDefinition,
+  readStoredExpenseCategories,
+  resolveExpenseCategory,
+  saveCustomExpenseCategory,
+} from '../src/features/finance/utils/expenseCategories';
 
 type PaymentMethod = 'cash' | 'card';
 type ExpenseTarget = 'driver' | 'car' | 'other';
@@ -24,28 +33,22 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: any }[] = [
   { id: 'card', label: 'Karta', icon: <div className="w-8 h-8 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> },
 ];
 
-const OTHER_CATEGORIES = [
-  { icon: '⛽', label: 'Benzin',       tKey: 'catFuel' },
-  { icon: '🔧', label: 'Ehtiyot qism', tKey: 'catParts' },
-  { icon: '🔩', label: 'Ta\'mirlash',  tKey: 'catRepair' },
-  { icon: '🚨', label: 'Jarima',       tKey: 'catFine' },
-  { icon: '💡', label: 'Kommunal',     tKey: 'catUtility' },
-  { icon: '🏢', label: 'Ijara',        tKey: 'catRent' },
-  { icon: '🛒', label: 'Xarid',        tKey: 'catPurchase' },
-  { icon: '📝', label: 'Boshqa',       tKey: 'catOther' },
+const CUSTOM_CATEGORY_ICONS = [
+  '📦', '🧾', '💳', '💵', '🏦', '🪙', '📄', '🧮',
+  '⛽', '🛞', '🧽', '🧴', '🛠️', '🔧', '⚙️', '🔩',
+  '🚗', '🚕', '🚚', '🧰', '🪛', '🔋', '💡', '🧯',
+  '🏢', '🏠', '🛒', '🧺', '🍽️', '☕', '📱', '🌐',
+  '🚨', '⚠️', '✅', '❌', '⭐', '📌', '🇺🇿', '➕',
 ];
-
-const ALL_CATEGORY_LABELS = OTHER_CATEGORIES.map(c => c.label);
 const fmtInputNumber = (v: string) => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-const isCategoryActive = (description: string, catLabel: string) =>
-    description === catLabel ||
-    description.startsWith(catLabel + ' ') ||
-    description.startsWith(catLabel + ',') ||
-    description.startsWith(catLabel + ':');
-
-const getActiveCategory = (description: string) =>
-    OTHER_CATEGORIES.find(c => isCategoryActive(description, c.label)) ?? null;
+const findDriverIdForTransaction = (tx: Transaction, drivers: Driver[]) => {
+  if (tx.driverId) return tx.driverId;
+  const normalizedName = tx.driverName?.trim().toLocaleLowerCase();
+  if (!normalizedName) return '';
+  const matches = drivers.filter(d => d.name.trim().toLocaleLowerCase() === normalizedName);
+  return matches.length === 1 ? matches[0].id : '';
+};
 
 interface FinancialModalProps {
   isOpen: boolean;
@@ -94,6 +97,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [chequeImage,   setChequeImage]   = useState<string | null>(null);
   const [chequeError,   setChequeError]   = useState<string | null>(null);
+  const [selectedExpenseCategoryId, setSelectedExpenseCategoryId] = useState(DEFAULT_EXPENSE_CATEGORIES[0].id);
+  const [customCategories, setCustomCategories] = useState<ExpenseCategoryDefinition[]>([]);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState(CUSTOM_CATEGORY_ICONS[0]);
   const [planExceptionEnabled, setPlanExceptionEnabled] = useState(false);
   const [planExceptionAmount, setPlanExceptionAmount] = useState('');
   const [planExceptionDisplayAmount, setPlanExceptionDisplayAmount] = useState('');
@@ -103,11 +111,16 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   // ── Init / reset ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
+      const storedCategories = readStoredExpenseCategories(fleetId);
+      const availableCategories = buildExpenseCategoryList(transactions, storedCategories);
+      setCustomCategories(storedCategories);
+
       if (initialTransaction) {
         setType(initialTransaction.type);
-        const tgt: ExpenseTarget = initialTransaction.driverId ? 'driver' : initialTransaction.carId ? 'car' : 'other';
+        const resolvedDriverId = findDriverIdForTransaction(initialTransaction, drivers);
+        const tgt: ExpenseTarget = resolvedDriverId ? 'driver' : initialTransaction.carId ? 'car' : 'other';
         setExpenseTarget(tgt);
-        setDriverId(initialTransaction.driverId || '');
+        setDriverId(resolvedDriverId);
         setCarId(initialTransaction.carId || '');
         setAmount(initialTransaction.amount.toString());
         setDisplayAmount(fmtDisplay(initialTransaction.amount.toString()));
@@ -118,6 +131,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         setUseDeposit(Boolean(initialTransaction.useDeposit));
         setIsDriverOpen(false);
         setIsCarOpen(false);
+        if (initialTransaction.type === TransactionType.EXPENSE) {
+          const category = resolveExpenseCategory(initialTransaction, availableCategories);
+          setSelectedExpenseCategoryId(category?.id ?? DEFAULT_EXPENSE_CATEGORIES[0].id);
+        } else {
+          setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+        }
       } else {
         setType(initialType || TransactionType.INCOME);
         if (initialDriverId) setDriverId(initialDriverId);
@@ -125,9 +144,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         if (initialIsDepositTopup) setIsDepositTopup(true);
         setIsDriverOpen(!initialDriverId);
         setDriverSearch('');
+        setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
       }
     }
-  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup]);
+  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup, fleetId, transactions, drivers]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -135,13 +155,15 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       setType(TransactionType.INCOME); setDate(new Date());
       setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
       setExpenseTarget('driver'); setUseDeposit(false);
-    } else if (isOpen && drivers.length > 0) {
+      setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+      setIsAddingCategory(false); setNewCategoryLabel(''); setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+    } else if (isOpen && drivers.length > 0 && !initialTransaction) {
       if (!driverId || !drivers.find(d => d.id === driverId)) {
         // Only fall back to first driver when there's no explicit initial driver
         if (!initialDriverId) setDriverId(drivers[0].id);
       }
     }
-  }, [isOpen, drivers, driverId, initialDriverId]);
+  }, [isOpen, drivers, driverId, initialDriverId, initialTransaction]);
 
   // ── Cheque paste ─────────────────────────────────────────────────────────────
   const processImageFile = useCallback((file: File) => {
@@ -222,6 +244,54 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     c.name.toLowerCase().includes(carSearch.toLowerCase()) ||
     c.licensePlate.toLowerCase().includes(carSearch.toLowerCase())
   );
+  const expenseCategories = useMemo(
+    () => buildExpenseCategoryList([], customCategories),
+    [customCategories],
+  );
+  const selectedExpenseCategory =
+    expenseCategories.find(category => category.id === selectedExpenseCategoryId) ?? DEFAULT_EXPENSE_CATEGORIES[0];
+
+  const handleCreateCategory = () => {
+    const label = newCategoryLabel.trim();
+    if (!label) {
+      addToast('error', t('categoryRequiredToast', 'Kategoriya nomini kiriting'));
+      return;
+    }
+
+    try {
+      const result = saveCustomExpenseCategory(fleetId, label, newCategoryIcon.trim() || CUSTOM_CATEGORY_ICONS[0]);
+      setCustomCategories(result.categories);
+      setSelectedExpenseCategoryId(result.category.id);
+      setNewCategoryLabel('');
+      setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+      setIsAddingCategory(false);
+      addToast(
+        result.created ? 'success' : 'info',
+        result.created
+          ? t('categoryCreated', "Kategoriya qo'shildi")
+          : t('categoryAlreadyExists', 'Bu kategoriya allaqachon bor'),
+      );
+    } catch {
+      addToast('error', t('categoryRequiredToast', 'Kategoriya nomini kiriting'));
+    }
+  };
+
+  const handleCancelCategoryCreate = () => {
+    setIsAddingCategory(false);
+    setNewCategoryLabel('');
+    setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+  };
+
+  const handleDeleteCategory = (category: ExpenseCategoryDefinition) => {
+    if (!category.custom || !category.id.startsWith('custom:')) return;
+
+    const nextCategories = deleteCustomExpenseCategory(fleetId, category.id);
+    setCustomCategories(nextCategories);
+    if (selectedExpenseCategoryId === category.id) {
+      setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+    }
+    addToast('success', t('categoryDeleted', 'Kategoriya olib tashlandi'));
+  };
 
   const driverDebtInfo = useMemo(() => {
     if (!selectedDriver || transactions.length === 0) return null;
@@ -356,11 +426,28 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     const now = new Date();
     timestamp.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
 
-    const entityFields = type === TransactionType.EXPENSE
-      ? expenseTarget === 'driver' ? { driverId }
-        : expenseTarget === 'car'  ? { carId }
-        : {}
+    const driverEntity = selectedDriver
+      ? {
+          driverId: selectedDriver.id,
+          driverName: selectedDriver.name,
+          carId: initialTransaction?.driverId === selectedDriver.id
+            ? initialTransaction.carId ?? undefined
+            : selectedDriverCar?.id,
+          carName: initialTransaction?.driverId === selectedDriver.id
+            ? initialTransaction.carName ?? undefined
+            : selectedDriverCar ? `${selectedDriverCar.name} — ${selectedDriverCar.licensePlate}` : undefined,
+        }
       : { driverId };
+    const carEntity = selectedCar
+      ? { driverId: null, driverName: null, carId: selectedCar.id, carName: `${selectedCar.name} — ${selectedCar.licensePlate}` }
+      : { driverId: null, driverName: null, carId, carName: null };
+    const otherEntity = { driverId: null, driverName: null, carId: null, carName: null };
+
+    const entityFields = type === TransactionType.EXPENSE
+      ? expenseTarget === 'driver' ? driverEntity
+        : expenseTarget === 'car'  ? carEntity
+        : otherEntity
+      : driverEntity;
 
     const payload: any = {
       amount: finalAmount, type, description,
@@ -368,6 +455,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       timestamp: timestamp.getTime(),
       ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
     };
+
+    if (type === TransactionType.EXPENSE) {
+      payload.category = initialTransaction?.category === 'salary_payment'
+        ? initialTransaction.category
+        : selectedExpenseCategory.id;
+    }
 
     if (useDeposit) {
       payload.useDeposit = true;
@@ -410,6 +503,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDate(new Date());
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
     setExpenseTarget('driver'); setUseDeposit(false); setIsDepositTopup(false);
+    setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+    setIsAddingCategory(false); setNewCategoryLabel(''); setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
     setPlanExceptionEnabled(false);
     setPlanExceptionAmount(''); setPlanExceptionDisplayAmount('');
     onClose();
@@ -641,33 +736,147 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {type === TransactionType.EXPENSE && (
               <div>
                 <label className={labelClass}>📦 {t('categoryLabel', 'KATEGORIYA')}</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {OTHER_CATEGORIES.map(cat => {
-                    const active = isCategoryActive(description, cat.label);
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {expenseCategories.map(cat => {
+                    const active = selectedExpenseCategoryId === cat.id;
+                    const label = cat.tKey ? t(cat.tKey, cat.label) : cat.label;
+                    const canDelete = Boolean(cat.custom && cat.id.startsWith('custom:'));
                     return (
-                      <button key={cat.label} type="button"
-                        onClick={() => {
-                          const current = getActiveCategory(description);
-                          if (current) {
-                            // Replace old category prefix with new one
-                            const rest = description.slice(current.label.length).trimStart();
-                            setDescription(rest ? `${cat.label} ${rest}` : cat.label);
-                          } else {
-                            // Prepend category to existing text
-                            setDescription(description.trim() ? `${cat.label} ${description.trim()}` : cat.label);
-                          }
-                        }}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
-                          active
-                            ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
-                            : isDark ? 'bg-surface-2 border-white/[0.08] text-gray-400 hover:border-white/[0.12] hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                        }`}
-                      >
-                        <span className="text-xl">{cat.icon}</span>
-                        <span className="leading-tight text-center">{t(cat.tKey, cat.label)}</span>
-                      </button>
+                      <div key={cat.id} className="relative min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedExpenseCategoryId(cat.id)}
+                          className={`flex min-h-[76px] w-full flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition-all active:scale-95 ${
+                            active
+                              ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
+                              : isDark ? 'bg-surface-2 border-white/[0.08] text-gray-400 hover:border-white/[0.12] hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                          }`}
+                        >
+                          <span className="text-xl">{cat.icon}</span>
+                          <span className="max-w-full break-words text-center leading-tight">{label}</span>
+                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeleteCategory(cat);
+                            }}
+                            className={`absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] transition-all active:scale-90 ${
+                              isDark
+                                ? 'border-white/10 bg-black/30 text-gray-300 hover:bg-red-500/20 hover:text-red-300'
+                                : 'border-red-100 bg-white/90 text-red-500 shadow-sm hover:bg-red-50'
+                            }`}
+                            aria-label={`${t('removeCategory', "Kategoriyani o'chirish")}: ${label}`}
+                            title={t('removeCategory', "Kategoriyani o'chirish")}
+                          >
+                            <XIcon className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
+                </div>
+                <div className="mt-3">
+                  {!isAddingCategory ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategory(true)}
+                      className={`w-full rounded-xl border border-dashed px-3 py-2.5 text-xs font-black transition-all active:scale-[0.99] ${
+                        isDark
+                          ? 'border-white/[0.12] text-gray-300 hover:border-teal-400/50 hover:text-teal-300 hover:bg-teal-500/[0.04]'
+                          : 'border-gray-300 text-gray-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50'
+                      }`}
+                    >
+                      + {t('addCustomCategory', "Kategoriya qo'shish")}
+                    </button>
+                  ) : (
+                    <div className={`rounded-2xl border p-3 space-y-3 ${
+                      isDark ? 'bg-surface-2/70 border-white/[0.08]' : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <label className={`h-11 w-14 shrink-0 rounded-xl border flex items-center justify-center ${
+                          isDark ? 'bg-surface-3 border-white/[0.08]' : 'bg-white border-gray-200'
+                        }`}>
+                          <input
+                            type="text"
+                            value={newCategoryIcon}
+                            onChange={event => setNewCategoryIcon(Array.from(event.target.value).slice(0, 3).join(''))}
+                            className={`w-full bg-transparent text-center text-xl outline-none ${isDark ? 'text-white' : 'text-gray-900'}`}
+                            aria-label={t('categoryIconLabel', 'Belgi')}
+                            title={t('categoryIconLabel', 'Belgi')}
+                          />
+                        </label>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {t('categoryIconLabel', 'Belgi')}
+                          </p>
+                          <p className={`text-[11px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {t('categoryIconHint', 'Istalgan emoji yoki qisqa belgi kiriting')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className={`text-[11px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {t('emojiPresets', 'Tayyor belgilar')}
+                        </p>
+                        <div className={`grid max-h-28 grid-cols-8 gap-1.5 overflow-y-auto rounded-xl border p-2 ${
+                          isDark ? 'border-white/[0.08] bg-black/10' : 'border-gray-200 bg-white'
+                        }`}>
+                        {CUSTOM_CATEGORY_ICONS.map(icon => (
+                          <button
+                            key={icon}
+                            type="button"
+                            onClick={() => setNewCategoryIcon(icon)}
+                            className={`h-9 w-9 shrink-0 rounded-xl border text-lg transition-all ${
+                              newCategoryIcon === icon
+                                ? isDark ? 'border-teal-400 bg-teal-500/15' : 'border-teal-500 bg-teal-50'
+                                : isDark ? 'border-white/[0.08] bg-surface-3' : 'border-gray-200 bg-white'
+                            }`}
+                            aria-label={icon}
+                            title={icon}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          type="text"
+                          value={newCategoryLabel}
+                          onChange={event => setNewCategoryLabel(event.target.value)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleCreateCategory();
+                            }
+                          }}
+                          className={`${inputClass} h-11 text-sm`}
+                          placeholder={t('categoryNamePlaceholder', "Masalan: Yuvish, Moy, Yo'l xarajati")}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCancelCategoryCreate}
+                          className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-black transition-all active:scale-95 ${
+                            isDark
+                              ? 'border-white/[0.08] bg-white/[0.03] text-gray-300 hover:bg-white/[0.06]'
+                              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {t('cancel', 'Bekor qilish')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateCategory}
+                          className="shrink-0 rounded-xl bg-teal-600 px-4 py-3 text-sm font-black text-white transition-all hover:bg-teal-700 active:scale-95"
+                        >
+                          {t('saveCategory', 'Saqlash')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

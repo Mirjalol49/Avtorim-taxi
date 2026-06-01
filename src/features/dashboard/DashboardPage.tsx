@@ -14,6 +14,8 @@ import Lottie from 'lottie-react';
 import badgeAnimation from '../../../Images/badge.json';
 import { MetricCard } from '../../../components/MetricCard';
 import { LicensePlate } from '../../components/ui/LicensePlate';
+import { PremiumCard } from '../../components/ui/PremiumCard';
+import { ShiftBy } from '../../components/ui/ShiftBy';
 
 interface DashboardPageProps {
     transactions: Transaction[];
@@ -21,7 +23,6 @@ interface DashboardPageProps {
     cars: Car[];
     fleetId?: string;
     isDataLoading: boolean;
-    // language, t removed - using hooks
     theme: 'light' | 'dark';
     isMobile: boolean;
 }
@@ -36,12 +37,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     isMobile
 }) => {
     const { t, i18n } = useTranslation();
-    // Ensure accurate type for helpers that expect specific Language string
     const currentLanguage = (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
-    const monthsRaw = t('monthNames', { returnObjects: true });
-    const months: string[] = Array.isArray(monthsRaw) ? monthsRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-    const weekdaysRaw = t('weekdays', { returnObjects: true });
-    const weekdays: string[] = Array.isArray(weekdaysRaw) ? weekdaysRaw : ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'];
 
     const {
         timeFilter, setTimeFilter,
@@ -81,31 +77,31 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 }}
             />
 
-            {/* MAIN STATS ROW - FULL WIDTH */}
+            {/* MAIN STATS ROW */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {showStatsSkeleton ? (
                     <>
-                        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-6" style={{ background: 'linear-gradient(135deg,#0a6b62,#0f766e)' }}>
-                            <div className="flex flex-col gap-3">
-                                <Skeleton variant="rectangular" width="40%" height={12} theme="dark" />
-                                <Skeleton variant="rectangular" width="70%" height={32} theme="dark" />
-                                <Skeleton variant="rectangular" width="30%" height={10} theme="dark" />
-                            </div>
-                        </div>
-                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.10]' : 'bg-white border-black/[0.07]'}`}>
+                        <PremiumCard isDark={isDark} padding="p-5 sm:p-6" className="min-h-[140px]">
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                             </div>
-                        </div>
-                        <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border sm:col-span-2 lg:col-span-1 ${isDark ? 'bg-surface border-white/[0.10]' : 'bg-white border-black/[0.07]'}`}>
+                        </PremiumCard>
+                        <PremiumCard isDark={isDark} padding="p-5 sm:p-6" className="min-h-[140px]">
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                             </div>
-                        </div>
+                        </PremiumCard>
+                        <PremiumCard isDark={isDark} padding="p-5 sm:p-6" className="sm:col-span-2 lg:col-span-1 min-h-[140px]">
+                            <div className="flex flex-col gap-3">
+                                <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
+                                <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
+                                <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
+                            </div>
+                        </PremiumCard>
                     </>
                 ) : (
                     <>
@@ -118,17 +114,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 )}
             </div>
 
-            {/* DAILY PAYMENT STATUS - NEW LAYOUT */}
+            {/* DAILY PAYMENT STATUS */}
             <div className="mt-8">
-                {/* ── Header ─────────────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <h3 className={`text-xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {t('todayStatus')}
                     </h3>
                     
-                    {/* Controls */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                        {/* Date Picker */}
                         <div className="w-full sm:w-[150px]">
                             <DatePicker
                                 label=""
@@ -139,10 +132,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             />
                         </div>
 
-                        {/* Search */}
                         {(todayStats.completed.length + todayStats.pending.length) > STATUS_VISIBLE && (
                             <div className="relative w-full sm:w-auto">
-                                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.3)]' : 'text-[rgba(60,60,67,0.3)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                                 </svg>
                                 <input
@@ -154,71 +146,75 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                         setShowAllPending(false);
                                     }}
                                     placeholder={t('searchDriverStatus')}
-                                    className={`w-full sm:w-[220px] pl-9 pr-4 py-2 rounded-xl text-[13px] border outline-none transition-colors ${isDark
-                                        ? 'bg-surface border-white/[0.10] text-white placeholder-[rgba(235,235,245,0.3)] focus:border-[#0d9488]'
-                                        : 'bg-white border-black/[0.07] text-black placeholder-[rgba(60,60,67,0.35)] focus:border-[#0f766e]'
+                                    className={`w-full sm:w-[220px] pl-9 pr-4 py-2 rounded-xl text-[14px] font-medium border outline-none transition-all duration-300 ${isDark
+                                        ? 'bg-[#222a3d] border-white/[0.08] text-white placeholder-[rgba(235,235,245,0.4)] focus:border-[#6bd8cb] focus:shadow-[0_0_0_2px_rgba(107,216,203,0.15)]'
+                                        : 'bg-white border-black/[0.08] text-black placeholder-[rgba(60,60,67,0.4)] focus:border-[#0f766e] focus:shadow-[0_0_0_2px_rgba(15,118,110,0.15)]'
                                     }`}
                                 />
                                 {statusSearch && (
-                                    <button onClick={() => setStatusSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'}`}>✕</button>
+                                    <button onClick={() => setStatusSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full transition-colors ${isDark ? 'hover:bg-white/[0.1] text-white' : 'hover:bg-black/[0.05] text-black'}`}>✕</button>
                                 )}
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* ── Daily Summary Totals ────────────────────────────────────────── */}
+                {/* Daily Summary Totals */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                     {/* Expected */}
-                    <div className={`p-4 sm:p-5 rounded-2xl border transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-white border-black/[0.05]'}`}>
-                        <div className={`text-[12px] font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('expectedTotalAmount', 'Kutilayotgan umumiy summa')}</div>
-                        <div className={`text-[20px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{todayStats.totals.expectedTotal.toLocaleString()} UZS</div>
-                    </div>
+                    <PremiumCard isDark={isDark} hoverLift={false} padding="p-5">
+                        <div className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('expectedTotalAmount', 'Kutilayotgan umumiy summa')}</div>
+                        <div className={`text-[24px] font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{todayStats.totals.expectedTotal.toLocaleString()} UZS</div>
+                    </PremiumCard>
+                    
                     {/* Paid */}
-                    <div className={`p-4 sm:p-5 rounded-2xl border transition-colors ${isDark ? 'bg-emerald-500/[0.08] border-emerald-500/20' : 'bg-emerald-50/70 border-emerald-200/60'}`}>
-                        <div className={`text-[12px] font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t('paidTotalAmount', "To'langan umumiy summa")}</div>
-                        <div className={`text-[20px] font-bold tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{todayStats.totals.paidTotal.toLocaleString()} UZS</div>
-                    </div>
+                    <PremiumCard isDark={isDark} hoverLift={false} padding="p-5" className={isDark ? '!bg-emerald-500/[0.04] !border-emerald-500/[0.15]' : '!bg-emerald-50/50 !border-emerald-200/50'}>
+                        <div className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t('paidTotalAmount', "To'langan umumiy summa")}</div>
+                        <div className={`text-[24px] font-black tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{todayStats.totals.paidTotal.toLocaleString()} UZS</div>
+                    </PremiumCard>
+                    
                     {/* Remaining */}
-                    <div className={`p-4 sm:p-5 rounded-2xl border transition-colors ${isDark ? 'bg-rose-500/[0.08] border-rose-500/20' : 'bg-rose-50/70 border-rose-200/60'}`}>
-                        <div className={`text-[12px] font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-rose-400/80' : 'text-rose-600/80'}`}>{t('remainingTotalDebt', 'Qolgan umumiy qarz')}</div>
-                        <div className={`text-[20px] font-bold tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{todayStats.totals.debtTotal.toLocaleString()} UZS</div>
-                    </div>
+                    <PremiumCard isDark={isDark} hoverLift={false} padding="p-5" className={isDark ? '!bg-rose-500/[0.04] !border-rose-500/[0.15]' : '!bg-rose-50/50 !border-rose-200/50'}>
+                        <div className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-rose-400/80' : 'text-rose-600/80'}`}>{t('remainingTotalDebt', 'Qolgan umumiy qarz')}</div>
+                        <div className={`text-[24px] font-black tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{todayStats.totals.debtTotal.toLocaleString()} UZS</div>
+                    </PremiumCard>
                 </div>
 
-                {/* ── Two columns ────────────────────────────────────────── */}
+                {/* Two columns */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-
                     {/* COMPLETED COLUMN */}
-                    <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-black/[0.06]'}`}>
-                        <h4 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {t('driversPaidToday')} <span className={`font-medium ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>({todayStats.completed.length} {t('paid')})</span>
+                    <PremiumCard isDark={isDark} padding="p-5 sm:p-6" hoverLift={false}>
+                        <h4 className={`text-[17px] font-bold mb-5 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('driversPaidToday')} <span className={`font-semibold ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({todayStats.completed.length} {t('paid')})</span>
                         </h4>
 
                         {filteredCompleted.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {displayedCompleted.map((driver, i) => {
                                     const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-[4px] border-emerald-500 transition-colors ${isDark ? 'bg-emerald-500/[0.05]' : 'bg-emerald-50/60'}`}>
+                                        <div key={driver.id} className={`group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}>
+                                            {/* Green indicator bar */}
+                                            <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-emerald-500" />
+                                            
                                             {/* Avatar */}
-                                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                                            <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border transition-transform duration-300 group-hover:scale-[1.05] border-transparent shadow-sm">
                                                 {driver.avatar
                                                     ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface-2 text-[rgba(235,235,245,0.6)]' : 'bg-white/50 text-emerald-700'}`}>{driver.name?.charAt(0)}</div>
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#2d3449] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
                                                 }
                                             </div>
                                             {/* Info */}
-                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <span className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                                <span className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
                                                 {driverCar ? (
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
                                                         <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                     </div>
                                                 ) : driver.fallbackCarName ? (
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
                                                         {driver.fallbackCarName.includes(' — ') && (
                                                             <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
                                                         )}
@@ -226,11 +222,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 ) : null}
                                             </div>
                                             {/* Amount & Check */}
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <span className={`text-[13px] font-bold tabular-nums ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <span className={`text-[14px] font-bold tabular-nums tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                                     +{(driver.todayIncome || 0).toLocaleString()} UZS
                                                 </span>
-                                                <div className="w-8 h-8 flex items-center justify-center -mr-1">
+                                                <div className="w-8 h-8 flex items-center justify-center -mr-2">
                                                     <Lottie animationData={badgeAnimation} loop={false} />
                                                 </div>
                                             </div>
@@ -240,55 +236,55 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 {filteredCompleted.length > STATUS_VISIBLE && (
                                     <button
                                         onClick={() => setShowAllCompleted(v => !v)}
-                                        className={`mt-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.6)]'}`}
+                                        className={`mt-4 w-full py-3 rounded-xl text-[14px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[rgba(235,235,245,0.7)] hover:text-white' : 'bg-black/[0.03] hover:bg-black/[0.06] text-[rgba(60,60,67,0.7)] hover:text-black'}`}
                                     >
                                         {showAllCompleted ? t('collapse') : t('showMore', { count: filteredCompleted.length - STATUS_VISIBLE })}
                                     </button>
                                 )}
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-10 rounded-2xl ${isDark ? 'bg-surface-2' : 'bg-gray-50'}`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}`}>
-                                    <MedalIcon className={`w-6 h-6 ${isDark ? 'text-emerald-500/50' : 'text-emerald-500/50'}`} />
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${isDark ? 'bg-[#222a3d]' : 'bg-gray-50/50'}`}>
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${isDark ? 'bg-emerald-500/[0.08]' : 'bg-emerald-500/10'}`}>
+                                    <MedalIcon className={`w-7 h-7 ${isDark ? 'text-emerald-400/80' : 'text-emerald-500/80'}`} />
                                 </div>
-                                <p className={`text-sm font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('noPaymentsYet')}</p>
+                                <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noPaymentsYet')}</p>
                             </div>
                         )}
-                    </div>
+                    </PremiumCard>
 
                     {/* PENDING COLUMN */}
-                    <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-black/[0.06]'}`}>
-                        <h4 className={`text-base font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {t('pendingPaymentsLabel')} <span className={`font-medium ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>({todayStats.pending.length} {t('statusPending')})</span>
+                    <PremiumCard isDark={isDark} padding="p-5 sm:p-6" hoverLift={false}>
+                        <h4 className={`text-[17px] font-bold mb-5 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('pendingPaymentsLabel')} <span className={`font-semibold ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({todayStats.pending.length} {t('statusPending')})</span>
                         </h4>
 
                         {filteredPending.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {displayedPending.map(driver => {
                                     const plan = driver.dailyPlan || 0;
                                     const paid = driver.todayIncome || 0;
                                     const remaining = Math.max(0, plan - paid);
                                     const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
                                     return (
-                                        <div key={driver.id} className={`flex items-center gap-3 px-2 py-3 transition-colors`}>
+                                        <div key={driver.id} className={`group flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}>
                                             {/* Avatar */}
-                                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                                            <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border border-transparent shadow-sm transition-transform duration-300 group-hover:scale-[1.05]">
                                                 {driver.avatar
                                                     ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface text-[rgba(235,235,245,0.6)]' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#2d3449] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
                                                 }
                                             </div>
                                             {/* Info */}
-                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <span className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                                <span className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
                                                 {driverCar ? (
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
                                                         <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                     </div>
                                                 ) : driver.fallbackCarName ? (
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
                                                         {driver.fallbackCarName.includes(' — ') && (
                                                             <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
                                                         )}
@@ -297,11 +293,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             </div>
                                             {/* Amount */}
                                             <div className="flex flex-col items-end justify-center flex-shrink-0">
-                                                <span className={`text-[13px] font-bold tabular-nums text-rose-500`}>
+                                                <span className={`text-[15px] font-black tabular-nums tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
                                                     −{remaining.toLocaleString()} UZS
                                                 </span>
                                                 {paid > 0 && (
-                                                    <span className={`text-[10px] font-bold tracking-wide uppercase mt-0.5 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>
+                                                    <span className={`text-[11px] font-bold tracking-wide uppercase mt-1 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>
                                                         +{paid.toLocaleString()} to'landi
                                                     </span>
                                                 )}
@@ -312,51 +308,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 {filteredPending.length > STATUS_VISIBLE && (
                                     <button
                                         onClick={() => setShowAllPending(v => !v)}
-                                        className={`mt-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.09] text-[rgba(235,235,245,0.55)]' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[rgba(60,60,67,0.6)]'}`}
+                                        className={`mt-4 w-full py-3 rounded-xl text-[14px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[rgba(235,235,245,0.7)] hover:text-white' : 'bg-black/[0.03] hover:bg-black/[0.06] text-[rgba(60,60,67,0.7)] hover:text-black'}`}
                                     >
                                         {showAllPending ? t('collapse') : t('showMore', { count: filteredPending.length - STATUS_VISIBLE })}
                                     </button>
                                 )}
                             </div>
                         ) : (
-                            <div className={`flex flex-col items-center justify-center py-10 rounded-2xl ${isDark ? 'bg-surface-2' : 'bg-gray-50'}`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}`}>
-                                    <MedalIcon className={`w-6 h-6 ${isDark ? 'text-emerald-500/50' : 'text-emerald-500/50'}`} />
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${isDark ? 'bg-[#222a3d]' : 'bg-gray-50/50'}`}>
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${isDark ? 'bg-emerald-500/[0.08]' : 'bg-emerald-500/10'}`}>
+                                    <MedalIcon className={`w-7 h-7 ${isDark ? 'text-emerald-400/80' : 'text-emerald-500/80'}`} />
                                 </div>
-                                <p className={`text-sm font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('allPaidToday')}</p>
+                                <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('allPaidToday')}</p>
                             </div>
                         )}
-                    </div>
+                    </PremiumCard>
                 </div>
 
                 {/* ── Day-off section (If any) ────────────────────────────── */}
                 {todayStats.dayOff.length > 0 && (
-                    <div className={`mt-6 p-5 sm:p-6 rounded-2xl sm:rounded-3xl border ${isDark ? 'bg-surface border-white/[0.08]' : 'bg-white border-black/[0.06]'}`}>
-                        <h4 className={`text-base font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
-                            {t('legendDayOff')} <span className={`font-medium ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>({todayStats.dayOff.length})</span>
+                    <PremiumCard isDark={isDark} padding="p-5 sm:p-6" hoverLift={false} className="mt-6">
+                        <h4 className={`text-[17px] font-bold mb-5 flex items-center gap-2 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
+                            {t('legendDayOff')} <span className={`font-semibold ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({todayStats.dayOff.length})</span>
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {todayStats.dayOff.map(driver => {
                                 const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
                                 return (
-                                    <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${isDark ? 'bg-surface-2 border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                                        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-indigo-400/30 grayscale-[0.4] flex-shrink-0">
+                                    <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ${isDark ? 'bg-white/[0.03] border border-white/[0.05]' : 'bg-gray-50 border border-gray-100'}`}>
+                                        <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-indigo-500/20 grayscale-[0.5] flex-shrink-0 shadow-sm">
                                             {driver.avatar
                                                 ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
-                                                : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface text-[rgba(235,235,245,0.6)]' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#2d3449] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
                                             }
                                         </div>
-                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                            <p className={`text-[14px] font-bold truncate leading-tight ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                            <p className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
                                             {driverCar ? (
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
                                                     <LicensePlate plate={driverCar.licensePlate} size="sm" />
                                                 </div>
                                             ) : driver.fallbackCarName ? (
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span className={`text-[12px] font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
                                                     {driver.fallbackCarName.includes(' — ') && (
                                                         <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
                                                     )}
@@ -367,7 +363,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                 );
                             })}
                         </div>
-                    </div>
+                    </PremiumCard>
                 )}
             </div>
         </div>

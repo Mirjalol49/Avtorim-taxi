@@ -15,6 +15,8 @@ export interface DriverDocument {
     category: 'driver_license' | 'passport' | 'car_registration' | 'car_insurance' | 'other';
     /** Optional document expiration date in epoch ms. */
     expiryMs?: number | null;
+    /** Exact date when the in-app bell should show the reminder. */
+    reminderAtMs?: number | null;
     /** Notify this many days before expiry. Defaults to 2 for driver license docs. */
     reminderDaysBefore?: number | null;
 }

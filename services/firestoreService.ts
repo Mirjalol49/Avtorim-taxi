@@ -642,6 +642,10 @@ export const updateTransaction = async (id: string, updates: Partial<Transaction
     if (tx.amount !== undefined) payload.amount = tx.amount;
     if (tx.type !== undefined) payload.type = tx.type;
     if (tx.description !== undefined) payload.description = tx.description;
+    if ('driverId' in tx) payload.driver_id = tx.driverId ?? null;
+    if ('driverName' in tx) payload.driver_name = tx.driverName ?? null;
+    if ('carId' in tx) payload.car_id = tx.carId ?? null;
+    if ('carName' in tx) payload.car_name = tx.carName ?? null;
     if (tx.paymentMethod !== undefined) payload.payment_method = tx.paymentMethod;
     if (tx.chequeImage !== undefined) payload.cheque_image = tx.chequeImage;
     if (tx.timestamp !== undefined) payload.timestamp_ms = tx.timestamp;

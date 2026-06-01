@@ -11,6 +11,11 @@ import Lottie from 'lottie-react';
 import cardAnimation from '../Images/card.json';
 import depositAnimation from '../Images/deposit.json';
 import DatePicker from './DatePicker';
+import {
+  getIshonchnomaReminderMs,
+  normalizeIshonchnomaReminderDocument,
+  startOfDayMs,
+} from '../src/features/drivers/utils/ishonchnomaReminder';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -47,8 +52,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [startDate, setStartDate] = useState<number>(Date.now());
   const [daysOffPerMonth, setDaysOffPerMonth] = useState<number>(0);
   const [quitDate, setQuitDate] = useState<number | null>(null);
-  const [driverLicenseExpiry, setDriverLicenseExpiry] = useState<number | null>(null);
-  const [driverLicenseReminderDays, setDriverLicenseReminderDays] = useState<number>(2);
+  const [driverLicenseReminderAt, setDriverLicenseReminderAt] = useState<number | null>(null);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -109,9 +113,10 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         .then(({ data }) => {
           const loadedDocs = data?.documents ?? [];
           setDocuments(loadedDocs);
-          const licenseDoc = loadedDocs.find((doc: DriverDocument) => doc.category === 'driver_license' && doc.expiryMs);
-          setDriverLicenseExpiry(licenseDoc?.expiryMs ?? null);
-          setDriverLicenseReminderDays(Number(licenseDoc?.reminderDaysBefore ?? 2));
+          const licenseDoc = loadedDocs.find((doc: DriverDocument) =>
+            doc.category === 'driver_license' && getIshonchnomaReminderMs(doc) !== null
+          );
+          setDriverLicenseReminderAt(getIshonchnomaReminderMs(licenseDoc));
         });
     } else {
       setName('');
@@ -131,8 +136,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setStartDate(Date.now());
       setDaysOffPerMonth(0);
       setQuitDate(null);
-      setDriverLicenseExpiry(null);
-      setDriverLicenseReminderDays(2);
+      setDriverLicenseReminderAt(null);
       setSelectedCarId('');
       setError(null);
       setDocError(null);
@@ -164,11 +168,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     setError(null);
     setIsSubmitting(true);
 
-    if (!name.trim() || !phone.trim()) {
-      setError(t('fillAllFields') || "Barcha maydonlarni to'ldiring");
-      setIsSubmitting(false);
-      return;
-    }
+	    if (!name.trim() || !phone.trim()) {
+	      setError(t('fillAllFields') || "Barcha maydonlarni to'ldiring");
+	      setIsSubmitting(false);
+	      return;
+	    }
 
     try {
       // If user picked a new avatar file, upload to Storage first
@@ -180,15 +184,26 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
         avatarFileRef.current = null;
       }
 
-      const documentsWithMeta = documents.map((doc) => (
-        doc.category === 'driver_license'
-          ? {
-              ...doc,
-              expiryMs: driverLicenseExpiry,
-              reminderDaysBefore: Math.max(0, driverLicenseReminderDays || 0),
-            }
-          : doc
-      ));
+      const reminderName = t('driverLicenseCardTitle', 'Ishonchnoma');
+      const documentsWithMeta = documents
+        .map((doc) => (
+          doc.category === 'driver_license'
+            ? normalizeIshonchnomaReminderDocument(doc, driverLicenseReminderAt, reminderName)
+            : doc
+        ))
+        .filter(doc => !(doc.category === 'driver_license' && driverLicenseReminderAt === null && !doc.data));
+
+      if (driverLicenseReminderAt !== null && !documentsWithMeta.some(doc => doc.category === 'driver_license')) {
+        documentsWithMeta.push({
+          name: reminderName,
+          type: 'application/x-ishonchnoma-reminder',
+          data: '',
+          category: 'driver_license',
+          reminderAtMs: driverLicenseReminderAt,
+          expiryMs: null,
+          reminderDaysBefore: null,
+        });
+      }
 
       await onSubmit({
         id: editingDriver?.id,
@@ -294,15 +309,16 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           if (error) throw error;
           
           const url = supabase.storage.from('car-damages').getPublicUrl(path).data.publicUrl;
-          resolve({
+          const doc: DriverDocument = {
             name: file.name,
             type: contentType,
             data: url,
             category,
-            ...(category === 'driver_license'
-              ? { expiryMs: driverLicenseExpiry, reminderDaysBefore: Math.max(0, driverLicenseReminderDays || 0) }
-              : {}),
-          });
+          };
+          resolve(category === 'driver_license'
+            ? normalizeIshonchnomaReminderDocument(doc, driverLicenseReminderAt, t('driverLicenseCardTitle', 'Ishonchnoma'))
+            : doc
+          );
         } catch (err) {
           reject(err);
         }
@@ -791,43 +807,30 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
             <p className={sectionTitle}>
               <span>👤</span> {t('driverModalDocuments', 'Haydovchi hujjatlari')}
             </p>
-            <div className={`mb-3 rounded-xl border p-4 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-                    {t('driverLicenseValidity', 'Haydovchilik huquqi muddati')}
-                  </p>
-                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {t('driverLicenseValidityHint', 'Haydovchilik guvohnomasi tugashidan oldin eslatadi')}
-                  </p>
-                </div>
-                <span className={`px-2 py-1 rounded-lg text-[11px] font-black ${theme === 'dark' ? 'bg-teal-500/10 text-teal-300' : 'bg-teal-50 text-teal-700'}`}>
-                  {driverLicenseReminderDays} {t('daysBeforeShort', 'kun oldin')}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3">
-                <DatePicker
-                  label={t('driverLicenseExpiryDate', 'Amal qilish muddati')}
-                  value={driverLicenseExpiry ? new Date(driverLicenseExpiry) : null}
-                  onChange={(d: Date | null) => setDriverLicenseExpiry(d ? d.getTime() : null)}
-                  isClearable
-                  theme={theme}
-                />
-                <div>
-                  <label className={labelClass}>{t('remindBefore', 'Eslatish')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="365"
-                    value={driverLicenseReminderDays}
-                    onChange={e => setDriverLicenseReminderDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-            </div>
+	            <div className={`mb-3 rounded-xl border p-4 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+	              <div className="flex items-start justify-between gap-3 mb-3">
+	                <div>
+	                  <p className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+	                    {t('driverLicenseCardTitle', 'Ishonchnoma')}
+	                  </p>
+	                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+	                    {t('driverLicenseReminderSubtitle', 'Eslatma kunini tanlang.')}
+	                  </p>
+	                </div>
+	              </div>
+	              <div>
+	                <DatePicker
+	                  label={t('driverLicenseReminderDate', 'Eslatma kuni')}
+	                  value={driverLicenseReminderAt ? new Date(driverLicenseReminderAt) : null}
+	                  onChange={(d: Date | null) => setDriverLicenseReminderAt(d ? startOfDayMs(d) : null)}
+	                  placeholder={t('driverLicenseReminderDatePlaceholder', 'Kunni tanlang')}
+	                  isClearable
+	                  theme={theme}
+	                />
+	              </div>
+	            </div>
             <div className="space-y-2">
-              <DocUploadBox category="driver_license" label={t('driverModalLicense', 'Haydovchilik guvohnomasi')} />
+              <DocUploadBox category="driver_license" label={t('driverModalLicense', 'Ishonchnoma')} />
               <DocUploadBox category="passport" label={t('driverModalPassport', 'Pasport')} />
               <DocUploadBox category="other" label={t('driverModalOtherDocuments', 'Boshqa hujjatlar')} />
             </div>

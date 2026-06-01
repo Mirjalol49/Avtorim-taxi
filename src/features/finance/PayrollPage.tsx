@@ -471,7 +471,7 @@ export const PayrollPage: React.FC<PayrollPageProps> = ({
     const dueCount     = salaryDrivers.filter(d => !isPayedForPeriod(transactions, d.id, filterYear, filterMonth) && !isNewDriverInPeriod(d, filterYear, filterMonth)).length;
 
     const handleExport = () => {
-        exportDriversToExcel(salaryDrivers, 'Ish-haqi-ruyxati');
+        exportDriversToExcel(salaryDrivers, cars, transactions, 'Ish-haqi-ruyxati');
     };
 
     const handleConfirmPay = async (period: { year: number; month: number }) => {

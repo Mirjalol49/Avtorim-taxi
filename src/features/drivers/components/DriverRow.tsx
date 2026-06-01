@@ -32,31 +32,81 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const docs = driver.documents ?? [];
     const explicitDailyPlan = car ? (car.dailyPlan ?? 0) : 0;
+    const isDark = theme === 'dark';
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
+    const driverType = driver.driverType ?? 'deposit';
+    const typeLabel = driverType === 'salary'
+        ? t('salary', 'Maosh')
+        : driverType === 'lease_to_own'
+            ? t('vikup', 'Vikup')
+            : t('standard', 'Standart');
+
+    const badgeClass = {
+        deposit: isDark
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            : 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        salary: isDark
+            ? 'bg-violet-500/10 text-violet-400 border-violet-500/20'
+            : 'bg-violet-50 text-violet-700 border-violet-100',
+        lease_to_own: isDark
+            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+            : 'bg-amber-50 text-amber-700 border-amber-100',
+    }[driverType];
+
+    const avatarRing = {
+        deposit: 'ring-emerald-500/20 dark:ring-emerald-400/20',
+        salary: 'ring-violet-500/20 dark:ring-violet-400/20',
+        lease_to_own: 'ring-amber-500/20 dark:ring-amber-400/20',
+    }[driverType];
+
+    const statusColor = {
+        ACTIVE: 'bg-emerald-500',
+        OFFLINE: 'bg-slate-400',
+        BUSY: 'bg-amber-500',
+        IDLE: 'bg-blue-500',
+    }[driver.status] ?? 'bg-slate-400';
+
     return (<>
         <tr 
             onClick={() => navigate(`/drivers/${driver.id}`)}
-            className={`group cursor-pointer transition-colors ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-black/[0.03]'}`}
+            className={`group cursor-pointer transition-colors border-b ${
+                isDark 
+                    ? 'border-white/[0.05] hover:bg-white/[0.02] text-slate-300' 
+                    : 'border-slate-100 hover:bg-slate-50/50 text-slate-700'
+            }`}
         >
 
             {/* Driver */}
             <td className="p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600 flex-shrink-0">
+                    <div className="relative flex-shrink-0">
                         <DriverAvatar
                             src={driver.avatar}
                             name={driver.name}
-                            size={40}
+                            size={42}
                             theme={theme}
-                            rounded="full"
+                            rounded="xl"
+                            className={`ring-2 ring-offset-2 ${isDark ? 'ring-offset-[#151f32]' : 'ring-offset-white'} ${avatarRing}`}
                         />
+                        <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 ${
+                            isDark ? 'border-[#151f32]' : 'border-white'
+                        } ${statusColor} shadow-sm`} />
                     </div>
                     <div>
-                        <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{driver.phone}</p>
+                        <div className="flex items-center gap-2">
+                            <span className={`font-bold text-sm leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {driver.name}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider border ${badgeClass}`}>
+                                {typeLabel}
+                            </span>
+                        </div>
+                        <p className={`text-xs font-mono mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                            {driver.phone || '-'}
+                        </p>
                     </div>
                 </div>
             </td>

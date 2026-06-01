@@ -59,7 +59,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
     const calRef = useRef<HTMLDivElement>(null);
     const isDark = theme === 'dark';
 
-    const { i18n } = useTranslation();
+    const { i18n, t } = useTranslation();
     const lang = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz');
 
     const localizedDays = useMemo(() => getDayNames(lang), [lang]);
@@ -288,7 +288,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
             >
                 <div className="flex items-center justify-between">
                     <span className={`text-sm font-medium ${!value ? (isDark ? 'text-gray-500' : 'text-gray-400') : ''}`}>
-                        {value ? fmt(value) : (placeholder || 'Sanani tanlang')}
+                        {value ? fmt(value) : (placeholder || t('selectDate', 'Sanani tanlang'))}
                     </span>
                     <CalendarIcon className={`w-4 h-4 transition-colors ${isOpen ? 'text-[#0f766e]' : isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>

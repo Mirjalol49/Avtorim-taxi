@@ -44,6 +44,22 @@ const PAGE_SIZE = 20;
 
 const fmtAmount = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
+const parseNotificationAmount = (value?: string | null) => {
+    if (!value) return null;
+    const match = value.match(/([+-]?\d[\d\s,.]*)\s*(?:UZS|so'?m|сум)/i);
+    if (!match) return null;
+
+    const parsed = Number(match[1].replace(/[^\d-]/g, ''));
+    if (!Number.isFinite(parsed) || parsed === 0) return null;
+    return Math.abs(parsed);
+};
+
+const getNotificationAmount = (n: Notification) => {
+    const rawAmount = Number((n as any).deliveryTracking?.amount);
+    if (Number.isFinite(rawAmount) && rawAmount !== 0) return Math.abs(rawAmount);
+    return parseNotificationAmount(n.title) ?? parseNotificationAmount(n.message);
+};
+
 function isPlanReminder(n: Notification) {
     return ((n as any).deliveryTracking?.reminderType === 'daily_plan');
 }
@@ -52,8 +68,17 @@ function isDepositWarning(n: Notification) {
     return (n as any).deliveryTracking?.depositWarning === true;
 }
 
+function isDocumentReminder(n: Notification) {
+    const reminderType = (n as any).deliveryTracking?.reminderType;
+    return reminderType === 'driver_ishonchnoma_reminder' || reminderType === 'driver_document_expiry';
+}
+
 function isTransaction(n: Notification) {
-    return n.type === 'payment_reminder' && !isPlanReminder(n) && !isDepositWarning(n);
+    return n.type === 'payment_reminder'
+        && !isPlanReminder(n)
+        && !isDepositWarning(n)
+        && !isDocumentReminder(n)
+        && getNotificationAmount(n) !== null;
 }
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -132,7 +157,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
     // Split notifications into two buckets
     const warnings = useMemo(() => {
-        const rawWarnings = notifications.filter(n => isPlanReminder(n) || isDepositWarning(n) || (!isTransaction(n) && !isPlanReminder(n) && !isDepositWarning(n) && n.type !== 'payment_reminder'));
+        const rawWarnings = notifications.filter(n => isPlanReminder(n) || isDepositWarning(n) || isDocumentReminder(n) || (!isTransaction(n) && !isPlanReminder(n) && !isDepositWarning(n) && n.type !== 'payment_reminder'));
         
         // Deduplicate plan reminders by driverId to remove duplicate generic (triangle) ones
         const planMap = new Map<string, Notification>();
@@ -310,7 +335,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         const dt         = (notification as any).deliveryTracking ?? {};
         const txType     = dt.txType     as 'income' | 'expense' | undefined;
         const method     = dt.method     as 'cash' | 'card' | null;
-        const amount     = dt.amount     as number | undefined;
+        const amount     = getNotificationAmount(notification);
         const driverName = dt.driverName as string | undefined;
         const carName    = dt.carName    as string | undefined;
         const carPlate   = dt.carPlate   as string | undefined;
@@ -322,9 +347,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
         const isIncome = txType ? txType === 'income'
             : notification.title.includes('Kirim') || notification.title.includes('💵') || notification.title.includes('💳');
-        const amountDisplay = amount != null
-            ? fmtAmount(amount)
-            : (notification.title.match(/([\d\s,]+)\s*UZS/)?.[1]?.trim() ?? '');
+        const amountDisplay = amount != null ? fmtAmount(amount) : '';
         const nameDisplay = driverName
             ?? notification.title.replace(/[💵💳💸]\s*(?:Kirim|Chiqim):\s*/, '').replace(/\s*—.*$/, '').trim();
 
@@ -543,6 +566,74 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         );
     };
 
+    const renderDocumentReminder = (notification: Notification, isRead: boolean) => {
+        const dt = (notification as any).deliveryTracking ?? {};
+        const driver = drivers.find(d => d.id === dt.driverId);
+        const driverName = (dt.driverName as string | undefined) ?? driver?.name ?? notification.title.split(' — ')[0] ?? t('driver', 'Haydovchi');
+        const reminderMs = Number(dt.reminderAtMs ?? dt.expiryMs ?? 0);
+        const locale = t('localeCode', 'uz-UZ');
+        const reminderText = reminderMs
+            ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(reminderMs))
+            : '';
+        const title = t('driverLicenseBellTitle', '{{name}} ishonchnomasi eslatmasi').replace('{{name}}', driverName);
+        const message = t('driverLicenseBellMessage', 'Eslatma kuni: {{date}}.').replace('{{date}}', reminderText);
+
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors border-l-[3px] ${
+                    !isRead ? 'border-amber-500' : 'border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-amber-500/[0.07] hover:bg-amber-500/[0.10] cursor-pointer'
+                               : 'bg-amber-50/70 hover:bg-amber-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 py-3.5 pr-10">
+                    <div className="flex items-start gap-3">
+                        <div className="relative flex-shrink-0">
+                            {driver?.avatar ? (
+                                <img src={driver.avatar} alt="" className={`w-10 h-10 rounded-2xl object-cover ${isRead ? 'opacity-40' : ''}`} />
+                            ) : (
+                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                                    <CalendarIcon className="w-5 h-5" />
+                                </div>
+                            )}
+                            {!isRead && (
+                                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-semibold leading-tight ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {title}
+                            </p>
+                            <p className={`text-[11px] leading-relaxed mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                {message}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2">
+                                <span className={`text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-wide ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                                    {t('driverLicenseReminderDueLabel', 'Eslatma')}
+                                </span>
+                                <span className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                    <ClockIcon className="w-3 h-3" />
+                                    {formatRelative(notification.createdAt)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
     const renderGenericItem = (notification: Notification, isRead: boolean) => {
         const getTypeIcon = (type: NotificationType) => {
             const cls = 'w-4 h-4';
@@ -599,6 +690,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         const isRead = readIds.has(notification.id);
         if (isPlanReminder(notification))   return renderPlanReminder(notification, isRead);
         if (isDepositWarning(notification)) return renderDepositWarning(notification, isRead);
+        if (isDocumentReminder(notification)) return renderDocumentReminder(notification, isRead);
         if (isTransaction(notification))    return renderPaymentItem(notification, isRead);
         return renderGenericItem(notification, isRead);
     };
@@ -812,7 +904,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 {/* Footer */}
                 <div className={`flex-shrink-0 px-5 py-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
                     <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                        {t('notificationFooter', { count: notifications.length })}
+                        {t('notificationFooter', { count: visibleNotificationIds.length })}
                     </p>
                 </div>
             </div>

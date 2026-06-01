@@ -193,6 +193,11 @@ main,
     }
 }
 
+.no-card-lift,
+.no-card-lift:hover {
+    transform: none !important;
+}
+
 :where(.fixed.inset-0, .fixed.inset-y-0, [role='dialog']) > :where(.rounded-2xl, .rounded-3xl, .rounded-\[24px\]) {
     animation: modalPop 0.32s var(--ease-ios-spring) both;
 }

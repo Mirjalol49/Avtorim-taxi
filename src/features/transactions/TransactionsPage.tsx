@@ -36,28 +36,8 @@ import restAnimation from '../../../Images/rest.json';
 import depositAnimation from '../../../Images/deposit.json';
 import { LicensePlate } from '../../components/ui/LicensePlate';
 import { resolveTransactionCarSnapshot } from '../drivers/utils/driverPlanHistory';
+import { buildExpenseCategoryList, resolveExpenseCategory } from '../finance/utils/expenseCategories';
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const EXPENSE_CATEGORIES = [
-    { icon: '⛽', label: 'Benzin' },
-    { icon: '🔧', label: 'Ehtiyot qism' },
-    { icon: '🔩', label: 'Ta\'mirlash' },
-    { icon: '🚨', label: 'Jarima' },
-    { icon: '💡', label: 'Kommunal' },
-    { icon: '🏢', label: 'Ijara' },
-    { icon: '🛒', label: 'Xarid' },
-    { icon: '📝', label: 'Boshqa' },
-];
-
-const detectCategory = (desc: string | undefined) => {
-    if (!desc) return null;
-    return EXPENSE_CATEGORIES.find(cat =>
-        desc === cat.label ||
-        desc.startsWith(cat.label + ' ') ||
-        desc.startsWith(cat.label + ',') ||
-        desc.startsWith(cat.label + ':')
-    ) ?? null;
-};
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 // Rows that perfectly mirror the height/layout of a real transaction row so
@@ -220,6 +200,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 	        restoreRows,
 	        patchRow,
 	    } = useTransactionsPaginated(fleetId, filters);
+    const expenseCategories = useMemo(
+        () => buildExpenseCategoryList(transactions),
+        [transactions],
+    );
 
     // The paginated list automatically handles its own real-time syncing via useTransactionsPaginated.
 
@@ -632,7 +616,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                         : null;
                                     const isDeleted = tx.status === PaymentStatus.DELETED;
                                     const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car
-                                        ? detectCategory(tx.description) : null;
+                                        ? resolveExpenseCategory(tx, expenseCategories) : null;
+                                    const expenseCatLabel = expenseCat?.tKey ? t(expenseCat.tKey, expenseCat.label) : expenseCat?.label;
                                     return (
                                         <tr key={tx.id} className={`transition-colors group ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-black/[0.03]'} ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
                                             {isAdmin && (
@@ -677,7 +662,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                         <>
                                                             <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-lg border ${theme === 'dark' ? 'border-red-500/20 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>{expenseCat.icon}</div>
                                                             <div className="flex flex-col">
-                                                                <span className={`text-sm font-bold ${theme === 'dark' ? 'text-red-300' : 'text-red-700'}`}>{expenseCat.label}</span>
+                                                                <span className={`text-sm font-bold ${theme === 'dark' ? 'text-red-300' : 'text-red-700'}`}>{expenseCatLabel}</span>
                                                                 <span className={`text-[10px] font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>{t('generalExpense') ?? 'Umumiy xarajat'}</span>
                                                             </div>
                                                         </>
@@ -730,14 +715,15 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                             </td>
                                             <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                                                 {(() => {
-                                                    const cat = tx.type === TransactionType.EXPENSE ? detectCategory(tx.description) : null;
+                                                    const cat = tx.type === TransactionType.EXPENSE ? resolveExpenseCategory(tx, expenseCategories) : null;
+                                                    const catLabel = cat?.tKey ? t(cat.tKey, cat.label) : cat?.label;
                                                     const descText = tx.description === 'Salary Refund: Manual Action' ? t('salaryRefundDescription') : tx.description || '—';
                                                     return (
                                                         <div className="flex flex-col gap-1">
                                                             {cat ? (
                                                                 <div className="flex flex-col gap-1">
-                                                                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg border font-bold w-fit ${theme === 'dark' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}><span>{cat.icon}</span> {cat.label}</span>
-                                                                    {descText !== cat.label && <span className="font-medium text-xs opacity-70">{descText}</span>}
+                                                                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg border font-bold w-fit ${theme === 'dark' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}><span>{cat.icon}</span> {catLabel}</span>
+                                                                    {descText !== cat.label && descText !== catLabel && <span className="font-medium text-xs opacity-70">{descText}</span>}
                                                                 </div>
                                                             ) : (
                                                                 <span className="font-medium">{descText}</span>
@@ -834,7 +820,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                 )
                                 : null;
                             const isDeleted = tx.status === PaymentStatus.DELETED;
-                            const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car ? detectCategory(tx.description) : null;
+                            const expenseCat = tx.type === TransactionType.EXPENSE && !driver && !car ? resolveExpenseCategory(tx, expenseCategories) : null;
+                            const expenseCatLabel = expenseCat?.tKey ? t(expenseCat.tKey, expenseCat.label) : expenseCat?.label;
                             const descText = tx.description === 'Salary Refund: Manual Action' ? t('salaryRefundDescription') : tx.description || '—';
                             return (
                                 <div key={tx.id} className={`p-4 flex flex-col gap-3 relative ${isDeleted ? 'opacity-50 grayscale' : ''} ${theme === 'dark' ? 'hover:bg-surface-2' : 'hover:bg-gray-50'}`}>
@@ -864,7 +851,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                 </div>
                                             )}
                                             <div className="flex flex-col">
-                                                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{(car && !tx.driverId) ? car.name : expenseCat ? expenseCat.label : driver ? driver.name : tx.driverName || t('generalExpense')}</span>
+                                                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{(car && !tx.driverId) ? car.name : expenseCat ? expenseCatLabel : driver ? driver.name : tx.driverName || t('generalExpense')}</span>
                                                 <div className={`text-[11px] font-medium mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
                                                     {(car && !tx.driverId) ? (
                                                         <LicensePlate plate={car.licensePlate} size="sm" />

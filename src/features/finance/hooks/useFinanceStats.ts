@@ -2,12 +2,20 @@ import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, TransactionType, PaymentStatus, Driver, Car } from '../../../core/types';
 import { getEffectivePlanForDriverDay } from '../../drivers/utils/driverPlanHistory';
+import {
+    buildExpenseCategoryList,
+    CUSTOM_EXPENSE_CATEGORY_EVENT,
+    readStoredExpenseCategories,
+    resolveExpenseCategory,
+    resolveExpenseCategoryId,
+} from '../utils/expenseCategories';
 
 interface FinanceFilters {
     startDate: string;
     endDate: string;
     driverId: string;
     type: string;
+    category: string;
     paymentMethod: string;
 }
 
@@ -23,7 +31,7 @@ const isDepositUsage = (tx: Transaction) =>
 const isRealIncome = (tx: Transaction) =>
     tx.type === TransactionType.INCOME && !isDepositUsage(tx);
 
-export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], drivers: Driver[] = []) => {
+export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], drivers: Driver[] = [], categoryScope = 'global') => {
     const { i18n } = useTranslation();
     const language = i18n.language; // Use i18n language
 
@@ -46,11 +54,34 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         endDate: defaultEndDate,
         driverId: 'all',
         type: 'all',
+        category: 'all',
         paymentMethod: 'all'
     });
+    const [storedExpenseCategories, setStoredExpenseCategories] = useState(() => readStoredExpenseCategories(categoryScope));
     const [analyticsYear, setAnalyticsYear] = useState<number>(new Date().getFullYear());
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    useEffect(() => {
+        setStoredExpenseCategories(readStoredExpenseCategories(categoryScope));
+    }, [categoryScope]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const onCategoriesUpdated = (event: Event) => {
+            const detail = (event as CustomEvent<{ scope?: string }>).detail;
+            if (!detail?.scope || detail.scope === (categoryScope || 'global')) {
+                setStoredExpenseCategories(readStoredExpenseCategories(categoryScope));
+            }
+        };
+        window.addEventListener(CUSTOM_EXPENSE_CATEGORY_EVENT, onCategoriesUpdated);
+        return () => window.removeEventListener(CUSTOM_EXPENSE_CATEGORY_EVENT, onCategoriesUpdated);
+    }, [categoryScope]);
+
+    const expenseCategories = useMemo(
+        () => buildExpenseCategoryList(transactions, storedExpenseCategories),
+        [transactions, storedExpenseCategories],
+    );
 
     // Filter Logic
     const filteredTransactions = useMemo(() => {
@@ -87,9 +118,13 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             if (filters.paymentMethod !== 'all') {
                 methodMatch = tx.paymentMethod === filters.paymentMethod;
             }
-            return dateMatch && driverMatch && typeMatch && methodMatch;
+            let categoryMatch = true;
+            if (filters.category !== 'all') {
+                categoryMatch = tx.type === TransactionType.EXPENSE && resolveExpenseCategoryId(tx, expenseCategories) === filters.category;
+            }
+            return dateMatch && driverMatch && typeMatch && methodMatch && categoryMatch;
         }).sort((a, b) => b.timestamp - a.timestamp);
-    }, [transactions, filters]);
+    }, [transactions, filters, expenseCategories]);
 
     // Pagination
     // Reset pagination when filters change
@@ -232,16 +267,6 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         };
         const driverIncome: Record<string, { id: string; name: string; amount: number }> = {};
         
-        const getExpenseCat = (desc: string): string => {
-            const d = (desc || '').trim();
-            const lower = d.toLowerCase();
-            if (lower.includes('ta\'mir') || lower.includes('ehtiyot')) return "Ta'mirlash";
-            if (lower.includes('jarima')) return "Jarimalar";
-            if (lower.includes('kommunal') || lower.includes('ijara') || lower.includes('ofis') || lower.includes('xarid')) return 'Ofis';
-            if (lower.includes('maosh')) return 'Maosh';
-            return 'Boshqa';
-        };
-
         filteredTransactions.forEach(tx => {
             if (isInactivePayment(tx)) return;
             const pm = (((tx as any).paymentMethod as string) || 'cash') as 'cash' | 'card' | 'transfer';
@@ -270,7 +295,7 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             } else if (tx.type === TransactionType.EXPENSE && !isDepositUsage(tx)) {
                 const cat = (tx as any).category === 'salary_payment'
                     ? 'Maosh'
-                    : getExpenseCat((tx as any).description || '');
+                    : resolveExpenseCategory(tx, expenseCategories)?.label ?? 'Boshqa';
                 expenseByCategory[cat] = (expenseByCategory[cat] || 0) + tx.amount;
                 netProfitByPayment[pm].expense += tx.amount;
             }
@@ -404,10 +429,11 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             planFulfillment,
             fleetStats
         };
-    }, [filteredTransactions, filters.driverId, filters.startDate, filters.endDate, drivers, cars, transactions]);
+    }, [filteredTransactions, filters.driverId, filters.startDate, filters.endDate, drivers, cars, transactions, expenseCategories]);
 
     return {
         filters, setFilters,
+        expenseCategories,
         analyticsYear, setAnalyticsYear,
         availableYears,
         currentPage, setCurrentPage,
