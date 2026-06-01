@@ -42,6 +42,14 @@ const CUSTOM_CATEGORY_ICONS = [
 ];
 const fmtInputNumber = (v: string) => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
+const findDriverIdForTransaction = (tx: Transaction, drivers: Driver[]) => {
+  if (tx.driverId) return tx.driverId;
+  const normalizedName = tx.driverName?.trim().toLocaleLowerCase();
+  if (!normalizedName) return '';
+  const matches = drivers.filter(d => d.name.trim().toLocaleLowerCase() === normalizedName);
+  return matches.length === 1 ? matches[0].id : '';
+};
+
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -109,9 +117,10 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
       if (initialTransaction) {
         setType(initialTransaction.type);
-        const tgt: ExpenseTarget = initialTransaction.driverId ? 'driver' : initialTransaction.carId ? 'car' : 'other';
+        const resolvedDriverId = findDriverIdForTransaction(initialTransaction, drivers);
+        const tgt: ExpenseTarget = resolvedDriverId ? 'driver' : initialTransaction.carId ? 'car' : 'other';
         setExpenseTarget(tgt);
-        setDriverId(initialTransaction.driverId || '');
+        setDriverId(resolvedDriverId);
         setCarId(initialTransaction.carId || '');
         setAmount(initialTransaction.amount.toString());
         setDisplayAmount(fmtDisplay(initialTransaction.amount.toString()));
@@ -138,7 +147,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
       }
     }
-  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup, fleetId, transactions]);
+  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup, fleetId, transactions, drivers]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -148,13 +157,13 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       setExpenseTarget('driver'); setUseDeposit(false);
       setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
       setIsAddingCategory(false); setNewCategoryLabel(''); setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
-    } else if (isOpen && drivers.length > 0) {
+    } else if (isOpen && drivers.length > 0 && !initialTransaction) {
       if (!driverId || !drivers.find(d => d.id === driverId)) {
         // Only fall back to first driver when there's no explicit initial driver
         if (!initialDriverId) setDriverId(drivers[0].id);
       }
     }
-  }, [isOpen, drivers, driverId, initialDriverId]);
+  }, [isOpen, drivers, driverId, initialDriverId, initialTransaction]);
 
   // ── Cheque paste ─────────────────────────────────────────────────────────────
   const processImageFile = useCallback((file: File) => {
@@ -417,11 +426,28 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     const now = new Date();
     timestamp.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
 
-    const entityFields = type === TransactionType.EXPENSE
-      ? expenseTarget === 'driver' ? { driverId }
-        : expenseTarget === 'car'  ? { carId }
-        : {}
+    const driverEntity = selectedDriver
+      ? {
+          driverId: selectedDriver.id,
+          driverName: selectedDriver.name,
+          carId: initialTransaction?.driverId === selectedDriver.id
+            ? initialTransaction.carId ?? undefined
+            : selectedDriverCar?.id,
+          carName: initialTransaction?.driverId === selectedDriver.id
+            ? initialTransaction.carName ?? undefined
+            : selectedDriverCar ? `${selectedDriverCar.name} — ${selectedDriverCar.licensePlate}` : undefined,
+        }
       : { driverId };
+    const carEntity = selectedCar
+      ? { driverId: null, driverName: null, carId: selectedCar.id, carName: `${selectedCar.name} — ${selectedCar.licensePlate}` }
+      : { driverId: null, driverName: null, carId, carName: null };
+    const otherEntity = { driverId: null, driverName: null, carId: null, carName: null };
+
+    const entityFields = type === TransactionType.EXPENSE
+      ? expenseTarget === 'driver' ? driverEntity
+        : expenseTarget === 'car'  ? carEntity
+        : otherEntity
+      : driverEntity;
 
     const payload: any = {
       amount: finalAmount, type, description,
