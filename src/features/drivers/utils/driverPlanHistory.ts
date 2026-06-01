@@ -19,11 +19,11 @@ export function getPlanForDriverDate(driver: Driver | null | undefined, date: Da
         return driver.dailyPlan ?? 0;
     }
 
-    const targetMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const targetMs = dayStart(date);
 
     let effective: DriverPlanHistoryEntry | null = null;
     for (const entry of history) {
-        if (entry.effectiveFrom <= targetMs) {
+        if (dayStart(entry.effectiveFrom) <= targetMs) {
             effective = entry;
         }
     }
@@ -49,11 +49,11 @@ export function getCarIdForDriverDate(driver: Driver | null | undefined, date: D
         return fallbackCar ? fallbackCar.id : null;
     }
 
-    const targetMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const targetMs = dayStart(date);
 
     let effective: DriverPlanHistoryEntry | null = null;
     for (const entry of history) {
-        if (entry.effectiveFrom <= targetMs) {
+        if (dayStart(entry.effectiveFrom) <= targetMs) {
             effective = entry;
         }
     }
