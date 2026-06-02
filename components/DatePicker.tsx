@@ -75,6 +75,11 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
         return (MONTH_NAMES[lang as keyof typeof MONTH_NAMES] || MONTH_NAMES.uz)[m];
     }, [lang, month]);
 
+    useEffect(() => {
+        if (!value || isOpen) return;
+        setMonth(new Date(value.getFullYear(), value.getMonth(), 1));
+    }, [value?.getFullYear(), value?.getMonth(), isOpen]);
+
     // Position calendar relative to trigger button
     useLayoutEffect(() => {
         if (!isOpen || !triggerRef.current) return;
