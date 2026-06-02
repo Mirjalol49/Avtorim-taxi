@@ -147,7 +147,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
       }
     }
-  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup, fleetId, transactions, drivers]);
+  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction?.id, initialIsDepositTopup, fleetId, drivers]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -423,8 +423,8 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     }
 
     const timestamp = new Date(date);
-    const now = new Date();
-    timestamp.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    const timeSource = initialTransaction ? new Date(initialTransaction.timestamp) : new Date();
+    timestamp.setHours(timeSource.getHours(), timeSource.getMinutes(), timeSource.getSeconds(), timeSource.getMilliseconds());
 
     const driverEntity = selectedDriver
       ? {
