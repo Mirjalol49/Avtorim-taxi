@@ -106,6 +106,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [planExceptionAmount, setPlanExceptionAmount] = useState('');
   const [planExceptionDisplayAmount, setPlanExceptionDisplayAmount] = useState('');
   const [isRestoringDay, setIsRestoringDay] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const chequeRef = useRef<HTMLInputElement>(null);
 
   // ── Init / reset ────────────────────────────────────────────────────────────
@@ -151,6 +152,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) {
+      setIsSubmitting(false);
       setAmount(''); setDisplayAmount(''); setDescription('');
       setType(TransactionType.INCOME); setDate(new Date());
       setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
@@ -370,7 +372,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
       }
       addToast('success', t('restoreStandardDaySuccess', 'Kun standart rejaga qaytarildi'));
-      resetAndClose();
+      resetAndClose(true);
     } catch (error) {
       console.error('Failed to restore standard day', error);
       addToast('error', t('restoreStandardDayError', 'Kunni tiklashda xatolik yuz berdi'));
@@ -382,6 +384,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   // ── Submit ───────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     // Validation
     if (type === TransactionType.EXPENSE) {
@@ -422,80 +425,88 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
       }
     }
 
-    const timestamp = new Date(date);
-    const timeSource = initialTransaction ? new Date(initialTransaction.timestamp) : new Date();
-    timestamp.setHours(timeSource.getHours(), timeSource.getMinutes(), timeSource.getSeconds(), timeSource.getMilliseconds());
+    setIsSubmitting(true);
+    try {
+      const timestamp = new Date(date);
+      const timeSource = initialTransaction ? new Date(initialTransaction.timestamp) : new Date();
+      timestamp.setHours(timeSource.getHours(), timeSource.getMinutes(), timeSource.getSeconds(), timeSource.getMilliseconds());
 
-    const driverEntity = selectedDriver
-      ? {
-          driverId: selectedDriver.id,
-          driverName: selectedDriver.name,
-          carId: initialTransaction?.driverId === selectedDriver.id
-            ? initialTransaction.carId ?? undefined
-            : selectedDriverCar?.id,
-          carName: initialTransaction?.driverId === selectedDriver.id
-            ? initialTransaction.carName ?? undefined
-            : selectedDriverCar ? `${selectedDriverCar.name} — ${selectedDriverCar.licensePlate}` : undefined,
+      const driverEntity = selectedDriver
+        ? {
+            driverId: selectedDriver.id,
+            driverName: selectedDriver.name,
+            carId: initialTransaction?.driverId === selectedDriver.id
+              ? initialTransaction.carId ?? undefined
+              : selectedDriverCar?.id,
+            carName: initialTransaction?.driverId === selectedDriver.id
+              ? initialTransaction.carName ?? undefined
+              : selectedDriverCar ? `${selectedDriverCar.name} — ${selectedDriverCar.licensePlate}` : undefined,
+          }
+        : { driverId };
+      const carEntity = selectedCar
+        ? { driverId: null, driverName: null, carId: selectedCar.id, carName: `${selectedCar.name} — ${selectedCar.licensePlate}` }
+        : { driverId: null, driverName: null, carId, carName: null };
+      const otherEntity = { driverId: null, driverName: null, carId: null, carName: null };
+
+      const entityFields = type === TransactionType.EXPENSE
+        ? expenseTarget === 'driver' ? driverEntity
+          : expenseTarget === 'car'  ? carEntity
+          : otherEntity
+        : driverEntity;
+
+      const payload: any = {
+        amount: finalAmount, type, description,
+        ...entityFields,
+        timestamp: timestamp.getTime(),
+        ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
+      };
+
+      if (type === TransactionType.EXPENSE) {
+        payload.category = initialTransaction?.category === 'salary_payment'
+          ? initialTransaction.category
+          : selectedExpenseCategory.id;
+      }
+
+      if (useDeposit) {
+        payload.useDeposit = true;
+      }
+      if (isDepositTopup) {
+        payload.category = 'deposit_topup';
+        // Auto-fill a standard description if the admin left it blank
+        if (!payload.description?.trim()) {
+          payload.description = "Depozit to'ldirish";
         }
-      : { driverId };
-    const carEntity = selectedCar
-      ? { driverId: null, driverName: null, carId: selectedCar.id, carName: `${selectedCar.name} — ${selectedCar.licensePlate}` }
-      : { driverId: null, driverName: null, carId, carName: null };
-    const otherEntity = { driverId: null, driverName: null, carId: null, carName: null };
-
-    const entityFields = type === TransactionType.EXPENSE
-      ? expenseTarget === 'driver' ? driverEntity
-        : expenseTarget === 'car'  ? carEntity
-        : otherEntity
-      : driverEntity;
-
-    const payload: any = {
-      amount: finalAmount, type, description,
-      ...entityFields,
-      timestamp: timestamp.getTime(),
-      ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
-    };
-
-    if (type === TransactionType.EXPENSE) {
-      payload.category = initialTransaction?.category === 'salary_payment'
-        ? initialTransaction.category
-        : selectedExpenseCategory.id;
-    }
-
-    if (useDeposit) {
-      payload.useDeposit = true;
-    }
-    if (isDepositTopup) {
-      payload.category = 'deposit_topup';
-      // Auto-fill a standard description if the admin left it blank
-      if (!payload.description?.trim()) {
-        payload.description = "Depozit to'ldirish";
       }
-    }
 
-    if (selectedDriver) {
-      const shouldClearCustomPlan = hasExistingCustomPlan && (
-        type === TransactionType.DAY_OFF ||
-        type === TransactionType.NOT_WORKING ||
-        (type === TransactionType.INCOME && !planExceptionEnabled)
-      );
+      if (selectedDriver) {
+        const shouldClearCustomPlan = hasExistingCustomPlan && (
+          type === TransactionType.DAY_OFF ||
+          type === TransactionType.NOT_WORKING ||
+          (type === TransactionType.INCOME && !planExceptionEnabled)
+        );
 
-      if (type === TransactionType.INCOME && planExceptionEnabled) {
-        await setDriverDayOverride(selectedDriver.id, selectedDateKey, {
-          type: 'DISCOUNT',
-          customPlan: Number(planExceptionAmount),
-        });
-      } else if (shouldClearCustomPlan) {
-        await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
+        if (type === TransactionType.INCOME && planExceptionEnabled) {
+          await setDriverDayOverride(selectedDriver.id, selectedDateKey, {
+            type: 'DISCOUNT',
+            customPlan: Number(planExceptionAmount),
+          });
+        } else if (shouldClearCustomPlan) {
+          await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
+        }
       }
+
+      await onSubmit(payload, initialTransaction?.id);
+
+      resetAndClose(true);
+    } catch (error) {
+      console.error('Failed to save transaction', error);
+      addToast('error', t('transactionSaveFailed', "O'tkazmani saqlashda xatolik yuz berdi"));
+      setIsSubmitting(false);
     }
-
-    await onSubmit(payload, initialTransaction?.id);
-
-    resetAndClose();
   };
 
-  const resetAndClose = () => {
+  const resetAndClose = (force = false) => {
+    if (isSubmitting && !force) return;
     setAmount(''); setDisplayAmount(''); setDescription('');
     setDriverId(''); setCarId('');
     setIsDriverOpen(false); setIsCarOpen(false);
@@ -558,7 +569,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 </p>
               </div>
             </div>
-            <button type="button" onClick={resetAndClose} className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+            <button
+              type="button"
+              onClick={() => resetAndClose()}
+              disabled={isSubmitting}
+              className={`md:hidden p-2 rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+            >
               <XIcon className="w-5 h-5" />
             </button>
           </div>
@@ -1249,8 +1265,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
           {/* Desktop close */}
           <div className="flex justify-end px-6 py-5 flex-shrink-0">
-            <button type="button" onClick={resetAndClose}
-              className={`hidden md:flex items-center justify-center w-8 h-8 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+            <button
+              type="button"
+              onClick={() => resetAndClose()}
+              disabled={isSubmitting}
+              className={`hidden md:flex items-center justify-center w-8 h-8 rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+            >
               <XIcon className="w-5 h-5" />
             </button>
           </div>
@@ -1378,17 +1398,32 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
           {/* Action footer */}
           <div className={`mt-auto sticky bottom-0 z-10 px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-[#171f33]/95 backdrop-blur-md border-white/[0.06]' : 'bg-gray-50/95 backdrop-blur-md border-gray-200'}`}>
-            <button type="button" onClick={resetAndClose}
-              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${isDark ? 'bg-surface-2 text-gray-300 hover:bg-white/[0.06] border border-white/[0.08]' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}>
+            <button
+              type="button"
+              onClick={() => resetAndClose()}
+              disabled={isSubmitting}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'bg-surface-2 text-gray-300 hover:bg-white/[0.06] border border-white/[0.08]' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}
+            >
               {t('cancelLabel', 'Bekor qilish')}
             </button>
-            <button type="submit"
-              className={`px-10 py-3 text-white rounded-xl text-sm font-black shadow-sm transition-all transform active:scale-95 ${
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className={`inline-flex items-center justify-center gap-2 px-10 py-3 text-white rounded-xl text-sm font-black shadow-sm transition-all transform active:scale-95 disabled:cursor-wait disabled:opacity-75 disabled:active:scale-100 ${
                 type === TransactionType.INCOME  ? 'bg-teal-500 hover:bg-teal-600'
                 : type === TransactionType.DAY_OFF ? 'bg-blue-500 hover:bg-blue-600'
                 : 'bg-red-500 hover:bg-red-600'
               }`}>
-              {initialTransaction ? t('editTransaction', 'Tahrirlash') : t('saveTransaction', 'Saqlash')}
+              {isSubmitting && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-80" d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              )}
+              {isSubmitting
+                ? t('saving', 'Saqlanmoqda...')
+                : initialTransaction ? t('editTransaction', 'Tahrirlash') : t('saveTransaction', 'Saqlash')}
             </button>
           </div>
         </div>

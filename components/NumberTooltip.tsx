@@ -64,23 +64,23 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
                     className={`absolute bottom-full mb-2.5 z-50 pointer-events-none ${posX}`}
                     style={{ animation: 'ttIn 100ms ease-out both' }}
                 >
-                    <div className={`px-3.5 py-2.5 rounded-xl border shadow-xl text-right min-w-[148px] ${
+                    <div className={`px-4 py-3 rounded-2xl border shadow-xl text-left min-w-[190px] whitespace-nowrap ${
                         isDark
-                            ? 'bg-[#0f1929] border-white/[0.10] text-white'
-                            : 'bg-white border-gray-200/80 text-gray-900'
-                    }`} style={{ boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.6)' : '0 8px 32px rgba(0,0,0,0.12)' }}>
+                            ? 'bg-[#0f1929] border-white/[0.12] text-white'
+                            : 'bg-white border-gray-200/90 text-gray-900'
+                    }`} style={{ boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.55)' : '0 18px 40px rgba(15,23,42,0.14)' }}>
                         {label && (
-                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <p className={`text-[9px] font-black uppercase tracking-[0.18em] mb-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                                 {label}
                             </p>
                         )}
-                        <p className={`text-sm font-black font-mono tabular-nums tracking-tight ${
+                        <p className={`inline-flex items-baseline gap-1.5 text-[15px] font-black font-mono tabular-nums tracking-tight ${
                             value >= 0
                                 ? isDark ? 'text-teal-300' : 'text-teal-700'
                                 : isDark ? 'text-red-400'  : 'text-red-600'
                         }`}>
-                            {showSign ? sign : value < 0 ? '−' : ''}{exact}
-                            <span className={`ml-1.5 text-[10px] font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                            <span>{showSign ? sign : value < 0 ? '−' : ''}{exact}</span>
+                            <span className={`text-[10px] font-black tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
                         </p>
                     </div>
 
