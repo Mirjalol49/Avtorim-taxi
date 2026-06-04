@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface NumberTooltipProps {
     value: number;
@@ -15,6 +16,8 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
     value, label, align = 'center', showSign = true, children, theme,
 }) => {
     const [visible, setVisible] = useState(false);
+    const [position, setPosition] = useState<{ left: number; top: number; arrowLeft: number } | null>(null);
+    const triggerRef = useRef<HTMLDivElement | null>(null);
     const showTimer = useRef<number | null>(null);
 
     const isDark = theme === 'dark';
@@ -24,22 +27,57 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
     // Full exact number with space thousands separator
     const exact = abs.toLocaleString('uz-UZ');
 
-    const posX =
-        align === 'right'  ? 'right-0'
-        : align === 'left' ? 'left-0'
-        : 'left-1/2 -translate-x-1/2';
-
-    const arrowRight = align === 'right' ? '14px' : undefined;
-    const arrowLeft  = align === 'left'  ? '14px' : align === 'center' ? '50%' : undefined;
-    const arrowXform = align === 'center' ? 'translateX(-50%)' : undefined;
-
     useEffect(() => () => {
         if (showTimer.current) window.clearTimeout(showTimer.current);
     }, []);
 
+    const updatePosition = () => {
+        const node = triggerRef.current;
+        if (!node || typeof window === 'undefined') return;
+
+        const rect = node.getBoundingClientRect();
+        const tooltipWidth = 190;
+        const viewportPadding = 12;
+        const anchorX =
+            align === 'right' ? rect.right - 18
+            : align === 'left' ? rect.left + 18
+            : rect.left + rect.width / 2;
+
+        const preferredLeft =
+            align === 'right' ? rect.right - tooltipWidth
+            : align === 'left' ? rect.left
+            : rect.left + rect.width / 2 - tooltipWidth / 2;
+
+        const maxLeft = Math.max(viewportPadding, window.innerWidth - tooltipWidth - viewportPadding);
+        const left = Math.min(Math.max(preferredLeft, viewportPadding), maxLeft);
+        const arrowLeft = Math.min(Math.max(anchorX - left, 16), tooltipWidth - 16);
+
+        setPosition({
+            left,
+            top: Math.max(rect.top - 10, viewportPadding),
+            arrowLeft,
+        });
+    };
+
+    useEffect(() => {
+        if (!visible) return undefined;
+
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [visible, align]);
+
     const showTooltip = () => {
         if (showTimer.current) window.clearTimeout(showTimer.current);
-        showTimer.current = window.setTimeout(() => setVisible(true), 220);
+        showTimer.current = window.setTimeout(() => {
+            updatePosition();
+            setVisible(true);
+        }, 220);
     };
 
     const hideTooltip = () => {
@@ -50,6 +88,7 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
 
     return (
         <div
+            ref={triggerRef}
             className="relative inline-flex justify-end"
             onMouseEnter={showTooltip}
             onMouseLeave={hideTooltip}
@@ -58,17 +97,24 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
         >
             {children}
 
-            {visible && (
+            {visible && position && typeof document !== 'undefined' && createPortal((
                 <div
                     role="tooltip"
-                    className={`absolute bottom-full mb-2.5 z-50 pointer-events-none ${posX}`}
-                    style={{ animation: 'ttIn 100ms ease-out both' }}
+                    className="pointer-events-none fixed z-[9999]"
+                    style={{
+                        left: position.left,
+                        top: position.top,
+                        transform: 'translateY(-100%)',
+                    }}
                 >
                     <div className={`px-4 py-3 rounded-2xl border shadow-xl text-left min-w-[190px] whitespace-nowrap ${
                         isDark
                             ? 'bg-[#0f1929] border-white/[0.12] text-white'
                             : 'bg-white border-gray-200/90 text-gray-900'
-                    }`} style={{ boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.55)' : '0 18px 40px rgba(15,23,42,0.14)' }}>
+                    }`} style={{
+                        animation: 'ttIn 100ms ease-out both',
+                        boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.55)' : '0 18px 40px rgba(15,23,42,0.14)',
+                    }}>
                         {label && (
                             <p className={`text-[9px] font-black uppercase tracking-[0.18em] mb-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                                 {label}
@@ -87,25 +133,23 @@ const NumberTooltip: React.FC<NumberTooltipProps> = ({
                     {/* Arrow */}
                     <div className="absolute w-0 h-0" style={{
                         top: '100%',
-                        right: arrowRight,
-                        left: arrowLeft,
-                        transform: arrowXform,
+                        left: position.arrowLeft,
+                        transform: 'translateX(-50%)',
                         borderLeft: '5px solid transparent',
                         borderRight: '5px solid transparent',
                         borderTop: `5px solid ${isDark ? '#0f1929' : 'white'}`,
                     }} />
                     <div className="absolute w-0 h-0" style={{
                         top: 'calc(100% + 1px)',
-                        right: arrowRight ? `calc(${arrowRight} - 1px)` : undefined,
-                        left: arrowLeft,
-                        transform: arrowXform,
+                        left: position.arrowLeft,
+                        transform: 'translateX(-50%)',
                         borderLeft: '6px solid transparent',
                         borderRight: '6px solid transparent',
                         borderTop: `6px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'}`,
                         zIndex: -1,
                     }} />
                 </div>
-            )}
+            ), document.body)}
 
             <style>{`
                 @keyframes ttIn {
