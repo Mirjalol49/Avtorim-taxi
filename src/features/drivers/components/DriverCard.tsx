@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
-import { Transaction } from '../../../core/types/transaction.types';
+import { PaymentStatus, Transaction } from '../../../core/types/transaction.types';
 import { DriverAvatar } from './DriverAvatar';
 import { calcDriverFinance } from '../utils/debtUtils';
 import { LicensePlate } from '../../../components/ui/LicensePlate';
@@ -87,35 +87,51 @@ export const DriverCard: React.FC<DriverCardProps> = ({
 
     const metric = useMemo(() => {
         const fmt = (v: number) => new Intl.NumberFormat('uz-UZ').format(v) + ' UZS';
+        const hasDepositActivity =
+            (driver.driverType ?? 'deposit') === 'deposit' &&
+            (
+                (driver.depositAmount ?? 0) > 0 ||
+                finance.remainingDeposit > 0 ||
+                transactions.some(tx =>
+                    tx.driverId === driver.id &&
+                    tx.status !== PaymentStatus.DELETED &&
+                    (tx.category === 'deposit_topup' || tx.useDeposit === true)
+                )
+            );
+        const isLowDeposit =
+            hasDepositActivity &&
+            finance.remainingDeposit <= (driver.depositWarningThreshold ?? 1_000_000);
 
         if (!driver.driverType || driver.driverType === 'deposit') {
-            const hasDepositWarning = finance.remainingDeposit < 50000;
             return {
                 label: t('dailyPlan', 'Kunlik Reja'),
                 value: car?.dailyPlan ? fmt(car.dailyPlan) : '-',
                 icon: <CalendarIcon className="w-4 h-4 text-indigo-400" />,
-                warning: hasDepositWarning ? `${t('deposit', 'Depozit')}: ${fmt(finance.remainingDeposit)}` : null,
-                warningType: 'red'
+                deposit: hasDepositActivity ? {
+                    value: fmt(finance.remainingDeposit),
+                    isLow: isLowDeposit
+                } : null,
+                warning: null
             };
         } else if (driver.driverType === 'salary') {
             return {
                 label: t('salary', 'Maosh'),
                 value: finance.salaryAmount ? fmt(finance.salaryAmount) : '-',
                 icon: <BanknoteIcon className="w-4 h-4 text-emerald-400" />,
-                warning: null,
-                warningType: null
+                deposit: null,
+                warning: null
             };
         } else if (driver.driverType === 'lease_to_own') {
             return {
                 label: t('contractRemaining', 'Qoldiq'),
                 value: finance.contractRemaining ? fmt(finance.contractRemaining) : '-',
                 icon: <WalletIcon className="w-4 h-4 text-amber-400" />,
-                warning: null,
-                warningType: null
+                deposit: null,
+                warning: null
             };
         }
         return null;
-    }, [driver.driverType, car, finance, t]);
+    }, [driver, car, finance, t, transactions]);
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -267,6 +283,23 @@ export const DriverCard: React.FC<DriverCardProps> = ({
                             <div className={`text-[15px] font-black truncate leading-tight ${valueColor}`}>
                                 {metric.value}
                             </div>
+                            {metric.deposit && (
+                                <div
+                                    className={`mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-black leading-none ${
+                                        metric.deposit.isLow
+                                            ? isDark
+                                                ? 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+                                                : 'border-amber-200 bg-amber-50 text-amber-700'
+                                            : isDark
+                                                ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+                                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    }`}
+                                    title={`${t('deposit', 'Depozit')}: ${metric.deposit.value}`}
+                                >
+                                    <WalletIcon className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{t('deposit', 'Depozit')}: {metric.deposit.value}</span>
+                                </div>
+                            )}
                             {metric.warning && (
                                 <div className="mt-1.5 flex items-center gap-1.5">
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
