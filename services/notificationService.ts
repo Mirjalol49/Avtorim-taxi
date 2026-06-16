@@ -87,13 +87,13 @@ export const subscribeToNotifications = (
     userRole: 'admin' | 'viewer',
     callback: (notifications: Notification[], unreadCount: number, readIds: Set<string>) => void
 ) => {
-    const now = Date.now();
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const fetchAndNotify = () => {
         // Debounce: collapse rapid successive realtime events into one fetch
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
+            const now = Date.now();
             // Select only the columns we actually use — skip heavy JSONB where possible
             const { data: rows } = await supabase
                 .from('notifications')
@@ -202,20 +202,30 @@ export const markAllNotificationsAsRead = async (notificationIds: string[], user
     }
 };
 
+const dismissNotificationsForUser = async (notificationIds: string[], userId: string): Promise<void> => {
+    const ids = Array.from(new Set(notificationIds.filter(Boolean)));
+    if (ids.length === 0) return;
+
+    const deletedAt = Date.now();
+    const rows = ids.map(id => ({
+        notification_id: id,
+        user_id: userId,
+        deleted_at: deletedAt
+    }));
+
+    const { error } = await supabase
+        .from('notification_deletes')
+        .upsert(rows, {
+            onConflict: 'notification_id,user_id',
+            ignoreDuplicates: true
+        });
+
+    if (error) throw error;
+};
+
 export const deleteNotification = async (notificationId: string, userId: string): Promise<void> => {
     try {
-        // Hard-delete the row from the notifications table (permanent — row is gone from DB)
-        const { error: delError } = await supabase.from('notifications').delete().eq('id', notificationId);
-        
-        // If there was an error (e.g. RLS blocked it), we fallback to soft-delete
-        if (delError) {
-            console.warn('Hard delete failed, falling back to soft delete:', delError);
-            await supabase.from('notification_deletes').insert({
-                notification_id: notificationId,
-                user_id: userId,
-                deleted_at: Date.now()
-            }).maybeSingle(); // ignore duplicate key errors
-        }
+        await dismissNotificationsForUser([notificationId], userId);
     } catch (err) {
         console.error('Failed to delete notification:', err);
     }
@@ -223,40 +233,16 @@ export const deleteNotification = async (notificationId: string, userId: string)
 
 export const clearAllReadNotifications = async (userId: string, notificationIds: string[] = []): Promise<void> => {
     try {
+        if (notificationIds.length > 0) {
+            await dismissNotificationsForUser(notificationIds, userId);
+            return;
+        }
+
         const { data: reads } = await supabase
             .from('notification_reads')
             .select('notification_id')
             .eq('user_id', userId);
-        const readIds = (reads ?? []).map(r => r.notification_id);
-        const ids = Array.from(new Set([...readIds, ...notificationIds].filter(Boolean)));
-        if (ids.length === 0) return;
-
-        // Try to hard-delete selected notification rows permanently.
-        // Explicit IDs avoid a race where "mark all read" has not reached the DB yet.
-        const { error: hardDeleteError } = await supabase.from('notifications').delete().in('id', ids);
-
-        // Check which ones STILL exist (failed to hard-delete due to RLS)
-        const { data: remaining } = hardDeleteError
-            ? { data: ids.map(id => ({ id })) }
-            : await supabase.from('notifications').select('id').in('id', ids);
-        const remainingIds = new Set((remaining ?? []).map(r => r.id));
-
-        if (remainingIds.size === 0) return; // All deleted successfully!
-
-        // Also record in notification_deletes as fallback for the ones that couldn't be hard-deleted
-        const { data: deletes } = await supabase
-            .from('notification_deletes')
-            .select('notification_id')
-            .eq('user_id', userId);
-        const deletedIds = new Set<string>((deletes ?? []).map(r => r.notification_id));
-
-        const toInsert = Array.from(remainingIds)
-            .filter(id => !deletedIds.has(id))
-            .map(id => ({ notification_id: id, user_id: userId, deleted_at: Date.now() }));
-
-        if (toInsert.length > 0) {
-            await supabase.from('notification_deletes').insert(toInsert);
-        }
+        await dismissNotificationsForUser((reads ?? []).map(r => r.notification_id), userId);
     } catch (err) {
         console.error('Failed to clear read notifications:', err);
     }

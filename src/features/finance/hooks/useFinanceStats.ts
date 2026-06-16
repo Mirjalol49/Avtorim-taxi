@@ -23,7 +23,7 @@ const isInactivePayment = (tx: Transaction) =>
     tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.REVERSED || tx.status === PaymentStatus.DELETED;
 
 const isDepositTopup = (tx: Transaction) =>
-    (tx as any).category === 'deposit_topup';
+    (tx as any).category === 'deposit_topup' || (tx as any).category === 'DEPOSIT';
 
 const isDepositUsage = (tx: Transaction) =>
     (tx as any).useDeposit === true;

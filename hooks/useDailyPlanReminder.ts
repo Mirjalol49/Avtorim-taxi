@@ -21,6 +21,7 @@ import { Transaction, TransactionType, PaymentStatus } from '../src/core/types/t
 import { NotificationCategory, NotificationPriority } from '../src/core/types/notification.types';
 import { sendNotification } from '../services/notificationService';
 import { supabase } from '../supabase';
+import { isDriverWorkingOnDate } from '../src/features/drivers/utils/driverLifecycle';
 
 const STORAGE_KEY_PREFIX = 'daily_plan_reminder_';
 
@@ -71,7 +72,7 @@ const hasDayOffToday = (driverId: string, transactions: Transaction[]): boolean 
     const todayKey = todayDateKey();
     return transactions.some(tx => {
         if (tx.driverId !== driverId) return false;
-        if ((tx.type as string) !== 'DAY_OFF') return false;
+        if (tx.type !== TransactionType.DAY_OFF && tx.type !== TransactionType.NOT_WORKING) return false;
         if (tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return false;
         const d = new Date(tx.timestamp);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -147,7 +148,8 @@ export const useDailyPlanReminder = ({
             const { drivers, cars, transactions, adminUserId: aId, adminUserName: aName } = dataRef.current;
             const today = todayDateKey();
             const dateDisplay = todayDisplayStr();
-            const activeDrivers = drivers.filter(d => !d.isDeleted);
+            const now = new Date();
+            const activeDrivers = drivers.filter(d => isDriverWorkingOnDate(d, now));
 
             // Build the list of drivers that need reminders
             type Eligible = {
@@ -187,12 +189,6 @@ export const useDailyPlanReminder = ({
 
             if (eligible.length === 0) return;
 
-            // Pre-mark ALL eligible drivers synchronously before any async work.
-            // This prevents a second concurrent fire() from sending duplicates within the same tab.
-            for (const { driver } of eligible) {
-                markDriverSent(today, slot, driver.id);
-            }
-
             // Server-side dedup: check which drivers already have a daily_plan reminder in DB for today.
             // This prevents multi-tab/multi-device sends (localStorage is per-browser, DB is shared).
             const todayStartMs = new Date().setHours(0, 0, 0, 0);
@@ -212,7 +208,11 @@ export const useDailyPlanReminder = ({
 
             // Now send notifications only for drivers not already in DB for today
             for (const { driver, car, dailyPlan, todayIncome, remaining, paidPct } of eligible) {
-                if (alreadySentInDb.has(driver.id)) continue; // server-side guard
+                if (alreadySentInDb.has(driver.id)) {
+                    markDriverSent(today, slot, driver.id);
+                    continue;
+                }
+
                 try {
                     await sendNotification(
                         {
@@ -241,8 +241,9 @@ export const useDailyPlanReminder = ({
                         aId,
                         aName
                     );
-                } catch {
-                    // per-driver notification failure should not stop the loop
+                    markDriverSent(today, slot, driver.id);
+                } catch (error) {
+                    console.warn('Daily plan reminder failed:', error);
                 }
             }
         } finally {

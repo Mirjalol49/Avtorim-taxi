@@ -3,6 +3,7 @@ import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, Driver
 import { Car } from '../../../core/types/car.types';
 import { toDateKey } from '../../../../services/daysOffService';
 import { calcDriverDebt } from '../../drivers/utils/debtUtils';
+import { isDriverWorkingOnDate } from '../../drivers/utils/driverLifecycle';
 import { getEffectivePlanForDriverDay, getCarIdForDriverDate } from '../../drivers/utils/driverPlanHistory';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[]) => {
@@ -100,25 +101,8 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         let debtTotal = 0;
 
         // Drivers active specifically on the targetDate
-        const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
         const activeDriversForDate = drivers.filter(d => {
-            // If they had any transaction today, they must be considered active
-            const hasTxToday = transactions.some(tx => tx.driverId === d.id && toDateKey(new Date(tx.timestamp)) === todayKey && tx.status !== PaymentStatus.DELETED && (tx as any).status !== 'DELETED');
-            if (hasTxToday) return true;
-
-            const startMs = d.startDate || d.createdAt;
-            if (startMs) {
-                const startMidnight = new Date(new Date(startMs).getFullYear(), new Date(startMs).getMonth(), new Date(startMs).getDate()).getTime();
-                if (targetMidnight < startMidnight) return false; // Haven't started yet on this date
-            }
-
-            const quitMs = d.quitDate;
-            if (quitMs && d.isDeleted) {
-                const quitMidnight = new Date(new Date(quitMs).getFullYear(), new Date(quitMs).getMonth(), new Date(quitMs).getDate(), 23, 59, 59, 999).getTime();
-                if (targetMidnight > quitMidnight) return false; // Already quit before this date
-            }
-            
-            return true;
+            return isDriverWorkingOnDate(d, targetDate);
         });
 
         activeDriversForDate.forEach(driver => {

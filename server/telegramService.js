@@ -456,6 +456,17 @@ class TelegramService {
 
             // ── Notify the fleet admin on Telegram (fire-and-forget) ──
             if (fleetId) {
+                await this.createBotTransactionNotification({
+                    adminId: fleetId,
+                    driverId,
+                    driverName,
+                    amount: Math.abs(amount),
+                    type,
+                    description: comment || undefined,
+                    txId: txData.id,
+                    timestamp: Date.now(),
+                });
+
                 this.notifyAdminOfBotTransaction({
                     adminId: fleetId,
                     driverName,
@@ -474,6 +485,50 @@ class TelegramService {
         } catch (e) {
             console.error("Trans Error:", e.message);
             return ctx.safeReply(t.error_generic, await this.getMainMenu(lang, driver.data.status));
+        }
+    }
+
+    async createBotTransactionNotification({ adminId, driverId, driverName, amount, type, description, txId, timestamp }) {
+        if (!this.db || !adminId) return;
+
+        const isIncome = type === 'INCOME';
+        const now = timestamp || Date.now();
+        const fmt = new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(amount)));
+        const date = new Date(now);
+        const dateStr = `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+        const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+        const { error } = await this.db.from('notifications').insert({
+            fleet_id: adminId,
+            title: `${isIncome ? '💰 Kirim' : '💸 Chiqim'}: ${driverName}`,
+            message: `${driverName} — ${isIncome ? '+' : '-'}${fmt} UZS (Telegram bot)`,
+            type: 'payment_reminder',
+            category: 'payment_reminder',
+            priority: 'high',
+            target_users: 'role:admin',
+            created_by: adminId,
+            created_by_name: 'Telegram Bot',
+            created_ms: now,
+            expires_at: now + 7 * 24 * 60 * 60 * 1000,
+            delivery_tracking: {
+                sent: now,
+                delivered: [],
+                read: [],
+                driverId,
+                driverName,
+                amount: Math.abs(amount),
+                notificationKind: 'transaction',
+                txType: isIncome ? 'income' : 'expense',
+                source: 'telegram_bot',
+                note: description || undefined,
+                txId,
+                dateStr,
+                timeStr,
+            },
+        });
+
+        if (error) {
+            console.error('[BOT] createBotTransactionNotification error:', error.message);
         }
     }
 

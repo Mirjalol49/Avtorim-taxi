@@ -82,7 +82,7 @@ export const fetchTransactionsPage = async (
         if (filters.endMs) q = q.lte('timestamp_ms', filters.endMs);
         if (filters.driverId && filters.driverId !== 'all') q = q.eq('driver_id', filters.driverId);
         if (filters.type === 'deposit') {
-            q = q.or('category.eq.deposit_topup,use_deposit.eq.true');
+            q = q.or('category.eq.deposit_topup,category.eq.DEPOSIT,use_deposit.eq.true');
         } else if (filters.type && filters.type !== 'all') {
             q = q.eq('type', filters.type);
         }

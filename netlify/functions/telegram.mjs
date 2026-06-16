@@ -284,6 +284,7 @@ async function saveIncomeAndNotify(driver, amount, photoFileId, lang) {
             carName:      carName,
             carPlate:     carPlate,
             amount:       Math.abs(amount),
+            notificationKind: 'transaction',
             txType:       'income',
             method:       'card',
             chequeImage:  chequeUrl ?? null,
