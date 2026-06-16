@@ -97,29 +97,33 @@ export const useDriverDocumentReminders = ({
                     const title = `${item.driver.name} — Ishonchnoma eslatmasi`;
                     const message = `Ishonchnoma eslatma kuni: ${formatDate(item.reminderAtMs)}.`;
 
-                    await sendNotification(
-                        {
-                            title,
-                            message,
-                            type: 'payment_reminder',
-                            category: NotificationCategory.PAYMENT_REMINDER,
-                            priority: NotificationPriority.MEDIUM,
-                            targetUsers: 'role:admin',
-                            expiresIn: 14 * DAY_MS,
-                            driverId: item.driver.id,
-                            extraTracking: {
-                                reminderType: 'driver_ishonchnoma_reminder',
-                                dedupKey,
-                                driverName: item.driver.name,
-                                documentCategory: item.doc.category,
-                                documentName: item.doc.name || 'Ishonchnoma',
-                                reminderAtMs: item.reminderAtMs,
+                    try {
+                        await sendNotification(
+                            {
+                                title,
+                                message,
+                                type: 'payment_reminder',
+                                category: NotificationCategory.PAYMENT_REMINDER,
+                                priority: NotificationPriority.MEDIUM,
+                                targetUsers: 'role:admin',
+                                expiresIn: 14 * DAY_MS,
+                                driverId: item.driver.id,
+                                extraTracking: {
+                                    reminderType: 'driver_ishonchnoma_reminder',
+                                    dedupKey,
+                                    driverName: item.driver.name,
+                                    documentCategory: item.doc.category,
+                                    documentName: item.doc.name || 'Ishonchnoma',
+                                    reminderAtMs: item.reminderAtMs,
+                                },
                             },
-                        },
-                        fleetId,
-                        creatorName
-                    );
-                    SESSION_SENT.add(dedupKey);
+                            fleetId,
+                            creatorName
+                        );
+                        SESSION_SENT.add(dedupKey);
+                    } catch (error) {
+                        console.warn('Ishonchnoma reminder failed:', error);
+                    }
                 }
             } finally {
                 firingRef.current = false;

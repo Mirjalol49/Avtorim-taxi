@@ -33,6 +33,7 @@ import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification,
 
 import { calcDriverFinance } from './src/features/drivers/utils/debtUtils';
 import { getCarIdForDriverDate } from './src/features/drivers/utils/driverPlanHistory';
+import { buildInitialDepositTransaction } from './src/features/drivers/utils/initialDepositTransaction';
 import { playLockSound } from './services/soundService';
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 import { useDriverDocumentReminders } from './hooks/useDriverDocumentReminders';
@@ -86,6 +87,13 @@ const TaksaparkLogo = ({ theme }: { theme: 'light' | 'dark' }) => (
         style={theme === 'dark' ? { filter: 'brightness(0) invert(1)' } : {}}
     />
 );
+
+const getActiveTabFromPath = (pathname: string): Tab => {
+  if (pathname === '/' || pathname === '/dashboard') return Tab.DASHBOARD;
+  if (pathname.startsWith('/monthly-plan')) return Tab.MONTHLY_PLAN;
+  const raw = pathname.substring(1).split('/')[0].replace(/-/g, '_').toUpperCase();
+  return (Tab as any)[raw] ?? Tab.DASHBOARD;
+};
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
@@ -526,6 +534,7 @@ const AppContent: React.FC = () => {
         await firestoreService.updateDriver(id, updateData, carsFleetId);
         driverId = id;
       } else {
+        const createdAt = Date.now();
         const newDriver = {
           name: data.name,
           licensePlate: data.licensePlate ?? '',
@@ -541,7 +550,7 @@ const AppContent: React.FC = () => {
             heading: 0
           },
           monthlySalary: data.monthlySalary || 0,
-          createdAt: Date.now(),
+          createdAt,
           isDeleted: false,
           balance: 0,
           rating: 5.0,
@@ -559,6 +568,10 @@ const AppContent: React.FC = () => {
           documents: data.documents ?? [],
         };
         driverId = await firestoreService.addDriver(newDriver, carsFleetId);
+        const initialDepositTx = buildInitialDepositTransaction({ ...newDriver, id: driverId } as Driver, createdAt);
+        if (initialDepositTx) {
+          await firestoreService.addTransaction(initialDepositTx, carsFleetId);
+        }
       }
 
       // Handle car assignment changes
@@ -1045,7 +1058,7 @@ const AppContent: React.FC = () => {
           theme={theme}
           onThemeToggle={toggleTheme}
           onLanguageChange={handleSetLanguage}
-          activeTab={location.pathname === '/' ? Tab.DASHBOARD : location.pathname.substring(1).toUpperCase() as Tab}
+          activeTab={getActiveTabFromPath(location.pathname)}
           isMobile={isMobile}
           onNewTransactionClick={() => setIsTxModalOpen(true)}
           onAddDriverClick={() => {

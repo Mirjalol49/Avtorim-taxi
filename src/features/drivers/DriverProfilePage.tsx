@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../supabase';
 import { Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
-import { PaymentStatus, Transaction, TransactionType } from '../../core/types/transaction.types';
-import { calcDriverFinance, type MonthlyBreakdown } from './utils/debtUtils';
-import { getDriverWorkPeriods, getEffectivePlanForDriverDay } from './utils/driverPlanHistory';
+import { PaymentStatus, Transaction } from '../../core/types/transaction.types';
+import { calcDriverFinance } from './utils/debtUtils';
+import { getDriverWorkPeriods } from './utils/driverPlanHistory';
 import {
     getIshonchnomaReminderMs,
     normalizeIshonchnomaReminderDocument,
@@ -39,86 +39,6 @@ interface Props {
 }
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
-const toMonthKey = (ts: number | Date) => {
-    const d = new Date(ts);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-const toDateKey = (ts: number | Date) => {
-    const d = new Date(ts);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-const isDepositTopupTx = (tx: Transaction) => tx.type === TransactionType.INCOME && tx.category === 'deposit_topup';
-const isPlanIncomeTx = (tx: Transaction) => tx.type === TransactionType.INCOME && !isDepositTopupTx(tx);
-const sumAbsTx = (txs: Transaction[]) => txs.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-
-interface ProfileMoneySummary {
-    target: number;
-    paid: number;
-    debt: number;
-    excess: number;
-    nonPlanIncome: number;
-    depositTopup: number;
-    depositUsed: number;
-    depositBalance: number;
-    salaryPaid: number;
-    salaryDeductions: number;
-    salaryPayable: number;
-}
-
-function buildProfileMoneySummary(
-    driver: Driver,
-    car: Car | null,
-    transactions: Transaction[],
-    financeMonth: MonthlyBreakdown | undefined,
-    depositBalance: number
-): ProfileMoneySummary {
-    const now = new Date();
-    const mk = toMonthKey(now);
-    const monthTxs = transactions.filter(tx =>
-        tx.driverId === driver.id &&
-        tx.status !== PaymentStatus.DELETED &&
-        toMonthKey(tx.timestamp) === mk
-    );
-    const txByDay = new Map<string, Transaction[]>();
-    for (const tx of monthTxs) {
-        const key = toDateKey(tx.timestamp);
-        if (!txByDay.has(key)) txByDay.set(key, []);
-        txByDay.get(key)!.push(tx);
-    }
-
-    let target = 0;
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    for (let day = 1; day <= now.getDate(); day += 1) {
-        const date = new Date(year, month, day);
-        const dayTxs = txByDay.get(toDateKey(date)) ?? [];
-        const isOffDay = dayTxs.some(tx => tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING);
-        if (!isOffDay) target += getEffectivePlanForDriverDay(driver, date, car);
-    }
-
-    const paid = sumAbsTx(monthTxs.filter(isPlanIncomeTx));
-    const debt = target > 0 ? Math.max(0, target - paid) : 0;
-    const excess = target > 0 ? Math.max(0, paid - target) : 0;
-    const nonPlanIncome = target === 0 ? paid : 0;
-    const depositTopup = sumAbsTx(monthTxs.filter(isDepositTopupTx));
-    const depositUsed = sumAbsTx(monthTxs.filter(tx => tx.useDeposit === true && !isDepositTopupTx(tx)));
-    const salaryPaid = sumAbsTx(monthTxs.filter(tx => tx.category === 'salary_payment'));
-    const salaryDeductions = (financeMonth?.shortfall ?? debt) + (financeMonth?.expenses ?? 0) + (financeMonth?.debts ?? 0) + (financeMonth?.salaryAdvance ?? 0);
-
-    return {
-        target,
-        paid,
-        debt,
-        excess,
-        nonPlanIncome,
-        depositTopup,
-        depositUsed,
-        depositBalance,
-        salaryPaid,
-        salaryDeductions,
-        salaryPayable: financeMonth?.netSalary ?? Math.max(0, (driver.monthlySalary ?? 0) - salaryDeductions),
-    };
-}
 
 function getFriendlyDocName(doc: any, t: (key: string, fallback: string) => string): string {
     if (doc.category) {
@@ -273,11 +193,6 @@ export const DriverProfilePage: React.FC<Props> = ({
         return () => document.removeEventListener('keydown', handleEsc);
     }, [viewingDoc]);
 
-    const finance = useMemo(() => {
-        if (!driver) return null;
-        return calcDriverFinance(driver, car ?? null, transactions);
-    }, [driver, car, transactions]);
-
     if (!driver) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
@@ -288,10 +203,18 @@ export const DriverProfilePage: React.FC<Props> = ({
     }
 
     const dt = driver.driverType ?? 'deposit';
-    const remaining = finance?.remainingDeposit ?? 0;
-    const initial = finance?.depositAmount ?? driver.depositAmount ?? 0;
-    const depositPct = initial > 0 ? Math.max(0, Math.min(100, (remaining / initial) * 100)) : 0;
-    const isLow = dt === 'deposit' && remaining <= (driver.depositWarningThreshold ?? 1_000_000);
+    const finance = calcDriverFinance(driver, car ?? null, transactions);
+    const balanceCard = dt === 'lease_to_own'
+        ? {
+            label: t('contractRemaining', "Shartnoma qoldig'i"),
+            value: finance.contractRemaining ?? 0,
+        }
+        : dt === 'deposit'
+            ? {
+                label: t('depositBalance', "Depozit qoldig'i"),
+                value: finance.remainingDeposit,
+            }
+            : null;
     const isWorkingNow = isDriverCurrentlyWorking(driver);
 
     const bg = isDark ? 'bg-[#151f32] border-white/5' : 'bg-white border-slate-200/60';
@@ -326,58 +249,6 @@ export const DriverProfilePage: React.FC<Props> = ({
         const month = String(date.getMonth() + 1).padStart(2, '0');
         return `${day}.${month}.${date.getFullYear()}`;
     };
-
-    const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const currentFinanceMonth = finance?.months.find(month => month.monthKey === currentMonthKey);
-    const currentMoneySummary = buildProfileMoneySummary(driver, car, transactions, currentFinanceMonth, remaining);
-
-    const profileMoneyCards = dt === 'salary'
-        ? [
-            {
-                label: t('monthlySalary', 'Oylik maosh'),
-                value: fmt(driver.monthlySalary ?? 0),
-            },
-            {
-                label: t('salaryDeductions', 'Avans / ushlab qolish'),
-                value: fmt(currentMoneySummary.salaryDeductions),
-            },
-            {
-                label: t('salaryPayable', "To'lanadigan qoldiq"),
-                value: fmt(currentMoneySummary.salaryPayable),
-            },
-        ]
-        : [
-            {
-                label: t('totalExpectedPlan', 'Jami reja'),
-                value: fmt(currentMoneySummary.target),
-            },
-            {
-                label: t('paidTowardPlan', "Rejaga to'langan"),
-                value: fmt(currentMoneySummary.paid),
-            },
-            {
-                label: currentMoneySummary.target === 0 && currentMoneySummary.paid > 0
-                    ? t('nonPlanIncome', 'Rejadan tashqari tushum')
-                    : currentMoneySummary.debt > 0
-                        ? t('debt', 'Qarz')
-                        : currentMoneySummary.excess > 0
-                            ? t('excess', 'Ortiqcha')
-                            : t('debtOrExcess', 'Qarz / Ortiqcha'),
-                value: currentMoneySummary.target === 0 && currentMoneySummary.paid > 0
-                    ? fmt(currentMoneySummary.nonPlanIncome)
-                    : currentMoneySummary.debt > 0
-                        ? `-${fmt(currentMoneySummary.debt)}`
-                        : currentMoneySummary.excess > 0
-                            ? `+${fmt(currentMoneySummary.excess)}`
-                            : fmt(0),
-                isDebt: currentMoneySummary.debt > 0,
-                isExcess: currentMoneySummary.excess > 0 || currentMoneySummary.nonPlanIncome > 0,
-            },
-            {
-                label: dt === 'lease_to_own' ? t('contractRemaining', "Shartnoma qoldig'i") : t('depositBalance', "Depozit qoldig'i"),
-                value: fmt(dt === 'lease_to_own' ? finance?.contractRemaining ?? 0 : currentMoneySummary.depositBalance),
-            },
-        ];
 
     const openLicenseModal = () => {
         if (userRole !== 'admin') return;
@@ -428,63 +299,67 @@ export const DriverProfilePage: React.FC<Props> = ({
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-4 pb-16 px-4 sm:px-6 mt-6">
-            
-            {/* Minimal Header */}
-            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border shadow-sm ${isDark ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-slate-200/60'}`}>
-                <div className="flex items-center gap-4">
-                    <DriverAvatar src={driver.avatar} name={driver.name} size={64} theme={theme} rounded="full" className="shadow-sm border" />
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className={`text-xl font-semibold tracking-tight ${txt}`}>{driver.name}</h1>
-                            {isWorkingNow ? (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">{t('active', 'Faol')}</span>
-                            ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400">{t('inactive', 'Nofaol')}</span>
-                            )}
+        <div className="w-full max-w-7xl mx-auto space-y-5 pb-16 px-4 sm:px-6 lg:px-8 mt-6">
+            <button
+                type="button"
+                onClick={() => navigate('/drivers')}
+                className={`inline-flex items-center gap-2 h-10 px-3 rounded-xl text-[13px] font-bold border transition-all active:scale-[0.98] ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-slate-300 hover:bg-white/[0.08] hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                aria-label={t('backToDriversList', "Haydovchilar ro'yxatiga qaytish")}
+            >
+                <ChevronLeftIcon className="w-4 h-4" />
+                {t('back', 'Orqaga')}
+            </button>
+
+            <div className={`grid grid-cols-1 gap-4 ${balanceCard ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
+                {/* Minimal Header */}
+                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl border shadow-sm ${isDark ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-slate-200/60'}`}>
+                    <div className="flex items-center gap-4 min-w-0">
+                        <DriverAvatar src={driver.avatar} name={driver.name} size={72} theme={theme} rounded="full" className="shadow-sm border flex-shrink-0" />
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className={`text-2xl font-semibold tracking-tight truncate ${txt}`}>{driver.name}</h1>
+                                {isWorkingNow ? (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">{t('active', 'Faol')}</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400">{t('inactive', 'Nofaol')}</span>
+                                )}
+                            </div>
+                            <p className={`text-[15px] mt-1 ${muted}`}>
+                                {driver.phone} {driver.telegram && `• ✈ ${driver.telegram}`}
+                            </p>
                         </div>
-                        <p className={`text-[14px] mt-0.5 ${muted}`}>
-                            {driver.phone} {driver.telegram && `• ✈ ${driver.telegram}`}
-                        </p>
                     </div>
+
+                    {/* Admin Actions */}
+                    {userRole === 'admin' && (
+                        <div className="flex items-center gap-2 self-start sm:self-center">
+                            {!isWorkingNow && onRehireDriver && (
+                                <button onClick={() => onRehireDriver(driver)} className={`px-3 py-2 rounded-lg text-[13px] font-medium transition-all ${isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}>
+                                    {t('rehireDriverAction', 'Qayta ishga olish')}
+                                </button>
+                            )}
+                            <button onClick={() => onEditDriver?.(driver)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isDark ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-slate-50 text-slate-600 border hover:bg-slate-100'}`}>
+                                <EditIcon className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => { if (window.confirm(t('confirmDeleteDriver', "Rostdan ham bu haydovchini o'chirmoqchimisiz?"))) { onDeleteDriver?.(driver.id); navigate('/drivers'); } }} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'}`}>
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                {/* Admin Actions */}
-                {userRole === 'admin' && (
-                    <div className="flex items-center gap-2">
-                        {!isWorkingNow && onRehireDriver && (
-                            <button onClick={() => onRehireDriver(driver)} className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}>
-                                {t('rehireDriverAction', 'Qayta ishga olish')}
-                            </button>
-                        )}
-                        <button onClick={() => onEditDriver?.(driver)} className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-slate-50 text-slate-600 border hover:bg-slate-100'}`}>
-                            <EditIcon className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => { if (window.confirm(t('confirmDeleteDriver', "Rostdan ham bu haydovchini o'chirmoqchimisiz?"))) { onDeleteDriver?.(driver.id); navigate('/drivers'); } }} className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'}`}>
-                            <TrashIcon className="w-4 h-4" />
-                        </button>
+                {balanceCard && (
+                    <div className={`p-5 sm:p-6 rounded-2xl border shadow-sm flex flex-col justify-center min-h-[124px] ${isDark ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-slate-200/60'}`}>
+                        <p className={`text-[13px] font-medium ${muted}`}>{balanceCard.label}</p>
+                        <p className={`mt-2 text-3xl font-semibold tracking-tight ${balanceCard.value < 0 ? 'text-red-500' : txt}`}>
+                            {fmt(balanceCard.value)}
+                        </p>
                     </div>
                 )}
             </div>
 
-            {/* Standard Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {profileMoneyCards.map((card, idx) => (
-                    <div key={idx} className={`p-4 rounded-2xl border shadow-sm ${isDark ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-slate-200/60'}`}>
-                        <p className={`text-[12px] font-medium ${muted}`}>{card.label}</p>
-                        <p className={`mt-1.5 text-2xl font-semibold tracking-tight ${
-                            'isDebt' in card && card.isDebt ? 'text-red-500' : 
-                            'isExcess' in card && card.isExcess ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : 
-                            txt
-                        }`}>
-                            {card.value}
-                        </p>
-                    </div>
-                ))}
-            </div>
-
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] gap-5">
                 
                 {/* Left Column: Activity & Car */}
                 <div className="space-y-4">

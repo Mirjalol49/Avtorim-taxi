@@ -6,8 +6,9 @@ import DateFilter from '../../../components/DateFilter';
 import DatePicker from '../../../components/DatePicker';
 import Skeleton from '../../../components/Skeleton';
 import {
-    TrendingUpIcon, TrendingDownIcon, WalletIcon, MedalIcon
+    TrendingUpIcon, TrendingDownIcon, WalletIcon, MedalIcon, SendIcon
 } from '../../../components/Icons';
+import { useToast } from '../../../components/ToastNotification';
 import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import Lottie from 'lottie-react';
@@ -37,6 +38,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     isMobile
 }) => {
     const { t, i18n } = useTranslation();
+    const { addToast } = useToast();
     const currentLanguage = (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
 
     const {
@@ -52,6 +54,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     const [statusSearch, setStatusSearch] = useState('');
     const [showAllCompleted, setShowAllCompleted] = useState(false);
     const [showAllPending, setShowAllPending] = useState(false);
+    const [messageDriver, setMessageDriver] = useState<Driver | null>(null);
+    const [customMessage, setCustomMessage] = useState('');
+    const [isSendingMessage, setIsSendingMessage] = useState(false);
 
     const STATUS_VISIBLE = 8;
 
@@ -60,6 +65,58 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     const filteredPending = todayStats.pending.filter(d => d.name.toLowerCase().includes(searchLower));
     const displayedCompleted = showAllCompleted ? filteredCompleted : filteredCompleted.slice(0, STATUS_VISIBLE);
     const displayedPending = showAllPending ? filteredPending : filteredPending.slice(0, STATUS_VISIBLE);
+
+    const closeMessageModal = () => {
+        setMessageDriver(null);
+        setCustomMessage('');
+        setIsSendingMessage(false);
+    };
+
+    const handleSendTelegramMessage = async () => {
+        if (!fleetId || !messageDriver || !messageDriver.telegram || !customMessage.trim()) return;
+
+        setIsSendingMessage(true);
+        try {
+            const response = await fetch('/.netlify/functions/send-driver-telegram-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fleetId,
+                    driverId: messageDriver.id,
+                    message: customMessage.trim(),
+                }),
+            });
+
+            if (!response.ok) throw new Error('Telegram message failed');
+
+            addToast('success', 'Telegram xabar yuborildi');
+            closeMessageModal();
+        } catch {
+            addToast('error', 'Telegram xabar yuborilmadi');
+            setIsSendingMessage(false);
+        }
+    };
+
+    const renderTelegramMessageButton = (driver: Driver) => {
+        const hasTelegram = Boolean(driver.telegram);
+        if (!hasTelegram) return null;
+
+        return (
+            <button
+                type="button"
+                onClick={() => setMessageDriver(driver)}
+                aria-label={`Telegram xabar yuborish: ${driver.name}`}
+                title="Telegram xabar yuborish"
+                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${
+                    isDark
+                        ? 'bg-cyan-500/[0.10] text-cyan-300 hover:bg-cyan-500/[0.18]'
+                        : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                }`}
+            >
+                <SendIcon className="w-4 h-4" />
+            </button>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -223,6 +280,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                             </div>
                                             {/* Amount & Check */}
                                             <div className="flex items-center gap-1 flex-shrink-0">
+                                                {renderTelegramMessageButton(driver)}
                                                 <span className={`text-[14px] font-bold tabular-nums tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                                     +{(driver.todayIncome || 0).toLocaleString()} UZS
                                                 </span>
@@ -292,15 +350,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 ) : null}
                                             </div>
                                             {/* Amount */}
-                                            <div className="flex flex-col items-end justify-center flex-shrink-0">
-                                                <span className={`text-[15px] font-black tabular-nums tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
-                                                    −{remaining.toLocaleString()} UZS
-                                                </span>
-                                                {paid > 0 && (
-                                                    <span className={`text-[11px] font-bold tracking-wide uppercase mt-1 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>
-                                                        +{paid.toLocaleString()} to'landi
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                {renderTelegramMessageButton(driver)}
+                                                <div className="flex flex-col items-end justify-center">
+                                                    <span className={`text-[15px] font-black tabular-nums tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
+                                                        −{remaining.toLocaleString()} UZS
                                                     </span>
-                                                )}
+                                                    {paid > 0 && (
+                                                        <span className={`text-[11px] font-bold tracking-wide uppercase mt-1 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>
+                                                            +{paid.toLocaleString()} to'landi
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -359,6 +420,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 </div>
                                             ) : null}
                                         </div>
+                                        {renderTelegramMessageButton(driver)}
                                     </div>
                                 );
                             })}
@@ -366,6 +428,68 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     </PremiumCard>
                 )}
             </div>
+
+            {messageDriver && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={closeMessageModal}
+                    />
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="telegram-message-title"
+                        className={`relative w-full max-w-lg rounded-2xl border shadow-2xl ${isDark ? 'bg-[#151b2b] border-white/[0.08]' : 'bg-white border-black/[0.08]'}`}
+                    >
+                        <div className={`px-5 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.08]'}`}>
+                            <h3 id="telegram-message-title" className={`text-[18px] font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                Telegram xabar yuborish
+                            </h3>
+                            <p className={`mt-1 text-[13px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {messageDriver.name}
+                            </p>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            {!messageDriver.telegram && (
+                                <div className={`rounded-xl px-4 py-3 text-[13px] font-semibold ${isDark ? 'bg-amber-500/[0.10] text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                                    Bu haydovchida Telegram ulanmagan.
+                                </div>
+                            )}
+                            <textarea
+                                value={customMessage}
+                                onChange={event => setCustomMessage(event.target.value)}
+                                placeholder="Xabar matni..."
+                                disabled={!messageDriver.telegram || isSendingMessage}
+                                rows={5}
+                                className={`w-full resize-none rounded-xl border px-4 py-3 text-[14px] font-medium outline-none transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isDark
+                                    ? 'bg-[#20283a] border-white/[0.08] text-white placeholder:text-gray-500 focus:border-cyan-400'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-cyan-600'
+                                }`}
+                            />
+                        </div>
+
+                        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t ${isDark ? 'border-white/[0.08]' : 'border-black/[0.08]'}`}>
+                            <button
+                                type="button"
+                                onClick={closeMessageModal}
+                                disabled={isSendingMessage}
+                                className={`px-4 py-2.5 rounded-xl text-[14px] font-bold transition-all active:scale-95 disabled:opacity-60 ${isDark ? 'bg-white/[0.06] text-gray-200 hover:bg-white/[0.10]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                            >
+                                Bekor qilish
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSendTelegramMessage}
+                                disabled={!messageDriver.telegram || !customMessage.trim() || isSendingMessage}
+                                className={`px-5 py-2.5 rounded-xl text-[14px] font-black transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'bg-cyan-500 text-[#061116] hover:bg-cyan-400' : 'bg-cyan-700 text-white hover:bg-cyan-800'}`}
+                            >
+                                {isSendingMessage ? 'Yuborilmoqda...' : 'Yuborish'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

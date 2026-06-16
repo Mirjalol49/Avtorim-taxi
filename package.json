@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "video:studio": "remotion studio src/video/index.ts",
+    "video:render": "remotion render src/video/index.ts TaksaparkPromo out/taksapark-promo.mp4",
+    "video:still": "remotion still src/video/index.ts TaksaparkPromo out/taksapark-promo-frame.png --frame=120 --scale=0.5",
     "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "prepare": "husky"
@@ -39,6 +42,7 @@
     "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
+    "@remotion/cli": "^4.0.471",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.2",
@@ -60,6 +64,7 @@
     "lint-staged": "^16.2.7",
     "postcss": "^8.5.10",
     "prettier": "^3.7.4",
+    "remotion": "^4.0.471",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",

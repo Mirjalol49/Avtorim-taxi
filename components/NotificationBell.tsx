@@ -24,6 +24,7 @@ import Lottie from 'lottie-react';
 import depositAnimation from '../Images/deposit.json';
 import { useDataContext } from '../src/core/context/DataContext';
 import { LicensePlate } from '../src/components/ui/LicensePlate';
+import { isDriverWorkingOnDate } from '../src/features/drivers/utils/driverLifecycle';
 
 type Tab = 'warnings' | 'transactions';
 
@@ -54,31 +55,41 @@ const parseNotificationAmount = (value?: string | null) => {
     return Math.abs(parsed);
 };
 
+const getDeliveryTracking = (n: Notification) =>
+    (((n as any).deliveryTracking ?? {}) as Record<string, unknown>);
+
+const getNotificationTxType = (n: Notification): 'income' | 'expense' | null => {
+    const txType = getDeliveryTracking(n).txType;
+    return txType === 'income' || txType === 'expense' ? txType : null;
+};
+
 const getNotificationAmount = (n: Notification) => {
-    const rawAmount = Number((n as any).deliveryTracking?.amount);
+    const rawAmount = Number(getDeliveryTracking(n).amount);
     if (Number.isFinite(rawAmount) && rawAmount !== 0) return Math.abs(rawAmount);
     return parseNotificationAmount(n.title) ?? parseNotificationAmount(n.message);
 };
 
 function isPlanReminder(n: Notification) {
-    return ((n as any).deliveryTracking?.reminderType === 'daily_plan');
+    return getDeliveryTracking(n).reminderType === 'daily_plan';
 }
 
 function isDepositWarning(n: Notification) {
-    return (n as any).deliveryTracking?.depositWarning === true;
+    return getDeliveryTracking(n).depositWarning === true;
 }
 
 function isDocumentReminder(n: Notification) {
-    const reminderType = (n as any).deliveryTracking?.reminderType;
+    const reminderType = getDeliveryTracking(n).reminderType;
     return reminderType === 'driver_ishonchnoma_reminder' || reminderType === 'driver_document_expiry';
 }
 
 function isTransaction(n: Notification) {
-    return n.type === 'payment_reminder'
-        && !isPlanReminder(n)
-        && !isDepositWarning(n)
-        && !isDocumentReminder(n)
-        && getNotificationAmount(n) !== null;
+    if (n.type !== 'payment_reminder') return false;
+    if (isPlanReminder(n) || isDepositWarning(n) || isDocumentReminder(n)) return false;
+    if (getNotificationTxType(n)) return true;
+
+    const text = `${n.title} ${n.message}`.toLowerCase();
+    const looksLikeTransaction = /kirim|chiqim|income|expense|приход|расход|💰|💵|💳|💸/.test(text);
+    return looksLikeTransaction && getNotificationAmount(n) !== null;
 }
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -167,6 +178,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
             if (isPlanReminder(w)) {
                 const dt = (w as any).deliveryTracking || {};
                 const driverId = dt.driverId || w.title;
+                const liveDriver = dt.driverId ? drivers.find(d => d.id === dt.driverId) : undefined;
+                if (dt.driverId && drivers.length > 0 && !liveDriver) continue;
+                if (liveDriver && !isDriverWorkingOnDate(liveDriver, Date.now())) continue;
+
                 const existing = planMap.get(driverId);
                 
                 if (!existing) {
@@ -187,7 +202,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         
         finalWarnings.push(...planMap.values());
         return finalWarnings.sort((a, b) => b.createdAt - a.createdAt);
-    }, [notifications]);
+    }, [notifications, drivers]);
     const transactions = useMemo(() => notifications.filter(isTransaction), [notifications]);
     const visibleNotificationIds = useMemo(
         () => Array.from(new Set([...warnings, ...transactions].map(n => n.id))),
@@ -216,7 +231,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
         const remaining   = (dt.remaining   as number)  ?? (dailyPlan - todayIncome);
         const paidPct     = dailyPlan > 0 ? Math.min(100, Math.round((todayIncome / dailyPlan) * 100)) : 0;
         const dateDisplay = (dt.dateDisplay as string)  ?? '';
-        const avatarUrl   = (dt.driverAvatar as string | undefined);
+        const liveDriver  = dt.driverId ? drivers.find(d => d.id === dt.driverId) : undefined;
+        const avatarUrl   = liveDriver?.avatar || (dt.driverAvatar as string | undefined);
         const carName     = (dt.carName  as string | null) ?? null;
         const carPlate    = (dt.carPlate as string | null) ?? null;
 
@@ -333,7 +349,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     // ─── Payment Transaction Card ───────────────────────────────────────────
     const renderPaymentItem = (notification: Notification, isRead: boolean) => {
         const dt         = (notification as any).deliveryTracking ?? {};
-        const txType     = dt.txType     as 'income' | 'expense' | undefined;
+        const txType     = getNotificationTxType(notification);
         const method     = dt.method     as 'cash' | 'card' | null;
         const amount     = getNotificationAmount(notification);
         const driverName = dt.driverName as string | undefined;
@@ -347,7 +363,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
         const isIncome = txType ? txType === 'income'
             : notification.title.includes('Kirim') || notification.title.includes('💵') || notification.title.includes('💳');
-        const amountDisplay = amount != null ? fmtAmount(amount) : '';
+        const amountDisplay = amount != null ? fmtAmount(amount) : '—';
         const nameDisplay = driverName
             ?? notification.title.replace(/[💵💳💸]\s*(?:Kirim|Chiqim):\s*/, '').replace(/\s*—.*$/, '').trim();
 

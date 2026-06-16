@@ -10,6 +10,9 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[functions."daily-plan-debt-reminder"]
+  schedule = "0 17 * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

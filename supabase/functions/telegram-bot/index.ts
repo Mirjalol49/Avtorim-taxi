@@ -372,6 +372,7 @@ async function notifyAdmin(
 
     const deliveryTracking: Record<string, unknown> = {
         sent: timestamp, delivered: [], read: [],
+        notificationKind: 'transaction',
         txType, amount, method, note, dateStr, timeStr,
     }
     if (session.driver_avatar) deliveryTracking.driverAvatar = session.driver_avatar

@@ -728,10 +728,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                                             ) : (
                                                                 <span className="font-medium">{descText}</span>
                                                             )}
-                                                            {(tx as any).category === 'deposit_topup' && (
+                                                            {((tx as any).category === 'deposit_topup' || (tx as any).category === 'DEPOSIT') && (
                                                                 <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-bold w-fit mt-0.5 ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>
                                                                     <div className="w-3 h-3"><Lottie animationData={depositAnimation} loop={true} /></div>
-                                                                    {t('depositTopup')}
+                                                                    {(tx as any).category === 'DEPOSIT' ? t('initialDeposit', "Boshlang'ich depozit") : t('depositTopup')}
                                                                 </span>
                                                             )}
                                                             {tx.useDeposit && (
@@ -892,10 +892,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                                     </div>
                                     <div className="flex flex-col gap-2 mt-1">
                                         <span className={`text-[13px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{descText}</span>
-                                        {(tx as any).category === 'deposit_topup' && (
+                                        {((tx as any).category === 'deposit_topup' || (tx as any).category === 'DEPOSIT') && (
                                             <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-bold w-fit ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>
                                                 <div className="w-3 h-3"><Lottie animationData={depositAnimation} loop={true} /></div>
-                                                {t('depositTopup')}
+                                                {(tx as any).category === 'DEPOSIT' ? t('initialDeposit', "Boshlang'ich depozit") : t('depositTopup')}
                                             </span>
                                         )}
                                         {tx.useDeposit && (
