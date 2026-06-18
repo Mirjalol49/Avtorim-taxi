@@ -5,6 +5,7 @@ import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../drivers/utils/driverPlanHistory';
+import { isDriverWorkingOnDate } from '../drivers/utils/driverLifecycle';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -231,8 +232,11 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     const rows = useMemo((): MonthRow[] => {
         const result: MonthRow[] = [];
 
+        const today = new Date();
         const activeDrivers = drivers.filter(d => !d.isDeleted &&
-            (filterDriverId === 'all' || d.id === filterDriverId));
+            (filterDriverId === 'all'
+                ? isDriverWorkingOnDate(d, today)
+                : d.id === filterDriverId));
 
         for (const driver of activeDrivers) {
             const car = findDriverPlanCar(driver, cars);

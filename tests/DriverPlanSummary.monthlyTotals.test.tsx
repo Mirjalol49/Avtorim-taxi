@@ -62,7 +62,7 @@ describe('DriverPlanSummary monthly totals', () => {
         vi.useRealTimers();
     });
 
-    it('includes historical June income for a driver who is no longer currently assigned', () => {
+    it('hides drivers who are no longer working from the all-drivers plan view', () => {
         const driver = makeDriver({
             id: 'fired-driver',
             name: 'Farrux',
@@ -95,8 +95,7 @@ describe('DriverPlanSummary monthly totals', () => {
             />,
         );
 
-        expect(screen.getByText('Farrux')).toBeInTheDocument();
-        expectAmount(4_700_000);
+        expect(screen.queryByText('Farrux')).not.toBeInTheDocument();
     });
 
     it('counts deposit-funded transactions as driver plan payments', () => {
