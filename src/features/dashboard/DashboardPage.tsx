@@ -162,7 +162,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     </>
                 ) : (
                     <>
-                        <MetricCard title={t('totalIncome')} value={summary.totalIncome} type="income" icon={TrendingUpIcon} isDark={isDark} />
+                        <MetricCard title={t('cashIncome', 'Kassa tushumi')} value={summary.totalIncome} type="income" icon={TrendingUpIcon} isDark={isDark} />
                         <MetricCard title={t('totalExpense')} value={summary.totalExpense} type="expense" icon={TrendingDownIcon} isDark={isDark} />
                         <div className="sm:col-span-2 lg:col-span-1">
                             <MetricCard title={t('netProfit')} value={summary.netProfit} type="profit" icon={WalletIcon} isDark={isDark} showPlusSign />
