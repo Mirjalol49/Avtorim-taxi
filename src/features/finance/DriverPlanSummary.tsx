@@ -75,9 +75,7 @@ const isExcludedPaymentStatus = (status?: string | null) =>
 const isPlanIncomeTransaction = (tx: Transaction): boolean =>
     tx.type === TransactionType.INCOME &&
     (tx as any).category !== 'deposit_topup' &&
-    (tx as any).category !== 'DEPOSIT' &&
-    (tx as any).useDeposit !== true &&
-    (tx as any).use_deposit !== true;
+    (tx as any).category !== 'DEPOSIT';
 
 const findDriverPlanCar = (driver: Driver, cars: Car[]): Car | null => {
     const currentCar = cars.find(c => c.assignedDriverId === driver.id);

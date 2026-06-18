@@ -21,9 +21,6 @@ const expectAmount = (amount: number) => {
     expect(screen.getAllByText((content) => normalize(content) === `${amount}UZS`).length).toBeGreaterThan(0);
 };
 
-const queryAmount = (amount: number) =>
-    screen.queryByText((content) => normalize(content) === `${amount}UZS`);
-
 const juneStart = new Date(2026, 5, 1);
 const juneEnd = new Date(2026, 5, 30);
 
@@ -102,7 +99,7 @@ describe('DriverPlanSummary monthly totals', () => {
         expectAmount(4_700_000);
     });
 
-    it('does not count deposit-funded transactions as monthly plan income', () => {
+    it('counts deposit-funded transactions as driver plan payments', () => {
         const driver = makeDriver({
             id: 'active-driver',
             name: 'Jasur',
@@ -144,7 +141,6 @@ describe('DriverPlanSummary monthly totals', () => {
             />,
         );
 
-        expectAmount(500_000);
-        expect(queryAmount(1_500_000)).not.toBeInTheDocument();
+        expectAmount(1_500_000);
     });
 });
