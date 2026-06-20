@@ -19,7 +19,7 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { forceDownload } from '../../../utils/downloadHelper';
 import { DriverHistoryPage } from './components/DriverHistoryPage';
 import {
-    ChevronLeftIcon, EditIcon, TrashIcon, CarIcon, EyeIcon, DownloadIcon, XIcon
+    ChevronLeftIcon, EditIcon, TrashIcon, CarIcon, EyeIcon, DownloadIcon, XIcon, FilePdfIcon
 } from '../../../components/Icons';
 import DatePicker from '../../../components/DatePicker';
 import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
@@ -473,29 +473,91 @@ export const DriverProfilePage: React.FC<Props> = ({
                         {groupedDocs.length > 0 && <div className={`h-px mx-4 ${isDark ? 'bg-white/10' : 'bg-slate-100'}`} />}
 
                         {/* Other Documents */}
-                        {groupedDocs.map((group, idx) => (
-                            <React.Fragment key={group.key}>
-                                {idx > 0 && <div className={`h-px mx-4 ${isDark ? 'bg-white/10' : 'bg-slate-100'}`} />}
-                                <div className={`p-4 flex items-center justify-between`}>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                            <span className="text-lg opacity-80">📁</span>
+                        {groupedDocs.length > 0 && (
+                            <div className="p-4 space-y-3">
+                                {groupedDocs.map(group => (
+                                    <div
+                                        key={group.key}
+                                        className={`rounded-2xl border p-3.5 ${
+                                            isDark ? 'border-white/[0.08] bg-white/[0.03]' : 'border-slate-200 bg-slate-50/70'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-3 mb-3">
+                                            <p className={`text-[14px] font-black ${txt}`}>{group.title}</p>
+                                            <span className={`text-[11px] font-bold ${muted}`}>
+                                                {group.docs.length} {t('driverModalFileCount', 'fayl')}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <p className={`text-[14px] font-medium ${txt}`}>{group.title}</p>
-                                            <p className={`text-[12px] mt-0.5 ${muted}`}>{group.docs.length} {t('driverModalFileCount', 'fayl')}</p>
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                                            {group.docs.map((doc, idx) => {
+                                                const isImage = doc.type?.startsWith('image/');
+                                                const fileNumber = idx + 1;
+                                                const openDocument = () => {
+                                                    if (isImage) {
+                                                        setViewingDoc({ name: doc.name, data: doc.data });
+                                                    } else {
+                                                        window.open(doc.data, '_blank', 'noopener,noreferrer');
+                                                    }
+                                                };
+
+                                                return (
+                                                    <div key={`${doc.name || group.key}-${idx}`} className="relative group">
+                                                        <button
+                                                            type="button"
+                                                            onClick={openDocument}
+                                                            className={`relative w-full aspect-square overflow-hidden rounded-2xl border flex items-center justify-center ${
+                                                                isDark ? 'border-white/[0.10] bg-black/15' : 'border-slate-200 bg-white'
+                                                            }`}
+                                                            title={doc.name || group.title}
+                                                            aria-label={`${t('view', "Ko'rish")}: ${doc.name || group.title}`}
+                                                        >
+                                                            {isImage ? (
+                                                                <img src={doc.data} alt={doc.name || group.title} className="absolute inset-0 w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="flex flex-col items-center gap-1 text-rose-500">
+                                                                    <FilePdfIcon className="w-7 h-7" />
+                                                                    <span className="text-[10px] font-black">PDF</span>
+                                                                </div>
+                                                            )}
+                                                            <span className="absolute left-1.5 top-1.5 min-w-6 h-6 px-1 rounded-full bg-black/70 text-white text-[11px] font-black flex items-center justify-center">
+                                                                {fileNumber}
+                                                            </span>
+                                                            <span className="absolute right-1.5 bottom-1.5 w-7 h-7 rounded-full bg-black/65 text-white flex items-center justify-center opacity-90 group-hover:scale-105 transition-transform">
+                                                                <EyeIcon className="w-3.5 h-3.5" />
+                                                            </span>
+                                                        </button>
+                                                        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={openDocument}
+                                                                className={`h-8 rounded-xl flex items-center justify-center transition-all active:scale-[0.97] ${
+                                                                    isDark ? 'bg-white/[0.06] text-white/75 hover:bg-white/[0.1]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                                }`}
+                                                                aria-label={`${t('view', "Ko'rish")}: ${doc.name || group.title}`}
+                                                                title={t('view', "Ko'rish")}
+                                                            >
+                                                                <EyeIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => forceDownload(doc.data, doc.name || group.title)}
+                                                                className={`h-8 rounded-xl flex items-center justify-center transition-all active:scale-[0.97] ${
+                                                                    isDark ? 'bg-teal-500/15 text-teal-200 hover:bg-teal-500/25' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+                                                                }`}
+                                                                aria-label={`${t('download', 'Yuklab olish')}: ${doc.name || group.title}`}
+                                                                title={t('download', 'Yuklab olish')}
+                                                            >
+                                                                <DownloadIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
-                                    <button onClick={() => {
-                                        const doc = group.docs[0];
-                                        if (doc.type?.startsWith('image/')) setViewingDoc({ name: doc.name, data: doc.data });
-                                        else window.open(doc.data, '_blank');
-                                    }} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                                        <EyeIcon className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </React.Fragment>
-                        ))}
+                                ))}
+                            </div>
+                        )}
 
                         {!docsLoading && groupedDocs.length === 0 && (
                             <div className={`p-4 text-center border-t ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
