@@ -60,6 +60,37 @@ function getFriendlyDocName(doc: any, t: (key: string, fallback: string) => stri
 
 const DOC_CATEGORY_ORDER = ['driver_license', 'passport', 'other', 'car_registration', 'car_insurance'];
 
+type DriverProfileDocPreview = {
+    name: string;
+    data: string;
+    type?: string;
+};
+
+function isImageDocument(doc: { type?: string; data?: string }) {
+    return Boolean(doc.type?.startsWith('image/') || doc.data?.startsWith('data:image/'));
+}
+
+function isPdfDocument(doc: { name?: string; type?: string; data?: string }) {
+    return Boolean(
+        doc.type?.toLowerCase().includes('pdf')
+        || doc.data?.startsWith('data:application/pdf')
+        || doc.name?.toLowerCase().endsWith('.pdf')
+    );
+}
+
+function dataUrlToObjectUrl(dataUrl: string, mimeOverride?: string) {
+    const [meta, payload] = dataUrl.split(',');
+    if (!payload) return dataUrl;
+
+    const mime = mimeOverride || meta.match(/^data:([^;]+)/)?.[1] || 'application/octet-stream';
+    const isBase64 = meta.includes(';base64');
+    const binary = isBase64 ? atob(payload) : decodeURIComponent(payload);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+}
+
 function isDriverCurrentlyWorking(driver: Driver | undefined): boolean {
     if (!driver || driver.isDeleted) return false;
     if (!driver.quitDate) return true;
@@ -143,7 +174,8 @@ export const DriverProfilePage: React.FC<Props> = ({
     
     const [docs, setDocs] = useState<any[]>([]);
     const [docsLoading, setDocsLoading] = useState(true);
-    const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<DriverProfileDocPreview | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [showHistory, setShowHistory] = useState(false);
     const [assignOpen, setAssignOpen] = useState(false);
     const [licenseModalOpen, setLicenseModalOpen] = useState(false);
@@ -193,6 +225,30 @@ export const DriverProfilePage: React.FC<Props> = ({
         return () => document.removeEventListener('keydown', handleEsc);
     }, [viewingDoc]);
 
+    useEffect(() => {
+        if (!viewingDoc) {
+            setPreviewUrl(null);
+            return;
+        }
+
+        let objectUrl: string | null = null;
+        if (viewingDoc.data.startsWith('data:') && isPdfDocument(viewingDoc)) {
+            try {
+                objectUrl = dataUrlToObjectUrl(viewingDoc.data, 'application/pdf');
+                setPreviewUrl(objectUrl);
+            } catch (error) {
+                console.error('Failed to prepare PDF preview', error);
+                setPreviewUrl(viewingDoc.data);
+            }
+        } else {
+            setPreviewUrl(viewingDoc.data);
+        }
+
+        return () => {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [viewingDoc]);
+
     if (!driver) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
@@ -222,6 +278,8 @@ export const DriverProfilePage: React.FC<Props> = ({
     const muted = isDark ? 'text-slate-400' : 'text-slate-500';
     
     const groupedDocs = groupDriverDocuments(docs.filter((doc: any) => Boolean(doc.data)), t);
+    const isViewingImage = viewingDoc ? isImageDocument(viewingDoc) : false;
+    const isViewingPdf = viewingDoc ? isPdfDocument(viewingDoc) : false;
     const driverLicenseDoc = docs.find((doc: any) => doc.category === 'driver_license' && getIshonchnomaReminderMs(doc) !== null);
     const driverLicenseReminderAt = getIshonchnomaReminderMs(driverLicenseDoc);
     const todayStartMs = startOfDayMs(Date.now());
@@ -490,14 +548,11 @@ export const DriverProfilePage: React.FC<Props> = ({
                                         </div>
                                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                                             {group.docs.map((doc, idx) => {
-                                                const isImage = doc.type?.startsWith('image/');
+                                                const isImage = isImageDocument(doc);
+                                                const isPdf = isPdfDocument(doc);
                                                 const fileNumber = idx + 1;
                                                 const openDocument = () => {
-                                                    if (isImage) {
-                                                        setViewingDoc({ name: doc.name, data: doc.data });
-                                                    } else {
-                                                        window.open(doc.data, '_blank', 'noopener,noreferrer');
-                                                    }
+                                                    setViewingDoc({ name: doc.name || group.title, data: doc.data, type: doc.type });
                                                 };
 
                                                 return (
@@ -513,10 +568,15 @@ export const DriverProfilePage: React.FC<Props> = ({
                                                         >
                                                             {isImage ? (
                                                                 <img src={doc.data} alt={doc.name || group.title} className="absolute inset-0 w-full h-full object-cover" />
+                                                            ) : isPdf ? (
+                                                                <div className="flex flex-col items-center gap-1.5 pt-2 text-rose-500">
+                                                                    <FilePdfIcon className="w-8 h-8" />
+                                                                    <span className="text-[10px] font-black tracking-wider">PDF</span>
+                                                                </div>
                                                             ) : (
-                                                                <div className="flex flex-col items-center gap-1 text-rose-500">
-                                                                    <FilePdfIcon className="w-7 h-7" />
-                                                                    <span className="text-[10px] font-black">PDF</span>
+                                                                <div className="flex flex-col items-center gap-1.5 px-2 pt-2 text-slate-500">
+                                                                    <FilePdfIcon className="w-8 h-8" />
+                                                                    <span className="max-w-full truncate text-[10px] font-black tracking-wider">{doc.type?.split('/')[1]?.toUpperCase() || 'FILE'}</span>
                                                                 </div>
                                                             )}
                                                             <span className="absolute left-1.5 top-1.5 min-w-6 h-6 px-1 rounded-full bg-black/70 text-white text-[11px] font-black flex items-center justify-center">
@@ -570,20 +630,64 @@ export const DriverProfilePage: React.FC<Props> = ({
 
             {/* Modals remain structurally the same */}
             {viewingDoc && typeof document !== 'undefined' && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm" onClick={() => setViewingDoc(null)}>
-                    <div className={`relative w-full max-w-[760px] max-h-[calc(100dvh-32px)] sm:max-h-[calc(100dvh-48px)] rounded-[32px] overflow-hidden shadow-2xl flex flex-col ${isDark ? 'bg-[#151a23] border border-white/10' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
-                        <div className={`flex items-center justify-between gap-3 p-5 ${isDark ? 'bg-[#151a23]' : 'bg-white'}`}>
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={t('viewDocument', "Hujjatni ko'rish")}
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md"
+                    onMouseDown={() => setViewingDoc(null)}
+                >
+                    <div
+                        className={`relative w-full max-w-[920px] h-[min(820px,calc(100dvh-32px))] sm:h-[min(860px,calc(100dvh-48px))] rounded-[28px] overflow-hidden shadow-2xl flex flex-col border ${isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'}`}
+                        onMouseDown={e => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 border-b ${isDark ? 'border-white/10 bg-[#111827]' : 'border-slate-200 bg-white'}`}>
                             <div className="min-w-0">
                                 <h3 className={`font-bold text-[16px] leading-tight ${txt}`}>{t('viewDocument', "Hujjatni ko'rish")}</h3>
-                                <p className={`text-[12px] truncate ${muted}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
+                                <p className={`mt-0.5 text-[12px] truncate ${muted}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                                <button onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)} className={`w-10 h-10 flex items-center justify-center rounded-[16px] border transition-colors ${isDark ? 'border-white/10 text-white/70 hover:bg-white/20' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'}`}><DownloadIcon className="w-4 h-4" /></button>
-                                <button onClick={() => setViewingDoc(null)} className={`w-10 h-10 flex items-center justify-center rounded-[16px] border transition-colors ${isDark ? 'border-white/10 text-white/70 hover:bg-white/20' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'}`}><XIcon className="w-5 h-5" /></button>
+                                {previewUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
+                                        className={`hidden sm:flex h-10 px-3 items-center justify-center rounded-[16px] border text-[12px] font-bold transition-colors ${isDark ? 'border-white/10 text-white/75 hover:bg-white/10' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'}`}
+                                    >
+                                        {t('open', 'Ochish')}
+                                    </button>
+                                )}
+                                <button onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)} className="h-10 px-3 sm:px-4 flex items-center justify-center gap-2 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors">
+                                    <DownloadIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">{t('download', 'Yuklab olish')}</span>
+                                </button>
+                                <button onClick={() => setViewingDoc(null)} className={`w-10 h-10 flex items-center justify-center rounded-[16px] border transition-colors ${isDark ? 'border-white/10 text-white/70 hover:bg-white/20' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'}`} aria-label={t('close', 'Yopish')}><XIcon className="w-5 h-5" /></button>
                             </div>
                         </div>
-                        <div className={`flex-1 min-h-0 p-6 overflow-auto flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-slate-50'}`}>
-                            <img src={viewingDoc.data} alt={viewingDoc.name} className="w-full max-w-[620px] rounded-2xl shadow-sm object-contain max-h-[calc(100dvh-200px)]" />
+                        <div className={`flex-1 min-h-0 p-3 sm:p-5 overflow-auto flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-slate-50'}`}>
+                            {isViewingImage ? (
+                                <img src={viewingDoc.data} alt={viewingDoc.name} className="max-w-full max-h-full rounded-[20px] shadow-xl object-contain" />
+                            ) : isViewingPdf && previewUrl ? (
+                                <iframe
+                                    title={viewingDoc.name || t('file', 'Fayl')}
+                                    src={previewUrl}
+                                    className={`w-full h-full min-h-[520px] rounded-[20px] border ${isDark ? 'border-white/10 bg-white' : 'border-slate-200 bg-white'}`}
+                                />
+                            ) : (
+                                <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
+                                    <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
+                                    <p className={`text-[15px] font-black ${txt}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
+                                    <p className={`mt-1 text-[12px] ${muted}`}>{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
+                                    {previewUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
+                                            className="mt-4 h-10 px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors"
+                                        >
+                                            {t('open', 'Ochish')}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>, document.body
