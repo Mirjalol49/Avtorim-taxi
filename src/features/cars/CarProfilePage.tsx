@@ -185,6 +185,19 @@ export const CarProfilePage: React.FC<Props> = ({
         };
     }, [car?.id]);
 
+    useEffect(() => {
+        if (!viewingDoc) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setViewingDoc(null);
+        };
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [viewingDoc]);
+
     if (!car) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
@@ -725,16 +738,57 @@ export const CarProfilePage: React.FC<Props> = ({
             </div>
 
             {/* Document Viewer Modal */}
-            {viewingDoc && (
-                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-8 bg-black/80 backdrop-blur-sm" onClick={() => setViewingDoc(null)}>
-                    <div className="relative w-full max-w-4xl bg-black/50 rounded-3xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="absolute top-4 right-4 flex gap-2 z-10">
-                            <button onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)} className="px-4 py-2 bg-[#0f766e]/80 hover:bg-[#0f766e] text-white text-[12px] font-bold rounded-xl backdrop-blur-md transition-colors">Yuklab olish</button>
-                            <button onClick={() => setViewingDoc(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md transition-colors border border-white/20">✕</button>
+            {viewingDoc && typeof document !== 'undefined' && createPortal(
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={t('viewDocument', "Hujjatni ko'rish")}
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md"
+                    onMouseDown={() => setViewingDoc(null)}
+                >
+                    <div
+                        className={`relative flex w-full max-w-[860px] max-h-[calc(100dvh-32px)] sm:max-h-[calc(100dvh-48px)] flex-col overflow-hidden rounded-[28px] border shadow-2xl ${
+                            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+                        }`}
+                        onMouseDown={e => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                            <div className="min-w-0">
+                                <p className={`text-[15px] sm:text-[16px] font-bold leading-tight truncate ${txt}`}>
+                                    {t('viewDocument', "Hujjatni ko'rish")}
+                                </p>
+                                <p className={`mt-0.5 text-[12px] truncate ${muted}`}>
+                                    {viewingDoc.name || t('file', 'Fayl')}
+                                </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <button
+                                    onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)}
+                                    className="h-10 px-3 sm:px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors"
+                                >
+                                    {t('download', 'Yuklab olish')}
+                                </button>
+                                <button
+                                    onClick={() => setViewingDoc(null)}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-[16px] border transition-colors ${
+                                        isDark ? 'border-white/10 text-white/70 hover:bg-white/10 hover:text-white' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'
+                                    }`}
+                                    aria-label={t('close', 'Yopish')}
+                                >
+                                    <XIcon className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
-                        <img src={viewingDoc.data} alt={viewingDoc.name} className="w-full h-auto max-h-[85vh] object-contain" />
+                        <div className={`flex-1 min-h-0 overflow-auto p-3 sm:p-5 flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-slate-50'}`}>
+                            <img
+                                src={viewingDoc.data}
+                                alt={viewingDoc.name}
+                                className="max-w-full max-h-[calc(100dvh-150px)] rounded-[20px] object-contain shadow-xl"
+                            />
+                        </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
 
             {onQuickAssign && (
