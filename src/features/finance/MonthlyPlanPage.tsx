@@ -17,6 +17,9 @@ interface MonthlyPlanPageProps {
     onOpenTransactionForDay?: (driverId: string, date: Date) => void;
 }
 
+const isCurrentlyActiveDriver = (driver: Driver, now = Date.now()) =>
+    !driver.isDeleted && (!driver.quitDate || driver.quitDate > now);
+
 export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     transactions,
     drivers,
@@ -39,7 +42,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
 
     const activeDriversWithCars = drivers.filter(d => {
-        if (d.isDeleted) return false;
+        if (!isCurrentlyActiveDriver(d)) return false;
         const car = cars.find(c => c.assignedDriverId === d.id && !c.isDeleted);
         return !!car;
     });

@@ -98,6 +98,32 @@ describe('DriverPlanSummary monthly totals', () => {
         expect(screen.queryByText('Farrux')).not.toBeInTheDocument();
     });
 
+    it('hides a driver immediately after they are fired today from the all-drivers plan view', () => {
+        const driver = makeDriver({
+            id: 'fired-today-driver',
+            name: 'Ali',
+            quitDate: new Date(2026, 5, 30, 9).getTime(),
+            planHistory: [
+                { plan: 500_000, effectiveFrom: new Date(2026, 4, 1).getTime(), carId: 'car-1' },
+            ],
+        });
+        const car = makeCar({ id: 'car-1', assignedDriverId: driver.id });
+
+        render(
+            <DriverPlanSummary
+                drivers={[driver]}
+                cars={[car]}
+                transactions={[]}
+                startDate={juneStart}
+                endDate={juneEnd}
+                filterDriverId="all"
+                theme="light"
+            />,
+        );
+
+        expect(screen.queryByText('Ali')).not.toBeInTheDocument();
+    });
+
     it('counts deposit-funded transactions as driver plan payments', () => {
         const driver = makeDriver({
             id: 'active-driver',

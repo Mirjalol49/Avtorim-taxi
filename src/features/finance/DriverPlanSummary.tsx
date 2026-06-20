@@ -101,6 +101,9 @@ const hasEffectivePlanInMonth = (driver: Driver, car: Car | null, mk: string): b
     return false;
 };
 
+const isCurrentlyActiveDriver = (driver: Driver, now: number): boolean =>
+    !driver.isDeleted && (!driver.quitDate || driver.quitDate > now);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
@@ -233,10 +236,11 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
         const result: MonthRow[] = [];
 
         const today = new Date();
-        const activeDrivers = drivers.filter(d => !d.isDeleted &&
-            (filterDriverId === 'all'
-                ? isDriverWorkingOnDate(d, today)
-                : d.id === filterDriverId));
+        const nowMs = today.getTime();
+        const activeDrivers = drivers.filter(d => {
+            if (filterDriverId !== 'all') return d.id === filterDriverId;
+            return isCurrentlyActiveDriver(d, nowMs) && isDriverWorkingOnDate(d, today);
+        });
 
         for (const driver of activeDrivers) {
             const car = findDriverPlanCar(driver, cars);
