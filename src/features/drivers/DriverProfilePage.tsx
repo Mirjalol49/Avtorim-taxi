@@ -232,9 +232,13 @@ export const DriverProfilePage: React.FC<Props> = ({
             ? 'warning'
             : 'valid';
 
-    const formatDriverDocDate = (ms: number | null) => ms
-        ? new Intl.DateTimeFormat(t('localeCode', 'uz-UZ'), { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(ms))
-        : t('notSpecified', 'Kiritilmagan');
+    const formatDriverDocDate = (ms: number | null) => {
+        if (!ms) return t('notSpecified', 'Kiritilmagan');
+        const date = new Date(ms);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return `${day}.${month}.${date.getFullYear()}`;
+    };
 
     const driverLicenseReminderText = driverLicenseReminderAt
         ? t('driverLicenseReminderLine', 'Eslatma: {{date}}').replace('{{date}}', formatDriverDocDate(driverLicenseReminderAt))
