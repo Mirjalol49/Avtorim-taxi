@@ -8,6 +8,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const TASHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
 
 const TELEGRAM_API = (token) => `https://api.telegram.org/bot${token}/sendMessage`;
+const getEnv = (name) => globalThis.Netlify?.env?.get?.(name) ?? process.env[name];
 
 const dateKeyStartMs = (dateKey) => {
     const [year, month, day] = dateKey.split('-').map(Number);
@@ -192,15 +193,34 @@ export async function runDailyPlanDebtReminder({
     return { sent, skipped, failed };
 }
 
+export const config = {
+    schedule: '0 17 * * *',
+};
+
 export const handler = async () => {
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseUrl = getEnv('SUPABASE_URL');
+    const serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const botToken = getEnv('TELEGRAM_BOT_TOKEN');
+
+    if (!supabaseUrl || !serviceRoleKey || !botToken) {
+        const missing = [
+            !supabaseUrl && 'SUPABASE_URL',
+            !serviceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
+            !botToken && 'TELEGRAM_BOT_TOKEN',
+        ].filter(Boolean);
+        console.error('[daily-plan-debt-reminder] missing env:', missing.join(', '));
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: `Missing env: ${missing.join(', ')}` }),
+        };
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
     const result = await runDailyPlanDebtReminder({
         supabase,
-        botToken: process.env.TELEGRAM_BOT_TOKEN,
+        botToken,
     });
     return { statusCode: 200, body: JSON.stringify(result) };
 };
 
-export default async function scheduledHandler() {
-    return handler();
-}
+export default handler;
