@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, DownloadIcon } from '../../../components/Icons';
+import { ArrowLeftIcon, DownloadIcon, FilePdfIcon } from '../../../components/Icons';
+import { openDocumentInNewTab } from './pdfPreviewUtils';
 
 const PdfViewerPage: React.FC = () => {
     const { t } = useTranslation();
@@ -9,7 +10,6 @@ const PdfViewerPage: React.FC = () => {
     const navigate = useNavigate();
     const url  = params.get('url')  ?? '';
     const name = params.get('name') ?? 'Hujjat';
-    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         document.title = name;
@@ -48,22 +48,20 @@ const PdfViewerPage: React.FC = () => {
                 </a>
             </div>
 
-            {/* PDF iframe */}
-            {!loaded && (
-                <div className="absolute inset-0 top-[46px] flex items-center justify-center bg-[#f0f0f0] z-10">
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                        <p className="text-gray-500 text-sm">{t('loading')}</p>
-                    </div>
+            <div className="flex-1 flex items-center justify-center p-6 bg-[#f0f0f0]">
+                <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+                    <FilePdfIcon className="mx-auto mb-3 w-12 h-12 text-slate-400" />
+                    <p className="text-[15px] font-black text-slate-900">{name}</p>
+                    <p className="mt-1 text-[13px] text-slate-500">{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
+                    <button
+                        type="button"
+                        onClick={() => openDocumentInNewTab(url)}
+                        className="mt-4 h-10 px-5 rounded-xl bg-[#0f766e] text-white text-[13px] font-bold hover:bg-[#0b665f] transition-colors"
+                    >
+                        {t('open', 'Ochish')}
+                    </button>
                 </div>
-            )}
-            <iframe
-                src={url}
-                title={name}
-                onLoad={() => setLoaded(true)}
-                className="flex-1 w-full border-0"
-                style={{ background: '#f0f0f0' }}
-            />
+            </div>
         </div>
     );
 };

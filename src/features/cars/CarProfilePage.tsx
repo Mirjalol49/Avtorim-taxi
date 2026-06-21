@@ -13,6 +13,7 @@ import ConfirmModal from '../../../components/ConfirmModal';
 import { LicensePlate } from '../../components/ui/LicensePlate';
 import DatePicker from '../../../components/DatePicker';
 import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
+import { dataUrlToBlobUrl, isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface Props {
     cars: Car[];
@@ -97,24 +98,7 @@ function isImageDocument(doc: { type?: string; data?: string }) {
 }
 
 function isPdfDocument(doc: { name?: string; type?: string; data?: string }) {
-    return Boolean(
-        doc.type?.toLowerCase().includes('pdf')
-        || doc.data?.startsWith('data:application/pdf')
-        || doc.name?.toLowerCase().endsWith('.pdf')
-    );
-}
-
-function dataUrlToObjectUrl(dataUrl: string, mimeOverride?: string) {
-    const [meta, payload] = dataUrl.split(',');
-    if (!payload) return dataUrl;
-
-    const mime = mimeOverride || meta.match(/^data:([^;]+)/)?.[1] || 'application/octet-stream';
-    const isBase64 = meta.includes(';base64');
-    const binary = isBase64 ? atob(payload) : decodeURIComponent(payload);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-
-    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+    return isPdfSource(doc);
 }
 
 function startOfLocalDay(ms: number): number {
@@ -238,7 +222,7 @@ export const CarProfilePage: React.FC<Props> = ({
         let objectUrl: string | null = null;
         if (viewingDoc.data.startsWith('data:') && isPdfDocument(viewingDoc)) {
             try {
-                objectUrl = dataUrlToObjectUrl(viewingDoc.data, 'application/pdf');
+                objectUrl = dataUrlToBlobUrl(viewingDoc.data, 'application/pdf');
                 setPreviewUrl(objectUrl);
             } catch (error) {
                 console.error('Failed to prepare PDF preview', error);
@@ -698,6 +682,10 @@ export const CarProfilePage: React.FC<Props> = ({
                                                 const isPdf = isPdfDocument(doc);
                                                 const fileNumber = idx + 1;
                                                 const openDocument = () => {
+                                                    if (isPdf) {
+                                                        openDocumentInNewTab(doc.data);
+                                                        return;
+                                                    }
                                                     setViewingDoc({ name: doc.name || group.label, data: doc.data, type: doc.type });
                                                 };
                                                 return (
@@ -861,11 +849,18 @@ export const CarProfilePage: React.FC<Props> = ({
                                     className="max-w-full max-h-full rounded-[20px] object-contain shadow-xl"
                                 />
                             ) : isViewingPdf && previewUrl ? (
-                                <iframe
-                                    title={viewingDoc.name || t('file', 'Fayl')}
-                                    src={previewUrl}
-                                    className={`w-full h-full min-h-[520px] rounded-[20px] border ${isDark ? 'border-white/10 bg-white' : 'border-slate-200 bg-white'}`}
-                                />
+                                <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
+                                    <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
+                                    <p className={`text-[15px] font-black ${txt}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
+                                    <p className={`mt-1 text-[12px] ${muted}`}>{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => openDocumentInNewTab(viewingDoc.data)}
+                                        className="mt-4 h-10 px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors"
+                                    >
+                                        {t('open', 'Ochish')}
+                                    </button>
+                                </div>
                             ) : (
                                 <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
                                     <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
