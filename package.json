@@ -29,6 +29,7 @@
     "i18next-http-backend": "^3.0.2",
     "lottie-react": "^2.4.1",
     "lucide-react": "^1.9.0",
+    "pdfjs-dist": "^6.0.227",
     "react": "^19.2.0",
     "react-day-picker": "^10.0.0",
     "react-dom": "^19.2.0",

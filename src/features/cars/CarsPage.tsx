@@ -12,6 +12,7 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { useNavigate } from 'react-router-dom';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { GlassButton } from '../../components/ui/GlassButton';
+import { PdfCanvasPreview } from '../documents/PdfCanvasPreview';
 
 interface CarsPageProps {
     cars: Car[];
@@ -119,10 +120,11 @@ function DocViewerModal({
 
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
                 {isPdf ? (
-                    <iframe
+                    <PdfCanvasPreview
                         src={doc.data}
-                        className="w-full h-full border-0"
                         title={doc.name}
+                        isDark={true}
+                        className="bg-black/20"
                     />
                 ) : (
                     <img
