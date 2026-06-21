@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Car, CarDocument, CarDamage } from '../../core/types';
 import { Driver } from '../../core/types';
-import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon, FilePdfIcon } from '../../../components/Icons';
+import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { ShieldAlert as ShieldAlertIcon, Wrench as WrenchIcon, SunDim as SunDimIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
@@ -52,8 +52,25 @@ function DocViewerModal({
     const isPdf = doc.type === 'application/pdf';
     const total = state.docs.length;
 
-    const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), []);
-    const next = useCallback(() => setIdx(i => Math.min(total - 1, i + 1)), [total]);
+    const openAt = useCallback((nextIdx: number) => {
+        const nextDoc = state.docs[nextIdx];
+        if (!nextDoc) return;
+        if (nextDoc.type === 'application/pdf') {
+            openDocumentInNewTab(nextDoc.data);
+            onClose();
+            return;
+        }
+        setIdx(nextIdx);
+    }, [onClose, state.docs]);
+
+    const prev = useCallback(() => openAt(Math.max(0, idx - 1)), [idx, openAt]);
+    const next = useCallback(() => openAt(Math.min(total - 1, idx + 1)), [idx, openAt, total]);
+
+    useEffect(() => {
+        if (!isPdf) return;
+        openDocumentInNewTab(doc.data);
+        onClose();
+    }, [doc.data, isPdf, onClose]);
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -78,6 +95,8 @@ function DocViewerModal({
         technical_passport: 'Tex.Passport',
         other: t('document'),
     };
+
+    if (isPdf) return null;
 
     return createPortal(
         <div
@@ -119,31 +138,14 @@ function DocViewerModal({
             </div>
 
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-                {isPdf ? (
-                    <div className="flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.06] p-8 text-center">
-                        <FilePdfIcon className="w-14 h-14 text-white/55" />
-                        <div>
-                            <p className="max-w-[320px] truncate text-white text-[15px] font-black">{doc.name}</p>
-                            <p className="mt-1 text-white/45 text-[13px]">{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => openDocumentInNewTab(doc.data)}
-                            className="h-10 px-5 rounded-xl bg-[#0f766e] text-white text-[13px] font-bold hover:bg-[#0b665f] transition-colors"
-                        >
-                            {t('open', 'Ochish')}
-                        </button>
-                    </div>
-                ) : (
-                    <img
-                        key={idx}
-                        src={doc.data}
-                        alt={doc.name}
-                        className="max-w-full max-h-full object-contain select-none"
-                        style={{ animation: 'fadeIn 0.2s ease-out' }}
-                        draggable={false}
-                    />
-                )}
+                <img
+                    key={idx}
+                    src={doc.data}
+                    alt={doc.name}
+                    className="max-w-full max-h-full object-contain select-none"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    draggable={false}
+                />
 
                 {total > 1 && (
                     <>
@@ -174,7 +176,7 @@ function DocViewerModal({
                     {state.docs.map((d, i) => (
                         <button
                             key={i}
-                            onClick={() => setIdx(i)}
+                            onClick={() => openAt(i)}
                             className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
                                 i === idx ? 'border-[#6bd8cb] scale-110' : 'border-white/20 opacity-50 hover:opacity-100'
                             }`}
@@ -269,6 +271,11 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const openDoc = (car: Car, index: number) => {
         const docs = car.documents ?? [];
         if (!docs.length) return;
+        const doc = docs[index];
+        if (doc?.type === 'application/pdf') {
+            openDocumentInNewTab(doc.data);
+            return;
+        }
         setDocViewer({ docs, index, carName: car.name });
     };
 

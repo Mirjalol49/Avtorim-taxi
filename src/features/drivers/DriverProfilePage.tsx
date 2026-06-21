@@ -23,7 +23,7 @@ import {
 } from '../../../components/Icons';
 import DatePicker from '../../../components/DatePicker';
 import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
-import { dataUrlToBlobUrl, isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
+import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface Props {
     drivers: Driver[];
@@ -202,6 +202,11 @@ export const DriverProfilePage: React.FC<Props> = ({
     }, [driver?.id]);
 
     useEffect(() => {
+        if (viewingDoc && isPdfDocument(viewingDoc)) {
+            setViewingDoc(null);
+            return;
+        }
+
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && viewingDoc) setViewingDoc(null);
         };
@@ -214,23 +219,12 @@ export const DriverProfilePage: React.FC<Props> = ({
             setPreviewUrl(null);
             return;
         }
-
-        let objectUrl: string | null = null;
-        if (viewingDoc.data.startsWith('data:') && isPdfDocument(viewingDoc)) {
-            try {
-                objectUrl = dataUrlToBlobUrl(viewingDoc.data, 'application/pdf');
-                setPreviewUrl(objectUrl);
-            } catch (error) {
-                console.error('Failed to prepare PDF preview', error);
-                setPreviewUrl(viewingDoc.data);
-            }
-        } else {
-            setPreviewUrl(viewingDoc.data);
+        if (isPdfDocument(viewingDoc)) {
+            setPreviewUrl(null);
+            return;
         }
 
-        return () => {
-            if (objectUrl) URL.revokeObjectURL(objectUrl);
-        };
+        setPreviewUrl(viewingDoc.data);
     }, [viewingDoc]);
 
     if (!driver) {
@@ -263,7 +257,6 @@ export const DriverProfilePage: React.FC<Props> = ({
     
     const groupedDocs = groupDriverDocuments(docs.filter((doc: any) => Boolean(doc.data)), t);
     const isViewingImage = viewingDoc ? isImageDocument(viewingDoc) : false;
-    const isViewingPdf = viewingDoc ? isPdfDocument(viewingDoc) : false;
     const driverLicenseDoc = docs.find((doc: any) => doc.category === 'driver_license' && getIshonchnomaReminderMs(doc) !== null);
     const driverLicenseReminderAt = getIshonchnomaReminderMs(driverLicenseDoc);
     const todayStartMs = startOfDayMs(Date.now());
@@ -617,7 +610,7 @@ export const DriverProfilePage: React.FC<Props> = ({
             </div>
 
             {/* Modals remain structurally the same */}
-            {viewingDoc && typeof document !== 'undefined' && createPortal(
+            {viewingDoc && !isPdfDocument(viewingDoc) && typeof document !== 'undefined' && createPortal(
                 <div
                     role="dialog"
                     aria-modal="true"
@@ -654,19 +647,6 @@ export const DriverProfilePage: React.FC<Props> = ({
                         <div className={`flex-1 min-h-0 p-3 sm:p-5 overflow-auto flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-slate-50'}`}>
                             {isViewingImage ? (
                                 <img src={viewingDoc.data} alt={viewingDoc.name} className="max-w-full max-h-full rounded-[20px] shadow-xl object-contain" />
-                            ) : isViewingPdf && previewUrl ? (
-                                <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
-                                    <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
-                                    <p className={`text-[15px] font-black ${txt}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
-                                    <p className={`mt-1 text-[12px] ${muted}`}>{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => openDocumentInNewTab(viewingDoc.data)}
-                                        className="mt-4 h-10 px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors"
-                                    >
-                                        {t('open', 'Ochish')}
-                                    </button>
-                                </div>
                             ) : (
                                 <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
                                     <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />

@@ -13,7 +13,7 @@ import ConfirmModal from '../../../components/ConfirmModal';
 import { LicensePlate } from '../../components/ui/LicensePlate';
 import DatePicker from '../../../components/DatePicker';
 import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
-import { dataUrlToBlobUrl, isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
+import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface Props {
     cars: Car[];
@@ -202,6 +202,11 @@ export const CarProfilePage: React.FC<Props> = ({
 
     useEffect(() => {
         if (!viewingDoc) return;
+        if (isPdfDocument(viewingDoc)) {
+            setViewingDoc(null);
+            return;
+        }
+
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') setViewingDoc(null);
         };
@@ -218,23 +223,12 @@ export const CarProfilePage: React.FC<Props> = ({
             setPreviewUrl(null);
             return;
         }
-
-        let objectUrl: string | null = null;
-        if (viewingDoc.data.startsWith('data:') && isPdfDocument(viewingDoc)) {
-            try {
-                objectUrl = dataUrlToBlobUrl(viewingDoc.data, 'application/pdf');
-                setPreviewUrl(objectUrl);
-            } catch (error) {
-                console.error('Failed to prepare PDF preview', error);
-                setPreviewUrl(viewingDoc.data);
-            }
-        } else {
-            setPreviewUrl(viewingDoc.data);
+        if (isPdfDocument(viewingDoc)) {
+            setPreviewUrl(null);
+            return;
         }
 
-        return () => {
-            if (objectUrl) URL.revokeObjectURL(objectUrl);
-        };
+        setPreviewUrl(viewingDoc.data);
     }, [viewingDoc]);
 
     if (!car) {
@@ -259,7 +253,6 @@ export const CarProfilePage: React.FC<Props> = ({
     const tr = (key: keyof typeof carCopy, options?: Record<string, unknown>) =>
         t(key, { defaultValue: carCopy[key], ...options });
     const isViewingImage = viewingDoc ? isImageDocument(viewingDoc) : false;
-    const isViewingPdf = viewingDoc ? isPdfDocument(viewingDoc) : false;
     const expiryItems = [
         { key: 'insurance', label: t('insuranceOsago'), value: car.insuranceExpiryMs, icon: ShieldCheck },
         { key: 'technical', label: t('technicalInspection'), value: car.techInspectionExpiryMs, icon: ClipboardCheck },
@@ -788,7 +781,7 @@ export const CarProfilePage: React.FC<Props> = ({
             </div>
 
             {/* Document Viewer Modal */}
-            {viewingDoc && typeof document !== 'undefined' && createPortal(
+            {viewingDoc && !isPdfDocument(viewingDoc) && typeof document !== 'undefined' && createPortal(
                 <div
                     role="dialog"
                     aria-modal="true"
@@ -848,19 +841,6 @@ export const CarProfilePage: React.FC<Props> = ({
                                     alt={viewingDoc.name}
                                     className="max-w-full max-h-full rounded-[20px] object-contain shadow-xl"
                                 />
-                            ) : isViewingPdf && previewUrl ? (
-                                <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
-                                    <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
-                                    <p className={`text-[15px] font-black ${txt}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
-                                    <p className={`mt-1 text-[12px] ${muted}`}>{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => openDocumentInNewTab(viewingDoc.data)}
-                                        className="mt-4 h-10 px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors"
-                                    >
-                                        {t('open', 'Ochish')}
-                                    </button>
-                                </div>
                             ) : (
                                 <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
                                     <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
