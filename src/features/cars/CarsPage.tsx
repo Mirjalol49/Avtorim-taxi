@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Car, CarDocument, CarDamage } from '../../core/types';
 import { Driver } from '../../core/types';
-import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon } from '../../../components/Icons';
+import { SearchIcon, PlusIcon, EditIcon, TrashIcon, CameraIcon, DownloadIcon, AlertTriangleIcon, CheckIcon, FilePdfIcon } from '../../../components/Icons';
 import { exportCarsToExcel } from '../../../utils/exportToExcel';
 import { formatNumberSmart } from '../../../utils/formatNumber';
 import { ShieldAlert as ShieldAlertIcon, Wrench as WrenchIcon, SunDim as SunDimIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
@@ -12,7 +12,7 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { useNavigate } from 'react-router-dom';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { GlassButton } from '../../components/ui/GlassButton';
-import { PdfCanvasPreview } from '../documents/PdfCanvasPreview';
+import { openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface CarsPageProps {
     cars: Car[];
@@ -120,12 +120,20 @@ function DocViewerModal({
 
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
                 {isPdf ? (
-                    <PdfCanvasPreview
-                        src={doc.data}
-                        title={doc.name}
-                        isDark={true}
-                        className="bg-black/20"
-                    />
+                    <div className="flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.06] p-8 text-center">
+                        <FilePdfIcon className="w-14 h-14 text-white/55" />
+                        <div>
+                            <p className="max-w-[320px] truncate text-white text-[15px] font-black">{doc.name}</p>
+                            <p className="mt-1 text-white/45 text-[13px]">{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => openDocumentInNewTab(doc.data)}
+                            className="h-10 px-5 rounded-xl bg-[#0f766e] text-white text-[13px] font-bold hover:bg-[#0b665f] transition-colors"
+                        >
+                            {t('open', 'Ochish')}
+                        </button>
+                    </div>
                 ) : (
                     <img
                         key={idx}

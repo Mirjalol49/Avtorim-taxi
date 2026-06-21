@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dataUrlToBlobUrl, isPdfSource } from '../src/features/documents/pdfPreviewUtils';
+import { dataUrlToBlobUrl, getOpenableDocumentUrl, isPdfSource, openDocumentInNewTab } from '../src/features/documents/pdfPreviewUtils';
 
 describe('pdfPreviewUtils', () => {
     it('detects PDFs by MIME type, data URL, or file name', () => {
@@ -18,5 +18,27 @@ describe('pdfPreviewUtils', () => {
         expect(blob.type).toBe('application/pdf');
 
         createObjectURL.mockRestore();
+    });
+
+    it('keeps remote URLs unchanged when preparing a document URL', () => {
+        expect(getOpenableDocumentUrl('https://example.com/file.pdf')).toBe('https://example.com/file.pdf');
+    });
+
+    it('opens a converted blob URL and later revokes it', () => {
+        vi.useFakeTimers();
+        const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-pdf');
+        const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+
+        expect(openDocumentInNewTab('data:application/pdf;base64,JVBERi0xLjQ=')).toBe(true);
+        expect(open).toHaveBeenCalledWith('blob:test-pdf', '_blank', 'noopener,noreferrer');
+
+        vi.advanceTimersByTime(60_000);
+        expect(revokeObjectURL).toHaveBeenCalledWith('blob:test-pdf');
+
+        open.mockRestore();
+        createObjectURL.mockRestore();
+        revokeObjectURL.mockRestore();
+        vi.useRealTimers();
     });
 });

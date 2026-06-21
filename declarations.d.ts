@@ -2,7 +2,6 @@ declare module '*.png';
 declare module '*.jpg';
 declare module '*.jpeg';
 declare module '*.svg';
-declare module '*?url';
 
 declare module 'virtual:pwa-register' {
     export interface RegisterSWOptions {

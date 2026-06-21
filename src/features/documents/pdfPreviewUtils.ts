@@ -18,3 +18,18 @@ export function dataUrlToBlobUrl(dataUrl: string, mimeOverride?: string) {
 
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
 }
+
+export function getOpenableDocumentUrl(data: string, mimeOverride = 'application/pdf') {
+    return data.startsWith('data:') ? dataUrlToBlobUrl(data, mimeOverride) : data;
+}
+
+export function openDocumentInNewTab(data: string, mimeOverride = 'application/pdf') {
+    const url = getOpenableDocumentUrl(data, mimeOverride);
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+
+    if (url.startsWith('blob:')) {
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+
+    return Boolean(opened);
+}
