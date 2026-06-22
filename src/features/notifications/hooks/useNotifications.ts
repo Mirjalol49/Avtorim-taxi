@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { subscribeToNotifications, cleanupExpiredNotifications, Notification } from '../../../../services/notificationService';
-import { AdminUser, UserRole } from '../../../core/types';
+import { subscribeToNotifications, cleanupExpiredNotifications, Notification, NotificationSubscriptionIdentity } from '../../../../services/notificationService';
+import { UserRole } from '../../../core/types';
 
-export const useNotifications = (adminUser: AdminUser | null, userRole: UserRole) => {
+export interface NotificationIdentity extends NotificationSubscriptionIdentity {
+    createdAt?: number;
+}
+
+export const useNotifications = (identity: NotificationIdentity | null, userRole: UserRole) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
@@ -38,9 +42,9 @@ export const useNotifications = (adminUser: AdminUser | null, userRole: UserRole
     }, [persistDismissed]);
 
     useEffect(() => {
-        if (!adminUser?.id) return;
+        if (!identity?.fleetId || !identity?.userId) return;
 
-        const storageKey = `avtorim.dismissedNotifications.${adminUser.id}`;
+        const storageKey = `avtorim.dismissedNotifications.${identity.userId}`;
         dismissStorageKeyRef.current = storageKey;
         try {
             const stored = localStorage.getItem(storageKey);
@@ -50,8 +54,8 @@ export const useNotifications = (adminUser: AdminUser | null, userRole: UserRole
         }
 
         const unsubscribe = subscribeToNotifications(
-            adminUser.id,
-            adminUser.createdAt || 0,
+            { fleetId: identity.fleetId, userId: identity.userId },
+            identity.createdAt || 0,
             userRole,
             (newNotifications, count, readIds) => {
                 // Filter out any IDs the user has locally dismissed this session
@@ -70,7 +74,7 @@ export const useNotifications = (adminUser: AdminUser | null, userRole: UserRole
         }
 
         return () => unsubscribe();
-    }, [adminUser?.id, adminUser?.createdAt, userRole]);
+    }, [identity?.fleetId, identity?.userId, identity?.createdAt, userRole]);
 
     return {
         notifications,

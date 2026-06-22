@@ -273,7 +273,7 @@ export const assignCar = async (carId: string, driverId: string, effectiveFrom?:
             undefined,
             effectiveFrom
         );
-        await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
+        await supabase.from('drivers').update({ plan_history: newHistory, daily_plan: newPlan }).eq('id', driverId);
     }
 
     // 4. Record history
@@ -300,7 +300,7 @@ export const unassignCar = async (carId: string, effectiveFrom?: number) => {
                 undefined,
                 effectiveFrom
             );
-            await supabase.from('drivers').update({ plan_history: newHistory }).eq('id', driverId);
+            await supabase.from('drivers').update({ plan_history: newHistory, daily_plan: 0 }).eq('id', driverId);
         }
         await endCarAssignment(carId, driverId, effectiveFrom);
     }

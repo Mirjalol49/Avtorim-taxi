@@ -17,6 +17,11 @@ export type {
     UserNotificationRead
 };
 
+export interface NotificationSubscriptionIdentity {
+    fleetId: string;
+    userId: string;
+}
+
 function isNotificationTargetedToUser(
     targetUsers: NotificationTargetType,
     userId: string,
@@ -82,11 +87,12 @@ export const sendNotification = async (
 };
 
 export const subscribeToNotifications = (
-    userId: string,
+    identity: NotificationSubscriptionIdentity,
     _userCreatedAt: number,
     userRole: 'admin' | 'viewer',
     callback: (notifications: Notification[], unreadCount: number, readIds: Set<string>) => void
 ) => {
+    const { fleetId, userId } = identity;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const fetchAndNotify = () => {
@@ -98,7 +104,7 @@ export const subscribeToNotifications = (
             const { data: rows } = await supabase
                 .from('notifications')
                 .select('id,title,message,type,category,priority,target_users,created_by,created_by_name,created_ms,expires_at,delivery_tracking,min_account_age')
-                .eq('fleet_id', userId)
+                .eq('fleet_id', fleetId)
                 .gt('expires_at', now)
                 .order('created_ms', { ascending: false })
                 .limit(100); // cap at 100 — no need to fetch thousands of old notifications
@@ -142,8 +148,8 @@ export const subscribeToNotifications = (
     fetchAndNotify();
 
     const channel = supabase
-        .channel(`notifications_${userId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `fleet_id=eq.${userId}` }, fetchAndNotify)
+        .channel(`notifications_${fleetId}_${userId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `fleet_id=eq.${fleetId}` }, fetchAndNotify)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${userId}` }, fetchAndNotify)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_deletes', filter: `user_id=eq.${userId}` }, fetchAndNotify)
         .subscribe();

@@ -8,6 +8,7 @@ import { EditIcon, TrashIcon, CarIcon, XIcon } from '../../../../components/Icon
 import { createPortal } from 'react-dom';
 import { DriverAvatar } from './DriverAvatar';
 import { LicensePlate } from '../../../components/ui/LicensePlate';
+import { isPdfSource, openDocumentInNewTab } from '../../documents/pdfPreviewUtils';
 
 const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
@@ -150,11 +151,16 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                             const isImage = doc.type && doc.type.startsWith('image/');
                             return (
                                 <button key={i} type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isPdfSource(doc)) {
+                                            openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+                                            return;
+                                        }
                                         if (isImage) {
                                             setViewingDoc(doc.data);
                                         } else {
-                                            window.open(doc.data, '_blank');
+                                            window.open(doc.data, '_blank', 'noopener,noreferrer');
                                         }
                                     }}
                                     className="flex items-center gap-1 text-xs text-[#0f766e] hover:underline truncate max-w-[140px] text-left">

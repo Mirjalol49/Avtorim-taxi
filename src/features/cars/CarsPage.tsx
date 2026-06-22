@@ -49,7 +49,7 @@ function DocViewerModal({
     const { t } = useTranslation();
     const [idx, setIdx] = useState(state.index);
     const doc = state.docs[idx];
-    const isPdf = doc.type === 'application/pdf';
+    const isPdf = isPdfSource(doc);
     const total = state.docs.length;
 
     const openAt = useCallback((nextIdx: number) => {
@@ -82,6 +82,14 @@ function DocViewerModal({
         return () => document.removeEventListener('keydown', handler);
     }, [onClose, prev, next]);
 
+    useEffect(() => {
+        if (!isPdf) return;
+        openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+        onClose();
+    }, [doc, isPdf, onClose]);
+
+    if (isPdf) return null;
+
     const handleDownload = () => {
         const a = document.createElement('a');
         a.href = doc.data;
@@ -106,7 +114,7 @@ function DocViewerModal({
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-white/[0.08]">
                 <div className="flex items-center gap-3 min-w-0">
                     <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/10 flex-shrink-0">
-                        <span className="text-base">{isPdf ? '📄' : '🖼️'}</span>
+                        <CameraIcon className="w-4 h-4 text-white/75" />
                     </div>
                     <div className="min-w-0">
                         <p className="text-white font-semibold text-[14px] truncate leading-tight">
@@ -181,7 +189,7 @@ function DocViewerModal({
                                 i === idx ? 'border-[#6bd8cb] scale-110' : 'border-white/20 opacity-50 hover:opacity-100'
                             }`}
                         >
-                            {d.type === 'application/pdf' ? (
+                            {isPdfSource(d) ? (
                                 <div className="w-full h-full bg-white/10 flex items-center justify-center text-xl">📄</div>
                             ) : (
                                 <img src={d.data} alt={d.name} className="w-full h-full object-cover" />
