@@ -12,6 +12,7 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { useNavigate } from 'react-router-dom';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { GlassButton } from '../../components/ui/GlassButton';
+import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface CarsPageProps {
     cars: Car[];
@@ -48,11 +49,22 @@ function DocViewerModal({
     const { t } = useTranslation();
     const [idx, setIdx] = useState(state.index);
     const doc = state.docs[idx];
-    const isPdf = doc.type === 'application/pdf';
+    const isPdf = isPdfSource(doc);
     const total = state.docs.length;
 
-    const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), []);
-    const next = useCallback(() => setIdx(i => Math.min(total - 1, i + 1)), [total]);
+    const openAt = useCallback((nextIndex: number) => {
+        const nextDoc = state.docs[nextIndex];
+        if (!nextDoc) return;
+        if (isPdfSource(nextDoc)) {
+            openDocumentInNewTab(nextDoc.data, nextDoc.type || 'application/pdf');
+            onClose();
+            return;
+        }
+        setIdx(nextIndex);
+    }, [onClose, state.docs]);
+
+    const prev = useCallback(() => openAt(Math.max(0, idx - 1)), [idx, openAt]);
+    const next = useCallback(() => openAt(Math.min(total - 1, idx + 1)), [idx, openAt, total]);
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -63,6 +75,14 @@ function DocViewerModal({
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, [onClose, prev, next]);
+
+    useEffect(() => {
+        if (!isPdf) return;
+        openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+        onClose();
+    }, [doc, isPdf, onClose]);
+
+    if (isPdf) return null;
 
     const handleDownload = () => {
         const a = document.createElement('a');
@@ -86,7 +106,7 @@ function DocViewerModal({
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-white/[0.08]">
                 <div className="flex items-center gap-3 min-w-0">
                     <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/10 flex-shrink-0">
-                        <span className="text-base">{isPdf ? '📄' : '🖼️'}</span>
+                        <CameraIcon className="w-4 h-4 text-white/75" />
                     </div>
                     <div className="min-w-0">
                         <p className="text-white font-semibold text-[14px] truncate leading-tight">
@@ -118,22 +138,14 @@ function DocViewerModal({
             </div>
 
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-                {isPdf ? (
-                    <iframe
-                        src={doc.data}
-                        className="w-full h-full border-0"
-                        title={doc.name}
-                    />
-                ) : (
-                    <img
-                        key={idx}
-                        src={doc.data}
-                        alt={doc.name}
-                        className="max-w-full max-h-full object-contain select-none"
-                        style={{ animation: 'fadeIn 0.2s ease-out' }}
-                        draggable={false}
-                    />
-                )}
+                <img
+                    key={idx}
+                    src={doc.data}
+                    alt={doc.name}
+                    className="max-w-full max-h-full object-contain select-none"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    draggable={false}
+                />
 
                 {total > 1 && (
                     <>
@@ -164,12 +176,12 @@ function DocViewerModal({
                     {state.docs.map((d, i) => (
                         <button
                             key={i}
-                            onClick={() => setIdx(i)}
+                            onClick={() => openAt(i)}
                             className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
                                 i === idx ? 'border-[#6bd8cb] scale-110' : 'border-white/20 opacity-50 hover:opacity-100'
                             }`}
                         >
-                            {d.type === 'application/pdf' ? (
+                            {isPdfSource(d) ? (
                                 <div className="w-full h-full bg-white/10 flex items-center justify-center text-xl">📄</div>
                             ) : (
                                 <img src={d.data} alt={d.name} className="w-full h-full object-cover" />
@@ -259,6 +271,11 @@ const CarsPage: React.FC<CarsPageProps> = ({
     const openDoc = (car: Car, index: number) => {
         const docs = car.documents ?? [];
         if (!docs.length) return;
+        const doc = docs[index];
+        if (doc && isPdfSource(doc)) {
+            openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+            return;
+        }
         setDocViewer({ docs, index, carName: car.name });
     };
 

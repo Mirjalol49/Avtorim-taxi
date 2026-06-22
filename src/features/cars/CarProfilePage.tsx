@@ -13,6 +13,7 @@ import ConfirmModal from '../../../components/ConfirmModal';
 import { LicensePlate } from '../../components/ui/LicensePlate';
 import DatePicker from '../../../components/DatePicker';
 import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
+import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface Props {
     cars: Car[];
@@ -627,6 +628,10 @@ export const CarProfilePage: React.FC<Props> = ({
                                                 const isImage = doc.type?.startsWith('image/');
                                                 const fileNumber = idx + 1;
                                                 const openDocument = () => {
+                                                    if (isPdfSource(doc)) {
+                                                        openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+                                                        return;
+                                                    }
                                                     if (isImage) setViewingDoc({ name: doc.name, data: doc.data });
                                                     else window.open(doc.data, '_blank', 'noopener,noreferrer');
                                                 };

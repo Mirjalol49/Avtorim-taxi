@@ -37,9 +37,29 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Cast to any to access specific viewer properties not on AdminProfile interface
     // In viewer mode, adminProfile is actually a Viewer object
     // Viewer raw Supabase data uses snake_case: fleet_id or created_by
+    const viewerProfile = adminProfile as any;
     const fleetId = userRole === 'viewer'
-        ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
+        ? (viewerProfile?.fleet_id || viewerProfile?.created_by || viewerProfile?.fleetId || viewerProfile?.createdBy)
         : adminUser?.id;
+
+    const notificationIdentity = React.useMemo(() => {
+        if (userRole === 'viewer') {
+            const viewerUserId = viewerProfile?.id || adminUser?.id;
+            if (!fleetId || !viewerUserId) return null;
+            return {
+                fleetId,
+                userId: viewerUserId,
+                createdAt: viewerProfile?.created_ms || viewerProfile?.createdAt,
+            };
+        }
+
+        if (!adminUser?.id) return null;
+        return {
+            fleetId: adminUser.id,
+            userId: adminUser.id,
+            createdAt: adminUser.createdAt,
+        };
+    }, [adminUser?.id, adminUser?.createdAt, fleetId, userRole, viewerProfile]);
 
     const [refreshTrigger, setRefreshTrigger] = React.useState(0);
     const triggerRefresh = React.useCallback(() => {
@@ -57,7 +77,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUnreadCount,
         dismissNotification,
         dismissReadNotifications,
-    } = useNotifications(adminUser, userRole);
+    } = useNotifications(notificationIdentity, userRole);
 
     // Safety valve: if any loading state hasn't resolved, unblock the UI.
     // Timeout is 11s — just beyond useTransactions' own 10s abort+retry window.

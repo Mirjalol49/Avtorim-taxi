@@ -23,6 +23,7 @@ import {
 } from '../../../components/Icons';
 import DatePicker from '../../../components/DatePicker';
 import QuickAssignmentModal from '../../../components/QuickAssignmentModal';
+import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface Props {
     drivers: Driver[];
@@ -484,6 +485,10 @@ export const DriverProfilePage: React.FC<Props> = ({
                                     </div>
                                     <button onClick={() => {
                                         const doc = group.docs[0];
+                                        if (isPdfSource(doc)) {
+                                            openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+                                            return;
+                                        }
                                         if (doc.type?.startsWith('image/')) setViewingDoc({ name: doc.name, data: doc.data });
                                         else window.open(doc.data, '_blank');
                                     }} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
