@@ -5,6 +5,7 @@ import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
 import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../drivers/utils/driverPlanHistory';
+import { isDriverWorkingOnDate } from '../drivers/utils/driverLifecycle';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,42 @@ const monthRange = (start: Date, end: Date): string[] => {
     return keys;
 };
 
+const isExcludedPaymentStatus = (status?: string | null) =>
+    status === PaymentStatus.DELETED ||
+    status === PaymentStatus.REFUNDED ||
+    status === PaymentStatus.REVERSED;
+
+const isPlanIncomeTransaction = (tx: Transaction): boolean =>
+    tx.type === TransactionType.INCOME &&
+    (tx as any).category !== 'deposit_topup' &&
+    (tx as any).category !== 'DEPOSIT';
+
+const findDriverPlanCar = (driver: Driver, cars: Car[]): Car | null => {
+    const currentCar = cars.find(c => c.assignedDriverId === driver.id);
+    if (currentCar) return currentCar;
+
+    const historyCarId = [...(driver.planHistory ?? [])].reverse().find(entry => entry.carId)?.carId;
+    if (!historyCarId) return null;
+
+    return cars.find(c => c.id === historyCarId) ?? null;
+};
+
+const hasEffectivePlanInMonth = (driver: Driver, car: Car | null, mk: string): boolean => {
+    const totalDays = daysInMonthForKey(mk);
+    const [mkYear, mkMonth] = mk.split('-').map(Number);
+
+    for (let d = 1; d <= totalDays; d++) {
+        if (getEffectivePlanForDriverDay(driver, new Date(mkYear, mkMonth - 1, d), car) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const isCurrentlyActiveDriver = (driver: Driver, now: number): boolean =>
+    !driver.isDeleted && (!driver.quitDate || driver.quitDate > now);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
@@ -86,17 +123,13 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
         const byDriverDay = new Map<string, { hasDayOff: boolean; hasNotWorking: boolean }>();
 
         transactions.forEach(tx => {
-            if (tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return;
+            if (isExcludedPaymentStatus(tx.status)) return;
 
             const txDate = new Date(tx.timestamp);
             const mk = toMonthKey(txDate);
             const dayKey = `${tx.driverId}|${mk}-${String(txDate.getDate()).padStart(2, '0')}`;
 
-            if (
-                tx.type === TransactionType.INCOME &&
-                (tx as any).category !== 'deposit_topup' &&
-                (tx as any).category !== 'DEPOSIT'
-            ) {
+            if (isPlanIncomeTransaction(tx)) {
                 const monthKey = `${tx.driverId}|${mk}`;
                 const month = byDriverMonth.get(monthKey) ?? { income: 0 };
                 month.income += Math.abs(tx.amount);
@@ -202,21 +235,28 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
     const rows = useMemo((): MonthRow[] => {
         const result: MonthRow[] = [];
 
-        const activeDrivers = drivers.filter(d => !d.isDeleted &&
-            (filterDriverId === 'all' || d.id === filterDriverId));
+        const today = new Date();
+        const nowMs = today.getTime();
+        const activeDrivers = drivers.filter(d => {
+            if (filterDriverId !== 'all') return d.id === filterDriverId;
+            return isCurrentlyActiveDriver(d, nowMs) && isDriverWorkingOnDate(d, today);
+        });
 
         for (const driver of activeDrivers) {
-            const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
-            const dailyPlan = car ? (car.dailyPlan ?? 0) : 0;
+            const car = findDriverPlanCar(driver, cars);
+            const hasMonthIncome = months.some(mk =>
+                (transactionSummary.byDriverMonth.get(`${driver.id}|${mk}`)?.income ?? 0) > 0
+            );
+            const hasMonthPlan = months.some(mk => hasEffectivePlanInMonth(driver, car, mk));
 
-            if (dailyPlan <= 0) continue; // no plan set — skip
+            if (!hasMonthIncome && !hasMonthPlan) continue;
 
             for (const mk of months) {
                 result.push(computeMonthRow(driver, car, mk));
             }
         }
         return result;
-    }, [drivers, cars, months, filterDriverId, computeMonthRow]);
+    }, [drivers, cars, months, filterDriverId, transactionSummary, computeMonthRow]);
 
     // Derive live month data from current rows — updates automatically on every realtime tx change
     const liveModalData = useMemo(() => {
@@ -227,7 +267,7 @@ export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
         // If row wasn't pre-computed (because we navigated to a month outside global filter), compute it dynamically
         const driver = drivers.find(d => d.id === selectedKey.driverId);
         if (!driver) return null;
-        const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
+        const car = findDriverPlanCar(driver, cars);
         return computeMonthRow(driver, car, selectedKey.monthKey);
     }, [selectedKey, rows, drivers, cars, computeMonthRow]);
 

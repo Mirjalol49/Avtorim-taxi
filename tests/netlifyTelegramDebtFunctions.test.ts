@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { runDailyPlanDebtReminder } from '../netlify/functions/daily-plan-debt-reminder.mjs';
+import {
+    config as dailyPlanDebtReminderConfig,
+    handler as dailyPlanDebtReminderHandler,
+    runDailyPlanDebtReminder,
+} from '../netlify/functions/daily-plan-debt-reminder.mjs';
 import { sendDriverTelegramMessage } from '../netlify/functions/send-driver-telegram-message.mjs';
 
 type InsertRecord = { table: string; payload: any };
@@ -83,6 +87,36 @@ const carRow = {
 };
 
 describe('daily-plan-debt-reminder Netlify function', () => {
+    it('exposes the 22:00 Tashkent schedule to Netlify', () => {
+        expect(dailyPlanDebtReminderConfig).toMatchObject({ schedule: '0 17 * * *' });
+    });
+
+    it('returns a clear error when required server env vars are missing', async () => {
+        const previousEnv = {
+            SUPABASE_URL: process.env.SUPABASE_URL,
+            SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+            TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+        };
+        delete process.env.SUPABASE_URL;
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+        delete process.env.TELEGRAM_BOT_TOKEN;
+
+        const result = await dailyPlanDebtReminderHandler();
+
+        expect(result.statusCode).toBe(500);
+        expect(result.body).toContain('SUPABASE_URL');
+        expect(result.body).toContain('SUPABASE_SERVICE_ROLE_KEY');
+        expect(result.body).toContain('TELEGRAM_BOT_TOKEN');
+
+        for (const [key, value] of Object.entries(previousEnv)) {
+            if (value === undefined) {
+                delete process.env[key];
+            } else {
+                process.env[key] = value;
+            }
+        }
+    });
+
     it('sends a Telegram reminder and logs notification for a linked driver with debt', async () => {
         const inserts: InsertRecord[] = [];
         const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });

@@ -48,17 +48,15 @@ const PdfViewerPage: React.FC = () => {
                 </a>
             </div>
 
-            <div className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-sm rounded-3xl bg-white border border-gray-200 shadow-sm p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-5">
-                        <FilePdfIcon className="w-8 h-8" />
-                    </div>
-                    <h1 className="text-lg font-bold text-gray-900 mb-2">{name}</h1>
-                    <p className="text-sm text-gray-500 mb-6">{t('pdfOpenNativeHint', 'PDF brauzer oynasida ochiladi.')}</p>
+            <div className="flex-1 flex items-center justify-center p-6 bg-[#f0f0f0]">
+                <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+                    <FilePdfIcon className="mx-auto mb-3 w-12 h-12 text-slate-400" />
+                    <p className="text-[15px] font-black text-slate-900">{name}</p>
+                    <p className="mt-1 text-[13px] text-slate-500">{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
                     <button
                         type="button"
                         onClick={() => openDocumentInNewTab(url)}
-                        className="w-full h-11 rounded-xl bg-[#0f766e] text-white text-sm font-bold hover:bg-[#115e59] transition-colors"
+                        className="mt-4 h-10 px-5 rounded-xl bg-[#0f766e] text-white text-[13px] font-bold hover:bg-[#0b665f] transition-colors"
                     >
                         {t('open', 'Ochish')}
                     </button>

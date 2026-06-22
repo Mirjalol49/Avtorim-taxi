@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transaction, TransactionType, PaymentStatus, Driver, Car } from '../../../core/types';
 import { getEffectivePlanForDriverDay } from '../../drivers/utils/driverPlanHistory';
+import { buildInitialDepositTransaction } from '../../drivers/utils/initialDepositTransaction';
 import {
     buildExpenseCategoryList,
     CUSTOM_EXPENSE_CATEGORY_EVENT,
@@ -83,9 +84,26 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
         [transactions, storedExpenseCategories],
     );
 
+    const reportTransactions = useMemo(() => {
+        const driversWithDepositTx = new Set(
+            transactions
+                .filter(tx => tx.category === 'DEPOSIT' && tx.driverId)
+                .map(tx => tx.driverId as string)
+        );
+        const fallbackDeposits = drivers.flatMap(driver => {
+            if (driversWithDepositTx.has(driver.id)) return [];
+            const timestamp = driver.createdAt ?? driver.startDate;
+            if (!timestamp) return [];
+            const tx = buildInitialDepositTransaction(driver, timestamp);
+            return tx ? [{ ...tx, id: `initial-deposit-${driver.id}` } as Transaction] : [];
+        });
+
+        return [...transactions, ...fallbackDeposits];
+    }, [transactions, drivers]);
+
     // Filter Logic
     const filteredTransactions = useMemo(() => {
-        return transactions.filter(tx => {
+        return reportTransactions.filter(tx => {
             // Exclude refunded/reversed transactions from list (but keep deleted ones visible as requested? Original logic excluded refunded/reversed)
             if (tx.status === PaymentStatus.REFUNDED || tx.status === PaymentStatus.REVERSED) return false;
 
@@ -124,7 +142,7 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
             }
             return dateMatch && driverMatch && typeMatch && methodMatch && categoryMatch;
         }).sort((a, b) => b.timestamp - a.timestamp);
-    }, [transactions, filters, expenseCategories]);
+    }, [reportTransactions, filters, expenseCategories]);
 
     // Pagination
     // Reset pagination when filters change
@@ -248,11 +266,11 @@ export const useFinanceStats = (transactions: Transaction[], cars: Car[] = [], d
     const availableYears = useMemo(() => {
         const currentYear = new Date().getFullYear();
         const yearsFromData = new Set<number>(
-            transactions.map(tx => new Date(tx.timestamp).getFullYear())
+            reportTransactions.map(tx => new Date(tx.timestamp).getFullYear())
         );
         yearsFromData.add(currentYear);
         return Array.from(yearsFromData).sort((a, b) => b - a);
-    }, [transactions]);
+    }, [reportTransactions]);
 
     // Advanced Analytics based on filtered transactions
     const advancedStats = useMemo(() => {

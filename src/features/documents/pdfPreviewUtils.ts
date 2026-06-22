@@ -1,18 +1,20 @@
-export function isPdfSource(file: { type?: string; name?: string }) {
-    return file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf') === true;
+export function isPdfSource(file: { name?: string; type?: string; data?: string }) {
+    return Boolean(
+        file.type?.toLowerCase().includes('pdf')
+        || file.data?.startsWith('data:application/pdf')
+        || file.name?.toLowerCase().endsWith('.pdf')
+    );
 }
 
 export function dataUrlToBlobUrl(dataUrl: string, mimeOverride?: string) {
-    const [header, body] = dataUrl.split(',');
-    if (!body) throw new Error('Invalid data URL');
+    const [meta, payload] = dataUrl.split(',');
+    if (!payload) return dataUrl;
 
-    const mime = mimeOverride ?? header.match(/^data:([^;]+)/)?.[1] ?? 'application/octet-stream';
-    const binary = atob(body);
+    const mime = mimeOverride || meta.match(/^data:([^;]+)/)?.[1] || 'application/octet-stream';
+    const isBase64 = meta.includes(';base64');
+    const binary = isBase64 ? atob(payload) : decodeURIComponent(payload);
     const bytes = new Uint8Array(binary.length);
-
-    for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.charCodeAt(index);
-    }
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
 
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
 }
@@ -24,8 +26,10 @@ export function getOpenableDocumentUrl(data: string, mimeOverride = 'application
 export function openDocumentInNewTab(data: string, mimeOverride = 'application/pdf') {
     const url = getOpenableDocumentUrl(data, mimeOverride);
     const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (url !== data) {
+
+    if (url.startsWith('blob:')) {
         window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     }
+
     return Boolean(opened);
 }

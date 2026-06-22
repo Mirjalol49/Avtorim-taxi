@@ -32,6 +32,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_DOC_MB = 5;
 
 type ExpiryStatus = 'missing' | 'expired' | 'soon' | 'valid';
+type CarDocumentPreview = {
+    name: string;
+    data: string;
+    type?: string;
+};
 
 const DOC_CATEGORIES: Array<{ category: CarDocument['category']; labelKey: string; fallback: string }> = [
     { category: 'id_card', labelKey: 'carDocVehicleRegistration', fallback: 'Avtomobil texpassporti' },
@@ -88,6 +93,14 @@ const CAR_PROFILE_COPY = {
     },
 } as const;
 
+function isImageDocument(doc: { type?: string; data?: string }) {
+    return Boolean(doc.type?.startsWith('image/') || doc.data?.startsWith('data:image/'));
+}
+
+function isPdfDocument(doc: { name?: string; type?: string; data?: string }) {
+    return isPdfSource(doc);
+}
+
 function startOfLocalDay(ms: number): number {
     const date = new Date(ms);
     date.setHours(0, 0, 0, 0);
@@ -136,7 +149,8 @@ export const CarProfilePage: React.FC<Props> = ({
     const car = cars.find(c => c.id === id);
     const driver = car ? drivers.find(d => d.id === car.assignedDriverId && !d.isDeleted) : undefined;
     
-    const [viewingDoc, setViewingDoc] = useState<{ name: string; data: string } | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<CarDocumentPreview | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [repairConfirm, setRepairConfirm] = useState<{ isOpen: boolean; targetStatus: boolean }>({ isOpen: false, targetStatus: false });
     const [profileDocs, setProfileDocs] = useState<CarDocument[]>([]);
     const [docError, setDocError] = useState<string | null>(null);
@@ -186,6 +200,37 @@ export const CarProfilePage: React.FC<Props> = ({
         };
     }, [car?.id]);
 
+    useEffect(() => {
+        if (!viewingDoc) return;
+        if (isPdfDocument(viewingDoc)) {
+            setViewingDoc(null);
+            return;
+        }
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setViewingDoc(null);
+        };
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [viewingDoc]);
+
+    useEffect(() => {
+        if (!viewingDoc) {
+            setPreviewUrl(null);
+            return;
+        }
+        if (isPdfDocument(viewingDoc)) {
+            setPreviewUrl(null);
+            return;
+        }
+
+        setPreviewUrl(viewingDoc.data);
+    }, [viewingDoc]);
+
     if (!car) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
@@ -207,6 +252,7 @@ export const CarProfilePage: React.FC<Props> = ({
     const carCopy = CAR_PROFILE_COPY[copyLang];
     const tr = (key: keyof typeof carCopy, options?: Record<string, unknown>) =>
         t(key, { defaultValue: carCopy[key], ...options });
+    const isViewingImage = viewingDoc ? isImageDocument(viewingDoc) : false;
     const expiryItems = [
         { key: 'insurance', label: t('insuranceOsago'), value: car.insuranceExpiryMs, icon: ShieldCheck },
         { key: 'technical', label: t('technicalInspection'), value: car.techInspectionExpiryMs, icon: ClipboardCheck },
@@ -625,15 +671,15 @@ export const CarProfilePage: React.FC<Props> = ({
                                         </div>
                                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                                             {group.docs.map((doc, idx) => {
-                                                const isImage = doc.type?.startsWith('image/');
+                                                const isImage = isImageDocument(doc);
+                                                const isPdf = isPdfDocument(doc);
                                                 const fileNumber = idx + 1;
                                                 const openDocument = () => {
-                                                    if (isPdfSource(doc)) {
-                                                        openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+                                                    if (isPdf) {
+                                                        openDocumentInNewTab(doc.data);
                                                         return;
                                                     }
-                                                    if (isImage) setViewingDoc({ name: doc.name, data: doc.data });
-                                                    else window.open(doc.data, '_blank', 'noopener,noreferrer');
+                                                    setViewingDoc({ name: doc.name || group.label, data: doc.data, type: doc.type });
                                                 };
                                                 return (
                                                     <div key={`${doc.name}-${idx}`} className="relative group">
@@ -648,10 +694,15 @@ export const CarProfilePage: React.FC<Props> = ({
                                                         >
                                                             {isImage ? (
                                                                 <img src={doc.data} alt={doc.name} className="absolute inset-0 w-full h-full object-cover" />
+                                                            ) : isPdf ? (
+                                                                <div className="flex flex-col items-center gap-1.5 pt-2 text-rose-500">
+                                                                    <FilePdfIcon className="w-8 h-8" />
+                                                                    <span className="text-[10px] font-black tracking-wider">PDF</span>
+                                                                </div>
                                                             ) : (
-                                                                <div className="flex flex-col items-center gap-1 text-rose-500">
-                                                                    <FilePdfIcon className="w-7 h-7" />
-                                                                    <span className="text-[10px] font-black">PDF</span>
+                                                                <div className="flex flex-col items-center gap-1.5 px-2 pt-2 text-slate-500">
+                                                                    <FilePdfIcon className="w-8 h-8" />
+                                                                    <span className="max-w-full truncate text-[10px] font-black tracking-wider">{doc.type?.split('/')[1]?.toUpperCase() || 'FILE'}</span>
                                                                 </div>
                                                             )}
                                                             <span className="absolute left-1.5 top-1.5 min-w-6 h-6 px-1 rounded-full bg-black/70 text-white text-[11px] font-black flex items-center justify-center">
@@ -730,16 +781,86 @@ export const CarProfilePage: React.FC<Props> = ({
             </div>
 
             {/* Document Viewer Modal */}
-            {viewingDoc && (
-                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-8 bg-black/80 backdrop-blur-sm" onClick={() => setViewingDoc(null)}>
-                    <div className="relative w-full max-w-4xl bg-black/50 rounded-3xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="absolute top-4 right-4 flex gap-2 z-10">
-                            <button onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)} className="px-4 py-2 bg-[#0f766e]/80 hover:bg-[#0f766e] text-white text-[12px] font-bold rounded-xl backdrop-blur-md transition-colors">Yuklab olish</button>
-                            <button onClick={() => setViewingDoc(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md transition-colors border border-white/20">✕</button>
+            {viewingDoc && !isPdfDocument(viewingDoc) && typeof document !== 'undefined' && createPortal(
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={t('viewDocument', "Hujjatni ko'rish")}
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md"
+                    onMouseDown={() => setViewingDoc(null)}
+                >
+                    <div
+                        className={`relative flex w-full max-w-[920px] h-[min(820px,calc(100dvh-32px))] sm:h-[min(860px,calc(100dvh-48px))] flex-col overflow-hidden rounded-[28px] border shadow-2xl ${
+                            isDark ? 'bg-[#111827] border-white/10' : 'bg-white border-slate-200'
+                        }`}
+                        onMouseDown={e => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                            <div className="min-w-0">
+                                <p className={`text-[15px] sm:text-[16px] font-bold leading-tight truncate ${txt}`}>
+                                    {t('viewDocument', "Hujjatni ko'rish")}
+                                </p>
+                                <p className={`mt-0.5 text-[12px] truncate ${muted}`}>
+                                    {viewingDoc.name || t('file', 'Fayl')}
+                                </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                {previewUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
+                                        className={`hidden sm:flex h-10 px-3 items-center justify-center rounded-[16px] border text-[12px] font-bold transition-colors ${
+                                            isDark ? 'border-white/10 text-white/75 hover:bg-white/10' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {t('open', 'Ochish')}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => forceDownload(viewingDoc.data, viewingDoc.name)}
+                                    className="h-10 px-3 sm:px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <DownloadIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">{t('download', 'Yuklab olish')}</span>
+                                </button>
+                                <button
+                                    onClick={() => setViewingDoc(null)}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-[16px] border transition-colors ${
+                                        isDark ? 'border-white/10 text-white/70 hover:bg-white/10 hover:text-white' : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'
+                                    }`}
+                                    aria-label={t('close', 'Yopish')}
+                                >
+                                    <XIcon className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
-                        <img src={viewingDoc.data} alt={viewingDoc.name} className="w-full h-auto max-h-[85vh] object-contain" />
+                        <div className={`flex-1 min-h-0 overflow-auto p-3 sm:p-5 flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-slate-50'}`}>
+                            {isViewingImage ? (
+                                <img
+                                    src={viewingDoc.data}
+                                    alt={viewingDoc.name}
+                                    className="max-w-full max-h-full rounded-[20px] object-contain shadow-xl"
+                                />
+                            ) : (
+                                <div className={`w-full max-w-sm rounded-[24px] border p-6 text-center ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'}`}>
+                                    <FilePdfIcon className={`mx-auto mb-3 w-12 h-12 ${isDark ? 'text-white/50' : 'text-slate-400'}`} />
+                                    <p className={`text-[15px] font-black ${txt}`}>{viewingDoc.name || t('file', 'Fayl')}</p>
+                                    <p className={`mt-1 text-[12px] ${muted}`}>{t('documentPreviewUnavailable', "Bu faylni brauzerda ko'rib bo'lmadi. Yuklab oling yoki alohida oynada oching.")}</p>
+                                    {previewUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
+                                            className="mt-4 h-10 px-4 rounded-[16px] bg-[#0f766e] text-white text-[12px] font-bold hover:bg-[#0b665f] transition-colors"
+                                        >
+                                            {t('open', 'Ochish')}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
 
             {onQuickAssign && (

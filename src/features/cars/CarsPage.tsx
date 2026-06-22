@@ -12,7 +12,7 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { useNavigate } from 'react-router-dom';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { GlassButton } from '../../components/ui/GlassButton';
-import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
+import { openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface CarsPageProps {
     cars: Car[];
@@ -52,19 +52,25 @@ function DocViewerModal({
     const isPdf = isPdfSource(doc);
     const total = state.docs.length;
 
-    const openAt = useCallback((nextIndex: number) => {
-        const nextDoc = state.docs[nextIndex];
+    const openAt = useCallback((nextIdx: number) => {
+        const nextDoc = state.docs[nextIdx];
         if (!nextDoc) return;
-        if (isPdfSource(nextDoc)) {
-            openDocumentInNewTab(nextDoc.data, nextDoc.type || 'application/pdf');
+        if (nextDoc.type === 'application/pdf') {
+            openDocumentInNewTab(nextDoc.data);
             onClose();
             return;
         }
-        setIdx(nextIndex);
+        setIdx(nextIdx);
     }, [onClose, state.docs]);
 
     const prev = useCallback(() => openAt(Math.max(0, idx - 1)), [idx, openAt]);
     const next = useCallback(() => openAt(Math.min(total - 1, idx + 1)), [idx, openAt, total]);
+
+    useEffect(() => {
+        if (!isPdf) return;
+        openDocumentInNewTab(doc.data);
+        onClose();
+    }, [doc.data, isPdf, onClose]);
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -97,6 +103,8 @@ function DocViewerModal({
         technical_passport: 'Tex.Passport',
         other: t('document'),
     };
+
+    if (isPdf) return null;
 
     return createPortal(
         <div
@@ -272,8 +280,8 @@ const CarsPage: React.FC<CarsPageProps> = ({
         const docs = car.documents ?? [];
         if (!docs.length) return;
         const doc = docs[index];
-        if (doc && isPdfSource(doc)) {
-            openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+        if (doc?.type === 'application/pdf') {
+            openDocumentInNewTab(doc.data);
             return;
         }
         setDocViewer({ docs, index, carName: car.name });
