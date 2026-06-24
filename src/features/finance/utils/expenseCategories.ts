@@ -36,12 +36,12 @@ const getBrowserAccountScope = () => {
     try {
         const role = window.localStorage.getItem('avtorim_role');
         const viewer = JSON.parse(window.localStorage.getItem('avtorim_viewer_profile') || 'null');
-        const viewerFleetId = viewer?.fleet_id || viewer?.created_by;
-        if (role === 'viewer' && viewerFleetId) return `fleet:${viewerFleetId}`;
+        const viewerFleetId = viewer?.fleet_id || viewer?.created_by || viewer?.fleetId || viewer?.createdBy;
+        if (role === 'viewer' && viewerFleetId) return viewerFleetId;
 
         const admin = JSON.parse(window.localStorage.getItem('avtorim_admin_user') || 'null');
-        if (admin?.id) return `admin:${admin.id}`;
-        if (viewerFleetId) return `fleet:${viewerFleetId}`;
+        if (admin?.id) return admin.id;
+        if (viewerFleetId) return viewerFleetId;
     } catch {
         // fall through to a stable browser-local namespace
     }
@@ -49,6 +49,15 @@ const getBrowserAccountScope = () => {
 };
 
 const normalizeScope = (scope?: string) => scope?.trim() || getBrowserAccountScope();
+
+const getStorageScopes = (scope?: string) => {
+    const normalized = normalizeScope(scope);
+    const scopes = [normalized];
+    if (normalized && !normalized.includes(':') && normalized !== 'global') {
+        scopes.push(`admin:${normalized}`, `fleet:${normalized}`);
+    }
+    return Array.from(new Set(scopes));
+};
 
 export const getExpenseCategoryStorageKey = (scope?: string) =>
     `${CUSTOM_CATEGORY_STORAGE_PREFIX}:${normalizeScope(scope)}`;
@@ -76,19 +85,25 @@ const normalizeCustomCategory = (value: unknown): ExpenseCategoryDefinition | nu
 };
 
 export const readStoredExpenseCategories = (scope?: string): ExpenseCategoryDefinition[] => {
-    const key = getExpenseCategoryStorageKey(scope);
-    if (typeof window === 'undefined') return memoryStore.get(key) ?? [];
-    try {
-        const raw = window.localStorage.getItem(key);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed
-            .map(normalizeCustomCategory)
-            .filter((item): item is ExpenseCategoryDefinition => Boolean(item));
-    } catch {
-        return [];
-    }
+    const categories = getStorageScopes(scope).flatMap(storageScope => {
+        const key = `${CUSTOM_CATEGORY_STORAGE_PREFIX}:${storageScope}`;
+        if (typeof window === 'undefined') return memoryStore.get(key) ?? [];
+        try {
+            const raw = window.localStorage.getItem(key);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+            return parsed
+                .map(normalizeCustomCategory)
+                .filter((item): item is ExpenseCategoryDefinition => Boolean(item));
+        } catch {
+            return [];
+        }
+    });
+
+    const byId = new Map<string, ExpenseCategoryDefinition>();
+    categories.forEach(category => byId.set(category.id, category));
+    return Array.from(byId.values());
 };
 
 const writeStoredExpenseCategories = (scope: string | undefined, categories: ExpenseCategoryDefinition[]) => {
@@ -132,9 +147,11 @@ export const deleteCustomExpenseCategory = (
 ): ExpenseCategoryDefinition[] => {
     if (!categoryId.startsWith('custom:')) return readStoredExpenseCategories(scope);
 
-    const next = readStoredExpenseCategories(scope).filter(category => category.id !== categoryId);
-    writeStoredExpenseCategories(scope, next);
-    return next;
+    getStorageScopes(scope).forEach(storageScope => {
+        const next = readStoredExpenseCategories(storageScope).filter(category => category.id !== categoryId);
+        writeStoredExpenseCategories(storageScope, next);
+    });
+    return readStoredExpenseCategories(scope);
 };
 
 export const isLegacyDescriptionCategoryMatch = (description: string, categoryLabel: string) =>
