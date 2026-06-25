@@ -38,6 +38,7 @@ import { playLockSound } from './services/soundService';
 import { useDailyPlanReminder } from './hooks/useDailyPlanReminder';
 import { useDriverDocumentReminders } from './hooks/useDriverDocumentReminders';
 import { clearChunkRecoveryState, isChunkLoadError, recoverFromChunkLoadError } from './src/utils/chunkRecovery';
+import { getNotificationFleetId, getNotificationUserId } from './src/features/notifications/utils/notificationIdentity';
 
 const lazyWithReload = <T extends { default: React.ComponentType<any> }>(
   importer: () => Promise<T>,
@@ -142,9 +143,8 @@ const AppContent: React.FC = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const fleetId = userRole === 'viewer'
-    ? ((adminProfile as any)?.fleet_id || (adminProfile as any)?.created_by)
-    : adminUser?.id;
+  const fleetId = getNotificationFleetId(userRole, adminUser, adminProfile as any);
+  const notificationUserId = getNotificationUserId(userRole, adminUser, adminProfile as any);
 
   // Disable context menu globally for the app
   useEffect(() => {
@@ -1069,16 +1069,14 @@ const AppContent: React.FC = () => {
           notifications={notifications}
           unreadCount={unreadCount}
           readIds={readNotificationIds}
-          userId={adminUser?.id || 'global'}
+          userId={notificationUserId}
           cars={cars}
           onMarkAsRead={async (id) => {
-            const userId = adminUser?.id || 'global';
-            await markNotificationAsRead(id, userId);
+            await markNotificationAsRead(id, notificationUserId);
             setReadNotificationIds(prev => new Set(prev).add(id));
             setUnreadCount(prev => Math.max(0, prev - 1));
           }}
           onMarkAllAsRead={async () => {
-            const userId = adminUser?.id || 'global';
             const unreadIds = notifications
               .filter(n => !readNotificationIds.has(n.id))
               .map(n => n.id);
@@ -1091,19 +1089,17 @@ const AppContent: React.FC = () => {
               setUnreadCount(0);
 
               // Then persist to Firebase in background  
-              markAllNotificationsAsRead(unreadIds, userId).catch(() => {});
+              markAllNotificationsAsRead(unreadIds, notificationUserId).catch(() => {});
             }
           }}
           onDeleteNotification={async (id) => {
-            const userId = adminUser?.id || 'global';
             dismissNotification(id);
-            await deleteNotification(id, userId);
+            await deleteNotification(id, notificationUserId);
           }}
           onClearAllRead={async (ids = []) => {
-            const userId = adminUser?.id || 'global';
             const idsToDismiss = ids.length > 0 ? ids : Array.from(readNotificationIds);
             dismissReadNotifications(new Set(idsToDismiss));
-            await clearAllReadNotifications(userId, idsToDismiss);
+            await clearAllReadNotifications(notificationUserId, idsToDismiss);
           }}
         />
 
@@ -1149,17 +1145,15 @@ const AppContent: React.FC = () => {
               notifications={notifications}
               unreadCount={unreadCount}
               readIds={readNotificationIds}
-              userId={adminUser?.id || 'global'}
+              userId={notificationUserId}
               theme={theme}
               cars={cars}
               onMarkAsRead={async (id) => {
-                const userId = adminUser?.id || 'global';
-                await markNotificationAsRead(id, userId);
+                await markNotificationAsRead(id, notificationUserId);
                 setReadNotificationIds(prev => new Set(prev).add(id));
                 setUnreadCount(prev => Math.max(0, prev - 1));
               }}
               onMarkAllAsRead={async () => {
-                const userId = adminUser?.id || 'global';
                 const unreadIds = notifications
                   .filter(n => !readNotificationIds.has(n.id))
                   .map(n => n.id);
@@ -1168,19 +1162,17 @@ const AppContent: React.FC = () => {
                   unreadIds.forEach(id => newSet.add(id));
                   setReadNotificationIds(newSet);
                   setUnreadCount(0);
-                  markAllNotificationsAsRead(unreadIds, userId).catch(() => {});
+                  markAllNotificationsAsRead(unreadIds, notificationUserId).catch(() => {});
                 }
               }}
               onDeleteNotification={async (id) => {
-                const userId = adminUser?.id || 'global';
                 dismissNotification(id);
-                await deleteNotification(id, userId);
+                await deleteNotification(id, notificationUserId);
               }}
               onClearAllRead={async (ids = []) => {
-                const userId = adminUser?.id || 'global';
                 const idsToDismiss = ids.length > 0 ? ids : Array.from(readNotificationIds);
                 dismissReadNotifications(new Set(idsToDismiss));
-                await clearAllReadNotifications(userId, idsToDismiss);
+                await clearAllReadNotifications(notificationUserId, idsToDismiss);
               }}
             />
           </div>
