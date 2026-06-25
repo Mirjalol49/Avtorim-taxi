@@ -36,7 +36,12 @@ import restAnimation from '../../../Images/rest.json';
 import depositAnimation from '../../../Images/deposit.json';
 import { LicensePlate } from '../../components/ui/LicensePlate';
 import { resolveTransactionCarSnapshot } from '../drivers/utils/driverPlanHistory';
-import { buildExpenseCategoryList, resolveExpenseCategory } from '../finance/utils/expenseCategories';
+import {
+    buildExpenseCategoryList,
+    CUSTOM_EXPENSE_CATEGORY_EVENT,
+    readStoredExpenseCategories,
+    resolveExpenseCategory,
+} from '../finance/utils/expenseCategories';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -200,9 +205,27 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 	        restoreRows,
 	        patchRow,
 	    } = useTransactionsPaginated(fleetId, filters);
+    const [storedExpenseCategories, setStoredExpenseCategories] = useState(() => readStoredExpenseCategories(fleetId));
+
+    useEffect(() => {
+        setStoredExpenseCategories(readStoredExpenseCategories(fleetId));
+    }, [fleetId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const onCategoriesUpdated = (event: Event) => {
+            const detail = (event as CustomEvent<{ scope?: string }>).detail;
+            if (!detail?.scope || detail.scope === (fleetId || 'global')) {
+                setStoredExpenseCategories(readStoredExpenseCategories(fleetId));
+            }
+        };
+        window.addEventListener(CUSTOM_EXPENSE_CATEGORY_EVENT, onCategoriesUpdated);
+        return () => window.removeEventListener(CUSTOM_EXPENSE_CATEGORY_EVENT, onCategoriesUpdated);
+    }, [fleetId]);
+
     const expenseCategories = useMemo(
-        () => buildExpenseCategoryList(transactions),
-        [transactions],
+        () => buildExpenseCategoryList(transactions, storedExpenseCategories),
+        [transactions, storedExpenseCategories],
     );
 
     // The paginated list automatically handles its own real-time syncing via useTransactionsPaginated.
@@ -1132,7 +1155,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     onSubmit={handleEditSubmit}
                     drivers={drivers}
                     cars={cars}
+                    transactions={transactions}
                     theme={theme}
+                    fleetId={fleetId}
                     initialTransaction={editingTransaction}
                 />
             )}

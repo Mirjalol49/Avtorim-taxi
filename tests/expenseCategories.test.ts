@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { TransactionType } from '../src/core/types';
 import {
   buildExpenseCategoryList,
@@ -11,6 +11,10 @@ import {
 } from '../src/features/finance/utils/expenseCategories';
 
 describe('expense category helpers', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it('resolves structured expense categories before legacy description prefixes', () => {
     const category = resolveExpenseCategory({
       type: TransactionType.EXPENSE,
@@ -72,5 +76,15 @@ describe('expense category helpers', () => {
 
     deleteCustomExpenseCategory(scope, DEFAULT_EXPENSE_CATEGORIES[0].id);
     expect(readStoredExpenseCategories(scope)).toHaveLength(0);
+  });
+
+  it('reads categories saved with an explicit fleet id from the browser account scope', () => {
+    window.localStorage.setItem('avtorim_role', 'admin');
+    window.localStorage.setItem('avtorim_admin_user', JSON.stringify({ id: 'fleet-1' }));
+
+    const saved = saveCustomExpenseCategory('fleet-1', 'Yuvish', '🧽');
+    const categories = readStoredExpenseCategories();
+
+    expect(categories).toContainEqual(saved.category);
   });
 });
