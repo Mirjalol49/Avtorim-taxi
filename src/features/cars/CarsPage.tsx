@@ -12,7 +12,7 @@ import { LicensePlate } from '../../components/ui/LicensePlate';
 import { useNavigate } from 'react-router-dom';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { GlassButton } from '../../components/ui/GlassButton';
-import { openDocumentInNewTab } from '../documents/pdfPreviewUtils';
+import { isPdfSource, openDocumentInNewTab } from '../documents/pdfPreviewUtils';
 
 interface CarsPageProps {
     cars: Car[];

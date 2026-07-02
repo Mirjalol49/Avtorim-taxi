@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transaction, Driver, Language, TransactionType } from '../../core/types';
+import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import { useFinanceStats } from './hooks/useFinanceStats';
 import { useAuthContext } from '../auth/context/AuthContext';
@@ -101,7 +101,7 @@ export const FinancePage: React.FC<FinancePageProps> = ({
         <div className="space-y-6 animate-fadeIn">
             {/* Analytics Header Filters */}
             <div className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-surface border-white/[0.08]' : 'bg-white border-gray-200'}`}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
                     <DatePicker
                         label={t('fromDate') || 'Boshlanish sanasi'}
                         value={filters.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
@@ -198,31 +198,12 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                     </div>
 
                     <CustomSelect
-                        label={t('transactionType', "O'tkazma turi")}
-                        value={filters.type}
-                        onChange={(val) => setFilters(prev => ({
-                            ...prev,
-                            type: val,
-                            category: val === TransactionType.EXPENSE ? prev.category : 'all',
-                        }))}
-                            options={[
-                                { id: 'all', name: t('all', 'Barchasi') },
-                            { id: TransactionType.INCOME, name: t('income', 'Tushum') },
-                            { id: TransactionType.EXPENSE, name: t('expense', 'Xarajat') },
-                            { id: 'deposit', name: t('deposit', 'Depozit') },
-                        ]}
-                        theme={theme}
-                        icon={BanknoteIcon}
-                        labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
-                    />
-
-                    <CustomSelect
                         label={t('expenseCategoryFilter', 'Kategoriya')}
                         value={filters.category}
                         onChange={(val) => setFilters(prev => ({
                             ...prev,
                             category: val,
-                            type: val === 'all' ? prev.type : TransactionType.EXPENSE,
+                            type: 'all',
                         }))}
                         options={[
                             { id: 'all', name: t('allCategories', 'Barchasi') },
@@ -258,26 +239,26 @@ export const FinancePage: React.FC<FinancePageProps> = ({
                         icon={WalletIcon}
                         labelClassName={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}
                     />
-                </div>
-                {/* Export button */}
-                <div className="flex justify-end">
-                    <button
-                        onClick={() => exportFinanceSummaryToExcel(
-                            nonDeletedDrivers,
-                            allTransactions,
-                            filters.startDate,
-                            filters.endDate,
-                            `Moliyaviy_hisobot_${filters.startDate?.slice(0,10) || 'barcha'}`
-                        )}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
-                            theme === 'dark'
-                                ? 'bg-surface-2 border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
-                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
-                        }`}
-                    >
-                        <DownloadIcon className="w-4 h-4" />
-                        {t('exportExcel', 'Excel hisoboti')}
-                    </button>
+
+                    <div className="flex items-end">
+                        <button
+                            onClick={() => exportFinanceSummaryToExcel(
+                                nonDeletedDrivers,
+                                allTransactions,
+                                filters.startDate,
+                                filters.endDate,
+                                `Moliyaviy_hisobot_${filters.startDate?.slice(0,10) || 'barcha'}`
+                            )}
+                            className={`flex h-[48px] w-full items-center justify-center gap-2 px-4 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+                                theme === 'dark'
+                                    ? 'bg-surface-2 border-white/[0.08] text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
+                                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                        >
+                            <DownloadIcon className="w-4 h-4" />
+                            {t('exportExcel', 'Excel hisoboti')}
+                        </button>
+                    </div>
                 </div>
             </div>
 
