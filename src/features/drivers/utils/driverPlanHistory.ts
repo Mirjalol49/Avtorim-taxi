@@ -252,7 +252,15 @@ export function getEffectivePlanForDriverDay(driver: Driver | null | undefined, 
     
     // Automatic suspension: If the car is currently in repair, pause the plan for today and the future.
     // Past days rely on explicit historical overrides (added at the time of repair).
-    if (fallbackCar?.inRepair === true) {
+    if (fallbackCar?.repairPeriods && fallbackCar.repairPeriods.length > 0) {
+        const targetNoon = dayStart(date) + 12 * 60 * 60 * 1000; // 12:00 PM
+        const isInRepair = fallbackCar.repairPeriods.some(p => {
+             return targetNoon >= p.startMs && targetNoon <= (p.endMs ?? Number.POSITIVE_INFINITY);
+        });
+        if (isInRepair) {
+            return 0;
+        }
+    } else if (fallbackCar?.inRepair === true) {
         const todayMidnight = new Date();
         todayMidnight.setHours(0, 0, 0, 0);
         const targetDateMidnight = new Date(date);
@@ -294,7 +302,15 @@ export function getDriverDayOverrideType(driver: Driver | null | undefined, date
     if (!driver) return undefined;
     
     // Automatic suspension override: Treat as REPAIR if car is currently broken
-    if (fallbackCar?.inRepair === true) {
+    if (fallbackCar?.repairPeriods && fallbackCar.repairPeriods.length > 0) {
+        const targetNoon = dayStart(date) + 12 * 60 * 60 * 1000; // 12:00 PM
+        const isInRepair = fallbackCar.repairPeriods.some(p => {
+             return targetNoon >= p.startMs && targetNoon <= (p.endMs ?? Number.POSITIVE_INFINITY);
+        });
+        if (isInRepair) {
+            return 'REPAIR';
+        }
+    } else if (fallbackCar?.inRepair === true) {
         const todayMidnight = new Date();
         todayMidnight.setHours(0, 0, 0, 0);
         const targetDateMidnight = new Date(date);

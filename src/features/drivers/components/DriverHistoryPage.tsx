@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
@@ -140,11 +140,6 @@ const formatMonthLabel = (key: string, language?: string) => {
     }).format(new Date(year, month - 1, 1)));
 };
 
-const formatDayShort = (date: Date, language?: string) => capitalize(new Intl.DateTimeFormat(localeForLanguage(language), {
-    month: 'short',
-    day: 'numeric',
-}).format(date));
-
 const formatFullDate = (date: Date | number, language?: string) => capitalize(new Intl.DateTimeFormat(localeForLanguage(language), {
     day: 'numeric',
     month: 'long',
@@ -160,22 +155,6 @@ const isDepositTopup = (tx: Transaction) => tx.type === TransactionType.INCOME &
 const isPlanIncome = (tx: Transaction) => tx.type === TransactionType.INCOME && !isDepositTopup(tx);
 const isSalaryPayment = (tx: Transaction) => tx.category === 'salary_payment';
 const sumAbs = (txs: Transaction[]) => txs.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-
-const MoneyInline: React.FC<{
-    prefix?: React.ReactNode;
-    amount: number;
-    sign?: '+' | '-' | '';
-    className?: string;
-}> = ({ prefix, amount, sign = '', className = '' }) => (
-    <span className={`inline-flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5 leading-tight ${className}`}>
-        {prefix && <span className="shrink-0">{prefix}</span>}
-        <span className="inline-flex shrink-0 items-baseline gap-0.5 whitespace-nowrap">
-            <span>{sign}{fmtNumber(amount)}</span>
-            <span className="text-[8px] sm:text-[9px] font-black uppercase opacity-70">UZS</span>
-        </span>
-    </span>
-);
-
 
 const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -264,6 +243,8 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
     const [visible, setVisible] = useState(false);
     const [selectedMonthKey, setSelectedMonthKey] = useState(monthKey(new Date()));
     const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+    const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+    const monthPickerRef = useRef<HTMLDivElement | null>(null);
 
     const handleClose = () => {
         setVisible(false);
@@ -272,12 +253,31 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
 
     useEffect(() => {
         requestAnimationFrame(() => setVisible(true));
+    }, []);
+
+    useEffect(() => {
         const h = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') handleClose();
+            if (e.key !== 'Escape') return;
+            if (monthPickerOpen) {
+                setMonthPickerOpen(false);
+                return;
+            }
+            handleClose();
         };
         document.addEventListener('keydown', h);
         return () => document.removeEventListener('keydown', h);
-    }, []);
+    }, [monthPickerOpen]);
+
+    useEffect(() => {
+        if (!monthPickerOpen) return;
+        const h = (e: MouseEvent) => {
+            const target = e.target as Node | null;
+            if (target && monthPickerRef.current?.contains(target)) return;
+            setMonthPickerOpen(false);
+        };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [monthPickerOpen]);
 
     const allDriverTxs = useMemo(() => (
         transactions
@@ -606,6 +606,10 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
         return isDark ? 'border-white/[0.06] bg-white/[0.03]' : 'border-gray-100 bg-white';
     };
 
+    const monthPickerTone = isDark
+        ? 'border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]'
+        : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50';
+
     const renderTransactionLine = (tx: Transaction) => {
         const isTopup = isDepositTopup(tx);
         const isDepositUse = tx.useDeposit === true && !isTopup;
@@ -707,14 +711,64 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                 <p className={`text-[11px] font-black uppercase tracking-widest ${muted}`}>{t('financialHistory', 'Moliya tarixi')}</p>
                                 <h2 className={`text-[22px] font-black mt-1 ${txt}`}>{formatMonthLabel(selectedMonthKey, i18n.language)}</h2>
                             </div>
-                            <select
-                                value={selectedMonthKey}
-                                onChange={(e) => { setSelectedMonthKey(e.target.value); setSelectedDayKey(null); }}
-                                className={`h-12 rounded-2xl border px-4 text-[14px] font-bold outline-none ${isDark ? 'bg-[#111827] border-white/10 text-white' : 'bg-white border-gray-200 text-slate-900'}`}
-                                aria-label={t('month', 'Oy')}
-                            >
-                                {monthOptions.map(key => <option key={key} value={key}>{formatMonthLabel(key, i18n.language)}</option>)}
-                            </select>
+                            <div ref={monthPickerRef} className="relative w-full sm:w-[260px]">
+                                <button
+                                    type="button"
+                                    onClick={() => setMonthPickerOpen(open => !open)}
+                                    className={`flex h-12 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left text-[14px] font-black outline-none transition-all ${monthPickerTone}`}
+                                    aria-label={t('month', 'Oy')}
+                                    aria-expanded={monthPickerOpen}
+                                >
+                                    <span className="inline-flex min-w-0 items-center gap-2">
+                                        <CalendarIcon className={`h-4 w-4 shrink-0 ${isDark ? 'text-cyan-300' : 'text-teal-700'}`} />
+                                        <span className="truncate">{formatMonthLabel(selectedMonthKey, i18n.language)}</span>
+                                    </span>
+                                    <svg
+                                        className={`h-4 w-4 shrink-0 transition-transform ${monthPickerOpen ? 'rotate-180' : ''} ${muted}`}
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </button>
+
+                                {monthPickerOpen && (
+                                    <div className={`absolute right-0 top-[calc(100%+8px)] z-40 w-full overflow-hidden rounded-2xl border p-1.5 shadow-2xl ${isDark ? 'border-white/10 bg-[#111827]' : 'border-slate-200 bg-white'}`}>
+                                        <div className="max-h-[260px] overflow-y-auto pr-1">
+                                            {monthOptions.map(key => {
+                                                const selected = key === selectedMonthKey;
+                                                return (
+                                                    <button
+                                                        key={key}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedMonthKey(key);
+                                                            setSelectedDayKey(null);
+                                                            setMonthPickerOpen(false);
+                                                        }}
+                                                        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-[14px] font-black transition-colors ${
+                                                            selected
+                                                                ? isDark ? 'bg-cyan-500/15 text-cyan-200' : 'bg-teal-50 text-teal-800'
+                                                                : isDark ? 'text-white/80 hover:bg-white/[0.06]' : 'text-slate-700 hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        <span>{formatMonthLabel(key, i18n.language)}</span>
+                                                        {selected && (
+                                                            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M20 6 9 17l-5-5" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-5">
@@ -778,43 +832,41 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
     {calendarDays.map((day, index) => {
         const history = day.history;
         const isSelected = selectedDayKey === day.dateKey;
-        const depositTopups = day.deposits.filter(row => isDepositTopup(row.tx));
-        const depositUses = day.deposits.filter(row => !isDepositTopup(row.tx));
         const isFuture = dayStart(day.date) > dayStart(new Date());
 
+        const isToday = day.dateKey === dateKey(new Date());
+        const isReducedRate = history.expectedPlan > 0 && history.expectedPlan < (car?.dailyPlan ?? 0);
+        const isSpecialMedia = history.status === 'DAY_OFF' || history.overrideType === 'REPAIR';
+        const isDebtDay = history.dailyDebt > 0 && !isFuture && !isSpecialMedia;
+        const dayLabel = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(day.date);
+
         const cardStyle = () => {
-            if (isSelected) {
+            if (isSelected || isToday) {
                 return isDark
-                    ? 'bg-white/[0.04] shadow-md ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#1C1C1E] border border-transparent'
-                    : 'bg-white shadow-md ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-50 border border-transparent';
+                    ? 'bg-surface-2 shadow-md ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#0b1326]'
+                    : 'bg-white shadow-md ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-50';
             }
             if (isFuture) {
                 return isDark
-                    ? 'bg-white/[0.02] border border-white/[0.04] opacity-50 hover:opacity-100'
+                    ? 'bg-surface border border-white/[0.04] opacity-50 hover:opacity-100'
                     : 'bg-gray-50/70 border-transparent opacity-60 hover:opacity-100';
             }
             if (history.status === 'NOT_WORKING') {
                 return isDark
-                    ? 'bg-white/[0.02] border-transparent'
+                    ? 'bg-surface-3 border-transparent'
                     : 'bg-gray-50 border-transparent text-gray-400';
-            }
-            if (history.status === 'DAY_OFF') {
-                return isDark
-                    ? 'bg-white/[0.04] border border-blue-500/20'
-                    : 'bg-white border border-transparent shadow-sm';
             }
             if (history.status === 'PAID' || history.status === 'EXTRA') {
                 return isDark
-                    ? 'bg-white/[0.04] border border-emerald-500/20 hover:border-emerald-500/40 hover:bg-white/[0.06]'
+                    ? 'bg-surface-2 border border-emerald-500/20 hover:border-emerald-500/40 hover:bg-surface-3'
                     : 'bg-white border-transparent shadow-sm hover:shadow-md';
             }
             return isDark
-                ? 'bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.06]'
+                ? 'bg-surface-2 border border-white/[0.06] hover:bg-surface-3'
                 : 'bg-white border-transparent shadow-sm hover:shadow-md';
         };
 
-        const isReducedRate = history.expectedPlan > 0 && history.expectedPlan < (car?.dailyPlan ?? 0);
-        const cellClass = `relative flex flex-col min-h-[90px] md:min-h-[110px] rounded-lg sm:rounded-2xl p-1 sm:p-3 transition-all duration-150 overflow-hidden cursor-pointer hover:scale-[1.03] hover:shadow-md ${cardStyle()} ${isReducedRate && history.status !== 'DAY_OFF' && history.status !== 'NOT_WORKING' && history.overrideType !== 'REPAIR' ? (isDark ? 'bg-indigo-500/5' : 'bg-indigo-50/50') : ''}`;
+        const cellClass = `relative flex flex-col min-h-[118px] sm:min-h-[150px] rounded-lg sm:rounded-2xl p-2 sm:p-4 transition-all duration-150 overflow-hidden cursor-pointer hover:scale-[1.03] hover:shadow-md ${isSpecialMedia ? 'border border-transparent shadow-sm' : cardStyle()} ${isReducedRate && !isSpecialMedia ? (isDark ? 'bg-indigo-500/5' : 'bg-indigo-50/50') : ''}`;
 
         return (
             <button
@@ -855,38 +907,34 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                 )}
 
                 <div className="flex flex-col h-full w-full relative z-10 text-left">
-                    {/* Date Header */}
-                    <div className="mb-2 flex items-center justify-between">
-                        <span className={`text-[12px] sm:text-[14px] font-bold ${
-                            (history.status === 'DAY_OFF' || history.overrideType === 'REPAIR')
-                                ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
-                                : isFuture
-                                    ? isDark ? 'text-gray-600' : 'text-gray-400'
-                                    : isDark ? 'text-gray-300' : 'text-slate-800'
-                        }`}>
-                            {formatDayShort(day.date, i18n.language)}
-                        </span>
-                        
-                        {/* Deposit indicators */}
-                        {(depositTopups.length > 0 || depositUses.length > 0) && (
-                            <div className="flex gap-1">
-                                {depositTopups.length > 0 && <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400">+{fmtCompact(depositTopups.reduce((sum, row) => sum + Math.abs(row.tx.amount), 0))}</span>}
-                                {depositUses.length > 0 && <span className="rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[9px] font-black text-orange-600 dark:text-orange-400">-{fmtCompact(depositUses.reduce((sum, row) => sum + Math.abs(row.tx.amount), 0))}</span>}
-                            </div>
+                    <div className="mb-2">
+                        {isToday ? (
+                            <span className="inline-flex items-center justify-center rounded-md bg-blue-500 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm">
+                                {dayLabel}
+                            </span>
+                        ) : (
+                            <span className={`text-[12px] sm:text-[14px] font-bold ${
+                                isSpecialMedia
+                                    ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
+                                    : isFuture
+                                        ? isDark ? 'text-gray-600' : 'text-gray-400'
+                                        : isDark ? 'text-gray-300' : 'text-slate-800'
+                            }`}>
+                                {dayLabel}
+                            </span>
                         )}
                     </div>
                     <div className={`mb-2 h-[1px] w-full ${
-                        (history.status === 'DAY_OFF' || history.overrideType === 'REPAIR')
+                        isSpecialMedia
                             ? 'bg-transparent'
                             : isDark ? 'bg-white/10' : 'bg-gray-100'
                     }`} />
 
-                    {/* Center / Income */}
-                    {!isFuture && history.overrideType !== 'REPAIR' && history.status !== 'DAY_OFF' && (
-                        <div className="flex flex-col mb-auto text-left">
-                            <span className={`text-[9px] sm:text-[10px] mb-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('incomeLabel', 'Tushum')}:</span>
-                            <div className={`text-[12px] sm:text-[14px] font-black tabular-nums tracking-tight truncate leading-none ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                {history.paidAmount > 0 ? fmtNumber(history.paidAmount) + ' UZS' : '0 UZS'}
+                    {!isFuture && !isSpecialMedia && (
+                        <div className="mb-auto flex flex-col text-left">
+                            <span className={`mb-0.5 text-[9px] sm:text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('incomeLabel', 'Tushum')}:</span>
+                            <div className={`truncate text-[12px] sm:text-[14px] font-black tabular-nums tracking-tight leading-none ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                {history.paidAmount > 0 ? fmtCompact(history.paidAmount) : '0 UZS'}
                             </div>
                         </div>
                     )}
@@ -912,39 +960,21 @@ export const DriverHistoryPage: React.FC<Props> = ({ driver, car, cars, transact
                                         <div className="w-4 h-4 flex-shrink-0 -ml-0.5">
                                             <Lottie animationData={planDoneAnimation} loop={true} />
                                         </div>
-                                        {history.excessAmount > 0 ? (
-                                            <MoneyInline
-                                                prefix={excessLabel}
-                                                amount={history.excessAmount}
-                                                sign="+"
-                                                className="text-[10px] sm:text-[11px] font-bold tracking-tight"
-                                            />
-                                        ) : history.extraIncome > 0 ? (
-                                            <MoneyInline
-                                                prefix={t('nonPlanIncome', 'Rejadan tashqari')}
-                                                amount={history.extraIncome}
-                                                sign="+"
-                                                className="text-[10px] sm:text-[11px] font-bold tracking-tight"
-                                            />
-                                        ) : (
-                                            <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
-                                                {t('fullyPaid', "To'liq to'landi")}
-                                            </span>
-                                        )}
+                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
+                                            {history.excessAmount > 0 ? `${excessLabel}: +${fmtCompact(history.excessAmount)}` : t('fullyPaid', "To'liq to'landi")}
+                                        </span>
                                     </div>
                                 );
-                            } else if (history.dailyDebt > 0) {
+                            }
+                            if (isDebtDay) {
                                 return (
                                     <div className={`flex min-w-0 items-start gap-1.5 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
-                                            <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clipRule="evenodd" />
                                         </svg>
-                                        <MoneyInline
-                                            prefix={debtLabel}
-                                            amount={history.dailyDebt}
-                                            sign="-"
-                                            className="text-[10px] sm:text-[11px] font-bold tracking-tight"
-                                        />
+                                        <span className="text-[10px] sm:text-[11px] font-bold tracking-tight">
+                                            {debtLabel}: -{fmtCompact(history.dailyDebt)}
+                                        </span>
                                     </div>
                                 );
                             }

@@ -106,4 +106,6 @@ export interface Car {
     techInspectionExpiryMs?: number;
     /** Tinting (Tanirovka) expiration date in epoch ms. */
     tintingExpiryMs?: number;
+    /** Historical repair periods to correctly track past days without debt */
+    repairPeriods?: { startMs: number; endMs: number | null }[];
 }

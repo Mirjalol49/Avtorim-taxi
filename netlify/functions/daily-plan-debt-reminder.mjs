@@ -165,7 +165,7 @@ export async function runDailyPlanDebtReminder({
     const nowMs = now.getTime();
     const { drivers, cars, transactions } = await fetchFleetData(supabase);
     const reminders = buildDailyPlanDebtReminders(drivers, cars, transactions, now);
-    if (reminders.length === 0) return { sent: 0, skipped: 0, failed: 0 };
+    if (reminders.length === 0) return { sent: 0, skipped: 0, failed: 0, candidates: 0 };
 
     const sentKeys = await fetchExistingReminderKeys(supabase, reminders[0].localDateKey);
     let sent = 0;
@@ -190,7 +190,25 @@ export async function runDailyPlanDebtReminder({
         }
     }
 
-    return { sent, skipped, failed };
+    return { sent, skipped, failed, candidates: reminders.length };
+}
+
+async function runFromEnvironment() {
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!supabaseUrl) throw new Error('SUPABASE_URL is required');
+    if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required');
+    if (!botToken) throw new Error('TELEGRAM_BOT_TOKEN is required');
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const result = await runDailyPlanDebtReminder({
+        supabase,
+        botToken,
+    });
+    console.log('[daily-plan-debt-reminder] completed', result);
+    return result;
 }
 
 export const config = {
@@ -198,29 +216,43 @@ export const config = {
 };
 
 export const handler = async () => {
-    const supabaseUrl = getEnv('SUPABASE_URL');
-    const serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
-    const botToken = getEnv('TELEGRAM_BOT_TOKEN');
+    try {
+        const supabaseUrl = getEnv('SUPABASE_URL');
+        const serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+        const botToken = getEnv('TELEGRAM_BOT_TOKEN');
 
-    if (!supabaseUrl || !serviceRoleKey || !botToken) {
-        const missing = [
-            !supabaseUrl && 'SUPABASE_URL',
-            !serviceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
-            !botToken && 'TELEGRAM_BOT_TOKEN',
-        ].filter(Boolean);
-        console.error('[daily-plan-debt-reminder] missing env:', missing.join(', '));
+        if (!supabaseUrl || !serviceRoleKey || !botToken) {
+            const missing = [
+                !supabaseUrl && 'SUPABASE_URL',
+                !serviceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
+                !botToken && 'TELEGRAM_BOT_TOKEN',
+            ].filter(Boolean);
+            console.error('[daily-plan-debt-reminder] missing env:', missing.join(', '));
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: `Missing env: ${missing.join(', ')}` }),
+            };
+        }
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        const result = await runDailyPlanDebtReminder({
+            supabase,
+            botToken,
+        });
+        return { statusCode: 200, body: JSON.stringify(result) };
+    } catch (error) {
+        console.error('[daily-plan-debt-reminder] failed:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: `Missing env: ${missing.join(', ')}` }),
+            body: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
         };
     }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const result = await runDailyPlanDebtReminder({
-        supabase,
-        botToken,
-    });
-    return { statusCode: 200, body: JSON.stringify(result) };
 };
 
-export default handler;
+export default async function scheduledHandler() {
+    const response = await handler();
+    return new Response(response.body, {
+        status: response.statusCode,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}

@@ -962,7 +962,23 @@ export const CarProfilePage: React.FC<Props> = ({
                 theme={theme}
                 isDanger={repairConfirm.targetStatus}
                 onConfirm={() => {
-                    if (onSaveCar) onSaveCar({ ...car, inRepair: repairConfirm.targetStatus });
+                    const now = Date.now();
+                    let updatedPeriods = car.repairPeriods ? [...car.repairPeriods] : [];
+                    
+                    if (repairConfirm.targetStatus) {
+                        // Putting into repair
+                        updatedPeriods.push({ startMs: now, endMs: null });
+                    } else {
+                        // Taking out of repair
+                        if (updatedPeriods.length > 0) {
+                            const last = updatedPeriods[updatedPeriods.length - 1];
+                            if (last.endMs === null) {
+                                last.endMs = now;
+                            }
+                        }
+                    }
+
+                    if (onSaveCar) onSaveCar({ ...car, inRepair: repairConfirm.targetStatus, repairPeriods: updatedPeriods });
                     setRepairConfirm({ isOpen: false, targetStatus: false });
                 }}
                 onCancel={() => setRepairConfirm({ isOpen: false, targetStatus: false })}
