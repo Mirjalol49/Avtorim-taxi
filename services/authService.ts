@@ -9,8 +9,8 @@ export interface AuthUser {
     role: 'admin' | 'super_admin' | 'viewer';
     active: boolean;
     createdAt: number;
-    password?: string;
     avatar?: string;
+    phone?: string;
 }
 
 export interface AuthSession {
@@ -33,7 +33,7 @@ class AuthService {
 
             const { data, error } = await supabase
                 .from('admin_users')
-                .select('*')
+                .select('id,username,role,active,created_ms,avatar,phone')
                 .eq('active', true)
                 .eq('phone', normalized)
                 .eq('password', password)
@@ -55,15 +55,14 @@ class AuthService {
                 role: adminData.role || 'admin',
                 active: adminData.active,
                 createdAt: adminData.created_ms,
-                password: adminData.password,
                 avatar: adminData.avatar,
+                phone: adminData.phone,
             };
 
             await this.logAuthAttempt(user.username, true, 'Phone login successful', 'admin');
             this.createSession(user);
             return { success: true, user };
-        } catch (err) {
-            console.error('Phone auth error:', err);
+        } catch {
             return { success: false, error: 'Authentication system error. Please try again.' };
         }
     }
@@ -72,13 +71,10 @@ class AuthService {
         try {
             let query = supabase
                 .from('admin_users')
-                .select('*')
+                .select('id,username,role,active,created_ms,avatar,phone')
                 .eq('active', true);
 
-            if (password !== 'emergency') {
-                query = query.eq('password', password);
-            }
-            // If they type "emergency", we just pull the very first active admin!
+            query = query.eq('password', password);
 
             if (username) {
                 query = query.eq('username', username);
@@ -99,15 +95,14 @@ class AuthService {
                 role: adminData.role || 'admin',
                 active: adminData.active,
                 createdAt: adminData.created_ms,
-                password: adminData.password,
-                avatar: adminData.avatar
+                avatar: adminData.avatar,
+                phone: adminData.phone,
             };
 
             await this.logAuthAttempt(user.username, true, 'Login successful', 'admin');
             this.createSession(user);
             return { success: true, user };
-        } catch (err) {
-            console.error('Auth error:', err);
+        } catch {
             return { success: false, error: 'Authentication system error. Please try again.' };
         }
     }
@@ -115,7 +110,7 @@ class AuthService {
     async authenticateViewer(password: string): Promise<{ success: boolean; user?: any; error?: string }> {
         const { data, error } = await supabase
             .from('viewers')
-            .select('*')
+            .select('id,username,name,phone,role,active,created_ms')
             .eq('password', password)
             .limit(1);
 
@@ -143,8 +138,8 @@ class AuthService {
                 details: { user_type: userType, reason, ip_address: 'client-browser' },
                 timestamp_ms: Date.now()
             });
-        } catch (error) {
-            console.error('Failed to log auth attempt:', error);
+        } catch {
+            // Audit log failures must not block auth flow
         }
     }
 
@@ -168,6 +163,16 @@ class AuthService {
         } catch {
             return null;
         }
+    }
+
+    updateSessionUser(updates: Partial<AuthUser>): void {
+        const session = this.getSession();
+        if (!session) return;
+        const nextSession: AuthSession = {
+            ...session,
+            user: { ...session.user, ...updates },
+        };
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
     }
 
     async checkSessionValidity(): Promise<boolean> {

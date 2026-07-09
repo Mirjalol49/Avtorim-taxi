@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Driver } from '../src/core/types/driver.types';
 import { Car } from '../src/core/types/car.types';
+import { LicensePlate } from '../src/components/ui/LicensePlate';
+import { XIcon } from './Icons';
 
 interface DriverFilterModalProps {
     isOpen: boolean;
@@ -23,9 +26,10 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
     drivers,
     cars,
     theme,
-    allLabel = 'Barcha Haydovchilar',
-    searchPlaceholder = 'Qidirish...',
+    allLabel = 'All Drivers',
+    searchPlaceholder = 'Search...',
 }) => {
+    const { t } = useTranslation();
     const [search, setSearch] = useState('');
     const searchRef = useRef<HTMLInputElement>(null);
     const isDark = theme === 'dark';
@@ -44,12 +48,29 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
         return () => document.removeEventListener('keydown', handler);
     }, [isOpen, onClose]);
 
-    const filtered = drivers
-        .filter(d => !d.isDeleted)
-        .filter(d => d.name.toLowerCase().includes(search.toLowerCase()));
-
     const getDriverCar = (driverId: string) =>
         cars.find(c => c.assignedDriverId === driverId) ?? null;
+
+    const filtered = drivers
+        .filter(d => !d.isDeleted)
+        .filter(d => d.name.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => {
+            const carA = getDriverCar(a.id);
+            const carB = getDriverCar(b.id);
+            
+            // 1. Prioritize drivers with cars
+            if (carA && !carB) return -1;
+            if (!carA && carB) return 1;
+            
+            // 2. Prioritize ACTIVE drivers
+            const isActiveA = a.status === 'ACTIVE';
+            const isActiveB = b.status === 'ACTIVE';
+            if (isActiveA && !isActiveB) return -1;
+            if (!isActiveA && isActiveB) return 1;
+
+            // 3. Alphabetical fallback
+            return a.name.localeCompare(b.name);
+        });
 
     const handleSelect = (id: string) => {
         onSelect(id);
@@ -65,40 +86,44 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
             onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
             <div
-                className={`relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-3xl shadow-2xl border overflow-hidden ${
-                    isDark ? 'bg-[#111827] border-gray-700/80' : 'bg-white border-gray-200'
-                }`}
+                className={`relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[32px] shadow-2xl overflow-hidden ${
+                    isDark ? 'bg-[#1a1f2c]/85 border border-white/10' : 'bg-[#eef0f3]/90'
+                } backdrop-blur-2xl ring-1 ring-black/5`}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="driver-filter-title"
                 onMouseDown={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`flex items-center justify-between px-6 py-5 border-b flex-shrink-0 ${isDark ? 'border-gray-700/60' : 'border-gray-100'}`}>
-                    <div>
-                        <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            Haydovchini tanlang
-                        </h2>
-                        <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {drivers.filter(d => !d.isDeleted).length} ta haydovchi
-                        </p>
-                    </div>
+                <div className="pt-7 pb-4 px-6 flex-shrink-0 flex flex-col items-center justify-center relative">
                     <button
+                        type="button"
                         onClick={onClose}
-                        className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-                            isDark ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
+                        aria-label={t('close', 'Yopish')}
+                        title={t('close', 'Yopish')}
+                        className={`absolute right-5 top-5 w-11 h-11 rounded-full flex items-center justify-center border transition-all active:scale-95 ${
+                            isDark
+                                ? 'bg-white/[0.06] border-white/[0.08] text-gray-300 hover:bg-white/[0.10] hover:text-white'
+                                : 'bg-white/80 border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 shadow-sm'
                         }`}
                     >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <XIcon className="w-5 h-5" />
                     </button>
+                    <h2 id="driver-filter-title" className={`text-[22px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {t('selectDriver', 'Haydovchini tanlang')}
+                    </h2>
+                    <p className={`text-[13px] mt-1 font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {drivers.filter(d => !d.isDeleted).length} {t('activeDriversCount', 'ta faol haydovchi')}
+                    </p>
                 </div>
 
                 {/* Search */}
-                <div className={`px-6 py-4 border-b flex-shrink-0 ${isDark ? 'border-gray-700/60' : 'border-gray-100'}`}>
-                    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${
-                        isDark ? 'bg-gray-800/60 border-gray-700 focus-within:border-teal-500' : 'bg-gray-50 border-gray-200 focus-within:border-teal-500'
+                <div className="px-6 pb-4 flex-shrink-0">
+                    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-[16px] border ${
+                        isDark ? 'bg-black/20 border-white/[0.06] focus-within:border-teal-500/50' : 'bg-black/[0.03] border-transparent focus-within:border-teal-500/50 focus-within:bg-white'
                     } transition-colors`}>
-                        <svg className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <input
                             ref={searchRef}
@@ -106,10 +131,18 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder={searchPlaceholder}
-                            className={`flex-1 bg-transparent text-sm outline-none ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+                            className={`flex-1 bg-transparent text-[15px] outline-none font-medium ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
                         />
                         {search && (
-                            <button onClick={() => setSearch('')} className={`text-xs ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>✕</button>
+                            <button
+                                type="button"
+                                onClick={() => setSearch('')}
+                                aria-label={t('clearSearch', 'Qidiruvni tozalash')}
+                                title={t('clearSearch', 'Qidiruvni tozalash')}
+                                className={`text-xs ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                ✕
+                            </button>
                         )}
                     </div>
                 </div>
@@ -122,34 +155,41 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                         {!search && (
                             <button
                                 onClick={() => handleSelect('all')}
-                                className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
+                                className={`relative flex flex-col items-center gap-3 pt-8 pb-6 px-4 rounded-[24px] transition-all text-left border-2 ${
                                     selectedDriverId === 'all'
                                         ? isDark
-                                            ? 'border-teal-500 bg-teal-500/10 shadow-sm'
-                                            : 'border-teal-500 bg-teal-50 shadow-sm'
+                                            ? 'border-teal-500/50 bg-teal-500/10'
+                                            : 'border-teal-500/50 bg-teal-50'
                                         : isDark
-                                            ? 'border-gray-700/60 bg-gray-800/40 hover:border-gray-600 hover:bg-gray-800'
-                                            : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50'
+                                            ? 'border-transparent bg-surface-2/40 hover:bg-white/[0.04]'
+                                            : 'border-transparent bg-white shadow-sm hover:shadow-md'
                                 }`}
                             >
                                 {selectedDriverId === 'all' && (
-                                    <span className="absolute top-2.5 right-2.5 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <span className="absolute top-3 right-3 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center shadow-sm">
+                                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </span>
                                 )}
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${
-                                    isDark ? 'bg-gray-700' : 'bg-gray-200'
+                                <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    selectedDriverId === 'all'
+                                        ? isDark ? 'text-teal-400 bg-teal-500/10' : 'text-slate-600 bg-slate-50'
+                                        : isDark ? 'text-gray-400 bg-surface-2' : 'text-slate-500 bg-slate-50'
                                 }`}>
-                                    👥
+                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                        <circle cx="9" cy="7" r="4" />
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                    </svg>
                                 </div>
-                                <div className="w-full text-center">
-                                    <div className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                <div className="w-full text-center mt-2">
+                                    <div className={`text-[15px] font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                         {allLabel}
                                     </div>
-                                    <div className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        Hammasi
+                                    <div className={`text-[12px] mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                        {t('all', 'Hammasi')}
                                     </div>
                                 </div>
                             </button>
@@ -163,20 +203,19 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
                                 <button
                                     key={driver.id}
                                     onClick={() => handleSelect(driver.id)}
-                                    className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
-                                        isSelected
-                                            ? isDark
-                                                ? 'border-teal-500 bg-teal-500/10 shadow-sm'
-                                                : 'border-teal-500 bg-teal-50 shadow-sm'
-                                            : isDark
-                                                ? 'border-gray-700/60 bg-gray-800/40 hover:border-gray-600 hover:bg-gray-800'
-                                                : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                >
+                                    className={`relative flex flex-col items-center pt-5 pb-4 px-3 rounded-[24px] transition-all text-left border-2 ${
+                                    selectedDriverId === driver.id
+                                        ? isDark
+                                            ? 'border-teal-500/50 bg-teal-500/10'
+                                            : 'border-teal-500/50 bg-teal-50'
+                                        : isDark
+                                            ? 'border-transparent bg-surface-2/40 hover:bg-white/[0.04]'
+                                            : 'border-transparent bg-white shadow-sm hover:shadow-md'
+                                }`}>
                                     {/* Checkmark */}
                                     {isSelected && (
-                                        <span className="absolute top-2.5 right-2.5 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <span className="absolute top-3 right-3 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center shadow-sm">
+                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                             </svg>
                                         </span>
@@ -184,47 +223,42 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
 
                                     {/* Driver avatar */}
                                     <div className="relative flex-shrink-0">
-                                        <div className={`w-14 h-14 rounded-2xl overflow-hidden border-2 ${
-                                            isSelected
-                                                ? 'border-teal-400'
-                                                : isDark ? 'border-gray-600' : 'border-gray-200'
+                                        <div className={`w-[72px] h-[72px] rounded-full overflow-hidden ${
+                                            isDark ? 'bg-surface-2' : 'bg-slate-100'
                                         }`}>
                                             {driver.avatar ? (
                                                 <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
                                             ) : (
-                                                <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                                                <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                                                     {driver.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
                                         </div>
                                         {/* Car mini badge */}
                                         {car?.avatar && (
-                                            <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-lg overflow-hidden border-2 border-current shadow-md"
-                                                style={{ borderColor: isDark ? '#374151' : '#fff' }}>
-                                                <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                                            <div className="absolute -bottom-3 -right-6 w-[48px] drop-shadow-md">
+                                                <img src={car.avatar} alt={car.name} className="w-full h-auto object-contain rounded-[10px]" />
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Info */}
-                                    <div className="w-full text-center">
-                                        <div className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                    <div className="w-full text-center mt-2">
+                                        <div className={`text-[15px] font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                             {driver.name}
                                         </div>
                                         {car ? (
                                             <>
-                                                <div className={`text-xs truncate mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                <div className={`text-[12px] truncate mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                     {car.name}
                                                 </div>
-                                                <div className={`inline-block mt-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
-                                                    isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                                }`}>
-                                                    {car.licensePlate}
+                                                <div className="flex justify-center mt-3">
+                                                    <LicensePlate plate={car.licensePlate} size="sm" />
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className={`text-xs mt-0.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                Mashina yo'q
+                                            <div className={`text-[12px] mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                {t('noCar', "Mashina yo'q")}
                                             </div>
                                         )}
                                     </div>
@@ -234,7 +268,7 @@ const DriverFilterModal: React.FC<DriverFilterModalProps> = ({
 
                         {filtered.length === 0 && search && (
                             <div className={`col-span-3 py-12 text-center text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Haydovchi topilmadi
+                                {t('driverNotFound', 'Haydovchi topilmadi')}
                             </div>
                         )}
                     </div>

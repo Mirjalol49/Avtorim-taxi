@@ -5,6 +5,7 @@ interface YearSelectorProps {
     selectedYear: number;
     onYearChange: (year: number) => void;
     theme?: 'light' | 'dark';
+    availableYears?: number[];
     startYear?: number;
     endYear?: number;
 }
@@ -13,17 +14,17 @@ const YearSelector: React.FC<YearSelectorProps> = ({
     selectedYear,
     onYearChange,
     theme = 'dark',
+    availableYears,
     startYear = new Date().getFullYear(),
     endYear = new Date().getFullYear() + 10
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Generate array of years
-    const years = Array.from(
-        { length: endYear - startYear + 1 },
-        (_, i) => startYear + i
-    ).reverse(); // Newest first
+    // Use availableYears if provided, otherwise generate from startYear–endYear
+    const years = availableYears && availableYears.length > 0
+        ? [...availableYears].sort((a, b) => b - a)
+        : Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i).reverse();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -53,10 +54,10 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                     border-2 backdrop-blur-sm min-w-[140px] justify-between
                     ${isOpen
                         ? theme === 'dark'
-                            ? 'bg-[#1F2937] border-[#0f766e] shadow-md'
+                            ? 'bg-surface border-[#0f766e] shadow-md'
                             : 'bg-white border-[#0f766e] shadow-md'
                         : theme === 'dark'
-                            ? 'bg-[#1F2937] border-gray-700 hover:border-[#0f766e]/50'
+                            ? 'bg-surface border-white/[0.08] hover:border-[#0f766e]/50'
                             : 'bg-white border-gray-300 hover:border-[#0f766e]/50'
                     }
                 `}
@@ -79,14 +80,14 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                         absolute top-full mt-2 right-0
                         w-[320px] max-h-96 overflow-hidden
                         rounded-2xl border-2 shadow-2xl
-                        backdrop-blur-md
                         ${theme === 'dark'
-                            ? 'bg-[#1F2937]/98 border-gray-700'
-                            : 'bg-white/98 border-gray-300'
+                            ? 'border-white/[0.08]'
+                            : 'bg-white border-gray-300'
                         }
                         animate-dropdown-in
                         z-50
                     `}
+                    style={theme === 'dark' ? { background: '#171f33' } : undefined}
                 >
                     <div className="max-h-96 overflow-y-auto custom-scrollbar">
                         <div className="p-3 grid grid-cols-3 gap-2">
@@ -101,7 +102,7 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                                         ${year === selectedYear
                                             ? 'bg-[#0f766e] text-white shadow-sm scale-[1.02]'
                                             : theme === 'dark'
-                                                ? 'text-gray-300 hover:bg-gray-800 hover:text-white active:scale-95'
+                                                ? 'text-gray-300 hover:bg-white/[0.04] hover:text-white active:scale-95'
                                                 : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 active:scale-95'
                                         }
                                     `}

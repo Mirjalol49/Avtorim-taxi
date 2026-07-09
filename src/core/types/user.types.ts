@@ -7,9 +7,9 @@ export interface AdminUser {
     role: 'super_admin' | 'admin' | 'viewer'; // Admin roles structure might need verification
     avatar?: string;
     name?: string;
+    phone?: string;
     createdAt?: number;
     fleetId?: string;
-    // Add other properties as seen in App.tsx usage
 }
 
 export interface AdminProfile {
@@ -17,6 +17,7 @@ export interface AdminProfile {
     role: string;
     avatar?: string;
     password?: string;
+    phone?: string;
 }
 
 export interface Viewer {

@@ -1,145 +1,152 @@
 /**
- * Simple, reliable image compression using canvas
- * Stores avatar as compressed base64 directly in Firestore
+ * Avatar Storage Service
+ *
+ * NEW APPROACH: Avatars are uploaded to Supabase Storage ('avatars' bucket)
+ * and only the public CDN URL is stored in the database.
+ *
+ * WHY: Storing base64 blobs in Postgres rows means every subscription fetch
+ * downloads the full image binary for every row. With 10+ drivers this was
+ * the #1 egress culprit (20–100 KB per driver per fetch).
+ *
+ * HOW: File → canvas compress → JPEG blob → Storage upload → CDN URL saved in DB.
  */
+
+import { supabase } from '../supabase';
+
+const AVATAR_BUCKET = 'avatars';
+
+// ─── Core image compression ───────────────────────────────────────────────────
 
 /**
- * Compress an image to reduce its size
- * Uses a simpler approach that's more reliable
+ * Compress a File or Blob to a smaller JPEG Blob via canvas.
  */
-export const compressImage = (dataUrl: string, maxSize: number = 150): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    // Set a short timeout to prevent hanging
-    const timeout = setTimeout(() => {
-      console.warn('⚠️ Image compression timed out, using original');
-      if (dataUrl.length < 500 * 1024) {
-        resolve(dataUrl);
-      } else {
-        reject(new Error('Image too large and compression timed out'));
-      }
-    }, 2000);
+async function compressToBlob(
+    input: File | Blob | string,
+    maxDim = 400,
+    quality = 0.82,
+): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
 
-    try {
-      const img = new Image();
-
-      img.onload = () => {
-        clearTimeout(timeout);
-        try {
-          const canvas = document.createElement('canvas');
-
-          // Calculate new dimensions
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxSize) {
-              height = Math.round((height * maxSize) / width);
-              width = maxSize;
+        img.onload = () => {
+            let { width: w, height: h } = img;
+            if (w > maxDim || h > maxDim) {
+                if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                else       { w = Math.round(w * maxDim / h); h = maxDim; }
             }
-          } else {
-            if (height > maxSize) {
-              width = Math.round((width * maxSize) / height);
-              height = maxSize;
-            }
-          }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { reject(new Error('No canvas context')); return; }
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob(blob => {
+                if (blob) resolve(blob);
+                else reject(new Error('canvas.toBlob failed'));
+            }, 'image/jpeg', quality);
+        };
 
-          canvas.width = width;
-          canvas.height = height;
+        img.onerror = () => reject(new Error('Image load failed'));
 
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            console.warn('No canvas context, using original');
-            resolve(dataUrl);
-            return;
-          }
-
-          // Draw and compress
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL('image/jpeg', 0.6);
-
-          console.log(`📦 Compressed: ${Math.round(dataUrl.length / 1024)}KB → ${Math.round(compressed.length / 1024)}KB`);
-          resolve(compressed);
-        } catch (canvasError) {
-          console.warn('Canvas error, using original:', canvasError);
-          resolve(dataUrl);
+        if (typeof input === 'string') {
+            img.src = input; // data URL or http URL
+        } else {
+            const url = URL.createObjectURL(input);
+            img.onload = function () {
+                URL.revokeObjectURL(url);
+                let { width: w, height: h } = img;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                    else       { w = Math.round(w * maxDim / h); h = maxDim; }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { reject(new Error('No canvas context')); return; }
+                ctx.drawImage(img, 0, 0, w, h);
+                canvas.toBlob(blob => {
+                    if (blob) resolve(blob);
+                    else reject(new Error('canvas.toBlob failed'));
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+            img.src = url;
         }
-      };
+    });
+}
 
-      img.onerror = () => {
-        clearTimeout(timeout);
-        console.warn('Image load error, using original');
-        resolve(dataUrl); // Fallback to original if image fails to load
-      };
-
-      // Critical: Set crossOrigin before src
-      img.crossOrigin = 'anonymous';
-      img.src = dataUrl;
-
-    } catch (error) {
-      clearTimeout(timeout);
-      console.warn('Compression setup error:', error);
-      resolve(dataUrl);
-    }
-  });
-};
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Process avatar for saving
- * Compresses the image and returns a base64 string suitable for Firestore
+ * Upload a driver/car/admin avatar to Supabase Storage.
+ * Returns the public CDN URL — this is what gets saved in the database.
+ *
+ * @param input  File, Blob, or data-URL string
+ * @param folder e.g. 'drivers', 'cars', 'admins'
+ * @param id     Entity ID used in the filename for deduplication/upsert
  */
-export const uploadAdminAvatar = async (dataUrl: string, adminName: string): Promise<{
-  url: string;
-  backupPath: string | null;
-  source: string;
-}> => {
-  console.log('🖼️ Processing avatar for:', adminName);
-  console.log('📊 Original size:', Math.round(dataUrl.length / 1024), 'KB');
+export async function uploadAvatarToStorage(
+    input: File | Blob | string,
+    folder: 'drivers' | 'cars' | 'admins',
+    id: string,
+): Promise<string> {
+    const blob = await compressToBlob(input, 400, 0.82);
+    const path = `${folder}/${id}.jpg`;
 
-  try {
-    // Compress the image
-    const compressed = await compressImage(dataUrl, 150);
-    const sizeKB = compressed.length / 1024;
+    const { error } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
 
-    console.log('📊 Final size:', Math.round(sizeKB), 'KB');
+    if (error) throw error;
 
-    // Check if it's small enough for Firestore (under 500KB to be safe)
-    if (sizeKB > 500) {
-      // Try more aggressive compression
-      console.log('🔄 Trying more aggressive compression...');
-      const moreCompressed = await compressImage(dataUrl, 100);
-      const newSize = moreCompressed.length / 1024;
-      console.log('📊 After aggressive compression:', Math.round(newSize), 'KB');
+    const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+    // Append cache-buster so UI reflects the new upload immediately
+    return `${data.publicUrl}?t=${Date.now()}`;
+}
 
-      if (newSize > 500) {
-        throw new Error('Image too large. Please use a smaller image (under 500KB).');
-      }
-
-      return {
-        url: moreCompressed,
-        backupPath: null,
-        source: 'base64-compressed'
-      };
-    }
-
-    console.log('✅ Avatar processed successfully');
-    return {
-      url: compressed,
-      backupPath: null,
-      source: 'base64'
-    };
-
-  } catch (error: any) {
-    console.error('❌ Avatar processing failed:', error);
-    throw error;
-  }
-};
+// ─── Legacy compatibility (admin profile — kept for existing callers) ──────────
 
 /**
- * Get avatar URL with fallback
+ * @deprecated Use uploadAvatarToStorage('admins', id) instead.
+ * Kept for backward compatibility with useAdminProfile.ts.
+ * Falls back to old base64 if storage upload fails.
  */
-export const getAvatarUrl = (avatar: string | undefined, fallbackName: string = 'User'): string => {
-  if (avatar && avatar.length > 10) {
-    return avatar;
-  }
-  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fallbackName)}`;
+export const uploadAdminAvatar = async (
+    dataUrl: string,
+    adminName: string,
+): Promise<{ url: string; backupPath: string | null; source: string }> => {
+    // Try Storage first
+    try {
+        const id = `admin_${adminName.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
+        const url = await uploadAvatarToStorage(dataUrl, 'admins', id);
+        return { url, backupPath: null, source: 'storage' };
+    } catch {
+        // Fallback: compress to base64 (old behaviour) so profile save doesn't fail
+        const blob = await compressToBlob(dataUrl, 150, 0.6);
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({
+                url: reader.result as string,
+                backupPath: null,
+                source: 'base64-fallback',
+            });
+            reader.readAsDataURL(blob);
+        });
+    }
+};
+
+// ─── Kept for any remaining callers ───────────────────────────────────────────
+
+export const compressImage = (dataUrl: string, maxSize = 150): Promise<string> =>
+    compressToBlob(dataUrl, maxSize, 0.6).then(blob =>
+        new Promise<string>(resolve => {
+            const r = new FileReader();
+            r.onloadend = () => resolve(r.result as string);
+            r.readAsDataURL(blob);
+        })
+    );
+
+export const getAvatarUrl = (avatar: string | undefined, fallbackName = 'User'): string => {
+    if (avatar && avatar.length > 10) return avatar;
+    return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fallbackName)}`;
 };

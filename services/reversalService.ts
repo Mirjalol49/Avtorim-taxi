@@ -63,7 +63,7 @@ export const reverseSalaryPayment = async (
 export const approveReversal = async (reversalId: string, approvedBy: string, _fleetId?: string): Promise<void> => {
     const { data: reversal, error: fetchErr } = await supabase
         .from('payment_reversals')
-        .select('*')
+        .select('id,salary_id,transaction_id,amount,driver_id,reason,status,requested_by,fleet_id,requested_at')
         .eq('id', reversalId)
         .single();
 
@@ -106,7 +106,7 @@ export const subscribeToReversals = (callback: (reversals: PaymentReversal[]) =>
     const fetch = () =>
         supabase
             .from('payment_reversals')
-            .select('*')
+            .select('id,salary_id,transaction_id,amount,driver_id,reason,status,requested_by,approved_by,fleet_id,requested_at,resolved_at')
             .eq('fleet_id', fleetId ?? null)
             .order('requested_at', { ascending: false })
             .then(({ data }) => { if (data) callback(data as PaymentReversal[]); });

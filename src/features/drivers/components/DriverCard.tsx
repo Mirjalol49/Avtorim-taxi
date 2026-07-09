@@ -1,185 +1,322 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
-import { Transaction } from '../../../core/types/transaction.types';
-import { EditIcon, TrashIcon, CameraIcon } from '../../../../components/Icons';
-import { XIcon } from '../../../../components/Icons';
-import { createPortal } from 'react-dom';
+import { PaymentStatus, Transaction } from '../../../core/types/transaction.types';
+import { DriverAvatar } from './DriverAvatar';
+import { calcDriverFinance } from '../utils/debtUtils';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
+import { VisuallyHidden } from '../../../components/ui/VisuallyHidden';
+import { useBoop } from '../../../core/hooks/useBoop';
+import { animated } from 'react-spring';
+import { 
+    PhoneIcon, 
+    CarIcon, 
+    EditIcon, 
+    TrashIcon,
+    WalletIcon,
+    AlertCircleIcon,
+    BanknoteIcon,
+    CalendarIcon,
+    PlusIcon
+} from 'lucide-react';
 
 interface DriverCardProps {
     driver: Driver;
     car?: Car | null;
-    transactions: Transaction[];
-    fleetId: string;
+    transactions?: Transaction[];
+    userRole: 'admin' | 'user' | 'viewer';
     theme: 'light' | 'dark';
-    userRole: 'admin' | 'viewer';
+    fleetId: string;
     currentUserId: string;
-    onEdit: (driver: Driver) => void;
-    onDelete: (id: string) => void;
+    onEdit: (d: Driver) => void;
+    onDelete: (d: string) => void;
     onUpdateStatus: (id: string, status: DriverStatus) => void;
 }
 
-const fmt = (n: number) =>
-    new Intl.NumberFormat('uz-UZ').format(Math.round(n));
-
 export const DriverCard: React.FC<DriverCardProps> = ({
-    driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
+    driver,
+    car,
+    transactions = [],
+    userRole,
+    theme,
+    fleetId,
+    currentUserId,
+    onEdit,
+    onDelete,
+    onUpdateStatus
 }) => {
     const { t } = useTranslation();
-    const [viewingDoc, setViewingDoc] = useState<string | null>(null);
-    // Keep daily plan resolution
-    const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
-    const docs = driver.documents ?? [];
+    const navigate = useNavigate();
+    const isDark = theme === 'dark';
 
-    const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
-    const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
+    const [editStyle, triggerEdit] = useBoop({ rotation: 10, scale: 1.1 });
+    const [deleteStyle, triggerDelete] = useBoop({ rotation: 10, scale: 1.1 });
 
-    return (<>
-        <div className={`rounded-2xl flex flex-col transition-all group relative border overflow-hidden ${theme === 'dark'
-            ? 'bg-[#1F2937] border-gray-700 hover:border-gray-600'
-            : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-lg'
-        }`}>
+    const typeLabel = useMemo(() => {
+        switch (driver.driverType) {
+            case 'salary': return t('typeSalary', 'Maosh');
+            case 'lease_to_own': return t('typeVikup', 'Vikup');
+            default: return t('typeStandard', 'Standart');
+        }
+    }, [driver.driverType, t]);
 
-            {/* Header: avatar + name + phone */}
-            <div className="flex items-center gap-4 p-5 pb-3">
-                <div className={`w-16 h-16 rounded-full border-2 overflow-hidden flex-shrink-0 transition-colors ${theme === 'dark' ? 'border-gray-600 group-hover:border-[#0f766e]' : 'border-gray-200 group-hover:border-[#0f766e]'}`}>
-                    {driver.avatar ? (
-                        <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+    const typeBadgeStyles = useMemo(() => {
+        switch (driver.driverType) {
+            case 'deposit':
+                return isDark 
+                    ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' 
+                    : 'bg-indigo-50 text-indigo-600 border border-indigo-100';
+            case 'salary':
+                return isDark 
+                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' 
+                    : 'bg-emerald-50 text-emerald-600 border border-emerald-100';
+            case 'lease_to_own':
+                return isDark 
+                    ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' 
+                    : 'bg-amber-50 text-amber-600 border border-amber-100';
+            default:
+                return isDark 
+                    ? 'bg-gray-500/10 text-gray-300 border border-gray-500/20' 
+                    : 'bg-slate-50 text-slate-600 border border-slate-200';
+        }
+    }, [driver.driverType, isDark]);
+
+    const finance = useMemo(() => calcDriverFinance(driver, car, transactions), [driver, car, transactions]);
+
+    const metric = useMemo(() => {
+        const fmt = (v: number) => new Intl.NumberFormat('uz-UZ').format(v) + ' UZS';
+        const hasDepositActivity =
+            (driver.driverType ?? 'deposit') === 'deposit' &&
+            (
+                (driver.depositAmount ?? 0) > 0 ||
+                finance.remainingDeposit > 0 ||
+                transactions.some(tx =>
+                    tx.driverId === driver.id &&
+                    tx.status !== PaymentStatus.DELETED &&
+                    (tx.category === 'deposit_topup' || tx.useDeposit === true)
+                )
+            );
+        const isLowDeposit =
+            hasDepositActivity &&
+            finance.remainingDeposit <= (driver.depositWarningThreshold ?? 1_000_000);
+
+        if (!driver.driverType || driver.driverType === 'deposit') {
+            return {
+                label: t('dailyPlan', 'Kunlik Reja'),
+                value: car?.dailyPlan ? fmt(car.dailyPlan) : '-',
+                icon: <CalendarIcon className="w-4 h-4 text-indigo-400" />,
+                deposit: hasDepositActivity ? {
+                    value: fmt(finance.remainingDeposit),
+                    isLow: isLowDeposit
+                } : null,
+                warning: null
+            };
+        } else if (driver.driverType === 'salary') {
+            return {
+                label: t('salary', 'Maosh'),
+                value: finance.salaryAmount ? fmt(finance.salaryAmount) : '-',
+                icon: <BanknoteIcon className="w-4 h-4 text-emerald-400" />,
+                deposit: null,
+                warning: null
+            };
+        } else if (driver.driverType === 'lease_to_own') {
+            return {
+                label: t('contractRemaining', 'Qoldiq'),
+                value: finance.contractRemaining ? fmt(finance.contractRemaining) : '-',
+                icon: <WalletIcon className="w-4 h-4 text-amber-400" />,
+                deposit: null,
+                warning: null
+            };
+        }
+        return null;
+    }, [driver, car, finance, t, transactions]);
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onEdit(driver);
+    };
+
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete(driver.id);
+    };
+
+    const cardClass = isDark 
+        ? 'bg-[#151f32] border border-white/5' 
+        : 'bg-white border border-slate-200 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.1)]';
+
+    const widgetBg = isDark 
+        ? 'bg-[#1a2840]/60 border border-white/5 shadow-inner' 
+        : 'bg-slate-50 border border-slate-100 shadow-sm';
+
+    const labelColor = isDark ? 'text-gray-400' : 'text-slate-400';
+    const valueColor = isDark ? 'text-slate-100' : 'text-slate-800';
+
+    return (
+        <div 
+            onClick={() => navigate(`/drivers/${driver.id}`)}
+            className={`p-5 rounded-3xl cursor-pointer transition-all duration-300 relative group overflow-hidden ${cardClass}`}
+        >
+            {/* Header Section */}
+            <div className="flex justify-between items-start relative z-10">
+                <div className="flex gap-4">
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                        <DriverAvatar 
+                            src={driver.avatar} 
+                            name={driver.name} 
+                            size={56} 
+                            rounded="full" 
+                            theme={theme}
+                            className={isDark ? '' : 'shadow-sm border border-slate-100'}
+                        />
+                        <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-[2.5px] ${isDark ? 'border-[#151f32]' : 'border-white'} ${
+                            car 
+                                ? 'bg-emerald-500' 
+                                : 'bg-rose-500'
+                        }`} />
+                    </div>
+
+                    {/* Driver Identity */}
+                    <div className="flex flex-col justify-center min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                            <h3 className={`text-[17px] font-black truncate tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {driver.name}
+                            </h3>
+                            <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${typeBadgeStyles}`}>
+                                {typeLabel}
+                            </div>
+                        </div>
+                        <div className={`text-[13px] font-medium flex items-center gap-1.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                            <PhoneIcon className="w-3.5 h-3.5 opacity-70" />
+                            <span className="truncate">{driver.phone || t('unknownPhone', 'Raqam yoq')}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions (Admin Only) */}
+                {userRole === 'admin' && (
+                    <div className="flex items-center gap-0.5 -mt-1 -mr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button
+                            onClick={handleEdit}
+                            onMouseEnter={triggerEdit}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                isDark ? 'text-gray-400 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+                            }`}
+                        >
+                            <animated.span style={editStyle}>
+                                <EditIcon className="w-4 h-4" />
+                            </animated.span>
+                            <VisuallyHidden>{t('edit', 'Tahrirlash')}</VisuallyHidden>
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            onMouseEnter={triggerDelete}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                isDark ? 'text-gray-400 hover:bg-red-500/20 hover:text-red-400' : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
+                            }`}
+                        >
+                            <animated.span style={deleteStyle}>
+                                <TrashIcon className="w-4 h-4" />
+                            </animated.span>
+                            <VisuallyHidden>{t('delete', "O'chirish")}</VisuallyHidden>
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Widgets Section (Grid) */}
+            <div className="mt-5 grid grid-cols-2 gap-3 relative z-10">
+                {/* Car Widget */}
+                <div className={`p-3.5 rounded-2xl flex flex-col justify-between min-h-[96px] transition-all duration-300 ${widgetBg}`}>
+                    <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${labelColor}`}>
+                            {t('car', 'Avto')}
+                        </span>
+                        <CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-slate-300'}`} />
+                    </div>
+                    
+                    {car ? (
+                        <div>
+                            <div className={`text-[14px] font-bold truncate leading-tight mb-1.5 ${valueColor}`}>
+                                {car.name}
+                            </div>
+                            <LicensePlate plate={car.licensePlate} size="sm" />
+                        </div>
                     ) : (
-                        <div className={`w-full h-full flex items-center justify-center text-xl font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                            {driver.name.charAt(0).toUpperCase()}
+                        <div>
+                            <div className={`text-[13px] font-bold mb-2 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                {t('notAssigned', 'Biriktirilmagan')}
+                            </div>
+                            {userRole === 'admin' && (
+                                <button 
+                                    onClick={handleEdit}
+                                    className={`flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition-all active:scale-[0.97] ${
+                                        isDark 
+                                            ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30' 
+                                            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                                    }`}
+                                >
+                                    <PlusIcon className="w-3 h-3" />
+                                    {t('assign', 'Qo\'shish')}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
-                <div className="min-w-0 flex-1">
-                    <h3 className={`font-bold text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</h3>
-                    <div className="flex flex-col mt-0.5 gap-0.5">
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.phone}</p>
-                        {driver.extraPhone && (
-                            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{driver.extraPhone}</p>
-                        )}
-                    </div>
-                </div>
-            </div>
 
-            {/* Daily plan stats */}
-            {explicitDailyPlan > 0 && (
-                <div className={`mx-4 mb-3 rounded-xl p-3 flex justify-between items-center ${theme === 'dark' ? 'bg-gray-800/70 border border-gray-700' : 'bg-gray-50 border border-gray-200'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('dailyPlan')}</p>
-                    <p className={`text-sm font-bold font-mono ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{fmt(explicitDailyPlan)} UZS</p>
-                </div>
-            )}
-
-            {/* Attached car */}
-            {car ? (
-                <div className={`group relative mx-4 mb-3 rounded-2xl overflow-hidden transition-all duration-300 ${theme === 'dark'
-                    ? 'bg-[#1a222e] border border-gray-800 hover:border-gray-700 hover:shadow-lg hover:shadow-black/40'
-                    : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-md hover:shadow-gray-200/50'}`}>
-                    
-                    {/* Image Container */}
-                    <div className={`relative h-24 sm:h-28 overflow-hidden ${theme === 'dark' ? 'bg-[#111827]' : 'bg-gray-100'}`}>
-                        {car.avatar ? (
-                            <img src={car.avatar} alt={car.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <CameraIcon className={`w-8 h-8 ${theme === 'dark' ? 'text-gray-700' : 'text-gray-300'}`} />
-                            </div>
-                        )}
-                        
-                        {/* Overlay Gradient for readability */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/5 pointer-events-none transition-opacity duration-300 group-hover:opacity-90" />
-
-                        {/* Bottom Info (Overlaid on image) */}
-                        <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between">
-                            <div className="min-w-0 flex-1">
-                                <h3 className="text-white font-extrabold text-lg tracking-tight truncate drop-shadow-md mb-1.5">
-                                    {car.name}
-                                </h3>
-                                <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/5 backdrop-blur-lg border border-white/10 shadow-sm">
-                                    <span className="text-[10px] font-mono font-bold text-white tracking-widest drop-shadow-sm">
-                                        {car.licensePlate}
-                                    </span>
-                                </div>
+                {/* Metric Widget */}
+                {metric && (
+                    <div className={`p-3.5 rounded-2xl flex flex-col justify-between min-h-[96px] transition-all duration-300 ${widgetBg}`}>
+                        <div className="flex justify-between items-start mb-2 gap-2">
+                            <span className={`text-[10px] font-black uppercase tracking-widest truncate ${labelColor}`}>
+                                {metric.label}
+                            </span>
+                            <div className="flex-shrink-0">
+                                {metric.icon}
                             </div>
                         </div>
+                        
+                        <div>
+                            <div className={`text-[15px] font-black truncate leading-tight ${valueColor}`}>
+                                {metric.value}
+                            </div>
+                            {metric.deposit && (
+                                <div
+                                    className={`mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-black leading-none ${
+                                        metric.deposit.isLow
+                                            ? isDark
+                                                ? 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+                                                : 'border-amber-200 bg-amber-50 text-amber-700'
+                                            : isDark
+                                                ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+                                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    }`}
+                                    title={`${t('deposit', 'Depozit')}: ${metric.deposit.value}`}
+                                >
+                                    <WalletIcon className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{t('deposit', 'Depozit')}: {metric.deposit.value}</span>
+                                </div>
+                            )}
+                            {metric.warning && (
+                                <div className="mt-1.5 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                                    <span className="text-[11px] font-bold text-red-500 truncate" title={metric.warning}>
+                                        {metric.warning}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            ) : (
-                <div className={`mx-4 mb-3 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                    <div className={`flex items-center gap-2 p-2.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>
-                        <CameraIcon className="w-4 h-4" />
-                        <span className="text-xs">Avtomobil biriktirilmagan</span>
-                    </div>
-                </div>
-            )}
+                )}
+            </div>
 
-            {/* Documents */}
-            {docs.length > 0 && (
-                <div className={`mx-4 mb-3 rounded-xl border p-2.5 space-y-1 ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hujjatlar</p>
-                    {docs.map((doc, i) => {
-                        const isImage = doc.type && doc.type.startsWith('image/');
-                        return (
-                            <button key={i} type="button"
-                                onClick={() => {
-                                    if (isImage) {
-                                        setViewingDoc(doc.data);
-                                    } else {
-                                        window.open(doc.data, '_blank');
-                                    }
-                                }}
-                                className="w-full flex items-center gap-2 text-xs text-[#0f766e] hover:underline truncate">
-                                <span>{isImage ? '🖼️' : '📄'}</span>
-                                <span className="truncate">{doc.name}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Actions */}
-            {userRole === 'admin' && (
-                <div className={`flex gap-2 p-4 border-t mt-auto ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                    <button onClick={handleEdit}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all active:scale-95 font-medium text-sm ${theme === 'dark'
-                            ? 'bg-[#0f766e]/10 text-[#0f766e] hover:bg-[#0f766e]/20 border border-[#0f766e]/20'
-                            : 'bg-[#0f766e]/10 text-[#0f766e] hover:bg-[#0f766e]/20 border border-[#0f766e]/20'}`}>
-                        <EditIcon className="w-4 h-4" /><span>{t('edit')}</span>
-                    </button>
-                    <button onClick={handleDelete}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all active:scale-95 font-medium text-sm ${theme === 'dark'
-                            ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
-                            : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}`}>
-                        <TrashIcon className="w-4 h-4" /><span>{t('delete')}</span>
-                    </button>
-                </div>
+            {/* Background Glow Effect (Subtle) */}
+            {isDark && (
+                <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
             )}
         </div>
-
-        {/* ImageViewer Modal Portal */}
-        {viewingDoc && createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div 
-                    className={`absolute inset-0 transition-opacity duration-300 bg-black/80 backdrop-blur-md`} 
-                    onClick={() => setViewingDoc(null)}
-                />
-                
-                <div className="relative z-10 w-full max-w-4xl h-full max-h-[85vh] flex flex-col items-center justify-center animate-in zoom-in-95 duration-300 pointer-events-none">
-                    <img 
-                        src={viewingDoc} 
-                        alt="Document Viewer" 
-                        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto"
-                    />
-                    
-                    <button 
-                        onClick={() => setViewingDoc(null)} 
-                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-gray-800 text-white hover:bg-gray-700 pointer-events-auto`}>
-                        <XIcon className="w-6 h-6" />
-                    </button>
-                </div>
-            </div>,
-            document.body
-        )}
-    </>);
+    );
 };

@@ -1,252 +1,326 @@
 import React, { useState, useEffect } from 'react';
-import Lottie from 'lottie-react';
 import useSound from 'use-sound';
-import { LockIcon, SparklesIcon, CarIcon } from './Icons';
-import thinkingBearAnimation from '../Images/thinking_bear.json';
-import incorrectBearAnimation from '../Images/incorrect_bear.json';
-import correctBearAnimation from '../Images/correct_bear.json';
 import { useTranslation } from 'react-i18next';
 import { Language } from '../types';
 import correctSound from '../Sounds/correct.mp3';
 import incorrectSound from '../Sounds/incorrect.mp3';
+import { ArrowRightIcon, EyeIcon, EyeOffIcon, LockIcon, LogInIcon, PhoneIcon } from './Icons';
+
 
 interface AuthScreenProps {
-  onAuthenticated: (role: 'admin' | 'viewer', viewerData?: any) => void;
-  theme: 'light' | 'dark';
+    onAuthenticated: (role: 'admin' | 'viewer', viewerData?: any) => void;
+    theme: 'light' | 'dark';
 }
 
-const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, theme }) => {
-  const [phoneDigits, setPhoneDigits] = useState('');
-  const [password, setPassword]       = useState('');
-  const [error, setError]             = useState(false);
-  const [errorMsg, setErrorMsg]       = useState('');
-  const [success, setSuccess]         = useState(false);
-  const [loading, setLoading]         = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(0);
-  const [lockoutTime, setLockoutTime] = useState(0);
-  const [animationState, setAnimationState] = useState<'thinking' | 'incorrect' | 'correct'>('thinking');
+const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
+    const [phoneDigits, setPhoneDigits] = useState('');
+    const [password, setPassword]       = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError]             = useState(false);
+    const [errorMsg, setErrorMsg]       = useState('');
+    const [success, setSuccess]         = useState(false);
+    const [loading, setLoading]         = useState(false);
+    const [shake, setShake]             = useState(false);
+    const [loginAttempts, setLoginAttempts] = useState(0);
+    const [lockoutTime, setLockoutTime] = useState(0);
 
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language as Language;
+    const { t, i18n } = useTranslation();
+    const lang = i18n.language as Language;
 
-  const [playCorrect]   = useSound(correctSound, { volume: 0.5 });
-  const [playIncorrect] = useSound(incorrectSound, { volume: 0.5 });
+    const [playCorrect]   = useSound(correctSound, { volume: 0.5 });
+    const [playIncorrect] = useSound(incorrectSound, { volume: 0.5 });
 
-  useEffect(() => {
-    if (lockoutTime > 0) {
-      const timer = setInterval(() => setLockoutTime(p => p - 1), 1000);
-      return () => clearInterval(timer);
-    } else if (lockoutTime === 0 && loginAttempts >= 3) {
-      setLoginAttempts(0);
-    }
-  }, [lockoutTime, loginAttempts]);
-
-  const clearError = () => { setError(false); setErrorMsg(''); setAnimationState('thinking'); };
-
-  const loginSuccess = (role: 'admin' | 'viewer', data?: any) => {
-    setSuccess(true);
-    setAnimationState('correct');
-    playCorrect();
-    setTimeout(() => onAuthenticated(role, data), 1500);
-  };
-
-  const handleFailedLogin = (msg?: string) => {
-    setError(true);
-    setErrorMsg(msg || '');
-    setAnimationState('incorrect');
-    playIncorrect();
-    const next = loginAttempts + 1;
-    setLoginAttempts(next);
-    if (next >= 3) setLockoutTime(30);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (lockoutTime > 0 || loading) return;
-
-    if (phoneDigits.length !== 9) {
-      setError(true);
-      setErrorMsg('+998 dan keyin 9 ta raqam kiriting');
-      setAnimationState('incorrect');
-      playIncorrect();
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { authService } = await import('../services/authService');
-      const result = await authService.authenticateAdminByPhone(`+998${phoneDigits}`, password);
-      if (result.success && result.user) {
-        loginSuccess('admin', result.user);
-      } else {
-        handleFailedLogin(result.error);
-      }
-    } catch {
-      handleFailedLogin();
-    }
-    setLoading(false);
-  };
-
-  const isDark = theme === 'dark';
-  const locked = lockoutTime > 0;
-  const canSubmit = !success && !locked && phoneDigits.length === 9 && password.trim().length > 0;
-
-  return (
-    <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans transition-colors duration-300 ${isDark ? 'bg-[#111827]' : 'bg-gray-50'}`}>
-
-      {/* Cyber grid */}
-      <div className="absolute inset-0 z-0 opacity-20" style={{
-        backgroundImage: `linear-gradient(${isDark ? '#334155' : '#E5E7EB'} 1px, transparent 1px), linear-gradient(90deg, ${isDark ? '#334155' : '#E5E7EB'} 1px, transparent 1px)`,
-        backgroundSize: '40px 40px',
-        transform: 'perspective(500px) rotateX(20deg)',
-        transformOrigin: 'top center',
-      }} />
-      <div className={`absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full blur-[120px] mix-blend-screen animate-pulse z-0 ${isDark ? 'bg-teal-600/15' : 'bg-teal-400/15'}`} />
-      <div className={`absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] mix-blend-screen animate-pulse z-0 ${isDark ? 'bg-blue-600/15' : 'bg-blue-400/15'}`} style={{ animationDelay: '2s' }} />
-
-      <div className="z-10 w-full max-w-md p-6 relative">
-        <div className={`backdrop-blur-2xl border rounded-[32px] p-8 shadow-2xl relative overflow-hidden transition-all duration-500 ${isDark
-          ? 'bg-[#1F2937]/80 border-gray-700 shadow-black/20'
-          : 'bg-white/80 border-gray-200 shadow-xl'
-        } ${success ? (isDark ? 'border-emerald-500/50 shadow-emerald-500/20' : 'border-emerald-400 shadow-emerald-400/20') : ''}`}>
-
-          {/* Bear animation */}
-          <div className="flex justify-center mb-6">
-            <div className={`w-40 h-40 ${animationState === 'incorrect' ? 'scale-x-[-1]' : ''}`}>
-              <Lottie
-                animationData={animationState === 'correct' ? correctBearAnimation : animationState === 'incorrect' ? incorrectBearAnimation : thinkingBearAnimation}
-                loop={animationState !== 'correct'}
-                className="w-full h-full"
-              />
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Phone */}
-            <div className={`transition-all ${locked ? 'opacity-50 grayscale' : ''}`}>
-              <div className={`flex rounded-2xl border overflow-hidden focus-within:ring-2 focus-within:ring-teal-500/40 transition-all ${
-                error ? 'border-red-500'
-                  : isDark ? 'border-gray-700 hover:border-teal-500/40 bg-gray-900/50' : 'border-gray-200 hover:border-teal-500/40 bg-gray-50'
-              }`}>
-                <span className={`flex items-center px-4 text-sm font-mono font-bold border-r select-none ${isDark ? 'text-teal-400 border-gray-700 bg-gray-900/80' : 'text-teal-600 border-gray-200 bg-gray-100'}`}>
-                  +998
-                </span>
-                <input
-                  type="tel"
-                  value={phoneDigits}
-                  onChange={e => { setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 9)); clearError(); }}
-                  placeholder="XX XXX XX XX"
-                  autoComplete="tel"
-                  disabled={success || locked}
-                  autoFocus
-                  className={`flex-1 px-4 py-4 text-lg font-mono tracking-widest focus:outline-none bg-transparent ${isDark ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'}`}
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className={`relative group transition-all ${locked ? 'opacity-50 grayscale' : ''}`}>
-              <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isDark ? 'text-gray-500 group-focus-within:text-teal-500' : 'text-gray-400 group-focus-within:text-teal-600'}`}>
-                <LockIcon className="w-5 h-5" />
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); clearError(); }}
-                placeholder="Parol"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                disabled={success || locked}
-                className={`w-full border rounded-2xl px-5 py-4 pl-12 text-lg tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/40 transition-all duration-150 ${isDark
-                  ? 'bg-gray-900/50 text-white placeholder-gray-600'
-                  : 'bg-gray-50 text-gray-900 placeholder-gray-400'
-                } ${error
-                  ? 'border-red-500 shake-animation'
-                  : isDark ? 'border-gray-700 hover:border-teal-500/40' : 'border-gray-200 hover:border-teal-500/40'
-                }`}
-              />
-            </div>
-
-            {/* Error */}
-            <div className={`transition-all duration-150 overflow-hidden ${error || locked ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
-              <div className={`rounded-xl p-3 flex items-center gap-3 border ${isDark ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}>
-                <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <p className="text-sm font-medium">
-                  {locked
-                    ? t('tooManyAttempts').replace('{s}', lockoutTime.toString())
-                    : errorMsg || t('invalidPassword')}
-                </p>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transform transition-all duration-150 ${success
-                ? 'bg-green-500 text-white scale-[1.02]'
-                : locked
-                  ? isDark ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : canSubmit
-                    ? 'bg-teal-600 text-white hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98]'
-                    : isDark ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {success ? (
-                <span className="flex items-center justify-center gap-2">
-                  <SparklesIcon className="w-5 h-5 animate-spin" />
-                  {t('welcome')}
-                </span>
-              ) : locked ? (
-                <span className="flex items-center justify-center gap-2 font-mono">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  {lockoutTime}s
-                </span>
-              ) : loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Kirish...
-                </span>
-              ) : t('login')}
-            </button>
-          </form>
-
-          {/* Language switcher */}
-          <div className="flex justify-center gap-2 mt-6">
-            {(['uz', 'ru', 'en'] as Language[]).map(l => (
-              <button key={l} onClick={() => i18n.changeLanguage(l)}
-                className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg border transition-all ${lang === l
-                  ? 'text-teal-500 border-teal-500/30 bg-teal-500/10'
-                  : isDark ? 'text-gray-600 border-transparent hover:text-gray-400' : 'text-gray-400 border-transparent hover:text-gray-600'
-                }`}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center mt-8 opacity-40">
-          <div className={`flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            <CarIcon className="w-3 h-3" /> Secure Fleet Management v2.0
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        .shake-animation { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake {
-          0%, 100% { transform: translate3d(0,0,0); }
-          10%, 30%, 50%, 70%, 90% { transform: translate3d(-4px,0,0); }
-          20%, 40%, 60%, 80% { transform: translate3d(4px,0,0); }
+    useEffect(() => {
+        if (lockoutTime > 0) {
+            const timer = setInterval(() => setLockoutTime(p => p - 1), 1000);
+            return () => clearInterval(timer);
+        } else if (lockoutTime === 0 && loginAttempts >= 3) {
+            setLoginAttempts(0);
         }
-      `}</style>
-    </div>
-  );
+    }, [lockoutTime, loginAttempts]);
+
+    const clearError = () => { setError(false); setErrorMsg(''); };
+
+    const triggerShake = () => {
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+    };
+
+    const loginSuccess = (role: 'admin' | 'viewer', data?: any) => {
+        setSuccess(true);
+        playCorrect();
+        setTimeout(() => onAuthenticated(role, data), 1200);
+    };
+
+    const translateAuthError = (msg?: string) => {
+        if (!msg) return t('invalidPhoneOrPassword');
+        const normalized = msg.toLowerCase();
+        if (normalized.includes('phone') || normalized.includes('password') || normalized.includes('credentials')) {
+            return t('invalidPhoneOrPassword');
+        }
+        if (normalized.includes('disabled')) {
+            return t('accountDisabled');
+        }
+        if (normalized.includes('authentication system')) {
+            return t('authSystemError');
+        }
+        return msg;
+    };
+
+    const handleFailedLogin = (msg?: string) => {
+        setError(true);
+        setErrorMsg(translateAuthError(msg));
+        playIncorrect();
+        triggerShake();
+        const next = loginAttempts + 1;
+        setLoginAttempts(next);
+        if (next >= 3) setLockoutTime(30);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (lockoutTime > 0 || loading) return;
+
+        if (phoneDigits.length !== 9) {
+            setError(true);
+            setErrorMsg(t('phoneNineDigitsError'));
+            triggerShake();
+            playIncorrect();
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const { authService } = await import('../services/authService');
+            const result = await authService.authenticateAdminByPhone(`+998${phoneDigits}`, password);
+            if (result.success && result.user) {
+                loginSuccess('admin', result.user);
+            } else {
+                handleFailedLogin(result.error);
+            }
+        } catch {
+            handleFailedLogin();
+        }
+        setLoading(false);
+    };
+
+    const locked = lockoutTime > 0;
+    const canSubmit = !success && !locked && phoneDigits.length === 9 && password.trim().length > 0;
+
+    const statusText = locked
+        ? t('tooManyAttempts', { s: lockoutTime })
+        : error
+            ? (errorMsg || t('invalidPassword'))
+            : success
+                ? t('welcome')
+                : t('loginSubtitle');
+
+    const formatPhone = (digits: string) => {
+        if (digits.length <= 2) return digits;
+        if (digits.length <= 5) return `${digits.slice(0, 2)} ${digits.slice(2)}`;
+        if (digits.length <= 7) return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
+        return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}`;
+    };
+
+    const inputBase = 'h-14 w-full rounded-2xl border px-4 text-[15px] font-semibold outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60';
+    const inputChrome = 'bg-[#111827] border-[#2a3a4a] text-white placeholder:text-slate-500/45 focus:border-[#5eead4]';
+
+    return (
+        <div
+            className="min-h-screen relative overflow-hidden bg-[#0f766e] text-white"
+        >
+            <div className="absolute inset-0 bg-[#0f766e]" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-[#0c5f59]" />
+
+            <main className="relative z-10 min-h-screen flex items-center justify-center px-5 py-8 sm:px-6">
+                <div className={`w-full max-w-[440px] ${shake ? 'animate-shake' : ''}`}>
+                    <div className="mb-7 flex flex-col items-center text-center select-none">
+                        <img
+                            src="/images/taksapark-logo.png"
+                            alt="Taksapark"
+                            className="h-11 sm:h-12 object-contain mb-5"
+                            style={{ filter: 'brightness(0) invert(1)' }}
+                        />
+                        <div className={`relative flex h-20 w-20 items-center justify-center rounded-[26px] border border-white/20 bg-[#2f7772] transition-all duration-300 ${success ? 'scale-[1.02] bg-[#2f7772]' : ''}`}>
+                            <img
+                                src="/images/lock.png"
+                                alt=""
+                                aria-hidden="true"
+                                className="h-14 w-14 object-contain"
+                            />
+                        </div>
+                    </div>
+
+                    <section className="rounded-[28px] border border-[#223344] bg-[#0f1b2a] p-5 shadow-[0_18px_36px_rgba(0,0,0,0.22)] sm:p-6">
+                        <div className="mb-6">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#18384a] text-[#99f6e4]">
+                                    <LogInIcon className="h-4 w-4" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h1 className="text-[24px] font-black leading-tight tracking-tight">
+                                        {t('welcome')}
+                                    </h1>
+                                    <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                        {t('secureFleetAccess')}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p
+                                className={`min-h-[40px] rounded-2xl px-4 py-3 text-[14px] font-medium leading-snug ${
+                                    error && !locked
+                                        ? 'bg-[#3a1f27] text-red-100 border border-[#7f2d36]'
+                                        : success
+                                            ? 'bg-[#123629] text-emerald-100 border border-[#1f6f55]'
+                                            : 'bg-[#182838] text-slate-300 border border-[#24384a]'
+                                }`}
+                            >
+                                {statusText}
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <label htmlFor="login-phone" className="text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                                        {t('phoneNumber')}
+                                    </label>
+                                    <span className="text-[12px] font-semibold text-slate-500">
+                                        {phoneDigits.length}/9
+                                    </span>
+                                </div>
+                                <div className={`flex h-14 overflow-hidden rounded-2xl border transition-all duration-200 ${
+                                    error && phoneDigits.length !== 9
+                                        ? 'border-[#f87171]'
+                                        : 'border-[#2a3a4a] focus-within:border-[#5eead4]'
+                                } bg-[#111827]`}>
+                                    <div className="flex items-center gap-2 border-r border-[#2a3a4a] bg-[#182838] px-4 text-[15px] font-black text-[#ccfbf1]">
+                                        <PhoneIcon className="h-4 w-4 text-[#99f6e4]" />
+                                        +998
+                                    </div>
+                                    <input
+                                        id="login-phone"
+                                        type="tel"
+                                        inputMode="numeric"
+                                        value={formatPhone(phoneDigits)}
+                                        onChange={e => {
+                                            setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 9));
+                                            clearError();
+                                        }}
+                                        placeholder="90 123 45 67"
+                                        autoComplete="tel"
+                                        disabled={success || locked}
+                                        autoFocus
+                                        className="min-w-0 flex-1 bg-transparent px-4 text-[17px] font-bold tracking-[0.08em] text-white outline-none placeholder:text-slate-600/40 disabled:opacity-60"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="login-password" className="mb-2 block text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                                    {t('password')}
+                                </label>
+                                <div className="relative">
+                                    <LockIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                    <input
+                                        id="login-password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={e => { setPassword(e.target.value); clearError(); }}
+                                        placeholder={t('passwordPlaceholder')}
+                                        autoComplete="current-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck={false}
+                                        disabled={success || locked}
+                                        className={`${inputBase} ${inputChrome} pl-11 pr-12 tracking-[0.08em]`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(v => !v)}
+                                        disabled={success || locked}
+                                        aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                                        className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40"
+                                    >
+                                        {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={!canSubmit || loading}
+                                className={`group flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-black transition-all duration-200 ${
+                                    canSubmit && !loading
+                                        ? 'bg-[#2dd4bf] text-[#06211f] hover:bg-[#5eead4] active:scale-[0.985]'
+                                        : 'cursor-not-allowed bg-[#1f3040] text-slate-500'
+                                }`}
+                            >
+                                {success ? (
+                                    <>
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        {t('welcome')}
+                                    </>
+                                ) : locked ? (
+                                    <span className="font-mono">{lockoutTime}s</span>
+                                ) : loading ? (
+                                    <>
+                                        <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        {t('signingIn')}
+                                    </>
+                                ) : (
+                                    <>
+                                        {t('login')}
+                                        <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </section>
+
+                    <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/20 bg-[#175f59] p-1.5">
+                        {(['uz', 'ru', 'en'] as Language[]).map(l => (
+                            <button
+                                key={l}
+                                type="button"
+                                onClick={() => {
+                                    localStorage.setItem('avtorim_lang', l);
+                                    i18n.changeLanguage(l);
+                                }}
+                                className={`h-10 flex-1 rounded-xl text-[12px] font-black uppercase tracking-[0.08em] transition-all ${
+                                    lang === l
+                                        ? 'bg-white text-[#0b1424]'
+                                        : 'text-white/60 hover:bg-white/10 hover:text-white'
+                                }`}
+                                aria-pressed={lang === l}
+                            >
+                                {l}
+                            </button>
+                        ))}
+                    </div>
+
+                    <p className="mt-6 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white/[0.28]">
+                        {t('secureFleetManagement')}
+                    </p>
+                </div>
+            </main>
+
+            <style>{`
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    15%, 45%, 75% { transform: translateX(-7px); }
+                    30%, 60%, 90% { transform: translateX(7px); }
+                }
+                .animate-shake { animation: shake 0.45s cubic-bezier(.36,.07,.19,.97) both; }
+            `}</style>
+        </div>
+    );
 };
 
 export default AuthScreen;

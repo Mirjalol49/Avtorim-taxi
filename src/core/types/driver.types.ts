@@ -13,6 +13,25 @@ export interface DriverDocument {
     type: string;      // MIME type
     data: string;      // base64 data URL
     category: 'driver_license' | 'passport' | 'car_registration' | 'car_insurance' | 'other';
+    /** Optional document expiration date in epoch ms. */
+    expiryMs?: number | null;
+    /** Exact date when the in-app bell should show the reminder. */
+    reminderAtMs?: number | null;
+    /** Notify this many days before expiry. Defaults to 2 for driver license docs. */
+    reminderDaysBefore?: number | null;
+}
+
+export type DriverPaymentType = 'deposit' | 'salary' | 'lease_to_own';
+
+export interface DriverPlanHistoryEntry {
+    plan: number;
+    effectiveFrom: number;
+    carId?: string | null;
+}
+
+export interface DriverDayOverride {
+    type: 'OFF' | 'NOT_WORKING' | 'DISCOUNT' | 'REPAIR';
+    customPlan?: number;
 }
 
 export interface Driver extends Lockable {
@@ -36,4 +55,27 @@ export interface Driver extends Lockable {
     notes?: string;
     extraPhone?: string;
     createdAt?: number;
+    lastSalaryPaidAt?: number;
+    /** 'deposit' = driver gives upfront deposit; 'salary' = fleet pays driver monthly */
+    driverType?: DriverPaymentType;
+    /** Initial deposit amount (only meaningful when driverType === 'deposit') */
+    depositAmount?: number;
+    /** Threshold at which a low-deposit warning is triggered (default 1 000 000 UZS) */
+    depositWarningThreshold?: number;
+    /** Total price of the car for Lease-to-own contracts */
+    totalContractAmount?: number;
+    /** Duration of the lease-to-own contract in months */
+    contractDurationMonths?: number;
+    /** Start date of the lease-to-own contract (epoch ms) */
+    contractStartDate?: number;
+    /** Number of allowed off days per month */
+    daysOffPerMonth?: number;
+    /** Historical tracking of daily plan changes for this driver */
+    planHistory?: DriverPlanHistoryEntry[];
+    /** Overrides for specific days (e.g. day off, sick leave, discount) */
+    dayOverrides?: Record<string, DriverDayOverride>;
+    /** When the driver officially started working */
+    startDate?: number;
+    /** When the driver quit or was terminated */
+    quitDate?: number;
 }

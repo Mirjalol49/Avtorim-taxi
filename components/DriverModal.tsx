@@ -1,9 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { XIcon, CameraIcon, CarIcon } from './Icons';
 import { Driver, DriverStatus, DriverDocument } from '../types';
 import { Car } from '../src/core/types';
 import { decodeHtml } from '../utils/textUtils';
+import { supabase } from '../supabase';
+import { uploadAvatarToStorage } from '../services/storageService';
+import Lottie from 'lottie-react';
+import cardAnimation from '../Images/card.json';
+import depositAnimation from '../Images/deposit.json';
+import DatePicker from './DatePicker';
+import {
+  getIshonchnomaReminderMs,
+  normalizeIshonchnomaReminderDocument,
+  startOfDayMs,
+} from '../src/features/drivers/utils/ishonchnomaReminder';
 
 interface DriverModalProps {
   isOpen: boolean;
@@ -22,13 +34,25 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [extraPhone, setExtraPhone] = useState('');
-  const [avatar, setAvatar] = useState('');
+  const [avatar, setAvatar] = useState('');   // CDN URL or preview URL
+  const avatarFileRef = useRef<File | null>(null); // raw File — uploaded to Storage on submit
   const [status, setStatus] = useState<DriverStatus>(DriverStatus.OFFLINE);
   const [notes, setNotes] = useState('');
   const [documents, setDocuments] = useState<DriverDocument[]>([]);
   const [docError, setDocError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [monthlySalary, setMonthlySalary] = useState(0);
+  const [driverType, setDriverType] = useState<'deposit' | 'salary' | 'lease_to_own'>('deposit');
+  const [depositAmount, setDepositAmount] = useState(0);
+  const [depositWarningThreshold, setDepositWarningThreshold] = useState(1_000_000);
+  const [totalContractAmount, setTotalContractAmount] = useState(0);
+  const [contractDurationMonths, setContractDurationMonths] = useState(36);
+  const [contractStartDate, setContractStartDate] = useState<number>(Date.now());
+  const [startDate, setStartDate] = useState<number>(Date.now());
+  const [daysOffPerMonth, setDaysOffPerMonth] = useState<number>(0);
+  const [quitDate, setQuitDate] = useState<number | null>(null);
+  const [driverLicenseReminderAt, setDriverLicenseReminderAt] = useState<number | null>(null);
   const [selectedCarId, setSelectedCarId] = useState<string>('');
   const [carPickerOpen, setCarPickerOpen] = useState(false);
   const [carSearch, setCarSearch] = useState('');
@@ -53,18 +77,48 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     : availableCars;
 
   const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
+  const editingQuitDate = editingDriver ? ((editingDriver as any).quitDate ?? null) : null;
+  const isRehireDraft = Boolean(editingDriver && (editingDriver.isDeleted || editingQuitDate) && !quitDate);
+  const modalTitle = isRehireDraft
+    ? t('rehireDriverTitle', 'Haydovchini qayta ishga olish')
+    : editingDriver ? t('editDriver') : t('addDriver');
+  const submitLabel = isRehireDraft
+    ? t('rehireDriverAction', 'Qayta ishga olish')
+    : editingDriver ? t('save') : t('add');
 
   useEffect(() => {
-    if (isOpen && editingDriver) {
+    if (!isOpen) return;
+    avatarFileRef.current = null; // reset pending upload on open
+    if (editingDriver) {
       setName(decodeHtml(editingDriver.name));
       setPhone(editingDriver.phone);
       setExtraPhone(editingDriver.extraPhone ?? '');
       setAvatar(editingDriver.avatar);
       setStatus(editingDriver.status);
       setNotes(editingDriver.notes ?? '');
-      setDocuments(editingDriver.documents ?? []);
+      setMonthlySalary(editingDriver.monthlySalary ?? 0);
+      setDriverType((editingDriver as any).driverType ?? 'deposit');
+      setDepositAmount((editingDriver as any).depositAmount ?? 0);
+      setDepositWarningThreshold((editingDriver as any).depositWarningThreshold ?? 1_000_000);
+      setTotalContractAmount((editingDriver as any).totalContractAmount ?? 0);
+      setContractDurationMonths((editingDriver as any).contractDurationMonths ?? 36);
+      setContractStartDate((editingDriver as any).contractStartDate ?? Date.now());
+      setStartDate((editingDriver as any).startDate ?? editingDriver.createdAt ?? Date.now());
+      setDaysOffPerMonth((editingDriver as any).daysOffPerMonth ?? 0);
+      setQuitDate((editingDriver as any).quitDate ?? null);
       setSelectedCarId(currentAssignedCar?.id ?? '');
-    } else if (isOpen) {
+      setDocuments([]);
+      // Load documents on-demand (excluded from realtime subscription to save egress)
+      supabase.from('drivers').select('documents').eq('id', editingDriver.id).single()
+        .then(({ data }) => {
+          const loadedDocs = data?.documents ?? [];
+          setDocuments(loadedDocs);
+          const licenseDoc = loadedDocs.find((doc: DriverDocument) =>
+            doc.category === 'driver_license' && getIshonchnomaReminderMs(doc) !== null
+          );
+          setDriverLicenseReminderAt(getIshonchnomaReminderMs(licenseDoc));
+        });
+    } else {
       setName('');
       setPhone('+998 ');
       setExtraPhone('');
@@ -72,11 +126,22 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       setStatus(DriverStatus.OFFLINE);
       setNotes('');
       setDocuments([]);
+      setMonthlySalary(0);
+      setDriverType('deposit');
+      setDepositAmount(0);
+      setDepositWarningThreshold(1_000_000);
+      setTotalContractAmount(0);
+      setContractDurationMonths(36);
+      setContractStartDate(Date.now());
+      setStartDate(Date.now());
+      setDaysOffPerMonth(0);
+      setQuitDate(null);
+      setDriverLicenseReminderAt(null);
       setSelectedCarId('');
       setError(null);
       setDocError(null);
     }
-  }, [isOpen, editingDriver]);
+  }, [isOpen, editingDriver?.id]);
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -103,24 +168,62 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
     setError(null);
     setIsSubmitting(true);
 
-    if (!name.trim() || !phone.trim()) {
-      setError(t('fillAllFields') || "Barcha maydonlarni to'ldiring");
-      setIsSubmitting(false);
-      return;
-    }
+	    if (!name.trim() || !phone.trim()) {
+	      setError(t('fillAllFields') || "Barcha maydonlarni to'ldiring");
+	      setIsSubmitting(false);
+	      return;
+	    }
 
     try {
-      // carModel and licensePlate auto-filled from selected car for backward compat with display
+      // If user picked a new avatar file, upload to Storage first
+      let finalAvatar = avatar;
+      const pendingFile = avatarFileRef.current;
+      if (pendingFile) {
+        const entityId = editingDriver?.id ?? `driver_${Date.now()}`;
+        finalAvatar = await uploadAvatarToStorage(pendingFile, 'drivers', entityId);
+        avatarFileRef.current = null;
+      }
+
+      const reminderName = t('driverLicenseCardTitle', 'Ishonchnoma');
+      const documentsWithMeta = documents
+        .map((doc) => (
+          doc.category === 'driver_license'
+            ? normalizeIshonchnomaReminderDocument(doc, driverLicenseReminderAt, reminderName)
+            : doc
+        ))
+        .filter(doc => !(doc.category === 'driver_license' && driverLicenseReminderAt === null && !doc.data));
+
+      if (driverLicenseReminderAt !== null && !documentsWithMeta.some(doc => doc.category === 'driver_license')) {
+        documentsWithMeta.push({
+          name: reminderName,
+          type: 'application/x-ishonchnoma-reminder',
+          data: '',
+          category: 'driver_license',
+          reminderAtMs: driverLicenseReminderAt,
+          expiryMs: null,
+          reminderDaysBefore: null,
+        });
+      }
+
       await onSubmit({
         id: editingDriver?.id,
         name,
         phone,
         extraPhone,
-        avatar,
+        avatar: finalAvatar,
         status,
         notes,
-        monthlySalary: 0,
-        documents,
+        monthlySalary: driverType === 'salary' ? monthlySalary : 0,
+        driverType,
+        depositAmount: depositAmount,
+        depositWarningThreshold: depositWarningThreshold,
+        totalContractAmount: driverType === 'lease_to_own' ? totalContractAmount : undefined,
+        contractDurationMonths: driverType === 'lease_to_own' ? contractDurationMonths : undefined,
+        contractStartDate: driverType === 'lease_to_own' ? contractStartDate : undefined,
+        startDate,
+        daysOffPerMonth,
+        quitDate: quitDate || null,
+        documents: documentsWithMeta,
         carModel: selectedCar?.name ?? editingDriver?.carModel ?? '',
         licensePlate: selectedCar?.licensePlate ?? editingDriver?.licensePlate ?? '',
         assignedCarId: selectedCarId || null,
@@ -128,44 +231,115 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
       });
       onClose();
     } catch (err: any) {
-      console.error("Error saving driver:", err);
       setError((err?.message && err.message !== '[object Object]' ? err.message : null) || t('errorSaving') || "Xatolik yuz berdi.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Store the raw File in a ref and show a local object URL as preview.
+  // Actual upload to Supabase Storage happens on form submit.
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setAvatar(reader.result as string);
-      reader.readAsDataURL(file);
+      avatarFileRef.current = file;
+      setAvatar(URL.createObjectURL(file)); // instant preview
+      e.target.value = '';
     }
   };
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>, category: DriverDocument['category']) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_DOC_SIZE_MB * 1024 * 1024) {
-      setDocError(`Fayl hajmi ${MAX_DOC_SIZE_MB}MB dan oshmasligi kerak`);
+  const compressImageToBlob = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(b => resolve(b ?? file), 'image/jpeg', 0.7);
+          } else {
+            resolve(file); // fallback
+          }
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: DriverDocument['category']) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    
+    // We allow larger initial files because we will compress them
+    const oversized = files.find(f => f.size > 20 * 1024 * 1024);
+    if (oversized) {
+      setDocError(t('driverModalFileSizeError', 'Fayl hajmi 20MB dan oshmasligi kerak'));
       e.target.value = '';
       return;
     }
+    
     setDocError(null);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setDocuments(prev => [
-        ...prev.filter(d => d.category !== category),
-        { name: file.name, type: file.type, data: reader.result as string, category },
-      ]);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    try {
+      const promises = files.map(file => new Promise<DriverDocument>(async (resolve, reject) => {
+        try {
+          const isImg = file.type.startsWith('image/');
+          const blobToUpload = isImg ? await compressImageToBlob(file) : file;
+          const ext = isImg ? 'jpg' : file.name.split('.').pop() || 'file';
+          const contentType = isImg ? 'image/jpeg' : file.type;
+          const path = `driver-docs/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          
+          const { error } = await supabase.storage.from('car-damages').upload(path, blobToUpload, { upsert: true, contentType });
+          if (error) throw error;
+          
+          const url = supabase.storage.from('car-damages').getPublicUrl(path).data.publicUrl;
+          const doc: DriverDocument = {
+            name: file.name,
+            type: contentType,
+            data: url,
+            category,
+          };
+          resolve(category === 'driver_license'
+            ? normalizeIshonchnomaReminderDocument(doc, driverLicenseReminderAt, t('driverLicenseCardTitle', 'Ishonchnoma'))
+            : doc
+          );
+        } catch (err) {
+          reject(err);
+        }
+      }));
+      
+      const newDocs = await Promise.all(promises);
+      setDocuments(prev => [...prev, ...newDocs]);
+    } catch (err) {
+      setDocError(t('driverModalFileProcessError', 'Faylni qayta ishlashda xatolik yuz berdi'));
+    } finally {
+      e.target.value = '';
+    }
   };
 
-  const removeDocument = (category: DriverDocument['category']) => {
-    setDocuments(prev => prev.filter(d => d.category !== category));
+  const removeDocument = (category: DriverDocument['category'], indexInCategory: number) => {
+    setDocuments(prev => {
+      const catItems = prev.filter(d => d.category === category);
+      const others = prev.filter(d => d.category !== category);
+      catItems.splice(indexInCategory, 1);
+      return [...others, ...catItems];
+    });
   };
 
   const formatPhoneNumber = (value: string) => {
@@ -183,60 +357,79 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
-    if (value) setMonthlySalary(parseInt(value, 10).toLocaleString());
-    else setMonthlySalary('');
+    setMonthlySalary(value ? parseInt(value, 10) : 0);
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${theme === 'dark'
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-[#0f766e] placeholder-gray-500'
+    ? 'bg-surface-2 border-white/[0.08] text-white focus:border-[#0f766e] placeholder-gray-500'
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[#0f766e] placeholder-gray-400'}`;
 
   const labelClass = `block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`;
   const sectionTitle = `text-sm font-bold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`;
 
-  const getDoc = (cat: DriverDocument['category']) => documents.find(d => d.category === cat);
-
   const DocUploadBox = ({ category, label }: { category: DriverDocument['category']; label: string }) => {
-    const doc = getDoc(category);
+    const docs = documents.filter(d => d.category === category);
     const inputId = `doc-${category}`;
     return (
-      <div className={`rounded-xl border p-3 flex items-center gap-3 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-        <div className="flex-1 min-w-0">
-          <p className={`text-xs font-semibold mb-0.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
-          {doc
-            ? <p className="text-xs text-[#0f766e] truncate">{doc.name}</p>
-            : <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>PDF yoki rasm tanlang</p>
-          }
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {doc && (
-            <>
-              {doc.type.startsWith('image/')
-                ? <a href={doc.data} target="_blank" rel="noreferrer"><img src={doc.data} alt={doc.name} className="w-8 h-8 rounded object-cover border border-gray-600" /></a>
-                : <a href={doc.data} download={doc.name} className="text-[#0f766e] text-xs font-medium hover:underline">PDF</a>
-              }
-              <button type="button" onClick={() => removeDocument(category)}
-                className={`p-1 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}>
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
-          <label htmlFor={inputId} className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors">
-            {doc ? 'Almashtir' : 'Yuklash'}
+      <div className={`rounded-xl border p-3 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
+            {docs.length > 0 && (
+              <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{docs.length} {t('driverModalFileCount', 'ta fayl')}</p>
+            )}
+          </div>
+          <label htmlFor={inputId} className="cursor-pointer px-2.5 py-1.5 bg-[#0f766e] text-white text-xs font-semibold rounded-lg hover:bg-[#0a5c56] transition-colors flex-shrink-0">
+            {t('driverModalAddFile', "+ Qo'shish")}
           </label>
-          <input id={inputId} type="file" accept="image/*,application/pdf" className="hidden"
+          <input id={inputId} type="file" accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp,application/pdf" multiple className="hidden"
             onChange={(e) => handleDocumentUpload(e, category)} />
         </div>
+        {docs.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {docs.map((doc, idx) => (
+              <div key={idx} className="relative group">
+                {doc.type.startsWith('image/') ? (
+                  <a href={doc.data} target="_blank" rel="noreferrer">
+                    <img src={doc.data} alt={doc.name}
+                      className={`w-14 h-14 rounded-lg object-cover cursor-pointer border ${theme === 'dark' ? 'border-white/[0.10]' : 'border-gray-200'}`} />
+                  </a>
+                ) : (
+                  <a href={doc.data} download={doc.name} target="_blank" rel="noreferrer">
+                    <div className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer border ${theme === 'dark' ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
+                      <span className="text-lg">📄</span>
+                      <span className="text-[9px] font-bold text-red-400">PDF</span>
+                    </div>
+                  </a>
+                )}
+                <button type="button" onClick={() => removeDocument(category, idx)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                  <XIcon className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+            {t('driverModalUploadHint', 'Oldi-orqa tomonlarni yoki bir nechta sahifalarni yuklash mumkin')}
+          </p>
+        )}
       </div>
     );
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50/50'}`}>
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+      <div
+        className={`rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
+        style={theme === 'dark' ? { background: '#171f33' } : undefined}
+      >
+        <div
+          className={`px-6 py-5 border-b flex justify-between items-center ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100 bg-gray-50/50'}`}
+          style={theme === 'dark' ? { background: '#222a3d' } : undefined}
+        >
           <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {editingDriver ? t('editDriver') : t('addDriver')}
+            {modalTitle}
           </h3>
           <button onClick={onClose} className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
             <XIcon className="w-6 h-6" />
@@ -249,24 +442,24 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           {/* Avatar + Name */}
           <div className="flex items-center gap-5">
             <div className="flex-shrink-0">
-              <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Foto</label>
-              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
+              <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('driverModalPhoto', 'FOTO')}</label>
+              <div className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 cursor-pointer transition-colors ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08] hover:border-[#0f766e]' : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}>
                 {avatar ? (
                   <img src={avatar} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                  <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-surface-2/50' : 'bg-gray-100'}`}>
                     <CameraIcon className={`w-7 h-7 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                   </div>
                 )}
                 <label htmlFor="driver-avatar-upload" className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                   <CameraIcon className="w-6 h-6 text-white" />
                 </label>
-                <input id="driver-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input id="driver-avatar-upload" type="file" accept="image/*,.heic,.HEIC,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleImageUpload} />
               </div>
             </div>
             <div className="flex-1">
               <label className={labelClass}>{t('name')} <span className="text-red-500">*</span></label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Ism Familiya" />
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={t('namePlaceholder', 'Ism Familiya')} />
             </div>
           </div>
 
@@ -276,20 +469,228 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
               <input type="tel" required value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 90 123 45 67" />
             </div>
             <div>
-              <label className={labelClass}>Qo'shimcha telefon</label>
+              <label className={labelClass}>{t('driverModalExtraPhone', "Qo'shimcha telefon")}</label>
               <input type="tel" value={extraPhone} onChange={(e) => setExtraPhone(formatPhoneNumber(e.target.value))} className={inputClass} placeholder="+998 " />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Eslatmalar (Ixtiyoriy)</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder="Haydovchi haqida qo'shimcha ma'lumot..."></textarea>
+            <label className={labelClass}>{t('driverModalNotes', 'Eslatmalar (Ixtiyoriy)')}</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} resize-none h-24`} placeholder={t('driverModalNotesPlaceholder', "Haydovchi haqida qo'shimcha ma'lumot...")}></textarea>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>{t('driverModalStartDate', 'Ish boshlagan sana')}</label>
+              <DatePicker
+                label={t('driverModalStartDate', 'Ish boshlagan sana')}
+                hideLabel
+                value={startDate ? new Date(startDate) : new Date()}
+                onChange={(d: Date) => {
+                  const nextStart = d.getTime();
+                  setStartDate(nextStart);
+                  if (quitDate && nextStart > quitDate) {
+                    setQuitDate(null);
+                  }
+                }}
+                theme={theme}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>{t('driverModalQuitDate', 'Ishdan ketgan sana')}</label>
+              <DatePicker
+                label={t('driverModalQuitDate', 'Ishdan ketgan sana')}
+                hideLabel
+                isClearable
+                value={quitDate ? new Date(quitDate) : null}
+                onChange={(d: Date | null) => setQuitDate(d ? d.getTime() : null)}
+                theme={theme}
+              />
+            </div>
+          </div>
+          {isRehireDraft && (
+            <div className={`rounded-2xl border px-4 py-3 text-[13px] font-semibold ${
+              theme === 'dark'
+                ? 'border-teal-500/25 bg-teal-500/10 text-teal-200'
+                : 'border-teal-200 bg-teal-50 text-teal-800'
+            }`}>
+              {t('driverRehireHint', 'Qayta ishga olish rejimi: eski chiqish sanasi yopiladi va yangi ish davri boshlanadi.')}
+            </div>
+          )}
+          
+
+          {/* Driver payment type */}
+          <div>
+            <label className={labelClass}>{t('driverModalType', 'Haydovchi turi')}</label>
+            {/* Toggle */}
+            <div className={`flex flex-wrap sm:flex-nowrap rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
+              {(['deposit', 'salary', 'lease_to_own'] as const).map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setDriverType(type)}
+                  className={`flex-1 min-w-[110px] py-2.5 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold transition-all ${
+                    driverType === type
+                      ? 'bg-[#0f766e] text-white'
+                      : theme === 'dark'
+                        ? 'bg-surface-2 text-gray-400 hover:text-gray-200 border-r border-white/[0.04] last:border-0'
+                        : 'bg-gray-50 text-gray-500 hover:text-gray-700 border-r border-gray-200 last:border-0'
+                  }`}
+                >
+                  {type === 'deposit' ? (
+                    <><div className="w-4 h-4 flex items-center justify-center"><span className="text-lg leading-none">🚕</span></div> {t('driverTypeStandard', 'Standart')}</>
+                  ) : type === 'salary' ? (
+                    <><div className="w-4 h-4 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> {t('driverTypeSalary', 'Maoshli')}</>
+                  ) : (
+                    <>🚗 {t('driverTypeLease', 'Arenda (Vikup)')}</>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className={`text-[10px] mt-1.5 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+              {driverType === 'deposit'
+                ? t('driverTypeStandardDesc', 'Odatiy haydovchi. Kunlik reja asosida ishlaydi.')
+                : driverType === 'salary'
+                  ? t('driverTypeSalaryDesc', "Sizdan haydovchiga oylik maosh to'lanadi, reja bajarilmasa maoshdan ayriladi.")
+                  : t('driverTypeLeaseDesc', "Haydovchi mashinani bo'lib to'lash (sotib olish) sharti bilan oladi. Barcha to'lovlar shartnoma summasidan ayirib boriladi.")}
+            </p>
+          </div>
+
+          {/* Type-specific fields */}
+          {driverType === 'salary' && (
+            <div>
+              <label className={labelClass}>{t('driverModalSalaryLabel', 'Oylik maosh')}</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={monthlySalary > 0 ? monthlySalary.toLocaleString('uz-UZ') : ''}
+                  onChange={e => {
+                    const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                    setMonthlySalary(isNaN(raw) ? 0 : raw);
+                  }}
+                  className={inputClass}
+                  placeholder="0"
+                />
+                <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+              </div>
+              <p className={`text-[10px] mt-1 ml-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                {t('driverModalSalaryDesc', "Har oyda haydovchiga to'lanadigan maosh. Reja bajarilmasa ayiriladi.")}
+              </p>
+            </div>
+          )}
+
+          {driverType === 'lease_to_own' && (
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>{t('driverModalContractTotal', 'Mashina narxi (Shartnoma jami)')}</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={totalContractAmount > 0 ? totalContractAmount.toLocaleString('uz-UZ') : ''}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      setTotalContractAmount(isNaN(raw) ? 0 : raw);
+                    }}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>{t('driverModalDuration', 'Muddati (Oy)')}</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={contractDurationMonths || ''}
+                    onChange={e => setContractDurationMonths(parseInt(e.target.value) || 0)}
+                    className={inputClass}
+                    placeholder="36"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>{t('driverModalContractStart', 'Boshlanish sanasi')}</label>
+                  <DatePicker
+                    label={t('driverModalContractStart', 'Boshlanish sanasi')}
+                    hideLabel
+                    value={contractStartDate ? new Date(contractStartDate) : new Date()}
+                    onChange={(d: Date) => setContractStartDate(d.getTime())}
+                    theme={theme}
+                  />
+                </div>
+              </div>
+
+              {totalContractAmount > 0 && contractDurationMonths > 0 && (
+                <div className={`p-3 rounded-xl mt-2 flex items-start gap-3 ${theme === 'dark' ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-200'}`}>
+                  <span className="text-xl">💡</span>
+                  <div>
+                    <p className={`text-xs font-bold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>{t('driverModalSuggestedPlan', 'Tavsiya etilgan kunlik reja:')}</p>
+                    <p className={`text-sm font-mono font-black ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
+                      {(Math.ceil(totalContractAmount / (contractDurationMonths * 30) / 1000) * 1000).toLocaleString('uz-UZ')} UZS
+                    </p>
+                    <p className={`text-[9px] mt-0.5 opacity-80 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-700'}`}>
+                      {t('driverModalSuggestedPlanNote', '(Bu summani pastdagi avtomobil qismiga kiritishingiz kerak)')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Deposit fields for all drivers */}
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-white/[0.08] bg-surface-2' : 'border-gray-200 bg-gray-50'}`}>
+            <p className={sectionTitle}>
+              <div className="w-5 h-5 flex items-center justify-center"><Lottie animationData={depositAnimation} loop={true} /></div> {t('driverModalDepositSettings', 'Depozit sozlamalari')}
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>{t('driverModalDepositAmount', 'Depozit miqdori')}</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={depositAmount > 0 ? depositAmount.toLocaleString('uz-UZ') : ''}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      setDepositAmount(isNaN(raw) ? 0 : raw);
+                    }}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                </div>
+                <p className={`text-[10px] mt-1 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  {t('driverModalInitialDeposit', "Boshlang'ich depozit")}
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClass}>{t('driverModalWarningLimit', 'Ogohlantirish limiti')}</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={depositWarningThreshold > 0 ? depositWarningThreshold.toLocaleString('uz-UZ') : ''}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      setDepositWarningThreshold(isNaN(raw) ? 0 : raw);
+                    }}
+                    className={inputClass}
+                    placeholder="1 000 000"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold pointer-events-none ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                </div>
+                <p className={`text-[10px] mt-1 ml-1 leading-tight ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  {t('driverModalWarningLimitDesc', 'Depozit tushib ketsa xabar beriladi')}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Car assignment picker */}
-          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
-              <CarIcon className="w-4 h-4" /> Biriktirilgan avtomobil
+              <CarIcon className="w-4 h-4" /> {t('driverModalAssignedVehicle', 'Biriktirilgan avtomobil')}
             </p>
 
             {/* Selected car preview or picker trigger */}
@@ -298,7 +699,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                 type="button"
                 onClick={() => setCarPickerOpen(o => !o)}
                 className={`w-full rounded-xl border p-3 flex items-center gap-3 transition-colors text-left ${theme === 'dark'
-                  ? 'bg-gray-800 border-gray-700 hover:border-[#0f766e]'
+                  ? 'bg-surface-2 border-white/[0.08] hover:border-[#0f766e]'
                   : 'bg-gray-50 border-gray-200 hover:border-[#0f766e]'}`}
               >
                 {selectedCar ? (
@@ -306,7 +707,7 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                     {selectedCar.avatar ? (
                       <img src={selectedCar.avatar} alt={selectedCar.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                     ) : (
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-200'}`}>
                         <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                       </div>
                     )}
@@ -324,11 +725,11 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                   </>
                 ) : (
                   <>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-200'}`}>
                       <CarIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                     </div>
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {availableCars.length === 0 ? "Bo'sh avtomobil yo'q" : "Avtomobil tanlang..."}
+                      {availableCars.length === 0 ? t('driverModalNoVehicles', "Bo'sh avtomobil yo'q") : t('driverModalSelectVehicle', 'Avtomobil tanlang...')}
                     </span>
                   </>
                 )}
@@ -336,17 +737,20 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
 
               {/* Dropdown list */}
               {carPickerOpen && (
-                <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div
+                  className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-10 overflow-hidden ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
+                  style={theme === 'dark' ? { background: '#171f33' } : undefined}
+                >
                   {/* Search input */}
-                  <div className={`p-2 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <div className={`p-2 border-b ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-100'}`}>
                     <input
                       ref={carSearchRef}
                       type="text"
                       value={carSearch}
                       onChange={e => setCarSearch(e.target.value)}
-                      placeholder="Nomi yoki raqami bo'yicha qidiring..."
+                      placeholder={t('driverModalSearchVehicle', "Nomi yoki raqami bo'yicha qidiring...")}
                       className={`w-full px-3 py-2 rounded-lg text-sm outline-none border ${theme === 'dark'
-                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-[#0f766e]'
+                        ? 'bg-surface-2 border-white/[0.08] text-white placeholder-gray-500 focus:border-[#0f766e]'
                         : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-[#0f766e]'}`}
                     />
                   </div>
@@ -358,16 +762,16 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                         onClick={() => { setSelectedCarId(''); setCarPickerOpen(false); }}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${!selectedCarId
                           ? 'bg-[#0f766e] text-white'
-                          : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50'}`}
+                          : theme === 'dark' ? 'text-gray-400 hover:bg-white/[0.04]' : 'text-gray-500 hover:bg-black/[0.03]'}`}
                       >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!selectedCarId ? 'bg-white/20' : theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`}>
                           <XIcon className="w-4 h-4" />
                         </div>
-                        <span>Avtomobil biriktirmaslik</span>
+                        <span>{t('driverModalNoVehicle', 'Avtomobil biriktirmaslik')}</span>
                       </button>
                     )}
                     {filteredCars.length === 0 ? (
-                      <p className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Hech narsa topilmadi</p>
+                      <p className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('driverModalNothingFound', 'Hech narsa topilmadi')}</p>
                     ) : (
                       filteredCars.map(car => (
                         <button
@@ -376,12 +780,12 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
                           onClick={() => { setSelectedCarId(car.id); setCarPickerOpen(false); setCarSearch(''); }}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${selectedCarId === car.id
                             ? 'bg-[#0f766e] text-white'
-                            : theme === 'dark' ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-800 hover:bg-gray-50'}`}
+                            : theme === 'dark' ? 'text-gray-200 hover:bg-white/[0.04]' : 'text-gray-800 hover:bg-black/[0.03]'}`}
                         >
                           {car.avatar ? (
                             <img src={car.avatar} alt={car.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                           ) : (
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedCarId === car.id ? 'bg-white/20' : theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`}>
                               <CarIcon className="w-4 h-4" />
                             </div>
                           )}
@@ -399,30 +803,54 @@ const DriverModal: React.FC<DriverModalProps> = ({ isOpen, onClose, onSubmit, ed
           </div>
 
           {/* Driver documents */}
-          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`border-t pt-4 ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'}`}>
             <p className={sectionTitle}>
-              <span>👤</span> Haydovchi hujjatlari
+              <span>👤</span> {t('driverModalDocuments', 'Haydovchi hujjatlari')}
             </p>
+	            <div className={`mb-3 rounded-xl border p-4 ${theme === 'dark' ? 'bg-surface-2 border-white/[0.08]' : 'bg-gray-50 border-gray-200'}`}>
+	              <div className="flex items-start justify-between gap-3 mb-3">
+	                <div>
+	                  <p className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+	                    {t('driverLicenseCardTitle', 'Ishonchnoma')}
+	                  </p>
+	                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+	                    {t('driverLicenseReminderSubtitle', 'Eslatma kunini tanlang.')}
+	                  </p>
+	                </div>
+	              </div>
+	              <div>
+	                <DatePicker
+	                  label={t('driverLicenseReminderDate', 'Eslatma kuni')}
+	                  value={driverLicenseReminderAt ? new Date(driverLicenseReminderAt) : null}
+	                  onChange={(d: Date | null) => setDriverLicenseReminderAt(d ? startOfDayMs(d) : null)}
+	                  placeholder={t('driverLicenseReminderDatePlaceholder', 'Kunni tanlang')}
+	                  isClearable
+	                  theme={theme}
+	                />
+	              </div>
+	            </div>
             <div className="space-y-2">
-              <DocUploadBox category="driver_license" label="Haydovchilik guvohnomasi" />
-              <DocUploadBox category="passport" label="Pasport" />
+              <DocUploadBox category="driver_license" label={t('driverModalLicense', 'Ishonchnoma')} />
+              <DocUploadBox category="passport" label={t('driverModalPassport', 'Pasport')} />
+              <DocUploadBox category="other" label={t('driverModalOtherDocuments', 'Boshqa hujjatlar')} />
             </div>
             {docError && <p className="text-xs text-red-500 mt-2">{docError}</p>}
           </div>
 
           <div className="pt-2 flex justify-end gap-3">
             <button type="button" onClick={onClose}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}>
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${theme === 'dark' ? 'text-gray-300 hover:bg-white/[0.04]' : 'text-gray-600 hover:bg-gray-100'}`}>
               {t('cancel')}
             </button>
             <button type="submit" disabled={isSubmitting}
               className={`px-6 py-2.5 bg-[#0f766e] text-white hover:bg-[#0a5c56] rounded-xl text-sm font-bold transition-all active:scale-95 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
-              {isSubmitting ? t('saving') : (editingDriver ? t('save') : t('add'))}
+              {isSubmitting ? t('saving') : submitLabel}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

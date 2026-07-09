@@ -68,8 +68,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                     setError('Too many failed attempts. Try again in 30s.');
                 }
             }
-        } catch (error) {
-            console.error('Login error:', error);
+        } catch {
             setError('System error. Please try again.');
         } finally {
             setLoading(false);
@@ -77,8 +76,8 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
+        <div className="min-h-screen bg-[#0b1326] flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-surface-2 rounded-2xl shadow-2xl p-8 border border-white/[0.08]">
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
                         <LockIcon className="w-8 h-8 text-red-500" />
@@ -95,7 +94,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
+                            className="w-full bg-surface border border-white/[0.08] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
                             placeholder="••••••••"
                             disabled={lockoutTime > 0}
                             autoFocus // Added autoFocus
@@ -112,7 +111,7 @@ const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onAuthenticated }) =>
                         type="submit"
                         disabled={loading || lockoutTime > 0 || !password} // Updated disabled condition
                         className={`w-full py-3 rounded-lg font-bold uppercase tracking-wider transition-all ${loading || lockoutTime > 0
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            ? 'bg-surface-2 text-gray-500 cursor-not-allowed'
                             : 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
                             }`}
                     >

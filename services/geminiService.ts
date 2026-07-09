@@ -43,8 +43,7 @@ export const generateFleetInsights = async (
       contents: prompt,
     });
     return response.text || "No insights available.";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
+  } catch {
     return "Unable to generate insights at this time. Please try again later.";
   }
 };

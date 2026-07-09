@@ -1,20 +1,30 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
 
 interface DatePickerProps {
     label: string;
-    value: Date;
+    value: Date | null;
     onChange: (date: Date) => void;
     theme: 'light' | 'dark';
     labelClassName?: string;
+    placeholder?: string;
+    hideLabel?: boolean;
+    isClearable?: boolean;
 }
 
-const MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-];
-const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+const TODAY_LABELS: Record<string, string> = { uz: 'Bugun', ru: 'Сегодня', en: 'Today' };
+
+const getDayNames = (lang: string) => {
+    const names = [];
+    // 2026-05-04 is a Monday
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(2026, 4, 4 + i);
+        names.push(new Intl.DateTimeFormat(lang, { weekday: 'short' }).format(d));
+    }
+    return names;
+};
 
 function getCalendarDays(year: number, month: number) {
     const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
@@ -39,15 +49,36 @@ function fmt(d: Date) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
-const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName }) => {
+const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, labelClassName, placeholder, hideLabel, isClearable }) => {
+    const today = new Date();
     const [isOpen, setIsOpen] = useState(false);
-    const [month, setMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
+    const [month, setMonth] = useState(new Date(value ? value.getFullYear() : today.getFullYear(), value ? value.getMonth() : today.getMonth(), 1));
     const [pos, setPos] = useState({ top: 0, left: 0 });
 
     const triggerRef = useRef<HTMLButtonElement>(null);
     const calRef = useRef<HTMLDivElement>(null);
     const isDark = theme === 'dark';
-    const today = new Date();
+
+    const { i18n, t } = useTranslation();
+    const lang = (['uz', 'en', 'ru'].includes(i18n.language) ? i18n.language : 'uz');
+
+    const localizedDays = useMemo(() => getDayNames(lang), [lang]);
+    
+    const MONTH_NAMES = {
+        uz: ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'],
+        ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+        en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    };
+
+    const currentMonthName = useMemo(() => {
+        const m = month.getMonth();
+        return (MONTH_NAMES[lang as keyof typeof MONTH_NAMES] || MONTH_NAMES.uz)[m];
+    }, [lang, month]);
+
+    useEffect(() => {
+        if (!value || isOpen) return;
+        setMonth(new Date(value.getFullYear(), value.getMonth(), 1));
+    }, [value?.getFullYear(), value?.getMonth(), isOpen]);
 
     // Position calendar relative to trigger button
     useLayoutEffect(() => {
@@ -97,6 +128,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
 
     const isSelected = (c: { day: number; cur: boolean }) =>
         c.cur &&
+        value &&
         c.day === value.getDate() &&
         month.getMonth() === value.getMonth() &&
         month.getFullYear() === value.getFullYear();
@@ -125,33 +157,33 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
             ref={calRef}
             className={`fixed z-[99999] rounded-2xl shadow-2xl border overflow-hidden select-none ${
                 isDark
-                    ? 'bg-[#1a2332] border-gray-700/80'
+                    ? 'bg-[#1a2332] border-white/[0.08]'
                     : 'bg-white border-gray-200'
             }`}
             style={{ top: pos.top, left: pos.left, width: 280 }}
             onMouseDown={e => e.stopPropagation()}
         >
             {/* Header */}
-            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-700/60' : 'border-gray-100'}`}>
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
                 <button
                     type="button"
                     onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
                     className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
-                        isDark ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                        isDark ? 'text-gray-400 hover:bg-white/[0.06] hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                 >
                     <ChevronLeftIcon className="w-4 h-4" />
                 </button>
 
-                <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {MONTHS[month.getMonth()]} {month.getFullYear()}
+                <span className={`text-sm font-bold capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {currentMonthName} {month.getFullYear()}
                 </span>
 
                 <button
                     type="button"
                     onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
                     className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
-                        isDark ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                        isDark ? 'text-gray-400 hover:bg-white/[0.06] hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                 >
                     <ChevronRightIcon className="w-4 h-4" />
@@ -161,9 +193,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
             <div className="p-3">
                 {/* Day name headers */}
                 <div className="grid grid-cols-7 mb-1">
-                    {DAYS.map(d => (
-                        <div key={d} className={`text-center text-[10px] font-bold py-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {d}
+                    {localizedDays.map(d => (
+                        <div key={d} className={`text-center text-[10px] font-bold py-1 capitalize ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {d.slice(0, 2)}
                         </div>
                     ))}
                 </div>
@@ -189,7 +221,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
                                                 : 'ring-1 ring-[#0f766e] text-[#0f766e] font-bold'
                                             : c.cur
                                                 ? isDark
-                                                    ? 'text-gray-200 hover:bg-gray-700'
+                                                    ? 'text-gray-200 hover:bg-white/[0.06]'
                                                     : 'text-gray-800 hover:bg-gray-100'
                                                 : isDark
                                                     ? 'text-gray-600 cursor-default'
@@ -205,17 +237,30 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
             </div>
 
             {/* Footer */}
-            <div className={`px-3 pb-3`}>
+            <div className={`px-3 pb-3 flex gap-2`}>
+                {isClearable && (
+                    <button
+                        type="button"
+                        onClick={() => { onChange(null as any); setIsOpen(false); }}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            isDark
+                                ? 'bg-surface-2 text-gray-400 hover:bg-white/[0.06] hover:text-white'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
+                        }`}
+                    >
+                        {lang === 'en' ? 'Clear' : lang === 'ru' ? 'Очистить' : 'Tozalash'}
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={goToday}
-                    className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         isDark
-                            ? 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
+                            ? (isClearable ? 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20' : 'bg-surface-2 text-gray-400 hover:bg-white/[0.06] hover:text-white')
+                            : (isClearable ? 'bg-teal-50 text-teal-600 hover:bg-teal-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900')
                     }`}
                 >
-                    Today
+                    {TODAY_LABELS[lang] || TODAY_LABELS.uz}
                 </button>
             </div>
         </div>
@@ -224,28 +269,32 @@ const DatePicker: React.FC<DatePickerProps> = ({ label, value, onChange, theme, 
     return (
         <div className="relative w-full">
             {/* Label */}
-            <div className={`flex items-center gap-2 mb-2 ${labelClassName || (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
-                <CalendarIcon className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
-            </div>
+            {!hideLabel && (
+                <div className={`flex items-center gap-2 mb-2 ${labelClassName || (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
+                    <CalendarIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
+                </div>
+            )}
 
             {/* Trigger button */}
             <button
                 ref={triggerRef}
                 type="button"
                 onClick={() => setIsOpen(o => !o)}
-                className={`w-full px-4 py-3 rounded-xl border text-left transition-all ${
+                className={`w-full ${hideLabel ? 'px-3 py-2' : 'px-4 py-3'} rounded-xl border text-left transition-all ${
                     isOpen
                         ? isDark
-                            ? 'bg-gray-800 border-[#0f766e] ring-1 ring-[#0f766e]/40 text-white'
+                            ? 'bg-surface-2 border-[#0f766e] ring-1 ring-[#0f766e]/40 text-white'
                             : 'bg-white border-[#0f766e] ring-1 ring-[#0f766e]/20 text-gray-900'
                         : isDark
-                            ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600 text-white'
+                            ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12] text-white'
                             : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                 }`}
             >
                 <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{fmt(value)}</span>
+                    <span className={`text-sm font-medium ${!value ? (isDark ? 'text-gray-500' : 'text-gray-400') : ''}`}>
+                        {value ? fmt(value) : (placeholder || t('selectDate', 'Sanani tanlang'))}
+                    </span>
                     <CalendarIcon className={`w-4 h-4 transition-colors ${isOpen ? 'text-[#0f766e]' : isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>
             </button>

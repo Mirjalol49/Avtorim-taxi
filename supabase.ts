@@ -9,7 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(
     supabaseUrl || 'https://placeholder.supabase.co',
-    supabaseAnonKey || 'placeholder'
+    supabaseAnonKey || 'placeholder',
+    {
+        realtime: {
+            params: { eventsPerSecond: 20 },
+            heartbeatIntervalMs: 15000,
+            reconnectAfterMs: (tries: number) => Math.min(500 * (tries + 1), 10000),
+            timeout: 20000,
+        },
+        db: { schema: 'public' },
+    }
 );
 
 export default supabase;

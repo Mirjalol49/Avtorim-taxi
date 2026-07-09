@@ -10,32 +10,47 @@ const toNote = (r: any): Note => ({
     isPinned: r.is_pinned ?? false,
     createdMs: r.created_ms,
     updatedMs: r.updated_ms,
+    reminderAt: r.reminder_at ?? null,
 });
 
 export const subscribeToNotes = (callback: (notes: Note[], error?: boolean) => void, fleetId?: string) => {
-    if (!fleetId) return () => {};
+    if (!fleetId) return { unsubscribe: () => {}, refetch: () => {} };
 
-    const fetchNotes = () =>
-        supabase
-            .from('notes')
-            .select('*')
-            .eq('fleet_id', fleetId)
-            .order('is_pinned', { ascending: false })
-            .order('updated_ms', { ascending: false })
-            .then(({ data, error }) => {
-                if (error) { callback([], true); return; }
-                callback((data ?? []).map(toNote));
-            })
-            .catch(() => callback([], true));
+    const fetchNotes = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('notes')
+                .select('id,fleet_id,title,content,color,is_pinned,created_ms,updated_ms,reminder_at')
+                .eq('fleet_id', fleetId)
+                .order('is_pinned', { ascending: false })
+                .order('updated_ms', { ascending: false })
+                .limit(200); // cap — no fleet needs more than 200 active notes
+            if (error) { callback([], true); return; }
+            callback((data ?? []).map(toNote));
+        } catch {
+            callback([], true);
+        }
+    };
 
+    // Fire immediately — data shows before WebSocket channel connects
     fetchNotes();
 
-    const channel = supabase
-        .channel(`notes_${fleetId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, () => fetchNotes())
-        .subscribe();
+    // Create a unique channel ID so multiple subscribers don't conflict
+    const uniqueId = Math.random().toString(36).substring(7);
+    const channelName = `notes_${fleetId}_${uniqueId}`;
 
-    return () => { supabase.removeChannel(channel); };
+    const channel = supabase
+        .channel(channelName)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `fleet_id=eq.${fleetId}` }, () => fetchNotes())
+        .subscribe((status) => {
+            // Only re-fetch on error recovery — skip SUBSCRIBED because fetchNotes() fires above already
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') fetchNotes();
+        });
+
+    return {
+        unsubscribe: () => { supabase.removeChannel(channel); },
+        refetch: fetchNotes,
+    };
 };
 
 export const addNote = async (note: Omit<Note, 'id'>) => {
@@ -49,6 +64,7 @@ export const addNote = async (note: Omit<Note, 'id'>) => {
             is_pinned: note.isPinned,
             created_ms: note.createdMs,
             updated_ms: note.updatedMs,
+            reminder_at: note.reminderAt ?? null,
         })
         .select('id')
         .single();
@@ -63,6 +79,7 @@ export const updateNote = async (id: string, updates: Partial<Omit<Note, 'id' | 
     if (updates.color !== undefined) row.color = updates.color;
     if (updates.isPinned !== undefined) row.is_pinned = updates.isPinned;
     if (updates.updatedMs !== undefined) row.updated_ms = updates.updatedMs;
+    if ('reminderAt' in updates) row.reminder_at = updates.reminderAt ?? null;
 
     const { error } = await supabase.from('notes').update(row).eq('id', id);
     if (error) throw new Error(error.message);

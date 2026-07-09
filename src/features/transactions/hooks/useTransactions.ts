@@ -1,24 +1,110 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Transaction } from '../../../core/types';
 import { subscribeToTransactions } from '../../../../services/firestoreService';
+import { readCache, writeCache } from '../../../core/utils/dataCache';
+import { collectionSignature, mergeById } from '../../../core/utils/stableCollection';
 
 export const useTransactions = (fleetId?: string, refreshTrigger?: number) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hydrating, setHydrating] = useState(true);
     const [error, setError] = useState<Error | null>(null);
+    const refetchRef = useRef<(() => void) | null>(null);
+    const signatureRef = useRef('');
 
     useEffect(() => {
-        setLoading(true);
-        const unsubscribe = subscribeToTransactions(
-            (data) => {
-                setTransactions(data);
+        // Keep loading=true while fleetId is not yet resolved (auth still in progress).
+        if (!fleetId) return;
+        signatureRef.current = '';
+
+        // ── Pattern 1: Serve stale cache INSTANTLY ──────────────────────────────
+        // Transactions are the slowest resource (dual-fetch, can take 5–9s on a cold
+        // Supabase instance). Showing the last-known list immediately eliminates the
+        // most visible empty-state flash in the entire app.
+        const cached = readCache<Transaction>(`transactions_${fleetId}`);
+        if (cached.length > 0) {
+            signatureRef.current = collectionSignature(cached);
+            setTransactions(cached);
+            setLoading(false); // unblock UI immediately — fetchAll will update silently
+            setHydrating(true);
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
+        // If this is a manual refresh (refreshTrigger changed), use refetch instead of re-subscribing
+        if (refreshTrigger !== undefined && refreshTrigger > 0 && refetchRef.current) {
+            refetchRef.current();
+            return;
+        }
+
+        // Only show the spinner on first-ever load (no cache yet)
+        if (cached.length === 0) {
+            setLoading(true);
+            setHydrating(true);
+        }
+
+        // Bail out after 10s if data never arrives.
+        // With 5s AbortController + 3s retry gap, data arrives in ≤9s on cold Supabase.
+        const timeout = setTimeout(() => {
+            setLoading(false);
+            setHydrating(false);
+        }, 10000);
+
+        const { unsubscribe, refetch } = subscribeToTransactions(
+            (data, meta) => {
+                if (meta?.complete) clearTimeout(timeout);
+                let cacheData: Transaction[] | null = null;
+                setTransactions(prev => {
+                    const shouldPreserveFullList = !meta?.complete && (meta?.source === 'initial' || meta?.source === 'backfill') && prev.length > data.length;
+                    const next = shouldPreserveFullList
+                        ? mergeById(prev, data, (a, b) => b.timestamp - a.timestamp)
+                        : data;
+                    const nextSignature = collectionSignature(next);
+                    if (nextSignature === signatureRef.current) {
+                        cacheData = null;
+                        return prev;
+                    }
+                    signatureRef.current = nextSignature;
+                    cacheData = next;
+                    return next;
+                });
                 setLoading(false);
+                setHydrating(!meta?.complete);
+                setError(null);
+                // Persist fresh data so the next load is instant.
+                // writeCache guards against oversized payloads automatically.
+                if (cacheData) writeCache(`transactions_${fleetId}`, cacheData);
             },
-            fleetId
+            fleetId,
         );
 
-        return () => unsubscribe();
+        refetchRef.current = refetch;
+
+        return () => {
+            clearTimeout(timeout);
+            refetchRef.current = null;
+            unsubscribe();
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fleetId, refreshTrigger]);
 
-    return { transactions, loading, error };
+    // Refetch when the app comes back to the foreground — but only if the tab
+    // was hidden for >60s. This prevents burning egress on every tab switch.
+    useEffect(() => {
+        let hiddenAt = 0;
+        const STALE_THRESHOLD_MS = 60_000;
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
+            } else if (document.visibilityState === 'visible' && refetchRef.current) {
+                if (hiddenAt > 0 && Date.now() - hiddenAt > STALE_THRESHOLD_MS) {
+                    refetchRef.current();
+                }
+                hiddenAt = 0;
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []);
+
+    return { transactions, setTransactions, loading, hydrating, error };
 };

@@ -3,10 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Driver, DriverStatus } from '../../../core/types';
 import { Car } from '../../../core/types/car.types';
 import { Transaction } from '../../../core/types/transaction.types';
-import { EditIcon, TrashIcon, CameraIcon, XIcon } from '../../../../components/Icons';
+import { useNavigate } from 'react-router-dom';
+import { EditIcon, TrashIcon, CarIcon, XIcon } from '../../../../components/Icons';
 import { createPortal } from 'react-dom';
+import { DriverAvatar } from './DriverAvatar';
+import { LicensePlate } from '../../../components/ui/LicensePlate';
+import { isPdfSource, openDocumentInNewTab } from '../../documents/pdfPreviewUtils';
 
-const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+const fmt = (n: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(n))} UZS`;
 
 interface DriverRowProps {
     driver: Driver;
@@ -25,31 +29,85 @@ export const DriverRow: React.FC<DriverRowProps> = ({
     driver, car, transactions, fleetId, theme, userRole, onEdit, onDelete,
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [viewingDoc, setViewingDoc] = useState<string | null>(null);
     const docs = driver.documents ?? [];
-    const explicitDailyPlan = car && car.dailyPlan > 0 ? (car.dailyPlan as number) : (((driver as any).dailyPlan ?? 0) as number);
+    const explicitDailyPlan = car ? (car.dailyPlan ?? 0) : 0;
+    const isDark = theme === 'dark';
 
     const handleEdit = (e: React.MouseEvent) => { e.stopPropagation(); onEdit(driver); };
     const handleDelete = (e: React.MouseEvent) => { e.stopPropagation(); onDelete(driver.id); };
 
+    const driverType = driver.driverType ?? 'deposit';
+    const typeLabel = driverType === 'salary'
+        ? t('salary', 'Maosh')
+        : driverType === 'lease_to_own'
+            ? t('vikup', 'Vikup')
+            : t('standard', 'Standart');
+
+    const badgeClass = {
+        deposit: isDark
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            : 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        salary: isDark
+            ? 'bg-violet-500/10 text-violet-400 border-violet-500/20'
+            : 'bg-violet-50 text-violet-700 border-violet-100',
+        lease_to_own: isDark
+            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+            : 'bg-amber-50 text-amber-700 border-amber-100',
+    }[driverType];
+
+    const avatarRing = {
+        deposit: 'ring-emerald-500/20 dark:ring-emerald-400/20',
+        salary: 'ring-violet-500/20 dark:ring-violet-400/20',
+        lease_to_own: 'ring-amber-500/20 dark:ring-amber-400/20',
+    }[driverType];
+
+    const statusColor = {
+        ACTIVE: 'bg-emerald-500',
+        OFFLINE: 'bg-slate-400',
+        BUSY: 'bg-amber-500',
+        IDLE: 'bg-blue-500',
+    }[driver.status] ?? 'bg-slate-400';
+
     return (<>
-        <tr className={`group transition-colors ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}>
+        <tr 
+            onClick={() => navigate(`/drivers/${driver.id}`)}
+            className={`group cursor-pointer transition-colors border-b ${
+                isDark 
+                    ? 'border-white/[0.05] hover:bg-white/[0.02] text-slate-300' 
+                    : 'border-slate-100 hover:bg-slate-50/50 text-slate-700'
+            }`}
+        >
 
             {/* Driver */}
             <td className="p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600 flex-shrink-0">
-                        {driver.avatar ? (
-                            <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                                {driver.name.charAt(0).toUpperCase()}
-                            </div>
-                        )}
+                    <div className="relative flex-shrink-0">
+                        <DriverAvatar
+                            src={driver.avatar}
+                            name={driver.name}
+                            size={42}
+                            theme={theme}
+                            rounded="xl"
+                            className={`ring-2 ring-offset-2 ${isDark ? 'ring-offset-[#151f32]' : 'ring-offset-white'} ${avatarRing}`}
+                        />
+                        <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 ${
+                            isDark ? 'border-[#151f32]' : 'border-white'
+                        } ${statusColor} shadow-sm`} />
                     </div>
                     <div>
-                        <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{driver.phone}</p>
+                        <div className="flex items-center gap-2">
+                            <span className={`font-bold text-sm leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {driver.name}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider border ${badgeClass}`}>
+                                {typeLabel}
+                            </span>
+                        </div>
+                        <p className={`text-xs font-mono mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                            {driver.phone || '-'}
+                        </p>
                     </div>
                 </div>
             </td>
@@ -58,18 +116,26 @@ export const DriverRow: React.FC<DriverRowProps> = ({
             <td className="p-4">
                 {car ? (
                     <div className="flex items-center gap-2">
-                        <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                        <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${theme === 'dark' ? 'bg-surface-2' : 'bg-gray-100'}`}>
                             {car.avatar ? (
-                                <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                                <DriverAvatar
+                                    src={car.avatar}
+                                    name={car.name}
+                                    size={36}
+                                    theme={theme}
+                                    rounded="xl"
+                                />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                    <CameraIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
+                                    <CarIcon className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
                                 </div>
                             )}
                         </div>
                         <div>
                             <p className={`font-medium text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{car.name}</p>
-                            <p className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{car.licensePlate}</p>
+                            <div className="mt-1">
+                                <LicensePlate plate={car.licensePlate} size="sm" />
+                            </div>
                         </div>
                     </div>
                 ) : (
@@ -85,11 +151,16 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                             const isImage = doc.type && doc.type.startsWith('image/');
                             return (
                                 <button key={i} type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isPdfSource(doc)) {
+                                            openDocumentInNewTab(doc.data, doc.type || 'application/pdf');
+                                            return;
+                                        }
                                         if (isImage) {
                                             setViewingDoc(doc.data);
                                         } else {
-                                            window.open(doc.data, '_blank');
+                                            window.open(doc.data, '_blank', 'noopener,noreferrer');
                                         }
                                     }}
                                     className="flex items-center gap-1 text-xs text-[#0f766e] hover:underline truncate max-w-[140px] text-left">
@@ -151,7 +222,8 @@ export const DriverRow: React.FC<DriverRowProps> = ({
                     
                     <button 
                         onClick={() => setViewingDoc(null)} 
-                        className={`absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors bg-gray-800 text-white hover:bg-gray-700 pointer-events-auto`}>
+                        className="absolute -top-12 right-0 md:-right-12 md:top-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors text-white pointer-events-auto"
+                        style={{ background: 'rgba(255,255,255,0.12)' }}>
                         <XIcon className="w-6 h-6" />
                     </button>
                 </div>

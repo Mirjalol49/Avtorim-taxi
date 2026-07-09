@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
     getAllAccounts, createAccount, toggleAccountStatus,
-    resetAccountPassword, deleteAccount, generatePassword,
+    updateAccountDetails, deleteAccount, generatePassword,
     formatPhone, normalizePhone, AccountRecord,
 } from '../services/superAdminService';
 import { supabase } from '../supabase';
@@ -16,7 +16,7 @@ interface Props {
 // ── tiny helpers ─────────────────────────────────────────────────────────────
 
 const Spinner = () => (
-    <svg className="animate-spin w-5 h-5 text-teal-400" fill="none" viewBox="0 0 24 24">
+    <svg className="animate-spin w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
@@ -68,7 +68,7 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
     if (created) {
         return (
             <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                <div className="bg-[#111827] border border-teal-500/30 rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+                <div className="bg-surface border border-teal-500/30 rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
                     <div className="w-16 h-16 rounded-full bg-teal-500/20 flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -76,7 +76,7 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
                     </div>
                     <h3 className="text-white text-xl font-bold mb-1">Hisob yaratildi!</h3>
                     <p className="text-gray-400 text-sm mb-6">Quyidagi ma'lumotlarni saqlang</p>
-                    <div className="space-y-3 text-left bg-gray-900 rounded-xl p-4 mb-6">
+                    <div className="space-y-3 text-left bg-surface-2 rounded-xl p-4 mb-6">
                         <div className="flex justify-between items-center">
                             <span className="text-gray-400 text-xs">Biznes nomi</span>
                             <span className="text-white text-sm font-medium">{username}</span>
@@ -100,7 +100,7 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
 
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-[#111827] border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="bg-surface border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-white text-lg font-bold">Yangi hisob</h3>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
@@ -119,21 +119,21 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
                             value={username}
                             onChange={e => setUsername(e.target.value)}
                             placeholder="Taksa Andijan"
-                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
+                            className="w-full bg-surface-3 border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
                         />
                     </div>
 
                     {/* Phone */}
                     <div>
                         <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Telefon raqam</label>
-                        <div className="flex rounded-xl border border-gray-700 overflow-hidden focus-within:border-teal-500 transition-colors">
-                            <span className="bg-gray-800 px-3 flex items-center text-gray-400 text-sm font-mono border-r border-gray-700 select-none">+998</span>
+                        <div className="flex rounded-xl border border-white/[0.08] overflow-hidden focus-within:border-teal-500 transition-colors">
+                            <span className="px-3 flex items-center text-gray-400 text-sm font-mono border-r border-white/[0.08] select-none" style={{ background: '#222a3d' }}>+998</span>
                             <input
                                 type="tel"
                                 value={phoneDigits}
                                 onChange={e => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 9))}
                                 placeholder="93 748 91 41"
-                                className="flex-1 bg-gray-900 px-3 py-3 text-white placeholder-gray-600 focus:outline-none text-sm font-mono"
+                                className="flex-1 bg-surface-3 px-3 py-3 text-white placeholder-gray-600 focus:outline-none text-sm font-mono"
                             />
                         </div>
                     </div>
@@ -146,11 +146,12 @@ const CreateModal: React.FC<{ onCreated: () => void; onClose: () => void; curren
                                 type="text"
                                 value={password}
                                 onChange={e => setPassword(e.target.value.slice(0, 10))}
-                                className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono tracking-widest focus:outline-none focus:border-teal-500 transition-colors text-sm"
+                                className="flex-1 bg-surface-3 border border-white/[0.08] rounded-xl px-4 py-3 text-white font-mono tracking-widest focus:outline-none focus:border-teal-500 transition-colors text-sm"
                             />
                             <button
                                 onClick={() => setPassword(generatePassword())}
-                                className="px-3 py-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-teal-400 hover:border-teal-500/50 transition-colors text-xs"
+                                className="px-3 py-3 rounded-xl border border-white/[0.08] text-gray-400 hover:text-teal-400 hover:border-teal-500/50 transition-colors text-xs"
+                                style={{ background: '#222a3d' }}
                                 title="Yangi parol"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -191,6 +192,7 @@ const AccountCard: React.FC<{
     const [resetting, setResetting]   = useState(false);
     const [deleting, setDeleting]     = useState(false);
     const [newPass, setNewPass]       = useState('');
+    const [newPhone, setNewPhone]     = useState('');
     const [showReset, setShowReset]   = useState(false);
     const [resetDone, setResetDone]   = useState('');
     const [confirmDel, setConfirmDel] = useState(false);
@@ -207,12 +209,15 @@ const AccountCard: React.FC<{
 
     const handleReset = async () => {
         const p = newPass.trim() || generatePassword();
+        const ph = newPhone.trim();
         setResetting(true);
         try {
-            await resetAccountPassword(account.id, p);
-            setResetDone(p);
+            await updateAccountDetails(account.id, p, ph);
+            setResetDone('Muvaffaqiyatli yangilandi');
             setShowReset(false);
             setNewPass('');
+            setNewPhone('');
+            onRefresh();
         } catch { /* ignore */ }
         finally { setResetting(false); }
     };
@@ -226,11 +231,11 @@ const AccountCard: React.FC<{
     };
 
     return (
-        <div className={`bg-gray-900 border rounded-2xl p-5 flex flex-col gap-4 transition-all ${account.active ? 'border-gray-700 hover:border-gray-600' : 'border-gray-800 opacity-60'}`}>
+        <div className={`bg-white border rounded-3xl p-5 flex flex-col gap-4 shadow-sm transition-all ${account.active ? 'border-slate-200 hover:border-teal-200 hover:shadow-lg' : 'border-slate-200 opacity-60'}`}>
             {/* Header */}
             <div className="flex items-start gap-3">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                    account.role === 'super_admin' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-teal-500/20 text-teal-400 border border-teal-500/20'
+                    account.role === 'super_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-teal-50 text-teal-700 border border-teal-200'
                 }`}>
                     {account.avatar
                         ? <img src={account.avatar} alt="" className="w-full h-full object-cover rounded-xl" />
@@ -239,13 +244,13 @@ const AccountCard: React.FC<{
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-white font-bold truncate">{account.username}</p>
-                        {isSelf && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/20">Siz</span>}
-                        {account.role === 'super_admin' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/20">Super</span>}
+                        <p className="text-slate-950 font-bold truncate">{account.username}</p>
+                        {isSelf && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">Siz</span>}
+                        {account.role === 'super_admin' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Super</span>}
                     </div>
                     {account.phone
-                        ? <p className="text-gray-500 text-xs font-mono mt-0.5">{formatPhone(account.phone)}</p>
-                        : <p className="text-gray-700 text-xs italic mt-0.5">Telefon yo'q</p>
+                        ? <p className="text-slate-500 text-xs font-mono mt-0.5">{formatPhone(account.phone)}</p>
+                        : <p className="text-slate-400 text-xs italic mt-0.5">Telefon yo'q</p>
                     }
                 </div>
                 {/* Active toggle */}
@@ -253,7 +258,7 @@ const AccountCard: React.FC<{
                     onClick={handleToggle}
                     disabled={toggling || isSelf}
                     title={isSelf ? 'O\'z hisobingizni o\'chirib bo\'lmaydi' : (account.active ? 'Bloklash' : 'Faollashtirish')}
-                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${account.active ? 'bg-teal-500' : 'bg-gray-700'} ${isSelf ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${account.active ? 'bg-teal-600' : 'bg-slate-300'} ${isSelf ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                     <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${account.active ? 'left-5' : 'left-0.5'}`} />
                 </button>
@@ -261,61 +266,78 @@ const AccountCard: React.FC<{
 
             {/* Stats */}
             <div className="flex gap-3">
-                <div className="flex-1 bg-gray-800 rounded-xl px-3 py-2 text-center">
-                    <p className="text-teal-400 font-bold text-lg leading-none">{account.driverCount}</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">Haydovchi</p>
+                <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-center">
+                    <p className="text-teal-700 font-bold text-lg leading-none">{account.driverCount}</p>
+                    <p className="text-slate-500 text-[10px] mt-0.5">Haydovchi</p>
                 </div>
-                <div className="flex-1 bg-gray-800 rounded-xl px-3 py-2 text-center">
-                    <p className="text-blue-400 font-bold text-lg leading-none">{account.transactionCount}</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">Tranzaksiya</p>
+                <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-center">
+                    <p className="text-blue-600 font-bold text-lg leading-none">{account.transactionCount}</p>
+                    <p className="text-slate-500 text-[10px] mt-0.5">Tranzaksiya</p>
                 </div>
-                <div className="flex-1 bg-gray-800 rounded-xl px-3 py-2 text-center">
-                    <p className="text-gray-400 text-[10px] leading-none mt-1">
+                <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-center">
+                    <p className="text-slate-700 text-[10px] leading-none mt-1">
                         {new Date(account.created_ms).toLocaleDateString('uz-UZ', { day:'2-digit', month:'2-digit', year:'2-digit' })}
                     </p>
-                    <p className="text-gray-600 text-[10px] mt-0.5">Sana</p>
+                    <p className="text-slate-400 text-[10px] mt-0.5">Sana</p>
                 </div>
             </div>
 
-            {/* Reset password */}
+            {/* Reset password/phone */}
             {resetDone && (
-                <div className="flex items-center justify-between bg-teal-500/10 border border-teal-500/20 rounded-xl px-3 py-2">
-                    <span className="text-teal-400 text-xs">Yangi parol:</span>
-                    <CopyBtn text={resetDone} />
+                <div className="flex items-center justify-between bg-teal-50 border border-teal-100 rounded-xl px-3 py-2">
+                    <span className="text-teal-700 text-xs">{resetDone}</span>
                 </div>
             )}
             {showReset && (
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={newPass}
-                        onChange={e => setNewPass(e.target.value)}
-                        placeholder={generatePassword()}
-                        className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-teal-500"
-                    />
-                    <button onClick={handleReset} disabled={resetting} className="px-3 py-2 rounded-lg bg-teal-500 text-white text-xs font-bold hover:bg-teal-600 transition-colors">
-                        {resetting ? '...' : 'OK'}
-                    </button>
-                    <button onClick={() => setShowReset(false)} className="px-3 py-2 rounded-lg bg-gray-800 text-gray-400 text-xs hover:bg-gray-700 transition-colors">✕</button>
+                <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newPhone}
+                            onChange={e => setNewPhone(e.target.value)}
+                            placeholder={account.phone || '+998...'}
+                            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs font-mono focus:outline-none focus:border-teal-500 placeholder-slate-400"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newPass}
+                            onChange={e => setNewPass(e.target.value)}
+                            placeholder={generatePassword()}
+                            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs font-mono focus:outline-none focus:border-teal-500 placeholder-slate-400"
+                        />
+                        <button onClick={handleReset} disabled={resetting} className="px-3 py-2 rounded-lg bg-teal-500 text-white text-xs font-bold hover:bg-teal-600 transition-colors">
+                            {resetting ? '...' : 'OK'}
+                        </button>
+                        <button onClick={() => setShowReset(false)} className="px-3 py-2 rounded-lg bg-slate-100 text-slate-500 text-xs hover:bg-slate-200 transition-colors">✕</button>
+                    </div>
                 </div>
             )}
 
             {/* Actions */}
             {!isSelf && (
-                <div className="flex gap-2 pt-1 border-t border-gray-800">
-                    <button
-                        onClick={() => { setShowReset(v => !v); setResetDone(''); setConfirmDel(false); }}
-                        className="flex-1 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 border border-gray-800 hover:border-blue-500/30 transition-colors"
-                    >
-                        🔑 Parol
-                    </button>
+                <div className="flex gap-2 pt-1 border-t border-slate-100">
+                    <div className="flex-1 flex gap-1">
+                        <div className="flex-1 py-2 rounded-lg text-xs font-medium border border-slate-100 flex items-center justify-center gap-1.5 bg-slate-50 overflow-hidden">
+                            <span className="text-slate-400">🔑</span>
+                            <span className="text-teal-700 font-mono tracking-wider truncate">{account.password || '***'}</span>
+                        </div>
+                        <button
+                            onClick={() => { setShowReset(v => !v); setResetDone(''); setConfirmDel(false); }}
+                            className="px-2.5 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-100 hover:border-blue-100 transition-colors flex-shrink-0"
+                            title="Parolni yangilash"
+                        >
+                            ✏️
+                        </button>
+                    </div>
                     <button
                         onClick={handleDelete}
                         disabled={deleting}
                         className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
                             confirmDel
                                 ? 'text-white bg-red-500 border-red-500 hover:bg-red-600'
-                                : 'text-gray-400 hover:text-red-400 hover:bg-red-400/10 border-gray-800 hover:border-red-500/30'
+                                : 'text-slate-500 hover:text-red-600 hover:bg-red-50 border-slate-100 hover:border-red-100'
                         }`}
                     >
                         {deleting ? '...' : confirmDel ? '⚠️ Tasdiqlash' : '🗑 O\'chirish'}
@@ -358,7 +380,7 @@ const PasswordGate: React.FC<{ onSuccess: () => void; onClose: () => void; curre
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className={`bg-[#111827] border border-gray-700 rounded-2xl p-8 w-full max-w-sm shadow-2xl transition-transform ${shake ? 'animate-bounce' : ''}`}
+            <div className={`bg-surface border border-white/[0.08] rounded-2xl p-8 w-full max-w-sm shadow-2xl transition-transform ${shake ? 'animate-bounce' : ''}`}
                 style={shake ? { animation: 'shake 0.4s ease' } : {}}>
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -385,7 +407,7 @@ const PasswordGate: React.FC<{ onSuccess: () => void; onClose: () => void; curre
                         onChange={e => setVal(e.target.value)}
                         placeholder="••••••••"
                         autoFocus
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 font-mono tracking-widest focus:outline-none focus:border-amber-500 transition-colors text-center text-lg"
+                        className="w-full bg-surface-3 border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-gray-600 font-mono tracking-widest focus:outline-none focus:border-amber-500 transition-colors text-center text-lg"
                     />
                     <button
                         type="submit"
@@ -427,21 +449,21 @@ const MainPanel: React.FC<{ onClose: () => void; currentUserId: string }> = ({ o
     const activeCount  = accounts.filter(a => a.active).length;
 
     return (
-        <div className="fixed inset-0 z-[200] flex flex-col bg-[#0d1117] overflow-hidden" style={{ animation: 'modalPop 0.2s ease-out' }}>
+        <div className="fixed inset-0 z-[200] flex flex-col bg-[#eef2ff] overflow-hidden" style={{ animation: 'modalPop 0.2s ease-out' }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-[#111827] flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white flex-shrink-0 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                        <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
                     <div>
-                        <h1 className="text-white font-bold text-lg leading-none">Super Admin</h1>
-                        <p className="text-gray-500 text-xs mt-0.5">Barcha hisoblarni boshqarish</p>
+                        <h1 className="text-slate-950 font-black text-xl leading-none">Super Admin</h1>
+                        <p className="text-slate-500 text-xs mt-1">Barcha hisoblarni boshqarish</p>
                     </div>
                 </div>
-                <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800">
+                <button onClick={onClose} className="text-slate-500 hover:text-slate-900 transition-colors p-2 rounded-xl hover:bg-slate-100" aria-label="Yopish" title="Yopish">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -449,16 +471,16 @@ const MainPanel: React.FC<{ onClose: () => void; currentUserId: string }> = ({ o
             </div>
 
             {/* Stats bar */}
-            <div className="flex gap-4 px-6 py-4 border-b border-gray-800 bg-[#111827] flex-shrink-0 overflow-x-auto">
+            <div className="flex gap-4 px-6 py-5 border-b border-slate-200 bg-white flex-shrink-0 overflow-x-auto">
                 {[
-                    { label: 'Jami hisoblar', value: accounts.length, color: 'text-white' },
-                    { label: 'Faol', value: activeCount, color: 'text-teal-400' },
-                    { label: 'Jami haydovchilar', value: totalDrivers, color: 'text-blue-400' },
-                    { label: 'Tranzaksiyalar', value: totalTx, color: 'text-purple-400' },
+                    { label: 'Jami hisoblar', value: accounts.length, color: 'text-slate-950', bg: 'bg-slate-50' },
+                    { label: 'Faol', value: activeCount, color: 'text-teal-700', bg: 'bg-teal-50' },
+                    { label: 'Jami haydovchilar', value: totalDrivers, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Tranzaksiyalar', value: totalTx, color: 'text-purple-600', bg: 'bg-purple-50' },
                 ].map(s => (
-                    <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 flex-shrink-0 min-w-[110px]">
+                    <div key={s.label} className={`${s.bg} border border-slate-200/70 rounded-2xl px-4 py-3 flex-shrink-0 min-w-[140px]`}>
                         <p className={`text-xl font-bold leading-none ${s.color}`}>{s.value}</p>
-                        <p className="text-gray-500 text-xs mt-1">{s.label}</p>
+                        <p className="text-slate-500 text-xs mt-1">{s.label}</p>
                     </div>
                 ))}
             </div>
@@ -466,7 +488,7 @@ const MainPanel: React.FC<{ onClose: () => void; currentUserId: string }> = ({ o
             {/* Toolbar */}
             <div className="flex items-center gap-3 px-6 py-4 flex-shrink-0">
                 <div className="relative flex-1 max-w-xs">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 12a7.5 7.5 0 0012.15 4.65z" />
                     </svg>
                     <input
@@ -474,19 +496,19 @@ const MainPanel: React.FC<{ onClose: () => void; currentUserId: string }> = ({ o
                         placeholder="Qidirish..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-teal-500 transition-colors"
+                        className="w-full bg-white border border-slate-200 rounded-2xl pl-9 pr-4 py-3 text-slate-900 placeholder-slate-400 text-sm shadow-sm focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-colors"
                     />
                 </div>
                 <button
                     onClick={() => setCreating(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm transition-colors shadow-sm"
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     Yangi hisob
                 </button>
-                <button onClick={load} className="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+                <button onClick={load} className="p-3 rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm hover:text-slate-900 hover:bg-slate-50 transition-colors" aria-label="Yangilash" title="Yangilash">
                     <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
@@ -500,7 +522,7 @@ const MainPanel: React.FC<{ onClose: () => void; currentUserId: string }> = ({ o
                         <Spinner />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="text-center py-20 text-gray-600">
+                    <div className="text-center py-20 text-slate-500">
                         <p className="text-lg">Hisob topilmadi</p>
                     </div>
                 ) : (

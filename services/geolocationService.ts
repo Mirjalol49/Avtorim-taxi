@@ -33,8 +33,7 @@ export class GeolocationService {
                 return result.state as PermissionState;
             }
             return 'prompt'; // Assume prompt if Permissions API not available
-        } catch (error) {
-            console.warn('Permission API not available:', error);
+        } catch {
             return 'prompt';
         }
     }

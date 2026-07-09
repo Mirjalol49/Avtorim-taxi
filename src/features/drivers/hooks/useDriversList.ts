@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Driver, DriverStatus } from '../../../core/types';
+import { Driver } from '../../../core/types';
 
 export const useDriversList = (drivers: Driver[]) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -21,7 +21,7 @@ export const useDriversList = (drivers: Driver[]) => {
             d.licensePlate.toLowerCase().includes(query) ||
             d.carModel.toLowerCase().includes(query)
         );
-    }, [drivers, nonDeletedDrivers, searchQuery]);
+    }, [nonDeletedDrivers, searchQuery]);
 
     const paginatedDrivers = useMemo(() => {
         const startIndex = (currentPage - 1) * itemsPerPage;

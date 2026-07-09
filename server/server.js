@@ -47,7 +47,7 @@ function createTable() {
         } else {
             console.log('Table drivers_location ready.');
             if (TELEGRAM_BOT_TOKEN) {
-                telegramService = new TelegramService(TELEGRAM_BOT_TOKEN, null);
+                telegramService = new TelegramService(TELEGRAM_BOT_TOKEN, supabase);
             } else {
                 console.warn('Telegram Bot not started: TELEGRAM_BOT_TOKEN not set');
             }
@@ -149,6 +149,64 @@ app.post('/api/notifications/salary', async (req, res) => {
     } catch (error) {
         console.error('Notification API Error:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ── Transaction alert → admin Telegram ─────────────────────────────────────
+app.post('/api/notifications/transaction', async (req, res) => {
+    const { adminId, driverName, amount, type, description, carName, performedBy, timestamp, adminChatId } = req.body;
+    if (!amount || !type) {
+        return res.status(400).json({ error: 'Missing required fields: amount, type' });
+    }
+    if (!telegramService) {
+        // Bot not configured — silently succeed so the frontend isn't blocked
+        return res.json({ success: false, error: 'Telegram service not available' });
+    }
+
+    try {
+        const result = await telegramService.sendTransactionAlert({
+            adminId, driverName, amount, type, description, carName, performedBy, timestamp, adminChatId
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Transaction alert error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ── Admin Telegram chat ID config ───────────────────────────────────────────────
+// GET  /api/admin/telegram-chat?adminId=xxx  → { chatId }
+// POST /api/admin/telegram-chat              → { adminId, chatId }
+app.get('/api/admin/telegram-chat', async (req, res) => {
+    const { adminId } = req.query;
+    if (!adminId) return res.status(400).json({ error: 'adminId required' });
+    if (!supabase) return res.json({ chatId: null });
+    try {
+        const { data } = await supabase
+            .from('admin_settings')
+            .select('telegram_chat_id')
+            .eq('admin_id', adminId)
+            .single();
+        res.json({ chatId: data?.telegram_chat_id ?? null });
+    } catch (e) {
+        res.json({ chatId: null });
+    }
+});
+
+app.post('/api/admin/telegram-chat', async (req, res) => {
+    const { adminId, chatId } = req.body;
+    if (!adminId || !chatId) return res.status(400).json({ error: 'adminId and chatId required' });
+    if (!supabase) return res.status(503).json({ error: 'Database not available' });
+    try {
+        const { error } = await supabase.from('admin_settings').upsert({
+            admin_id: adminId,
+            telegram_chat_id: chatId.toString(),
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'admin_id' });
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 

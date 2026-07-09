@@ -42,14 +42,21 @@ export const subscribeToDaysOff = (
 ) => {
     if (!fleetId) return () => {};
 
-    const fetch = () =>
+    const fetch = () => {
+        // Scope to the last 12 months — prevents unbounded growth as the dataset ages
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        const cutoff = `${twelveMonthsAgo.getFullYear()}-${String(twelveMonthsAgo.getMonth() + 1).padStart(2, '0')}`;
+
         supabase
             .from('driver_days_off')
-            .select('*')
+            .select('id,fleet_id,driver_id,date_key,month_key,note,created_ms')
             .eq('fleet_id', fleetId)
+            .gte('month_key', cutoff)
             .then(({ data }) => {
                 if (data) callback(data.map(toRecord));
             });
+    };
 
     fetch();
 

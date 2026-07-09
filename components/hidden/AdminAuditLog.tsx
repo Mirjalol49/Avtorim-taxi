@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldIcon, SearchIcon, FilterIcon } from '../Icons';
 import { subscribeToAuditLogs } from '../../services/firestoreService';
+import { useAuthContext } from '../../src/features/auth/context/AuthContext';
 
 const AdminAuditLog: React.FC = () => {
+    const { adminUser, adminProfile, userRole } = useAuthContext();
+    const fleetId = userRole === 'viewer'
+        ? (adminProfile as any)?.fleet_id ?? (adminProfile as any)?.created_by
+        : adminUser?.id;
     const [logs, setLogs] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterAction, setFilterAction] = useState('all');
@@ -10,9 +15,9 @@ const AdminAuditLog: React.FC = () => {
     useEffect(() => {
         const unsubscribe = subscribeToAuditLogs((data) => {
             setLogs(data);
-        });
+        }, fleetId);
         return () => unsubscribe();
-    }, []);
+    }, [fleetId]);
 
     const filteredLogs = logs.filter(log => {
         const matchesSearch =
@@ -35,8 +40,8 @@ const AdminAuditLog: React.FC = () => {
     const uniqueActions = Array.from(new Set(logs.map(log => log.action)));
 
     return (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden flex flex-col h-[600px]">
-            <div className="p-6 border-b border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-surface-2 rounded-xl border border-white/[0.08] overflow-hidden flex flex-col h-[600px]">
+            <div className="p-6 border-b border-white/[0.08] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <ShieldIcon className="w-5 h-5 text-purple-400" />
                     Audit Logs
@@ -50,7 +55,7 @@ const AdminAuditLog: React.FC = () => {
                             placeholder="Search logs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                            className="w-full bg-surface border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
                         />
                     </div>
                     <div className="relative">
@@ -58,7 +63,7 @@ const AdminAuditLog: React.FC = () => {
                         <select
                             value={filterAction}
                             onChange={(e) => setFilterAction(e.target.value)}
-                            className="bg-gray-900 border border-gray-700 rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:outline-none focus:border-purple-500 appearance-none"
+                            className="bg-surface border border-white/[0.08] rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:outline-none focus:border-purple-500 appearance-none"
                         >
                             <option value="all">All Actions</option>
                             {uniqueActions.map(action => (
@@ -71,7 +76,7 @@ const AdminAuditLog: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-900/50 text-gray-400 text-xs uppercase tracking-wider sticky top-0 backdrop-blur-sm">
+                    <thead className="bg-black/50 text-gray-400 text-xs uppercase tracking-wider sticky top-0 backdrop-blur-sm">
                         <tr>
                             <th className="px-6 py-4">Timestamp</th>
                             <th className="px-6 py-4">Action</th>
@@ -80,9 +85,9 @@ const AdminAuditLog: React.FC = () => {
                             <th className="px-6 py-4">Details</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-700">
+                    <tbody className="divide-y divide-white/[0.07]">
                         {filteredLogs.map(log => (
-                            <tr key={log.id} className="hover:bg-gray-700/50 transition-colors">
+                            <tr key={log.id} className="hover:bg-white/[0.06]/50 transition-colors">
                                 <td className="px-6 py-4 text-sm text-gray-400 font-mono">
                                     {new Date(log.timestamp).toLocaleString()}
                                 </td>

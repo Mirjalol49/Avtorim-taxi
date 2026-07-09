@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Transaction, Driver } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import MonthPicker from '../../../components/MonthPicker';
+import DriverFilterModal from '../../../components/DriverFilterModal';
 import CustomSelect from '../../../components/CustomSelect';
 import { UsersIcon } from '../../../components/Icons';
 import { DriverPlanSummary } from './DriverPlanSummary';
@@ -13,8 +14,11 @@ interface MonthlyPlanPageProps {
     cars: Car[];
     theme: 'dark' | 'light';
     isMobile?: boolean;
-    onDayClick?: (driverId: string, date: Date) => void;
+    onOpenTransactionForDay?: (driverId: string, date: Date) => void;
 }
+
+const isCurrentlyActiveDriver = (driver: Driver, now = Date.now()) =>
+    !driver.isDeleted && (!driver.quitDate || driver.quitDate > now);
 
 export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     transactions,
@@ -22,7 +26,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     cars,
     theme,
     isMobile = false,
-    onDayClick
+    onOpenTransactionForDay
 }) => {
     const { t } = useTranslation();
     
@@ -32,36 +36,108 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
     
     const [selectedDate, setSelectedDate] = useState<Date>(new Date(currentYear, currentMonth, 1));
     const [driverId, setDriverId] = useState<string>('all');
+    const [driverModalOpen, setDriverModalOpen] = useState(false);
 
     const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
 
-    const nonDeletedDrivers = drivers.filter(d => !d.isDeleted);
+    const activeDriversWithCars = drivers.filter(d => {
+        if (!isCurrentlyActiveDriver(d)) return false;
+        const car = cars.find(c => c.assignedDriverId === d.id && !c.isDeleted);
+        return !!car;
+    });
 
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Header Filters */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#1E293B]/80 border-[#334155]' : 'bg-[#1F2937]/95 border-gray-700'}`}>
-                <MonthPicker
-                    label={t('selectMonth') || 'Oyni tanlang'}
-                    value={selectedDate}
-                    onChange={(date) => setSelectedDate(date)}
-                    theme={theme}
-                    labelClassName="text-white"
-                />
-                <CustomSelect
-                    label={t('driver') || 'Haydovchi'}
-                    value={driverId}
-                    onChange={(val) => setDriverId(val)}
-                    options={[
-                        { id: 'all', name: t('allDrivers') || 'Barcha Haydovchilar' },
-                        ...nonDeletedDrivers.map(d => ({ id: d.id, name: d.name }))
-                    ]}
-                    theme={theme}
-                    showSearch={true}
-                    icon={UsersIcon}
-                    labelClassName="text-white"
-                />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                {/* Driver Filter via Modal */}
+                <div className="w-full sm:w-auto min-w-[260px] relative">
+                    {(() => {
+                        const selectedDriver = driverId && driverId !== 'all'
+                            ? activeDriversWithCars.find(d => d.id === driverId)
+                            : null;
+                        const selectedCar = selectedDriver
+                            ? cars.find(c => c.assignedDriverId === selectedDriver.id)
+                            : null;
+                        return (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setDriverModalOpen(true)}
+                                    className={`w-full h-[52px] px-3 sm:px-4 rounded-[10px] border text-left transition-all flex items-center justify-between gap-3 ${
+                                        driverModalOpen
+                                            ? theme === 'dark'
+                                                ? 'bg-surface-2 border-teal-500 ring-1 ring-teal-500/40'
+                                                : 'bg-white border-teal-500 ring-1 ring-teal-500/20 shadow-md'
+                                            : theme === 'dark'
+                                                ? 'bg-surface-2/50 border-white/[0.08] hover:border-white/[0.12]'
+                                                : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        {selectedDriver ? (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-slate-200 dark:border-surface-3">
+                                                    {selectedDriver.avatar
+                                                        ? <img src={selectedDriver.avatar} alt="" className="w-full h-full object-cover" />
+                                                        : <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-surface-2 text-gray-300' : 'bg-slate-100 text-slate-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                                                    }
+                                                </div>
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <div className={`text-[13px] sm:text-[14px] font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{selectedDriver.name}</div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-center -space-x-2.5 flex-shrink-0">
+                                                    {activeDriversWithCars.slice(0, 2).map((d, i) => (
+                                                        <div key={d.id} className="w-8 h-8 rounded-full overflow-hidden border-2 border-white dark:border-surface bg-slate-100 shadow-sm" style={{ zIndex: 2 - i }}>
+                                                            {d.avatar ? (
+                                                                <img src={d.avatar} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-600">
+                                                                    {d.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <span className={`text-[13px] sm:text-[14px] font-medium truncate ${theme === 'dark' ? 'text-gray-300' : 'text-slate-700'}`}>
+                                                    {t('allDrivers') || 'Barcha Haydovchilar'}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <svg className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 ${driverModalOpen ? 'transform rotate-180 text-teal-600' : theme === 'dark' ? 'text-gray-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <DriverFilterModal
+                                    isOpen={driverModalOpen}
+                                    onClose={() => setDriverModalOpen(false)}
+                                    selectedDriverId={driverId}
+                                    onSelect={(val) => setDriverId(val)}
+                                    drivers={activeDriversWithCars}
+                                    cars={cars}
+                                    theme={theme}
+                                    allLabel={t('allDrivers') || 'Barcha Haydovchilar'}
+                                    searchPlaceholder={t('search') || 'Qidirish...'}
+                                />
+                            </>
+                        );
+                    })()}
+                </div>
+                {/* Month Picker — right side */}
+                <div className="w-full sm:w-auto min-w-[160px] sm:ml-auto">
+                    <MonthPicker
+                        label={t('selectMonth') || 'Oyni tanlang'}
+                        value={selectedDate}
+                        onChange={(date) => setSelectedDate(date)}
+                        theme={theme}
+                        labelClassName="hidden"
+                    />
+                </div>
             </div>
 
             {/* Driver Monthly Plan Summary */}
@@ -73,7 +149,7 @@ export const MonthlyPlanPage: React.FC<MonthlyPlanPageProps> = ({
                 endDate={endDate}
                 filterDriverId={driverId}
                 theme={theme}
-                onDayClick={onDayClick}
+                onOpenTransactionForDay={onOpenTransactionForDay}
             />
         </div>
     );

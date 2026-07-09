@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { XIcon, CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon } from './Icons';
+import { useTranslation } from 'react-i18next';
+import { CameraIcon, EyeIcon, EyeOffIcon, LockIcon, LogOutIcon, ChevronRightIcon, XIcon, PhoneIcon } from './Icons';
+
+type AdminModalData = { name: string; role: string; avatar?: string; phone?: string };
+type AdminUpdateData = { name: string; role: string; avatar?: string; password?: string };
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
-  adminData: { name: string; role: string; avatar?: string; password?: string };
-  onUpdate: (data: { name: string; role: string; avatar?: string; password?: string }) => Promise<void> | void;
+  adminData: AdminModalData;
+  onUpdate: (data: AdminUpdateData) => Promise<void> | void;
   userRole: 'admin' | 'viewer';
   theme: 'light' | 'dark';
   onLogout?: () => void;
   onLock?: () => void;
 }
-
-type View = 'profile' | 'logout-confirm';
 
 const Spinner = () => (
   <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -22,30 +24,103 @@ const Spinner = () => (
   </svg>
 );
 
+// ── Logout confirmation — proper floating modal ────────────────────────────
+const LogoutModal = ({
+  isDark,
+  t,
+  onCancel,
+  onConfirm,
+}: {
+  isDark: boolean;
+  t: (key: string) => string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => createPortal(
+  <div
+    className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+    style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.12s ease-out' }}
+  >
+    <div
+      className={`w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl border ${
+        isDark ? 'bg-[#1a2236] border-white/[0.08]' : 'bg-white border-gray-200'
+      }`}
+      style={{ animation: 'popUp 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
+    >
+      {/* Icon */}
+      <div className="flex flex-col items-center pt-8 pb-2 px-6 text-center">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          isDark ? 'bg-red-500/15' : 'bg-red-50'
+        }`}>
+          <LogOutIcon className="w-7 h-7 text-red-500" />
+        </div>
+        <h3 className={`text-[18px] font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {t('logoutConfirmTitle')}
+        </h3>
+        <p className={`text-[13px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+          {t('logoutConfirmMessageLine1')}<br />
+          {t('logoutConfirmMessageLine2')}
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className={`mx-6 mt-6 mb-0 h-px ${isDark ? 'bg-white/[0.06]' : 'bg-gray-100'}`} />
+
+      {/* Actions */}
+      <div className="flex">
+        <button
+          onClick={onCancel}
+          className={`flex-1 py-4 text-[15px] font-semibold transition-colors border-r ${
+            isDark
+              ? 'text-gray-300 hover:bg-white/[0.04] border-white/[0.06]'
+              : 'text-gray-700 hover:bg-gray-50 border-gray-100'
+          }`}
+        >
+          {t('cancel')}
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-4 text-[15px] font-bold text-red-500 hover:bg-red-500/[0.06] transition-colors active:scale-[0.98]"
+        >
+          {t('logout')}
+        </button>
+      </div>
+    </div>
+  </div>,
+  document.body
+);
+
+// ── Main profile panel ────────────────────────────────────────────────────
 const AdminModal: React.FC<AdminModalProps> = ({
   isOpen, onClose, adminData, onUpdate, userRole, theme, onLogout, onLock,
 }) => {
+  const { t } = useTranslation();
   const isReadOnly = userRole === 'viewer';
+  const isDark = theme === 'dark';
 
-  const [view, setView]                       = useState<View>('profile');
-  const [name, setName]                       = useState(adminData.name);
-  const [avatar, setAvatar]                   = useState(adminData.avatar);
-  const [newPassword, setNewPassword]         = useState('');
-  const [showNewPw, setShowNewPw]             = useState(false);
-  const [showCurrentPw, setShowCurrentPw]     = useState(false);
-  const [nameError, setNameError]             = useState('');
-  const [pwError, setPwError]                 = useState('');
-  const [imageError, setImageError]           = useState('');
-  const [isSaving, setIsSaving]               = useState(false);
-  const [saveSuccess, setSaveSuccess]         = useState(false);
-  const [imageLoading, setImageLoading]       = useState(false);
-  const [uploadProgress, setUploadProgress]   = useState(0);
+  const [shouldRender, setShouldRender]         = useState(false);
+  const [isClosing, setIsClosing]               = useState(false);
+  const [showLogoutModal, setShowLogoutModal]   = useState(false);
+  const [name, setName]                         = useState(adminData.name);
+  const [avatar, setAvatar]                     = useState(adminData.avatar);
+  const [newPassword, setNewPassword]           = useState('');
+  const [showNewPw, setShowNewPw]               = useState(false);
+  const [nameError, setNameError]               = useState('');
+  const [pwError, setPwError]                   = useState('');
+  const [imageError, setImageError]             = useState('');
+  const [isSaving, setIsSaving]                 = useState(false);
+  const [saveSuccess, setSaveSuccess]           = useState(false);
+  const [imageLoading, setImageLoading]         = useState(false);
+  const [uploadProgress, setUploadProgress]     = useState(0);
+
 
   const hasChanges = avatar !== adminData.avatar || name !== adminData.name || newPassword.trim().length > 0;
 
   useEffect(() => {
     if (isOpen) {
-      setView('profile');
+      setShouldRender(true);
+      setIsClosing(false);
+      document.body.style.overflow = 'hidden';
+      setShowLogoutModal(false);
       setName(adminData.name);
       setAvatar(adminData.avatar);
       setNewPassword('');
@@ -56,16 +131,25 @@ const AdminModal: React.FC<AdminModalProps> = ({
       setSaveSuccess(false);
       setImageLoading(false);
       setUploadProgress(0);
+    } else if (shouldRender) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+        document.body.style.overflow = '';
+      }, 250);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, adminData]);
+  }, [isOpen, shouldRender, adminData]);
 
   useEffect(() => {
+    if (!shouldRender || showLogoutModal) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSaving && isOpen) onClose();
+      if (e.key === 'Escape' && !isSaving) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, isSaving, onClose]);
+  }, [shouldRender, isSaving, onClose, showLogoutModal]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly || isSaving) return;
@@ -73,11 +157,11 @@ const AdminModal: React.FC<AdminModalProps> = ({
     if (!file) return;
     setImageError('');
     if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-      setImageError('JPG, PNG, GIF yoki WEBP formatida bo\'lishi kerak');
+      setImageError(t('imageTypeError'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setImageError('Rasm 2MB dan kichik bo\'lishi kerak');
+      setImageError(t('imageSize2MbError'));
       return;
     }
     setImageLoading(true);
@@ -96,13 +180,11 @@ const AdminModal: React.FC<AdminModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly || isSaving) return;
-    if (name.trim().length < 2) { setNameError('Ism kamida 2 ta belgi'); return; }
-    if (newPassword.trim()) {
-      if (newPassword.length < 6) { setPwError('Parol kamida 6 ta belgi'); return; }
-    }
+    if (name.trim().length < 2) { setNameError(t('nameMin2Error')); return; }
+    if (newPassword.trim() && newPassword.length < 6) { setPwError(t('passwordMin6Error')); return; }
     setIsSaving(true);
     try {
-      const payload: { name: string; role: string; avatar?: string; password?: string } = {
+      const payload: AdminUpdateData = {
         name: name.trim(),
         role: adminData.role,
         avatar,
@@ -116,227 +198,392 @@ const AdminModal: React.FC<AdminModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
-  const roleLabel = adminData.role === 'super_admin' ? 'Super Admin' : adminData.role === 'admin' ? 'Admin' : adminData.role;
-  const roleColor = adminData.role === 'super_admin' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-    : adminData.role === 'admin' ? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
-    : 'bg-gray-700 text-gray-400 border-gray-600';
+  const roleLabel = adminData.role === 'super_admin' ? 'Super Admin'
+    : adminData.role === 'admin' ? 'Admin'
+    : adminData.role;
+
+  const initials = adminData.name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const formatPhone = (phone?: string) => {
+    const raw = phone?.trim();
+    if (!raw) return t('phoneNotAvailable');
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 12 && digits.startsWith('998')) {
+      return `+${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10)}`;
+    }
+    return raw;
+  };
+
+  // Shared styles
+  const inputCls = `w-full rounded-[14px] px-4 py-3 text-[14px] font-medium outline-none transition-all border ${
+    isDark
+      ? 'bg-[#0f1724] border-white/5 text-white placeholder-gray-600 focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20'
+      : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:bg-white'
+  }`;
+
+  const sectionTitle = `text-[11px] font-bold uppercase tracking-[0.1em] mb-4 ${
+    isDark ? 'text-white/30' : 'text-gray-400'
+  }`;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget && !isSaving) onClose(); }}
-      style={{ animation: 'fadeIn 0.15s ease-out' }}
-    >
+    <>
+      {/* ── Backdrop ── */}
       <div
-        className="w-full max-w-sm bg-[#0d1117] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden"
-        style={{ animation: 'modalPop 0.2s ease-out' }}
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px]"
+        style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out' }}
+        onClick={() => { if (!isSaving && !showLogoutModal) onClose(); }}
+      />
+
+      {/* ── Panel — slides in from the right ── */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-[110] w-full max-w-[420px] flex flex-col shadow-2xl ${
+          isDark ? 'bg-[#111827]' : 'bg-[#f5f5f7]'
+        }`}
+        style={{ animation: isClosing ? 'slideOutRight 0.25s cubic-bezier(0.32,0.72,0,1) forwards' : 'slideInRight 0.25s cubic-bezier(0.32,0.72,0,1)' }}
       >
-        {view === 'profile' ? (
-          <>
-            {/* Header */}
-            <div className="relative px-6 pt-6 pb-0 flex justify-end">
-              <button
-                onClick={onClose}
-                disabled={isSaving}
-                className="p-1.5 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-              >
-                <XIcon className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Avatar */}
-            <div className="flex flex-col items-center px-6 pb-5">
-              <div className="relative group mb-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-gray-700 bg-gray-800 relative">
-                  {(isSaving || imageLoading) && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                      <Spinner />
-                    </div>
-                  )}
-                  <img
-                    src={avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`}
-                    alt={name}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'A')}`;
-                    }}
-                  />
-                  {!isReadOnly && !isSaving && !imageLoading && (
-                    <label
-                      htmlFor="admin-avatar-upload"
-                      className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl"
-                    >
-                      <CameraIcon className="text-white w-6 h-6" />
-                      <span className="text-white text-[10px] mt-1 font-medium">Rasm</span>
-                    </label>
-                  )}
-                </div>
-                <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+        {/* ── Top nav bar ── */}
+        <div className={`flex items-center justify-between px-5 pt-safe-top pt-4 pb-3 flex-shrink-0 ${
+          isDark ? 'border-b border-white/[0.06]' : 'border-b border-black/[0.07]'
+        } ${isDark ? 'bg-[#111827]' : 'bg-[#f5f5f7]'}`}>
+          <h2 className={`text-[17px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {t('settings')}
+          </h2>
+          <button
+            onClick={onClose}
+            disabled={isSaving}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+              isDark
+                ? 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
+                : 'bg-black/8 text-gray-500 hover:bg-black/12 hover:text-gray-700'
+            }`}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
 
-                {/* Online dot */}
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-[#0d1117] rounded-full" />
+        {/* ── Scrollable content ── */}
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit}>
+
+            {/* ── Profile hero card ── */}
+            <div className={`mx-4 mt-4 rounded-[20px] overflow-hidden ${
+              isDark ? 'bg-[#1c2333]' : 'bg-white'
+            }`}>
+              {/* Teal gradient banner */}
+              <div className="h-24 bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-600 relative">
+                <div className="absolute inset-0 opacity-30"
+                  style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
               </div>
 
-              {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="w-full h-0.5 bg-gray-800 rounded-full overflow-hidden mb-3">
-                  <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              )}
-
-              <p className="text-white font-bold text-lg leading-none">{adminData.name}</p>
-              <span className={`mt-2 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${roleColor}`}>
-                {roleLabel}
-              </span>
-              {imageError && (
-                <p className="mt-2 text-xs text-red-400 text-center">{imageError}</p>
-              )}
-            </div>
-
-            <div className="h-px bg-gray-800 mx-6" />
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              {/* Name */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">F.I.SH</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => { setName(e.target.value); setNameError(''); }}
-                  disabled={isReadOnly || isSaving}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder-gray-600 disabled:opacity-50"
-                />
-                {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
-              </div>
-
-              {/* Current Password (display only) */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Joriy parol</label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPw ? 'text' : 'password'}
-                    value={adminData.password || '••••••••'}
-                    disabled
-                    className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-2.5 text-gray-500 text-sm font-mono pr-10 opacity-70"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPw(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors"
-                  >
-                    {showCurrentPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* New Password */}
-              {!isReadOnly && (
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5 block">Yangi parol</label>
-                  <div className="relative">
-                    <input
-                      type={showNewPw ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
-                      disabled={isSaving}
-                      placeholder="(ixtiyoriy - faqat o'zgartirish uchun)"
-                      className={`w-full bg-gray-900 border rounded-xl px-4 py-2.5 text-white text-sm pr-10 focus:outline-none transition-colors placeholder-gray-700 disabled:opacity-50 ${pwError ? 'border-red-500' : 'border-gray-700 focus:border-teal-500'}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPw(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors"
-                    >
-                      {showNewPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                    </button>
+              {/* Avatar + info */}
+              <div className="px-5 pb-6 relative z-10 flex flex-col items-center text-center">
+                {/* Avatar with upload */}
+                <div className="relative group flex-shrink-0 -mt-12 mb-3">
+                  <div className={`w-[88px] h-[88px] rounded-[24px] overflow-hidden border-[4px] relative ${
+                    isDark ? 'border-[#1c2333] bg-[#0f1724]' : 'border-white bg-gray-100'
+                  } shadow-lg`}>
+                    {(isSaving || imageLoading) && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-[20px]">
+                        <Spinner />
+                      </div>
+                    )}
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt={adminData.name}
+                        className="w-full h-full object-cover"
+                        onError={() => setAvatar(undefined)}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500 to-teal-700">
+                        <span className="text-white text-[22px] font-black select-none">{initials}</span>
+                      </div>
+                    )}
+                    {!isReadOnly && !isSaving && !imageLoading && (
+                      <label
+                        htmlFor="admin-avatar-upload"
+                        className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-[20px]"
+                      >
+                        <CameraIcon className="text-white w-6 h-6" />
+                      </label>
+                    )}
                   </div>
-                  {pwError
-                    ? <p className="text-xs text-red-400 mt-1">{pwError}</p>
-                    : <p className="text-xs text-gray-600 mt-1">💡 Kuchli parol ishlating (kamida 6 ta belgi)</p>
-                  }
+                  <input id="admin-avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </div>
-              )}
 
-              {/* Save button */}
-              {!isReadOnly && (
+                {/* Name + role */}
+                <div className="min-w-0 max-w-full px-2">
+                  <p className={`font-bold text-[20px] tracking-tight leading-tight truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {adminData.name}
+                  </p>
+                  <span className={`mt-2 inline-flex text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                    adminData.role === 'super_admin'
+                      ? isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'
+                      : isDark ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-100 text-teal-700'
+                  }`}>
+                    {roleLabel}
+                  </span>
+                </div>
+
+                {/* Upload progress */}
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className={`mt-4 w-full max-w-[200px] h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                    <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                )}
+                {imageError && (
+                  <p className="mt-2 text-xs font-medium text-red-500">{imageError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* ── Personal info section ── */}
+            <div className="mx-4 mt-6">
+              <p className={sectionTitle}>{t('personalInfo')}</p>
+              <div className={`rounded-[20px] overflow-hidden ${isDark ? 'bg-[#1c2333]' : 'bg-white'}`}>
+                <div className="px-4 py-3.5">
+                  <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {t('fullName')}
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => { setName(e.target.value); setNameError(''); }}
+                    disabled={isReadOnly || isSaving}
+                    placeholder={t('fullNamePlaceholder')}
+                    className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed ${
+                      nameError ? 'ring-2 ring-red-500/40' : ''
+                    }`}
+                  />
+                  {nameError && <p className="text-xs text-red-500 mt-1.5">{nameError}</p>}
+                </div>
+                <div className={`px-4 py-3.5 border-t ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                  <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {t('signedInPhone')}
+                  </label>
+                  <div className={`flex items-center gap-3 rounded-[14px] px-4 py-3 border ${
+                    isDark ? 'bg-[#0f1724] border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  }`}>
+                    <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-teal-500/15 text-teal-300' : 'bg-teal-50 text-teal-700'
+                    }`}>
+                      <PhoneIcon className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[15px] font-semibold truncate ${adminData.phone ? '' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {formatPhone(adminData.phone)}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {t('signedInPhoneHint')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Security section ── */}
+            <div className="mx-4 mt-6">
+              <p className={sectionTitle}>{t('security')}</p>
+              <div className={`rounded-[20px] overflow-hidden divide-y ${
+                isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
+              }`}>
+                <div className="px-4 py-3.5">
+                  <div className={`flex items-start gap-3 rounded-[14px] px-4 py-3 border ${
+                    isDark ? 'bg-[#0f1724] border-white/5' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-50 text-blue-600'
+                    }`}>
+                      <LockIcon className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[13px] font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                        {t('passwordHiddenTitle')}
+                      </p>
+                      <p className={`text-[12px] leading-relaxed mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {t('passwordHiddenHint')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* New password */}
+                {!isReadOnly && (
+                  <div className="px-4 py-3.5">
+                    <label className={`block text-[12px] font-semibold mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {t('newPassword')}
+                      <span className={`ml-1.5 font-normal ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t('optionalShort')}</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={e => { setNewPassword(e.target.value); setPwError(''); }}
+                        disabled={isSaving}
+                        placeholder={t('newPasswordPlaceholder')}
+                        className={`${inputCls} pr-11 disabled:opacity-50 ${
+                          pwError ? 'ring-2 ring-red-500/40' : ''
+                        }`}
+                      />
+	                      <button
+	                        type="button"
+	                        onClick={() => setShowNewPw(v => !v)}
+	                        aria-label={showNewPw ? t('hidePassword') : t('showPassword')}
+	                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${
+	                          isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
+	                        }`}
+                      >
+                        {showNewPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {pwError
+                      ? <p className="text-xs text-red-500 mt-1.5">{pwError}</p>
+                      : <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                          {t('passwordMin6Hint')}
+                        </p>
+                    }
+                  </div>
+                )}
+              </div>
+            </div>
+
+
+            {/* ── Save button ── */}
+            {!isReadOnly && (
+              <div className="mx-4 mt-5">
                 <button
                   type="submit"
                   disabled={isSaving || saveSuccess || !hasChanges || !!nameError}
-                  className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${saveSuccess
-                    ? 'bg-green-500 text-white'
-                    : !hasChanges || !!nameError
-                      ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                      : 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm active:scale-95'
-                    }`}
+                  className={`w-full py-3.5 rounded-[16px] text-[15px] font-bold transition-all flex items-center justify-center gap-2 ${
+                    saveSuccess
+                      ? 'bg-emerald-500 text-white'
+                      : !hasChanges || !!nameError
+                      ? isDark
+                        ? 'bg-white/[0.05] text-gray-600 cursor-not-allowed'
+                        : 'bg-gray-200/70 text-gray-400 cursor-not-allowed'
+                      : 'bg-teal-600 hover:bg-teal-500 text-white shadow-sm active:scale-[0.98]'
+                  }`}
                 >
                   {saveSuccess ? (
-                    <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Saqlandi</>
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {t('saved')}
+                    </>
                   ) : isSaving ? (
-                    <><Spinner /> Saqlanmoqda...</>
-                  ) : 'Saqlash'}
+                    <><Spinner />{t('saving')}</>
+                  ) : t('save')}
                 </button>
-              )}
-            </form>
+              </div>
+            )}
 
-            <div className="h-px bg-gray-800 mx-6" />
+            {/* ── Account actions section ── */}
+            <div className="mx-4 mt-6 mb-8">
+              <p className={sectionTitle}>{t('account')}</p>
+              <div className={`rounded-[20px] overflow-hidden divide-y ${
+                isDark ? 'bg-[#1c2333] divide-white/[0.05]' : 'bg-white divide-gray-100'
+              }`}>
+                {/* Lock */}
+                {onLock && (
+                  <button
+                    type="button"
+                    onClick={onLock}
+                    className={`w-full flex items-center gap-3.5 px-4 py-4 text-left transition-colors ${
+                      isDark ? 'hover:bg-white/[0.04] active:bg-white/[0.06]' : 'hover:bg-gray-50 active:bg-gray-100'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-blue-500/20' : 'bg-blue-50'
+                    }`}>
+                      <LockIcon className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[14px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {t('lockScreen')}
+                      </p>
+                      <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {t('lockScreenHint')}
+                      </p>
+                    </div>
+                    <ChevronRightIcon className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                  </button>
+                )}
 
-            {/* Lock & Logout */}
-            <div className="px-6 py-4 flex gap-3">
-              {onLock && (
-                <button
-                  onClick={onLock}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-all text-sm font-semibold group"
-                >
-                  <LockIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  Qulflash
-                </button>
-              )}
-              {onLogout && (
-                <button
-                  onClick={() => setView('logout-confirm')}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all text-sm font-semibold group"
-                >
-                  <LogOutIcon className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  Chiqish
-                </button>
-              )}
+                {/* Logout */}
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutModal(true)}
+                    className={`w-full flex items-center gap-3.5 px-4 py-4 text-left transition-colors ${
+                      isDark ? 'hover:bg-red-500/[0.06] active:bg-red-500/[0.10]' : 'hover:bg-red-50 active:bg-red-100'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      isDark ? 'bg-red-500/20' : 'bg-red-50'
+                    }`}>
+                      <LogOutIcon className="w-4 h-4 text-red-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold text-red-500">
+                        {t('logout')}
+                      </p>
+                      <p className={`text-[12px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {t('logoutHint')}
+                      </p>
+                    </div>
+                    <ChevronRightIcon className="w-4 h-4 flex-shrink-0 text-red-400/60" />
+                  </button>
+                )}
+              </div>
             </div>
-          </>
-        ) : (
-          /* Logout confirmation */
-          <div className="p-8 flex flex-col items-center text-center" style={{ animation: 'modalPop 0.18s ease-out' }}>
-            <div className="w-16 h-16 rounded-2xl bg-red-500/15 flex items-center justify-center mb-5">
-              <LogOutIcon className="w-8 h-8 text-red-400" />
-            </div>
-            <h3 className="text-white font-bold text-xl mb-2">Chiqishni tasdiqlang</h3>
-            <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-              Hisobdan chiqmoqchimisiz?<br />
-              Barcha saqlangan ma'lumotlar saqlanadi.
-            </p>
-            <div className="flex gap-3 w-full">
-              <button
-                onClick={() => setView('profile')}
-                className="flex-1 py-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 transition-all font-semibold text-sm"
-              >
-                Bekor qilish
-              </button>
-              <button
-                onClick={() => { onClose(); onLogout?.(); }}
-                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-all text-sm active:scale-95"
-              >
-                Ha, chiqish
-              </button>
-            </div>
-          </div>
-        )}
+
+          </form>
+        </div>
       </div>
 
+      {/* ── Logout confirmation modal ── */}
+      {showLogoutModal && (
+        <LogoutModal
+          isDark={isDark}
+          t={t}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={() => { setShowLogoutModal(false); onClose(); onLogout?.(); }}
+        />
+      )}
+
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1;   }
+        }
+        @keyframes slideOutRight {
+          from { transform: translateX(0);    opacity: 1;   }
+          to   { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes popUp {
+          from { transform: scale(0.88) translateY(16px); opacity: 0; }
+          to   { transform: scale(1)    translateY(0);    opacity: 1; }
+        }
       `}</style>
-    </div>,
+    </>,
     document.body
   );
 };

@@ -3,9 +3,12 @@ import { Transaction, Driver, TransactionType, PaymentStatus, TimeFilter, Driver
 import { Car } from '../../../core/types/car.types';
 import { toDateKey } from '../../../../services/daysOffService';
 import { calcDriverDebt } from '../../drivers/utils/debtUtils';
+import { isDriverWorkingOnDate } from '../../drivers/utils/driverLifecycle';
+import { getEffectivePlanForDriverDay, getCarIdForDriverDate } from '../../drivers/utils/driverPlanHistory';
 
 export const useDashboardStats = (transactions: Transaction[], drivers: Driver[], cars: Car[]) => {
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
+    const [targetDate, setTargetDate] = useState<Date>(new Date());
 
     // Dashboard view mode state (chart/grid)
     const [dashboardViewMode, setDashboardViewMode] = useState<'chart' | 'grid'>('chart');
@@ -39,7 +42,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
     // Main Stats
     const filteredTx = getDashboardFilteredTransactions;
-    const totalIncome = useMemo(() => filteredTx.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
+    const totalIncome = useMemo(() => filteredTx.filter(t => t.type === TransactionType.INCOME && !(t as any).useDeposit).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
     const totalExpense = useMemo(() => filteredTx.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0), [filteredTx]);
     const netProfit = totalIncome - totalExpense;
 
@@ -51,7 +54,7 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
     // Chart Data
     const chartData = useMemo(() => {
         return nonDeletedDrivers.map(d => {
-            const dIncome = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
+            const dIncome = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.INCOME && !(t as any).useDeposit).reduce((sum, t) => sum + t.amount, 0);
             const dExpense = filteredTx.filter(t => t.driverId === d.id && t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
             return {
                 id: d.id,
@@ -65,42 +68,93 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
 
     // Daily Plan Status
     const todayStats = useMemo(() => {
-        const todayDateKey = toDateKey(new Date());
-        
+        const todayKey = toDateKey(targetDate);
+
+        // Build a set of driver IDs who have an active DAY_OFF transaction today
+        const dayOffDriverIds = new Set<string>(
+            transactions
+                .filter(tx => {
+                    if ((tx.type as string) !== 'DAY_OFF' && (tx.type as string) !== 'NOT_WORKING') return false;
+                    if (tx.status === PaymentStatus.DELETED || (tx as any).status === 'DELETED') return false;
+                    return toDateKey(new Date(tx.timestamp)) === todayKey;
+                })
+                .map(tx => tx.driverId)
+                .filter(Boolean) as string[]
+        );
+
+        // Also add drivers who have a day override indicating they took a day off
+        drivers.forEach(d => {
+            if (d.dayOverrides && d.dayOverrides[todayKey]) {
+                const override = d.dayOverrides[todayKey];
+                if (override.type === 'OFF' || override.type === 'NOT_WORKING' || override.type === 'REPAIR') {
+                    dayOffDriverIds.add(d.id);
+                }
+            }
+        });
+
         const completed: any[] = [];
         const pending: any[] = [];
+        const dayOff: any[] = [];
 
-        nonDeletedDrivers.forEach(driver => {
+        let expectedTotal = 0;
+        let paidTotal = 0;
+        let debtTotal = 0;
+
+        // Drivers active specifically on the targetDate
+        const activeDriversForDate = drivers.filter(d => {
+            return isDriverWorkingOnDate(d, targetDate);
+        });
+
+        activeDriversForDate.forEach(driver => {
             const driverCars = cars.filter(c => c.assignedDriverId === driver.id && !c.isDeleted);
-            let dailyPlan = (driver as any).dailyPlan ?? 0;
-            if (driverCars.length > 0 && (driverCars[0].dailyPlan ?? 0) > 0) {
-                dailyPlan = driverCars[0].dailyPlan;
+            const driverCar = driverCars[0] || null;
+            const historicalCarId = getCarIdForDriverDate(driver, targetDate, driverCar);
+
+            // Attempt to find car name from transactions if we have no historical car id or current car
+            let fallbackCarName = undefined;
+            if (!historicalCarId && !driverCar) {
+                const txToday = transactions.find(tx => tx.driverId === driver.id && tx.carName && toDateKey(new Date(tx.timestamp)) === todayKey);
+                if (txToday) {
+                    fallbackCarName = txToday.carName;
+                }
             }
 
-            // Reusing debt utility logic
-            const driverCar = driverCars[0] || null;
-            const info = calcDriverDebt(driver, driverCar, transactions);
+            // Exclude drivers who are on day off today
+            if (dayOffDriverIds.has(driver.id)) {
+                dayOff.push({ ...driver, isDayOff: true, todayIncome: 0, todayDebt: 0, totalDebt: 0, historicalCarId, fallbackCarName });
+                return;
+            }
 
-            // Dashboard leverages the newly unified `netDebt` architecture 
-            // which automatically evaluates missing days dynamically from origin.
+            // Get the actual plan for this specific day
+            const historicalPlan = getEffectivePlanForDriverDay(driver, targetDate, driverCar);
+
+            const info = calcDriverDebt(driver, driverCar, transactions, targetDate);
+
+            // Skip drivers who had no plan on this day AND made no payments today
+            if (historicalPlan <= 0 && info.todayIncome <= 0) return;
+
             const adjustedTotalDebt = info.netDebt;
 
             const stat = {
                 ...driver,
-                dailyPlan: info.dailyPlan,
+                dailyPlan: historicalPlan,
                 todayIncome: info.todayIncome,
-                todayDebt: info.todayDebt,
+                todayDebt: Math.max(0, historicalPlan - info.todayIncome),
                 totalDebt: adjustedTotalDebt,
-                isDayOff: false
+                isDayOff: false,
+                historicalCarId,
+                fallbackCarName
             };
 
-            if (info.todayIncome >= (info.dailyPlan > 0 ? info.dailyPlan : 1)) {
-                // If they met their daily plan (or paid something when plan is missing), they are completed
+            if (info.todayIncome >= historicalPlan) {
                 completed.push(stat);
             } else {
-                // Anyone else (no payment, or partial payment) is pending
                 pending.push(stat);
             }
+
+            expectedTotal += stat.dailyPlan;
+            paidTotal += stat.todayIncome;
+            debtTotal += stat.todayDebt;
         });
 
         // Sort completed by income descending
@@ -108,11 +162,17 @@ export const useDashboardStats = (transactions: Transaction[], drivers: Driver[]
         // Sort pending by remaining amount ascending
         pending.sort((a, b) => a.todayDebt - b.todayDebt);
 
-        return { completed, pending };
-    }, [nonDeletedDrivers, cars, transactions]);
+        return { 
+            completed, 
+            pending, 
+            dayOff,
+            totals: { expectedTotal, paidTotal, debtTotal }
+        };
+    }, [drivers, cars, transactions, targetDate]);
 
     return {
         timeFilter, setTimeFilter,
+        targetDate, setTargetDate,
         dashboardViewMode, setDashboardViewMode,
         dashboardPage, setDashboardPage, dashboardItemsPerPage,
         totalIncome, totalExpense, netProfit,

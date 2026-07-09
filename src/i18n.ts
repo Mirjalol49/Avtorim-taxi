@@ -3,19 +3,27 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import Backend from 'i18next-http-backend';
 
+const SUPPORTED_LANGUAGES = ['uz', 'ru', 'en'] as const;
+const DEFAULT_LANGUAGE = 'uz';
+const savedLanguage = typeof window !== 'undefined'
+    ? window.localStorage.getItem('avtorim_lang')
+    : null;
+const initialLanguage = savedLanguage && SUPPORTED_LANGUAGES.includes(savedLanguage as typeof SUPPORTED_LANGUAGES[number])
+    ? savedLanguage
+    : DEFAULT_LANGUAGE;
+
 i18n
-    // load translation using http -> see /public/locales (i.e. https://github.com/i18next/react-i18next/tree/master/example/react/public/locales)
-    // learn more: https://github.com/i18next/i18next-http-backend
+    // load translation using http -> see /public/locales
     .use(Backend)
     // detect user language
-    // learn more: https://github.com/i18next/i18next-browser-languagedetector
     .use(LanguageDetector)
-    // pass the i18n instance to react-i18next.
+    // pass the i18n instance to react-i18next
     .use(initReactI18next)
     // init i18next
-    // for all options read: https://www.i18next.com/overview/configuration-options
     .init({
-        fallbackLng: 'en',
+        lng: initialLanguage,
+        fallbackLng: DEFAULT_LANGUAGE,
+        supportedLngs: [...SUPPORTED_LANGUAGES],
         debug: process.env.NODE_ENV === 'development',
 
         interpolation: {
@@ -23,13 +31,15 @@ i18n
         },
 
         backend: {
-            loadPath: '/locales/{{lng}}/translation.json',
+            loadPath: '/locales/{{lng}}/translation.json?v=5',
         },
 
         detection: {
-            order: ['localStorage', 'navigator'],
+            // First visit must be deterministic: Uzbek is default.
+            // Manual language switches persist in this key; browser navigator is intentionally ignored.
+            order: ['localStorage'],
+            lookupLocalStorage: 'avtorim_lang',
             caches: ['localStorage'],
-            lookupLocalStorage: 'i18nextLng',
         }
     });
 

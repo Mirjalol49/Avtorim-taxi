@@ -647,3 +647,9 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql;
+
+-- MIGRATION: Add car document expiry columns
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_expiry_ms BIGINT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS tech_inspection_expiry_ms BIGINT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS tinting_expiry_ms BIGINT;
+

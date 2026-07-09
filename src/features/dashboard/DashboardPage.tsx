@@ -1,27 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from './hooks/useDashboardStats';
+import { useDashboardSummary } from './hooks/useDashboardSummary';
 import DateFilter from '../../../components/DateFilter';
-import NumberTooltip from '../../../components/NumberTooltip';
+import DatePicker from '../../../components/DatePicker';
 import Skeleton from '../../../components/Skeleton';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-import {
-    TrendingUpIcon, TrendingDownIcon, WalletIcon, LayoutDashboardIcon, GridIcon, MedalIcon
+    TrendingUpIcon, TrendingDownIcon, WalletIcon, MedalIcon, SendIcon
 } from '../../../components/Icons';
-import { formatNumberSmart } from '../../../utils/formatNumber';
+import { useToast } from '../../../components/ToastNotification';
 import { Transaction, Driver, Language } from '../../core/types';
 import { Car } from '../../core/types/car.types';
 import Lottie from 'lottie-react';
 import badgeAnimation from '../../../Images/badge.json';
+import { MetricCard } from '../../../components/MetricCard';
+import { LicensePlate } from '../../components/ui/LicensePlate';
+import { PremiumCard } from '../../components/ui/PremiumCard';
+import { ShiftBy } from '../../components/ui/ShiftBy';
 
 interface DashboardPageProps {
     transactions: Transaction[];
     drivers: Driver[];
     cars: Car[];
+    fleetId?: string;
     isDataLoading: boolean;
-    // language, t removed - using hooks
     theme: 'light' | 'dark';
     isMobile: boolean;
 }
@@ -30,23 +32,91 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
     transactions,
     drivers,
     cars,
+    fleetId,
     isDataLoading,
     theme,
     isMobile
 }) => {
     const { t, i18n } = useTranslation();
-    // Ensure accurate type for helpers that expect specific Language string
+    const { addToast } = useToast();
     const currentLanguage = (['uz', 'ru', 'en'].includes(i18n.language) ? i18n.language : 'uz') as Language;
-    const months = t('months', { returnObjects: true }) as string[];
-    const weekdays = t('weekdays', { returnObjects: true }) as string[];
 
     const {
         timeFilter, setTimeFilter,
-        dashboardViewMode, setDashboardViewMode,
-        dashboardPage, setDashboardPage, dashboardItemsPerPage,
-        totalIncome, totalExpense, netProfit,
-        chartData, todayStats
+        targetDate, setTargetDate,
+        todayStats
     } = useDashboardStats(transactions, drivers, cars);
+    const { summary, loading: summaryLoading } = useDashboardSummary(fleetId, timeFilter, transactions[0]);
+
+    const isDark = theme === 'dark';
+    const showStatsSkeleton = isDataLoading || summaryLoading;
+
+    const [statusSearch, setStatusSearch] = useState('');
+    const [showAllCompleted, setShowAllCompleted] = useState(false);
+    const [showAllPending, setShowAllPending] = useState(false);
+    const [messageDriver, setMessageDriver] = useState<Driver | null>(null);
+    const [customMessage, setCustomMessage] = useState('');
+    const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+    const STATUS_VISIBLE = 8;
+
+    const searchLower = statusSearch.toLowerCase();
+    const filteredCompleted = todayStats.completed.filter(d => d.name.toLowerCase().includes(searchLower));
+    const filteredPending = todayStats.pending.filter(d => d.name.toLowerCase().includes(searchLower));
+    const displayedCompleted = showAllCompleted ? filteredCompleted : filteredCompleted.slice(0, STATUS_VISIBLE);
+    const displayedPending = showAllPending ? filteredPending : filteredPending.slice(0, STATUS_VISIBLE);
+
+    const closeMessageModal = () => {
+        setMessageDriver(null);
+        setCustomMessage('');
+        setIsSendingMessage(false);
+    };
+
+    const handleSendTelegramMessage = async () => {
+        if (!fleetId || !messageDriver || !messageDriver.telegram || !customMessage.trim()) return;
+
+        setIsSendingMessage(true);
+        try {
+            const response = await fetch('/.netlify/functions/send-driver-telegram-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fleetId,
+                    driverId: messageDriver.id,
+                    message: customMessage.trim(),
+                }),
+            });
+
+            if (!response.ok) throw new Error('Telegram message failed');
+
+            addToast('success', 'Telegram xabar yuborildi');
+            closeMessageModal();
+        } catch {
+            addToast('error', 'Telegram xabar yuborilmadi');
+            setIsSendingMessage(false);
+        }
+    };
+
+    const renderTelegramMessageButton = (driver: Driver) => {
+        const hasTelegram = Boolean(driver.telegram);
+        if (!hasTelegram) return null;
+
+        return (
+            <button
+                type="button"
+                onClick={() => setMessageDriver(driver)}
+                aria-label={`Telegram xabar yuborish: ${driver.name}`}
+                title="Telegram xabar yuborish"
+                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${
+                    isDark
+                        ? 'bg-cyan-500/[0.10] text-cyan-300 hover:bg-cyan-500/[0.18]'
+                        : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                }`}
+            >
+                <SendIcon className="w-4 h-4" />
+            </button>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -64,310 +134,362 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                 }}
             />
 
-            {/* MAIN STATS ROW - FULL WIDTH */}
+            {/* MAIN STATS ROW */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {isDataLoading ? (
+                {showStatsSkeleton ? (
                     <>
-                        <div className="bg-[#0f766e] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-md">
-                            <div className="flex flex-col gap-3">
-                                <Skeleton variant="rectangular" width="40%" height={12} theme="dark" />
-                                <Skeleton variant="rectangular" width="70%" height={32} theme="dark" />
-                                <Skeleton variant="rectangular" width="30%" height={10} theme="dark" />
-                            </div>
-                        </div>
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
+                        <PremiumCard isDark={isDark} padding="p-5 sm:p-6" className="min-h-[140px]">
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                             </div>
-                        </div>
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
+                        </PremiumCard>
+                        <PremiumCard isDark={isDark} padding="p-5 sm:p-6" className="min-h-[140px]">
                             <div className="flex flex-col gap-3">
                                 <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
                                 <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
                                 <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
                             </div>
-                        </div>
+                        </PremiumCard>
+                        <PremiumCard isDark={isDark} padding="p-5 sm:p-6" className="sm:col-span-2 lg:col-span-1 min-h-[140px]">
+                            <div className="flex flex-col gap-3">
+                                <Skeleton variant="rectangular" width="40%" height={12} theme={theme} />
+                                <Skeleton variant="rectangular" width="70%" height={32} theme={theme} />
+                                <Skeleton variant="rectangular" width="30%" height={10} theme={theme} />
+                            </div>
+                        </PremiumCard>
                     </>
                 ) : (
                     <>
-                        {/* Income */}
-                        <div className="bg-[#0f766e] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-md relative overflow-hidden group transition-all hover:shadow-lg">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <TrendingUpIcon className="w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 text-white" />
-                            </div>
-                            <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 bg-white/10 rounded-lg text-white border border-white/10 flex-shrink-0">
-                                        <TrendingUpIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
-                                    </div>
-                                    <p className="text-[10px] sm:text-[10px] md:text-[11px] text-teal-100/80 font-bold uppercase tracking-wide">{t('totalIncome')}</p>
-                                </div>
-                                <div>
-                                    <NumberTooltip value={totalIncome} label={t('totalIncome')} theme={theme}>
-                                        <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black text-white tracking-tight leading-none font-mono cursor-help whitespace-nowrap">
-                                            {formatNumberSmart(totalIncome, isMobile, currentLanguage)}
-                                        </h3>
-                                    </NumberTooltip>
-                                    <p className="text-[10px] sm:text-[11px] md:text-xs text-teal-100/60 font-medium mt-1.5 ml-0.5">UZS</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Expense */}
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
-                            <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                                <TrendingDownIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-                            </div>
-                            <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-red-400 border-gray-700' : 'bg-red-50 text-red-500 border-red-100'}`}>
-                                        <TrendingDownIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
-                                    </div>
-                                    <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{t('totalExpense')}</p>
-                                </div>
-                                <div>
-                                    <NumberTooltip value={totalExpense} label={t('totalExpense')} theme={theme}>
-                                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                            {formatNumberSmart(totalExpense, isMobile, currentLanguage)}
-                                        </h3>
-                                    </NumberTooltip>
-                                    <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Net Profit */}
-                        <div className={`p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl border shadow-lg relative overflow-hidden group transition-all sm:col-span-2 lg:col-span-1 ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-100'}`}>
-                            <div className={`absolute top-0 right-0 p-3 transition-opacity ${theme === 'dark' ? 'opacity-5 group-hover:opacity-10' : 'opacity-[0.08] group-hover:opacity-[0.12]'}`}>
-                                <WalletIcon className={`w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
-                            </div>
-                            <div className="flex flex-col justify-between relative z-10 gap-2 sm:gap-3">
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-1.5 rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'bg-gray-800 text-[#0f766e] border-gray-700' : 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/20'}`}>
-                                        <WalletIcon className="w-4 sm:w-4 md:w-5 h-4 sm:h-4 md:h-5" />
-                                    </div>
-                                    <p className={`text-[10px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{t('netProfit')}</p>
-                                </div>
-                                <div>
-                                    <NumberTooltip value={netProfit} label={t('netProfit')} theme={theme}>
-                                        <h3 className={`text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-black tracking-tight leading-none font-mono cursor-help whitespace-nowrap ${netProfit >= 0 ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600' : theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
-                                            {netProfit > 0 ? '+' : ''}{formatNumberSmart(netProfit, isMobile, currentLanguage)}
-                                        </h3>
-                                    </NumberTooltip>
-                                    <p className={`text-[10px] sm:text-[11px] md:text-xs font-medium mt-1.5 ml-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>UZS</p>
-                                </div>
-                            </div>
+                        <MetricCard title={t('cashIncome', 'Kassa tushumi')} value={summary.totalIncome} type="income" icon={TrendingUpIcon} isDark={isDark} />
+                        <MetricCard title={t('totalExpense')} value={summary.totalExpense} type="expense" icon={TrendingDownIcon} isDark={isDark} />
+                        <div className="sm:col-span-2 lg:col-span-1">
+                            <MetricCard title={t('netProfit')} value={summary.netProfit} type="profit" icon={WalletIcon} isDark={isDark} showPlusSign />
                         </div>
                     </>
                 )}
             </div>
 
-            {/* CHART ROW */}
-            <div className={`w-full ${dashboardViewMode === 'chart' ? 'h-[300px] sm:h-[400px] md:h-[500px]' : 'h-auto'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border flex flex-col shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                    <h3 className={`text-sm sm:text-base md:text-lg font-bold flex items-center gap-2 opacity-80 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        <LayoutDashboardIcon className={`w-4 sm:w-5 h-4 sm:h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                        {t('incomeVsExpense')}
-                    </h3>
-                    <div className={`flex items-center p-1.5 rounded-xl border shadow-sm ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                        <button onClick={() => setDashboardViewMode('chart')} className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'chart' ? 'bg-[#0f766e] text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
-                            <LayoutDashboardIcon className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setDashboardViewMode('grid')} className={`p-2 rounded-lg transition-all ${dashboardViewMode === 'grid' ? 'bg-[#0f766e] text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
-                            <GridIcon className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                    {dashboardViewMode === 'chart' ? (
-                        <div className="-mx-2 sm:mx-0 h-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} barSize={20} margin={{ left: 0, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
-                                    <XAxis dataKey="name" stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} axisLine={false} tickLine={false} dy={10} fontSize={11} interval={0} angle={-45} textAnchor="end" height={60} />
-                                    <YAxis stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} axisLine={false} tickLine={false} dx={-10} fontSize={10} tickFormatter={(value) => {
-                                        if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}${currentLanguage === 'en' ? 'B' : 'mlrd'}`;
-                                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}${currentLanguage === 'en' ? 'M' : 'mln'}`;
-                                        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                                        return value;
-                                    }} />
-                                    <Tooltip cursor={{ fill: theme === 'dark' ? 'rgba(55, 65, 81, 0.3)' : 'rgba(229, 231, 235, 0.3)' }} content={({ active, payload, label }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div className={`p-3 rounded-xl border shadow-lg ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                                                    <p className={`text-sm font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{label}</p>
-                                                    {payload.map((entry: any, index: number) => (
-                                                        <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
-                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                                            <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{entry.dataKey === 'Income' ? t('income') : t('expense')}:</span>
-                                                            <span className={`text-sm font-bold ${entry.dataKey === 'Income' ? 'text-[#0f766e]' : 'text-red-600'}`}>{entry.value.toLocaleString()}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }} />
-                                    <Bar dataKey="Income" fill="#0f766e" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="Expense" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ) : (
-                        // Grid View
-                        <div className="h-full flex flex-col">
-                            {(() => {
-                                const startIndex = (dashboardPage - 1) * dashboardItemsPerPage;
-                                const paginatedData = chartData.slice(startIndex, startIndex + dashboardItemsPerPage);
-                                const totalPages = Math.ceil(chartData.length / dashboardItemsPerPage);
-                                return (
-                                    <>
-                                        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 items-start">
-                                            {paginatedData.map((data: any, idx) => {
-                                                const driver = drivers.find(d => d.id === data.id);
-                                                const profit = data.Income - data.Expense;
-                                                return (
-                                                    <div key={idx} className={`p-5 rounded-xl border transition-all hover:shadow-md h-fit ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
-                                                        <div className="flex items-center gap-3 mb-4">
-                                                            {driver && (
-                                                                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex-shrink-0">
-                                                                    <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                                                                </div>
-                                                            )}
-                                                            <div className="min-w-0">
-                                                                <h4 className={`font-bold text-sm whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.fullName}</h4>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-3">
-                                                            {/* Income & Expense - Kept compact */}
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('income')}</span>
-                                                                    <span className="text-sm font-bold text-[#0f766e] font-mono">+{data.Income.toLocaleString()}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('expense')}</span>
-                                                                    <span className="text-sm font-bold text-red-500 font-mono">-{data.Expense.toLocaleString()}</span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Net Profit - Vertical Stack (Block) */}
-                                                            <div className={`pt-3 mt-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{t('netProfit')}</span>
-                                                                    <span className={`text-xl font-black font-mono ${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                                        {profit > 0 ? '+' : ''}{profit.toLocaleString()}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    )}
-                </div>
-            </div>
-
             {/* DAILY PAYMENT STATUS */}
-            <div className={`p-6 sm:p-8 rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'}`}>
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
-                    <div>
-                        <h3 className={`text-xl sm:text-2xl font-black flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            <span className="text-3xl">📅</span>
-                            {t('todayStatus')}
-                        </h3>
-                        <p className={`mt-2 font-medium capitalize ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {new Date().getDate()} {months[new Date().getMonth()]},{' '}
-                            {weekdays[new Date().getDay()]}
-                        </p>
-                    </div>
-                    <div className="mt-4 sm:mt-0 flex gap-4">
-                        <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-[#0f766e]/20 text-teal-400 border-[#0f766e]/40' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                            ✓ {todayStats.completed.length} {t('paid')}
+            <div className="mt-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <h3 className={`text-xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {t('todayStatus')}
+                    </h3>
+                    
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                        <div className="w-full sm:w-[150px]">
+                            <DatePicker
+                                label=""
+                                hideLabel
+                                value={targetDate}
+                                onChange={(d) => setTargetDate(d || new Date())}
+                                theme={theme}
+                            />
                         </div>
-                        <div className={`px-5 py-2.5 rounded-xl text-sm font-black border shadow-sm ${theme === 'dark' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
-                            ⏳ {todayStats.pending.length} {t('statusPending')}
-                        </div>
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* COMPLETED COLUMN */}
-                    <div className="space-y-4">
-                        <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
-                            {t('driversPaidToday')}
-                        </h4>
-
-                        {todayStats.completed.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {todayStats.completed.map(driver => (
-                                    <div key={driver.id} className={`relative flex items-center gap-3 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-gray-800/50 border-teal-500/20 hover:border-teal-500/40' : 'bg-white border-teal-200 hover:border-teal-300 shadow-sm'}`}>
-                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-teal-400 flex-shrink-0">
-                                            <img src={driver.avatar} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="min-w-0 pr-8">
-                                            <div className={`text-sm font-bold truncate pr-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
-                                            <div className={`text-[11px] mt-0.5 truncate font-medium ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                                                {driver.isDayOff ? `🏖️ ${t('dayOffLabel')}` : `${t('todayPaidLabel')}: +${(driver.todayIncome || 0).toLocaleString()} UZS`}
-                                            </div>
-                                        </div>
-                                        {/* Golden Badge JSON attached to the right */}
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10">
-                                            <Lottie animationData={badgeAnimation} loop={false} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                {t('noPaymentsYet')}
+                        {(todayStats.completed.length + todayStats.pending.length) > STATUS_VISIBLE && (
+                            <div className="relative w-full sm:w-auto">
+                                <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-[rgba(235,235,245,0.4)]' : 'text-[rgba(60,60,67,0.4)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input
+                                    type="text"
+                                    value={statusSearch}
+                                    onChange={e => {
+                                        setStatusSearch(e.target.value);
+                                        setShowAllCompleted(false);
+                                        setShowAllPending(false);
+                                    }}
+                                    placeholder={t('searchDriverStatus')}
+                                    className={`w-full sm:w-[220px] pl-9 pr-4 py-2 rounded-xl text-[14px] font-medium border outline-none transition-all duration-300 ${isDark
+                                        ? 'bg-[#222a3d] border-white/[0.08] text-white placeholder-[rgba(235,235,245,0.4)] focus:border-[#6bd8cb] focus:shadow-[0_0_0_2px_rgba(107,216,203,0.15)]'
+                                        : 'bg-white border-black/[0.08] text-black placeholder-[rgba(60,60,67,0.4)] focus:border-[#0f766e] focus:shadow-[0_0_0_2px_rgba(15,118,110,0.15)]'
+                                    }`}
+                                />
+                                {statusSearch && (
+                                    <button onClick={() => setStatusSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full transition-colors ${isDark ? 'hover:bg-white/[0.1] text-white' : 'hover:bg-black/[0.05] text-black'}`}>✕</button>
+                                )}
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* Daily Summary Totals */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                    {/* Expected */}
+                    <PremiumCard isDark={isDark} hoverLift={false} padding="p-5">
+                        <div className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('expectedTotalAmount', 'Kutilayotgan umumiy summa')}</div>
+                        <div className={`text-[24px] font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{todayStats.totals.expectedTotal.toLocaleString()} UZS</div>
+                    </PremiumCard>
+                    
+                    {/* Paid */}
+                    <PremiumCard isDark={isDark} hoverLift={false} padding="p-5" className={isDark ? '!bg-emerald-500/[0.04] !border-emerald-500/[0.15]' : '!bg-emerald-50/50 !border-emerald-200/50'}>
+                        <div className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t('paidTotalAmount', "To'langan umumiy summa")}</div>
+                        <div className={`text-[24px] font-black tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{todayStats.totals.paidTotal.toLocaleString()} UZS</div>
+                    </PremiumCard>
+                    
+                    {/* Remaining */}
+                    <PremiumCard isDark={isDark} hoverLift={false} padding="p-5" className={isDark ? '!bg-rose-500/[0.04] !border-rose-500/[0.15]' : '!bg-rose-50/50 !border-rose-200/50'}>
+                        <div className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-rose-400/80' : 'text-rose-600/80'}`}>{t('remainingTotalDebt', 'Qolgan umumiy qarz')}</div>
+                        <div className={`text-[24px] font-black tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{todayStats.totals.debtTotal.toLocaleString()} UZS</div>
+                    </PremiumCard>
+                </div>
+
+                {/* Two columns */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    {/* COMPLETED COLUMN */}
+                    <PremiumCard isDark={isDark} padding="p-5 sm:p-6" hoverLift={false}>
+                        <h4 className={`text-[17px] font-bold mb-5 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('driversPaidToday')} <span className={`font-semibold ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({todayStats.completed.length} {t('paid')})</span>
+                        </h4>
+
+                        {filteredCompleted.length > 0 ? (
+                            <div className="space-y-2">
+                                {displayedCompleted.map((driver, i) => {
+                                    const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
+                                    return (
+                                        <div key={driver.id} className={`group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}>
+                                            {/* Green indicator bar */}
+                                            <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-emerald-500" />
+                                            
+                                            {/* Avatar */}
+                                            <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border transition-transform duration-300 group-hover:scale-[1.05] border-transparent shadow-sm">
+                                                {driver.avatar
+                                                    ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#2d3449] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                }
+                                            </div>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                                <span className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
+                                                {driverCar ? (
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                        <LicensePlate plate={driverCar.licensePlate} size="sm" />
+                                                    </div>
+                                                ) : driver.fallbackCarName ? (
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                        {driver.fallbackCarName.includes(' — ') && (
+                                                            <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
+                                                        )}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                            {/* Amount & Check */}
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                {renderTelegramMessageButton(driver)}
+                                                <span className={`text-[14px] font-bold tabular-nums tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                    +{(driver.todayIncome || 0).toLocaleString()} UZS
+                                                </span>
+                                                <div className="w-8 h-8 flex items-center justify-center -mr-2">
+                                                    <Lottie animationData={badgeAnimation} loop={false} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {filteredCompleted.length > STATUS_VISIBLE && (
+                                    <button
+                                        onClick={() => setShowAllCompleted(v => !v)}
+                                        className={`mt-4 w-full py-3 rounded-xl text-[14px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[rgba(235,235,245,0.7)] hover:text-white' : 'bg-black/[0.03] hover:bg-black/[0.06] text-[rgba(60,60,67,0.7)] hover:text-black'}`}
+                                    >
+                                        {showAllCompleted ? t('collapse') : t('showMore', { count: filteredCompleted.length - STATUS_VISIBLE })}
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${isDark ? 'bg-[#222a3d]' : 'bg-gray-50/50'}`}>
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${isDark ? 'bg-emerald-500/[0.08]' : 'bg-emerald-500/10'}`}>
+                                    <MedalIcon className={`w-7 h-7 ${isDark ? 'text-emerald-400/80' : 'text-emerald-500/80'}`} />
+                                </div>
+                                <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('noPaymentsYet')}</p>
+                            </div>
+                        )}
+                    </PremiumCard>
 
                     {/* PENDING COLUMN */}
-                    <div className="space-y-4">
-                        <h4 className={`text-lg font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
-                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                            {t('pendingPaymentsLabel')}
+                    <PremiumCard isDark={isDark} padding="p-5 sm:p-6" hoverLift={false}>
+                        <h4 className={`text-[17px] font-bold mb-5 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('pendingPaymentsLabel')} <span className={`font-semibold ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({todayStats.pending.length} {t('statusPending')})</span>
                         </h4>
 
-                        {todayStats.pending.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {todayStats.pending.map(driver => (
-                                    <div key={driver.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-gray-800/50 border-orange-500/20 hover:border-orange-500/40' : 'bg-white border-orange-200 hover:border-orange-300 shadow-sm'}`}>
-                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-400/50 flex-shrink-0 grayscale-[0.3]">
-                                            <img src={driver.avatar} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{driver.name}</div>
-                                            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                                                <div className="flex items-center justify-between opacity-80">
-                                                    <span className={`text-[10px] uppercase font-bold tracking-wider ${theme === 'dark' ? 'text-teal-500' : 'text-teal-600'}`}>{t('todayPaidLabel')}:</span>
-                                                    <span className="text-xs font-bold text-teal-500/80 font-mono">+{(driver.todayIncome || 0).toLocaleString()} UZS</span>
+                        {filteredPending.length > 0 ? (
+                            <div className="space-y-2">
+                                {displayedPending.map(driver => {
+                                    const plan = driver.dailyPlan || 0;
+                                    const paid = driver.todayIncome || 0;
+                                    const remaining = Math.max(0, plan - paid);
+                                    const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
+                                    return (
+                                        <div key={driver.id} className={`group flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}>
+                                            {/* Avatar */}
+                                            <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border border-transparent shadow-sm transition-transform duration-300 group-hover:scale-[1.05]">
+                                                {driver.avatar
+                                                    ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                    : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#2d3449] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                                }
+                                            </div>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                                <span className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{driver.name}</span>
+                                                {driverCar ? (
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                        <LicensePlate plate={driverCar.licensePlate} size="sm" />
+                                                    </div>
+                                                ) : driver.fallbackCarName ? (
+                                                    <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                        {driver.fallbackCarName.includes(' — ') && (
+                                                            <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
+                                                        )}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                            {/* Amount */}
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                {renderTelegramMessageButton(driver)}
+                                                <div className="flex flex-col items-end justify-center">
+                                                    <span className={`text-[15px] font-black tabular-nums tracking-tight ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
+                                                        −{remaining.toLocaleString()} UZS
+                                                    </span>
+                                                    {paid > 0 && (
+                                                        <span className={`text-[11px] font-bold tracking-wide uppercase mt-1 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>
+                                                            +{paid.toLocaleString()} to'landi
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
+                                {filteredPending.length > STATUS_VISIBLE && (
+                                    <button
+                                        onClick={() => setShowAllPending(v => !v)}
+                                        className={`mt-4 w-full py-3 rounded-xl text-[14px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[rgba(235,235,245,0.7)] hover:text-white' : 'bg-black/[0.03] hover:bg-black/[0.06] text-[rgba(60,60,67,0.7)] hover:text-black'}`}
+                                    >
+                                        {showAllPending ? t('collapse') : t('showMore', { count: filteredPending.length - STATUS_VISIBLE })}
+                                    </button>
+                                )}
                             </div>
                         ) : (
-                            <div className={`p-6 rounded-2xl border text-center text-sm font-medium ${theme === 'dark' ? 'bg-gray-800/30 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                {t('allPaidToday')}
+                            <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${isDark ? 'bg-[#222a3d]' : 'bg-gray-50/50'}`}>
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${isDark ? 'bg-emerald-500/[0.08]' : 'bg-emerald-500/10'}`}>
+                                    <MedalIcon className={`w-7 h-7 ${isDark ? 'text-emerald-400/80' : 'text-emerald-500/80'}`} />
+                                </div>
+                                <p className={`text-[15px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('allPaidToday')}</p>
                             </div>
                         )}
+                    </PremiumCard>
+                </div>
+
+                {/* ── Day-off section (If any) ────────────────────────────── */}
+                {todayStats.dayOff.length > 0 && (
+                    <PremiumCard isDark={isDark} padding="p-5 sm:p-6" hoverLift={false} className="mt-6">
+                        <h4 className={`text-[17px] font-bold mb-5 flex items-center gap-2 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
+                            {t('legendDayOff')} <span className={`font-semibold ml-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({todayStats.dayOff.length})</span>
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {todayStats.dayOff.map(driver => {
+                                const driverCar = cars.find(c => c.id === driver.historicalCarId) || cars.find(c => c.assignedDriverId === driver.id);
+                                return (
+                                    <div key={driver.id} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ${isDark ? 'bg-white/[0.03] border border-white/[0.05]' : 'bg-gray-50 border border-gray-100'}`}>
+                                        <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-indigo-500/20 grayscale-[0.5] flex-shrink-0 shadow-sm">
+                                            {driver.avatar
+                                                ? <img src={driver.avatar} className="w-full h-full object-cover" alt={driver.name} />
+                                                : <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${isDark ? 'bg-[#2d3449] text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{driver.name?.charAt(0)}</div>
+                                            }
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                            <p className={`text-[15px] font-bold truncate leading-tight ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{driver.name}</p>
+                                            {driverCar ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driverCar.name}</span>
+                                                    <LicensePlate plate={driverCar.licensePlate} size="sm" />
+                                                </div>
+                                            ) : driver.fallbackCarName ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[13px] font-semibold truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{driver.fallbackCarName.split(' — ')[0]}</span>
+                                                    {driver.fallbackCarName.includes(' — ') && (
+                                                        <LicensePlate plate={driver.fallbackCarName.split(' — ')[1]} size="sm" />
+                                                    )}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        {renderTelegramMessageButton(driver)}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </PremiumCard>
+                )}
+            </div>
+
+            {messageDriver && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={closeMessageModal}
+                    />
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="telegram-message-title"
+                        className={`relative w-full max-w-lg rounded-2xl border shadow-2xl ${isDark ? 'bg-[#151b2b] border-white/[0.08]' : 'bg-white border-black/[0.08]'}`}
+                    >
+                        <div className={`px-5 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.08]'}`}>
+                            <h3 id="telegram-message-title" className={`text-[18px] font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                Telegram xabar yuborish
+                            </h3>
+                            <p className={`mt-1 text-[13px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {messageDriver.name}
+                            </p>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            {!messageDriver.telegram && (
+                                <div className={`rounded-xl px-4 py-3 text-[13px] font-semibold ${isDark ? 'bg-amber-500/[0.10] text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                                    Bu haydovchida Telegram ulanmagan.
+                                </div>
+                            )}
+                            <textarea
+                                value={customMessage}
+                                onChange={event => setCustomMessage(event.target.value)}
+                                placeholder="Xabar matni..."
+                                disabled={!messageDriver.telegram || isSendingMessage}
+                                rows={5}
+                                className={`w-full resize-none rounded-xl border px-4 py-3 text-[14px] font-medium outline-none transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isDark
+                                    ? 'bg-[#20283a] border-white/[0.08] text-white placeholder:text-gray-500 focus:border-cyan-400'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-cyan-600'
+                                }`}
+                            />
+                        </div>
+
+                        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t ${isDark ? 'border-white/[0.08]' : 'border-black/[0.08]'}`}>
+                            <button
+                                type="button"
+                                onClick={closeMessageModal}
+                                disabled={isSendingMessage}
+                                className={`px-4 py-2.5 rounded-xl text-[14px] font-bold transition-all active:scale-95 disabled:opacity-60 ${isDark ? 'bg-white/[0.06] text-gray-200 hover:bg-white/[0.10]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                            >
+                                Bekor qilish
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSendTelegramMessage}
+                                disabled={!messageDriver.telegram || !customMessage.trim() || isSendingMessage}
+                                className={`px-5 py-2.5 rounded-xl text-[14px] font-black transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'bg-cyan-500 text-[#061116] hover:bg-cyan-400' : 'bg-cyan-700 text-white hover:bg-cyan-800'}`}
+                            >
+                                {isSendingMessage ? 'Yuborilmoqda...' : 'Yuborish'}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

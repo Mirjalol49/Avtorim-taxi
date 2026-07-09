@@ -4,6 +4,14 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  SECRETS_SCAN_ENABLED = "false"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."daily-plan-debt-reminder"]
+  schedule = "0 17 * * *"
 
 [[redirects]]
   from = "/*"

@@ -9,4 +9,5 @@ export interface Note {
     isPinned: boolean;
     createdMs: number;
     updatedMs: number;
+    reminderAt?: number | null;
 }

@@ -1,7 +1,32 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Notification, NotificationType, markNotificationAsRead, markAllNotificationsAsRead } from '../services/notificationService';
-import { TrashIcon } from './Icons';
+import { Notification, NotificationType, markNotificationAsRead } from '../services/notificationService';
+import { Car } from '../src/core/types/car.types';
+import {
+    TrashIcon,
+    BellIcon,
+    TrendingUpIcon,
+    TrendingDownIcon,
+    ZapIcon,
+    SettingsIcon,
+    XIcon,
+    CheckCheckIcon,
+    ClockIcon,
+    CalendarIcon,
+    CreditCardIcon,
+    BanknoteIcon,
+    AlertTriangleIcon,
+    ReceiptIcon,
+    CarIcon,
+} from './Icons';
+import Lottie from 'lottie-react';
+import depositAnimation from '../Images/deposit.json';
+import { useDataContext } from '../src/core/context/DataContext';
+import { LicensePlate } from '../src/components/ui/LicensePlate';
+import { isDriverWorkingOnDate } from '../src/features/drivers/utils/driverLifecycle';
+
+type Tab = 'warnings' | 'transactions';
 
 interface NotificationBellProps {
     notifications: Notification[];
@@ -12,7 +37,59 @@ interface NotificationBellProps {
     onMarkAsRead: (id: string) => void;
     onMarkAllAsRead: () => void;
     onDeleteNotification: (id: string) => void;
-    onClearAllRead: () => void;
+    onClearAllRead: (ids?: string[]) => void;
+    cars?: Car[];
+}
+
+const PAGE_SIZE = 20;
+
+const fmtAmount = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+
+const parseNotificationAmount = (value?: string | null) => {
+    if (!value) return null;
+    const match = value.match(/([+-]?\d[\d\s,.]*)\s*(?:UZS|so'?m|сум)/i);
+    if (!match) return null;
+
+    const parsed = Number(match[1].replace(/[^\d-]/g, ''));
+    if (!Number.isFinite(parsed) || parsed === 0) return null;
+    return Math.abs(parsed);
+};
+
+const getDeliveryTracking = (n: Notification) =>
+    (((n as any).deliveryTracking ?? {}) as Record<string, unknown>);
+
+const getNotificationTxType = (n: Notification): 'income' | 'expense' | null => {
+    const txType = getDeliveryTracking(n).txType;
+    return txType === 'income' || txType === 'expense' ? txType : null;
+};
+
+const getNotificationAmount = (n: Notification) => {
+    const rawAmount = Number(getDeliveryTracking(n).amount);
+    if (Number.isFinite(rawAmount) && rawAmount !== 0) return Math.abs(rawAmount);
+    return parseNotificationAmount(n.title) ?? parseNotificationAmount(n.message);
+};
+
+function isPlanReminder(n: Notification) {
+    return getDeliveryTracking(n).reminderType === 'daily_plan';
+}
+
+function isDepositWarning(n: Notification) {
+    return getDeliveryTracking(n).depositWarning === true;
+}
+
+function isDocumentReminder(n: Notification) {
+    const reminderType = getDeliveryTracking(n).reminderType;
+    return reminderType === 'driver_ishonchnoma_reminder' || reminderType === 'driver_document_expiry';
+}
+
+function isTransaction(n: Notification) {
+    if (n.type !== 'payment_reminder') return false;
+    if (isPlanReminder(n) || isDepositWarning(n) || isDocumentReminder(n)) return false;
+    if (getNotificationTxType(n)) return true;
+
+    const text = `${n.title} ${n.message}`.toLowerCase();
+    const looksLikeTransaction = /kirim|chiqim|income|expense|приход|расход|💰|💵|💳|💸/.test(text);
+    return looksLikeTransaction && getNotificationAmount(n) !== null;
 }
 
 const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -24,252 +101,852 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     onMarkAsRead,
     onMarkAllAsRead,
     onDeleteNotification,
-    onClearAllRead
+    onClearAllRead,
+    cars = [],
 }) => {
     const { t } = useTranslation();
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const getTypeIcon = (type: NotificationType) => {
-        switch (type) {
-            case 'payment_reminder': return '💰';
-            case 'feature_update': return '✨';
-            case 'announcement': return '📢';
-            case 'system': return '⚙️';
-            default: return '🔔';
-        }
-    };
-
-    const formatTime = (timestamp: number) => {
-        const now = Date.now();
-        const diff = now - timestamp;
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-        if (minutes < 1) return t('justNow') || 'Just now';
-        if (minutes < 60) return `${minutes} ${t('minutesAgo') || 'min ago'}`;
-        if (hours < 24) return `${hours} ${t('hoursAgo') || 'h ago'}`;
-        return `${days} ${t('daysAgo') || 'd ago'}`;
-    };
-
-    const parseAmount = (title: string): string | null => {
-        const m = title.match(/([\d\s,]+)\s*UZS/);
-        return m ? m[0].trim() : null;
-    };
+    const { drivers } = useDataContext();
+    const [isOpen, setIsOpen]       = useState(false);
+    const [visible, setVisible]     = useState(false);
+    const [activeTab, setActiveTab] = useState<Tab>('warnings');
+    const [warnPage, setWarnPage]   = useState(1);
+    const [txPage, setTxPage]       = useState(1);
 
     const isDark = theme === 'dark';
 
-    return (
-        <div className="relative" ref={dropdownRef}>
-            {/* Bell Button */}
-            <button
-                onClick={() => {
-                    const wasOpen = isOpen;
-                    setIsOpen(!isOpen);
-                    if (!wasOpen && unreadCount > 0) onMarkAllAsRead();
-                }}
-                className={`relative p-2 rounded-lg transition-colors ${isDark
-                    ? 'hover:bg-gray-700 text-gray-300 hover:text-white'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+    // Animate open/close
+    useEffect(() => {
+        if (isOpen) {
+            requestAnimationFrame(() => setVisible(true));
+        } else {
+            setVisible(false);
+        }
+    }, [isOpen]);
+
+    // Close on Escape — only listen when the panel is open
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setVisible(false);
+                setTimeout(() => setIsOpen(false), 300);
+            }
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [isOpen]);
+
+    // Prevent body scroll while open
+    useEffect(() => {
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isOpen]);
+
+    // Reset pagination when switching tabs
+    useEffect(() => { setWarnPage(1); setTxPage(1); }, [activeTab]);
+
+    const openSidebar = () => {
+        setIsOpen(true);
+        if (unreadCount > 0) onMarkAllAsRead();
+    };
+
+    const closeSidebar = () => {
+        setVisible(false);
+        setTimeout(() => setIsOpen(false), 300);
+    };
+
+    const formatRelative = (ts: number) => {
+        const diff = Date.now() - ts;
+        const m = Math.floor(diff / 60000);
+        const h = Math.floor(diff / 3600000);
+        const d = Math.floor(diff / 86400000);
+        if (m < 1)  return t('justNow')    || 'Hozir';
+        if (m < 60) return `${m} ${t('minutesAgo') || 'daq oldin'}`;
+        if (h < 24) return `${h} ${t('hoursAgo')   || 'soat oldin'}`;
+        return `${d} ${t('daysAgo') || 'kun oldin'}`;
+    };
+
+    // Split notifications into two buckets
+    const warnings = useMemo(() => {
+        const rawWarnings = notifications.filter(n => isPlanReminder(n) || isDepositWarning(n) || isDocumentReminder(n) || (!isTransaction(n) && !isPlanReminder(n) && !isDepositWarning(n) && n.type !== 'payment_reminder'));
+        
+        // Deduplicate plan reminders by driverId to remove duplicate generic (triangle) ones
+        const planMap = new Map<string, Notification>();
+        const finalWarnings: Notification[] = [];
+        
+        for (const w of rawWarnings) {
+            if (isPlanReminder(w)) {
+                const dt = (w as any).deliveryTracking || {};
+                const driverId = dt.driverId || w.title;
+                const liveDriver = dt.driverId ? drivers.find(d => d.id === dt.driverId) : undefined;
+                if (dt.driverId && drivers.length > 0 && !liveDriver) continue;
+                if (liveDriver && !isDriverWorkingOnDate(liveDriver, Date.now())) continue;
+
+                const existing = planMap.get(driverId);
+                
+                if (!existing) {
+                    planMap.set(driverId, w);
+                } else {
+                    // Prefer the notification that has the avatar over the generic one
+                    const existingAvatar = (existing as any).deliveryTracking?.driverAvatar;
+                    const currentAvatar = dt.driverAvatar;
+                    
+                    if (!existingAvatar && currentAvatar) {
+                        planMap.set(driverId, w);
+                    }
+                }
+            } else {
+                finalWarnings.push(w);
+            }
+        }
+        
+        finalWarnings.push(...planMap.values());
+        return finalWarnings.sort((a, b) => b.createdAt - a.createdAt);
+    }, [notifications, drivers]);
+    const transactions = useMemo(() => notifications.filter(isTransaction), [notifications]);
+    const visibleNotificationIds = useMemo(
+        () => Array.from(new Set([...warnings, ...transactions].map(n => n.id))),
+        [warnings, transactions]
+    );
+
+    const unreadWarnings     = warnings.filter(n => !readIds.has(n.id)).length;
+    const unreadTransactions = transactions.filter(n => !readIds.has(n.id)).length;
+
+    // Summary stats for warnings tab
+    const warnStats = useMemo(() => {
+        const planItems = warnings.filter(isPlanReminder);
+        const totalRemaining = planItems.reduce((sum, n) => {
+            const dt = (n as any).deliveryTracking ?? {};
+            return sum + ((dt.remaining as number) ?? 0);
+        }, 0);
+        return { count: planItems.length, totalRemaining };
+    }, [warnings]);
+
+    // ─── Daily Plan Reminder Card ───────────────────────────────────────────
+    const renderPlanReminder = (notification: Notification, isRead: boolean) => {
+        const dt          = (notification as any).deliveryTracking ?? {};
+        const driverName  = (dt.driverName  as string)  ?? notification.title.split(' — ')[0] ?? 'Haydovchi';
+        const dailyPlan   = (dt.dailyPlan   as number)  ?? 0;
+        const todayIncome = (dt.todayIncome as number)  ?? 0;
+        const remaining   = (dt.remaining   as number)  ?? (dailyPlan - todayIncome);
+        const paidPct     = dailyPlan > 0 ? Math.min(100, Math.round((todayIncome / dailyPlan) * 100)) : 0;
+        const dateDisplay = (dt.dateDisplay as string)  ?? '';
+        const liveDriver  = dt.driverId ? drivers.find(d => d.id === dt.driverId) : undefined;
+        const avatarUrl   = liveDriver?.avatar || (dt.driverAvatar as string | undefined);
+        const carName     = (dt.carName  as string | null) ?? null;
+        const carPlate    = (dt.carPlate as string | null) ?? null;
+
+        const barColor = paidPct >= 80 ? 'bg-teal-500' : paidPct >= 50 ? 'bg-amber-500' : 'bg-red-500';
+
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors ${
+                    !isRead ? 'border-l-[3px] border-red-500' : 'border-l-[3px] border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-red-500/[0.06] hover:bg-red-500/[0.09] cursor-pointer'
+                               : 'bg-red-50/60 hover:bg-red-50 cursor-pointer'
                 }`}
             >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                    />
-                </svg>
+                <div className="px-4 py-3.5 pr-10">
+                    {/* Avatar + name */}
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="relative flex-shrink-0">
+                            {avatarUrl ? (
+                                <img
+                                    src={avatarUrl} alt=""
+                                    className={`w-9 h-9 rounded-xl object-cover ${isRead ? 'opacity-40' : ''}`}
+                                    onError={e => {
+                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                        (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('style');
+                                    }}
+                                />
+                            ) : null}
+                            <div
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-500/15' : 'bg-red-50'}`}
+                                style={{ display: avatarUrl ? 'none' : 'flex' }}
+                            >
+                                <AlertTriangleIcon className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
+                            </div>
+                            {!isRead && (
+                                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
+                            )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-semibold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {driverName}
+                            </p>
+                            {dateDisplay && (
+                                <p className={`text-[11px] flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    <CalendarIcon className="w-3 h-3" />
+                                    {dateDisplay}
+                                </p>
+                            )}
+                            {carName && (
+                                <p className={`text-[11px] flex items-center gap-1.5 mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    <CarIcon className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{carName}</span>
+                                    {carPlate && (
+                                        <span className={`px-1 py-0.5 rounded text-[10px] font-mono flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                                            {carPlate}
+                                        </span>
+                                    )}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Percent badge */}
+                        <span className={`text-[12px] font-bold tabular-nums flex-shrink-0 ${
+                            paidPct >= 80 ? 'text-teal-500' : paidPct >= 50 ? 'text-amber-500' : isDark ? 'text-red-400' : 'text-red-500'
+                        }`}>
+                            {paidPct}%
+                        </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2.5 ${isDark ? 'bg-surface-2' : 'bg-surface-2'}`}>
+                        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${paidPct}%` }} />
+                    </div>
+
+                    {/* Plan / paid / remaining row */}
+                    <div className={`grid grid-cols-3 gap-1.5 rounded-xl px-3 py-2 text-center ${isDark ? 'bg-white/[0.05]' : 'bg-surface-2'}`}>
+                        <div>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Reja</p>
+                            <p className={`text-[11px] font-semibold tabular-nums ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{fmtAmount(dailyPlan)}</p>
+                        </div>
+                        <div>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>To'landi</p>
+                            <p className={`text-[11px] font-semibold tabular-nums text-teal-500`}>{fmtAmount(todayIncome)}</p>
+                        </div>
+                        <div>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Qoldi</p>
+                            <p className={`text-[11px] font-bold tabular-nums ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                {remaining > 0 ? `−${fmtAmount(remaining)}` : '✓'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <p className={`text-[10px] mt-2 flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <ClockIcon className="w-3 h-3" />
+                        {formatRelative(notification.createdAt)}
+                    </p>
+                </div>
+
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
+    // ─── Payment Transaction Card ───────────────────────────────────────────
+    const renderPaymentItem = (notification: Notification, isRead: boolean) => {
+        const dt         = (notification as any).deliveryTracking ?? {};
+        const txType     = getNotificationTxType(notification);
+        const method     = dt.method     as 'cash' | 'card' | null;
+        const amount     = getNotificationAmount(notification);
+        const driverName = dt.driverName as string | undefined;
+        const carName    = dt.carName    as string | undefined;
+        const carPlate   = dt.carPlate   as string | undefined;
+        const note       = dt.note       as string | undefined;
+        const dateStr    = dt.dateStr    as string | undefined;
+        const timeStr    = dt.timeStr    as string | undefined;
+        const avatarUrl  = dt.driverAvatar as string | undefined;
+        const chequeUrl  = dt.chequeImage  as string | undefined;
+
+        const isIncome = txType ? txType === 'income'
+            : notification.title.includes('Kirim') || notification.title.includes('💵') || notification.title.includes('💳');
+        const amountDisplay = amount != null ? fmtAmount(amount) : '—';
+        const nameDisplay = driverName
+            ?? notification.title.replace(/[💵💳💸]\s*(?:Kirim|Chiqim):\s*/, '').replace(/\s*—.*$/, '').trim();
+
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors ${
+                    !isRead ? 'border-l-[3px] border-teal-500' : 'border-l-[3px] border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-white/[0.05] hover:bg-white/[0.07] cursor-pointer'
+                               : 'bg-teal-50/60 hover:bg-teal-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 py-3.5 pr-10">
+                    {/* Row 1: Avatar + name/car + amount */}
+                    <div className="flex items-center gap-3 mb-2.5">
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt=""
+                                    className={`w-11 h-11 rounded-2xl object-cover ring-2 ${
+                                        isRead ? 'opacity-40 ring-transparent'
+                                               : isIncome ? 'ring-teal-500/30' : 'ring-red-500/30'
+                                    }`}
+                                    onError={e => {
+                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                        (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('style');
+                                    }}
+                                />
+                            ) : null}
+                            <div
+                                className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}
+                                style={{ display: avatarUrl ? 'none' : 'flex' }}
+                            >
+                                {isIncome
+                                    ? <TrendingUpIcon   className={`w-5 h-5 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
+                                    : <TrendingDownIcon className={`w-5 h-5 ${isDark ? 'text-red-400'  : 'text-red-500'}`}  />
+                                }
+                            </div>
+                            {!isRead && (
+                                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-teal-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
+                            )}
+                        </div>
+
+                        {/* Name + car info */}
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[14px] font-semibold leading-tight truncate ${
+                                isRead ? isDark ? 'text-gray-500' : 'text-gray-400'
+                                       : isDark ? 'text-white' : 'text-gray-900'
+                            }`}>
+                                {nameDisplay}
+                            </p>
+                            {(carName || carPlate) && (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <CarIcon className={`w-3 h-3 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                                    {carName && (
+                                        <span className={`text-[11px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            {carName}
+                                        </span>
+                                    )}
+                                    {carPlate && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                                            {carPlate}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
+                            <p className={`text-[15px] font-bold font-mono tabular-nums leading-tight ${
+                                isRead ? isDark ? 'text-gray-600' : 'text-gray-400'
+                                       : isIncome ? 'text-teal-500' : 'text-red-400'
+                            }`}>
+                                {isIncome ? '+' : '−'}{amountDisplay}
+                            </p>
+                            <p className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>UZS</p>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wide ${
+                            isIncome
+                                ? isDark ? 'bg-teal-500/15 text-teal-400' : 'bg-teal-50 text-teal-700'
+                                : isDark ? 'bg-red-500/15 text-red-400'  : 'bg-red-50 text-red-600'
+                        }`}>
+                            {isIncome ? '↑ KIRIM' : '↓ CHIQIM'}
+                        </span>
+                        {method === 'card' && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                <CreditCardIcon className="w-2.5 h-2.5" /> Karta
+                            </span>
+                        )}
+                        {method === 'cash' && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-700'}`}>
+                                <BanknoteIcon className="w-2.5 h-2.5" /> Naqd
+                            </span>
+                        )}
+                        {chequeUrl && (
+                            <a href={chequeUrl} target="_blank" rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition-colors ${isDark ? 'bg-surface-2 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <ReceiptIcon className="w-2.5 h-2.5" /> Chek
+                            </a>
+                        )}
+                    </div>
+
+                    {note && (
+                        <p className={`text-[11px] mb-1.5 truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>📝 {note}</p>
+                    )}
+
+                    <div className={`flex items-center gap-1.5 text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <ClockIcon className="w-3 h-3" />
+                        <span>{formatRelative(notification.createdAt)}</span>
+                        {dateStr && timeStr && <><span>·</span><span className="font-mono">{dateStr}, {timeStr}</span></>}
+                    </div>
+                </div>
+
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
+    // ─── Generic Card ───────────────────────────────────────────────────────
+    const renderDepositWarning = (notification: Notification, isRead: boolean) => {
+        const dt  = (notification as any).deliveryTracking ?? {};
+        const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+        // Resolve license plate: prefer stored value, fall back to live lookup via driverId → assigned car
+        const liveDriver = dt.driverId ? drivers.find(d => d.id === dt.driverId) : undefined;
+        const liveCar = liveDriver ? cars.find(c => c.assignedDriverId === liveDriver.id) : undefined;
+        const resolvedPlate: string | undefined = dt.carPlate || liveCar?.licensePlate;
+        const resolvedCarName: string | undefined = dt.carName || liveCar?.name;
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors border-l-[3px] ${
+                    !isRead ? 'border-amber-500' : 'border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-amber-500/[0.06] hover:bg-amber-500/[0.09] cursor-pointer'
+                                 : 'bg-amber-50/60 hover:bg-amber-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 pt-3 pb-2.5 pr-10">
+                    {/* Top row: badge */}
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                            ⚠ Depozit
+                        </span>
+                        <span className={`ml-auto text-[10px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                            <ClockIcon className="w-3 h-3" />
+                            {formatRelative(notification.createdAt)}
+                        </span>
+                    </div>
+
+                    {/* Driver row */}
+                    <div className="flex items-center gap-2.5">
+                        {/* Avatar */}
+                        {dt.driverId && drivers.find(d => d.id === dt.driverId)?.avatar ? (
+                            <img src={drivers.find(d => d.id === dt.driverId)!.avatar} alt={dt.driverName ?? ''}
+                                className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ${isDark ? 'ring-amber-500/40' : 'ring-amber-200'}`} />
+                        ) : dt.driverAvatar ? (
+                            <img src={dt.driverAvatar} alt={dt.driverName ?? ''}
+                                className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ${isDark ? 'ring-amber-500/40' : 'ring-amber-200'}`} />
+                        ) : (
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-amber-500/15' : 'bg-amber-100'}`}>
+                                <div className="w-5 h-5 opacity-80"><Lottie animationData={depositAnimation} loop={true} /></div>
+                            </div>
+                        )}
+
+                        {/* Driver name + balance */}
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-bold leading-tight truncate ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {dt.driverName ?? notification.title}
+                            </p>
+                            {dt.remainingDeposit !== undefined && (
+                                <p className={`text-[12px] font-black font-mono tabular-nums leading-tight mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                    Qoldiq: {fmt(dt.remainingDeposit)} UZS
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Car strip */}
+                    {resolvedCarName && (
+                        <div className={`mt-2.5 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl ${isDark ? 'bg-white/[0.04] border border-white/[0.06]' : 'bg-gray-50 border border-gray-100'}`}>
+                            <span className={`text-[11px] font-semibold truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {resolvedCarName}
+                            </span>
+                            {resolvedPlate && (
+                                <LicensePlate plate={resolvedPlate} size="sm" />
+                            )}
+                        </div>
+                    )}
+                </div>
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
+    const renderDocumentReminder = (notification: Notification, isRead: boolean) => {
+        const dt = (notification as any).deliveryTracking ?? {};
+        const driver = drivers.find(d => d.id === dt.driverId);
+        const driverName = (dt.driverName as string | undefined) ?? driver?.name ?? notification.title.split(' — ')[0] ?? t('driver', 'Haydovchi');
+        const reminderMs = Number(dt.reminderAtMs ?? dt.expiryMs ?? 0);
+        const locale = t('localeCode', 'uz-UZ');
+        const reminderText = reminderMs
+            ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(reminderMs))
+            : '';
+        const title = t('driverLicenseBellTitle', '{{name}} ishonchnomasi eslatmasi').replace('{{name}}', driverName);
+        const message = t('driverLicenseBellMessage', 'Eslatma kuni: {{date}}.').replace('{{date}}', reminderText);
+
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors border-l-[3px] ${
+                    !isRead ? 'border-amber-500' : 'border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-amber-500/[0.07] hover:bg-amber-500/[0.10] cursor-pointer'
+                               : 'bg-amber-50/70 hover:bg-amber-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 py-3.5 pr-10">
+                    <div className="flex items-start gap-3">
+                        <div className="relative flex-shrink-0">
+                            {driver?.avatar ? (
+                                <img src={driver.avatar} alt="" className={`w-10 h-10 rounded-2xl object-cover ${isRead ? 'opacity-40' : ''}`} />
+                            ) : (
+                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                                    <CalendarIcon className="w-5 h-5" />
+                                </div>
+                            )}
+                            {!isRead && (
+                                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 ${isDark ? 'border-[#171f33]' : 'border-white'}`} />
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-semibold leading-tight ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {title}
+                            </p>
+                            <p className={`text-[11px] leading-relaxed mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                {message}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2">
+                                <span className={`text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-wide ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                                    {t('driverLicenseReminderDueLabel', 'Eslatma')}
+                                </span>
+                                <span className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                    <ClockIcon className="w-3 h-3" />
+                                    {formatRelative(notification.createdAt)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
+    const renderGenericItem = (notification: Notification, isRead: boolean) => {
+        const getTypeIcon = (type: NotificationType) => {
+            const cls = 'w-4 h-4';
+            switch (type) {
+                case 'feature_update': return <ZapIcon      className={cls} />;
+                case 'announcement':   return <BellIcon     className={cls} />;
+                case 'system':         return <SettingsIcon className={cls} />;
+                default:               return <BellIcon     className={cls} />;
+            }
+        };
+        return (
+            <div
+                key={notification.id}
+                onClick={() => !isRead && onMarkAsRead(notification.id)}
+                className={`group relative transition-colors border-l-[3px] ${
+                    !isRead ? 'border-violet-500' : 'border-transparent'
+                } ${
+                    isRead
+                        ? isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'
+                        : isDark ? 'bg-violet-500/[0.05] hover:bg-violet-500/[0.08] cursor-pointer'
+                               : 'bg-violet-50/40 hover:bg-violet-50 cursor-pointer'
+                }`}
+            >
+                <div className="px-4 py-3.5 pr-10">
+                    <div className="flex items-start gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-100'}`}>
+                            {getTypeIcon(notification.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-semibold truncate mb-0.5 ${isRead ? isDark ? 'text-gray-500' : 'text-gray-400' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {notification.title}
+                            </p>
+                            <p className={`text-[11px] leading-relaxed line-clamp-2 mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {notification.message}
+                            </p>
+                            <p className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                <ClockIcon className="w-3 h-3" />
+                                {formatRelative(notification.createdAt)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
+                    className={`absolute top-3 right-2.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                >
+                    <TrashIcon className="w-3 h-3" />
+                </button>
+            </div>
+        );
+    };
+
+    const renderItem = (notification: Notification) => {
+        const isRead = readIds.has(notification.id);
+        if (isPlanReminder(notification))   return renderPlanReminder(notification, isRead);
+        if (isDepositWarning(notification)) return renderDepositWarning(notification, isRead);
+        if (isDocumentReminder(notification)) return renderDocumentReminder(notification, isRead);
+        if (isTransaction(notification))    return renderPaymentItem(notification, isRead);
+        return renderGenericItem(notification, isRead);
+    };
+
+    const clearVisibleNotifications = () => {
+        if (visibleNotificationIds.length === 0) return;
+        onClearAllRead(visibleNotificationIds);
+    };
+
+    // ─── Warnings tab content ───────────────────────────────────────────────
+    const renderWarningsTab = () => {
+        const planItems = warnings.filter(isPlanReminder);
+        const others    = warnings.filter(n => !isPlanReminder(n));
+        const all       = [...planItems, ...others]; // plan reminders first
+        const visible   = all.slice(0, warnPage * PAGE_SIZE);
+        const hasMore   = visible.length < all.length;
+
+        if (all.length === 0) return (
+            <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
+                    <AlertTriangleIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                </div>
+                <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {t('noWarnings')}
+                </p>
+                <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    {t('allDriversOnPlan')}
+                </p>
+            </div>
+        );
+
+        return (
+            <>
+                {/* Summary banner — only when there are plan reminders */}
+                {planItems.length > 0 && (
+                    <div className={`mx-4 mt-3 mb-1 rounded-2xl px-4 py-3 flex items-center justify-between ${
+                        isDark ? 'bg-red-500/[0.08] border border-red-500/[0.15]' : 'bg-red-50 border border-red-100'
+                    }`}>
+                        <div>
+                            <p className={`text-[12px] font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                {t('unpaidDriversCount', { count: planItems.length })}
+                            </p>
+                            <p className={`text-[11px] mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500'}`}>
+                                {t('totalRemaining')}: {fmtAmount(warnStats.totalRemaining)} UZS
+                            </p>
+                        </div>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-500/15' : 'bg-red-100'}`}>
+                            <AlertTriangleIcon className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+                        </div>
+                    </div>
+                )}
+
+                <div className={`divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-black/[0.04]'}`}>
+                    {visible.map(renderItem)}
+                </div>
+
+                {hasMore && (
+                    <button
+                        onClick={() => setWarnPage(p => p + 1)}
+                        className={`w-full py-3 text-[13px] font-medium transition-colors ${
+                            isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.03]'
+                        }`}
+                    >
+                        {t('showMoreNotifications', { count: all.length - visible.length })}
+                    </button>
+                )}
+            </>
+        );
+    };
+
+    // ─── Transactions tab content ───────────────────────────────────────────
+    const renderTransactionsTab = () => {
+        const visible = transactions.slice(0, txPage * PAGE_SIZE);
+        const hasMore = visible.length < transactions.length;
+
+        if (transactions.length === 0) return (
+            <div className="flex flex-col items-center justify-center h-full py-20 px-8 text-center">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
+                    <TrendingUpIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                </div>
+                <p className={`text-[13px] font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {t('noTransfers')}
+                </p>
+                <p className={`text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                    {t('telegramTransfersHint')}
+                </p>
+            </div>
+        );
+
+        return (
+            <>
+                <div className={`divide-y ${isDark ? 'divide-white/[0.05]' : 'divide-black/[0.04]'}`}>
+                    {visible.map(n => renderPaymentItem(n, readIds.has(n.id)))}
+                </div>
+                {hasMore && (
+                    <button
+                        onClick={() => setTxPage(p => p + 1)}
+                        className={`w-full py-3 text-[13px] font-medium transition-colors ${
+                            isDark ? 'text-gray-400 hover:text-white hover:bg-white/[0.04]' : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.03]'
+                        }`}
+                    >
+                        {t('showMoreNotifications', { count: transactions.length - visible.length })}
+                    </button>
+                )}
+            </>
+        );
+    };
+
+    // ─── Sidebar portal ─────────────────────────────────────────────────────
+    const sidebar = isOpen ? createPortal(
+        <>
+            <div
+                onClick={closeSidebar}
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
+                style={{ zIndex: 9998 }}
+            />
+
+            <div
+                className={`fixed top-0 right-0 bottom-0 flex flex-col w-full max-w-[420px] shadow-2xl transition-transform duration-300 ease-out ${
+                    visible ? 'translate-x-0' : 'translate-x-full'
+                }`}
+                style={{
+                    zIndex: 9999,
+                    background: isDark ? '#171f33' : '#faf8ff',
+                }}
+            >
+                {/* Header */}
+                <div className={`flex-shrink-0 px-5 pt-4 pb-0 border-b ${isDark ? 'border-white/[0.08]' : 'border-black/[0.07]'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-surface-2'}`}>
+                                <BellIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                            </div>
+                            <h2 className={`text-[15px] font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
+                                {t('notifications')}
+                            </h2>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={onMarkAllAsRead}
+                                    title={t('markAllAsRead')}
+                                    className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-teal-400 hover:bg-teal-400/10' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
+                                >
+                                    <CheckCheckIcon className="w-4 h-4" />
+                                </button>
+                            )}
+                            {visibleNotificationIds.length > 0 && (
+                                <button
+                                    onClick={clearVisibleNotifications}
+                                    title={t('clearReadNotifications')}
+                                    className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                                >
+                                    <TrashIcon className="w-4 h-4" />
+                                </button>
+                            )}
+                            <button
+                                onClick={closeSidebar}
+                                className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.06]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                            >
+                                <XIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex">
+                        {([
+                            { key: 'warnings' as Tab,     label: t('warnings'), count: unreadWarnings,     total: warnings.length },
+                            { key: 'transactions' as Tab, label: t('transfers'), count: unreadTransactions, total: transactions.length },
+                        ] as const).map(tab => (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`relative flex items-center gap-2 px-1 pb-3 mr-5 text-[13px] font-medium transition-colors ${
+                                    activeTab === tab.key
+                                        ? isDark ? 'text-white' : 'text-gray-900'
+                                        : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                {tab.label}
+                                {/* Badge: always show total, pulse red ring when unread */}
+                                <span className={`relative inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold tabular-nums transition-all duration-200 ${
+                                    tab.count > 0
+                                        ? 'bg-red-500 text-white shadow-[0_0_0_2px_rgba(239,68,68,0.25)]'
+                                        : tab.total > 0
+                                            ? isDark ? 'bg-white/[0.10] text-gray-400' : 'bg-black/[0.07] text-gray-500'
+                                            : isDark ? 'bg-white/[0.05] text-gray-600' : 'bg-black/[0.04] text-gray-400'
+                                }`}>
+                                    {tab.count > 0 ? (tab.count > 99 ? '99+' : tab.count) : (tab.total > 99 ? '99+' : tab.total)}
+                                    {/* Pulse ring on unread */}
+                                    {tab.count > 0 && (
+                                        <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
+                                    )}
+                                </span>
+                                {/* Active underline */}
+                                {activeTab === tab.key && (
+                                    <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-white' : 'bg-gray-900'}`} />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Tab content */}
+                <div className="flex-1 overflow-y-auto">
+                    {activeTab === 'warnings'     ? renderWarningsTab()     : renderTransactionsTab()}
+                </div>
+
+                {/* Footer */}
+                <div className={`flex-shrink-0 px-5 py-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
+                    <p className={`text-center text-[11px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {t('notificationFooter', { count: visibleNotificationIds.length })}
+                    </p>
+                </div>
+            </div>
+        </>,
+        document.body
+    ) : null;
+
+    return (
+        <>
+            <button
+                onClick={openSidebar}
+                className={`relative p-2 rounded-xl transition-colors ${isDark
+                    ? 'hover:bg-white/[0.08] text-gray-400 hover:text-white'
+                    : 'hover:bg-black/[0.06] text-gray-500 hover:text-black'}`}
+                aria-label={t('notifications')}
+            >
+                <BellIcon className="w-5 h-5" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
-            {/* Dropdown Panel */}
-            {isOpen && (
-                <div className={`absolute right-0 mt-2 w-96 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark
-                    ? 'bg-[#111827] border-gray-700/80'
-                    : 'bg-white border-gray-200'
-                }`}>
-                    {/* Header */}
-                    <div className={`px-5 py-4 border-b flex items-center justify-between ${isDark ? 'border-gray-700/80 bg-gray-800/60' : 'border-gray-100 bg-gray-50'}`}>
-                        <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isDark ? 'bg-teal-500/20' : 'bg-teal-50'}`}>
-                                <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                                    />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                    {t('notifications') || 'Notifications'}
-                                </h3>
-                                {unreadCount > 0 && (
-                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        {unreadCount} unread
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {readIds.size > 0 && (
-                                <button
-                                    onClick={onClearAllRead}
-                                    className={`text-xs font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${isDark
-                                        ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10'
-                                        : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
-                                    }`}
-                                >
-                                    <TrashIcon className="w-3 h-3" />
-                                    {t('clear') || 'Clear'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Notification List */}
-                    <div className="max-h-[400px] overflow-y-auto divide-y divide-transparent">
-                        {notifications.length === 0 ? (
-                            <div className={`px-5 py-10 text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                                    <svg className="w-7 h-7 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                                        />
-                                    </svg>
-                                </div>
-                                <p className="text-sm font-medium">{t('noNotifications') || 'No notifications yet'}</p>
-                                <p className="text-xs mt-1 opacity-60">You're all caught up!</p>
-                            </div>
-                        ) : (
-                            notifications.slice(0, 10).map((notification) => {
-                                const isRead = readIds.has(notification.id);
-                                const avatarUrl = (notification as any).deliveryTracking?.driverAvatar;
-                                const amount = parseAmount(notification.title);
-                                const isPayment = notification.type === 'payment_reminder';
-
-                                return (
-                                    <div
-                                        key={notification.id}
-                                        onClick={() => !isRead && onMarkAsRead(notification.id)}
-                                        className={`group relative px-4 py-4 transition-all duration-150 ${isRead
-                                            ? isDark
-                                                ? 'bg-transparent hover:bg-gray-800/30'
-                                                : 'bg-white hover:bg-gray-50'
-                                            : isDark
-                                                ? 'bg-gray-800/50 hover:bg-gray-800/80 cursor-pointer'
-                                                : 'bg-teal-50/60 hover:bg-teal-50 cursor-pointer'
-                                        } ${!isRead ? 'border-l-2 border-teal-500' : 'border-l-2 border-transparent'}`}
-                                    >
-                                        <div className="flex items-start gap-3 pr-6">
-                                            {/* Avatar */}
-                                            <div className="flex-shrink-0 relative">
-                                                {avatarUrl ? (
-                                                    <img
-                                                        src={avatarUrl}
-                                                        alt=""
-                                                        className={`w-11 h-11 rounded-xl object-cover ring-2 ${isRead
-                                                            ? isDark ? 'ring-gray-700' : 'ring-gray-200'
-                                                            : isDark ? 'ring-teal-500/40' : 'ring-teal-400/50'
-                                                        } ${isRead ? 'opacity-60' : ''}`}
-                                                        onError={e => {
-                                                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                                            (e.currentTarget.nextSibling as HTMLElement)?.style?.setProperty('display', 'flex');
-                                                        }}
-                                                    />
-                                                ) : null}
-                                                <div
-                                                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${isDark ? 'bg-gray-700' : 'bg-gray-100'} ${avatarUrl ? 'hidden' : 'flex'}`}
-                                                >
-                                                    {getTypeIcon(notification.type)}
-                                                </div>
-                                                {!isRead && (
-                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full border-2 border-[#111827]" />
-                                                )}
-                                            </div>
-
-                                            {/* Content */}
-                                            <div className="flex-1 min-w-0">
-                                                {isPayment && amount ? (
-                                                    <>
-                                                        {/* Driver name + amount row */}
-                                                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                                                            <span className={`text-sm font-bold truncate ${isRead
-                                                                ? isDark ? 'text-gray-400' : 'text-gray-500'
-                                                                : isDark ? 'text-white' : 'text-gray-900'
-                                                            }`}>
-                                                                {notification.title.replace(/[💵💳]\s*/, '').replace(/\s*—.*$/, '').trim()}
-                                                            </span>
-                                                            <span className={`text-sm font-bold font-mono flex-shrink-0 ${isRead ? 'text-gray-500' : 'text-teal-500'}`}>
-                                                                +{amount}
-                                                            </span>
-                                                        </div>
-                                                        {/* Method pill */}
-                                                        <div className="flex items-center gap-1.5 mb-1">
-                                                            {notification.title.includes('💳') ? (
-                                                                <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                                                                    💳 Card
-                                                                </span>
-                                                            ) : (
-                                                                <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-600'}`}>
-                                                                    💵 Cash
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <p className={`text-sm font-semibold truncate mb-1 ${isRead
-                                                        ? isDark ? 'text-gray-400' : 'text-gray-500'
-                                                        : isDark ? 'text-white' : 'text-gray-900'
-                                                    }`}>
-                                                        {notification.title}
-                                                    </p>
-                                                )}
-
-                                                {/* Message */}
-                                                <p className={`text-xs leading-relaxed line-clamp-2 ${isRead
-                                                    ? isDark ? 'text-gray-600' : 'text-gray-400'
-                                                    : isDark ? 'text-gray-400' : 'text-gray-500'
-                                                }`}>
-                                                    {notification.message}
-                                                </p>
-
-                                                {/* Time */}
-                                                <p className={`text-[11px] mt-1.5 font-medium ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                                                    {formatTime(notification.createdAt)}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Delete on hover */}
-                                        <button
-                                            onClick={e => { e.stopPropagation(); onDeleteNotification(notification.id); }}
-                                            className={`absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 ${isDark
-                                                ? 'bg-gray-900 text-gray-500 hover:text-red-400 hover:bg-red-400/10 border border-gray-700'
-                                                : 'bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 shadow-sm border border-gray-100'
-                                            }`}
-                                        >
-                                            <TrashIcon className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
+            {sidebar}
+        </>
     );
 };
 

@@ -35,9 +35,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className={`rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-300 border ${theme === 'dark' ? 'bg-[#1F2937] border-gray-700' : 'bg-white border-gray-200'
-        }`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div
+        className={`rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-300 border ${theme === 'dark' ? 'border-white/[0.08]' : 'bg-white border-gray-200'}`}
+        style={theme === 'dark' ? { background: '#171f33' } : undefined}
+      >
         <div className={`p-6 ${align === 'left' ? 'text-left' : 'text-center'}`}>
           {showIcon && (
             <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isDanger
@@ -53,7 +55,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <div className={`flex gap-3 ${align === 'left' ? 'justify-end' : 'justify-center'}`}>
             <button
               onClick={onCancel}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-w-[100px] ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-w-[100px] ${theme === 'dark' ? 'bg-surface-2 text-gray-300 hover:bg-white/[0.06]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
               {cancelLabel || t('cancel')}

@@ -1,0 +1,399 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { Car, CarDamage, DamageImage, DamageSeverity, CAR_PARTS } from '../../core/types/car.types';
+import { updateCar } from '../../../services/carsService';
+import { supabase } from '../../../supabase';
+import { useConfirm } from '../../../components/ConfirmContext';
+import { useToast } from '../../../components/ToastNotification';
+import { LicensePlate } from '../../components/ui/LicensePlate';
+
+interface Props {
+    car: Car;
+    allCars: Car[];
+    userRole: 'admin' | 'viewer';
+    adminName: string;
+    theme: 'light' | 'dark';
+    onBack: () => void;
+    onCarChange: (id: string) => void;
+}
+
+async function uploadImg(file: File, carId: string, dmgId: string, idx: number): Promise<string> {
+    const blob: Blob = await new Promise(r => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            let { width: w, height: h } = img;
+            if (w > 1600 || h > 1600) { if (w > h) { h = Math.round(h * 1600 / w); w = 1600; } else { w = Math.round(w * 1600 / h); h = 1600; } }
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            c.getContext('2d')!.drawImage(img, 0, 0, w, h);
+            c.toBlob(b => r(b ?? file), 'image/jpeg', 0.82);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); r(file); };
+        img.src = url;
+    });
+    const path = `${carId}/${dmgId}/${idx}_${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from('car-damages').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+    if (error) throw error;
+    return supabase.storage.from('car-damages').getPublicUrl(path).data.publicUrl;
+}
+
+function fmt(ms: number) {
+    return new Date(ms).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function imgSrc(img: DamageImage) { return img.url ?? img.data ?? ''; }
+
+/** Returns part label — "Boshqa" → crash emoji only */
+function partDisplay(partKey: string): { icon: string; label: string } {
+    if (partKey === 'other') return { icon: '💥', label: '' };
+    const p = CAR_PARTS.find(x => x.key === partKey);
+    return p ? { icon: p.icon, label: p.label } : { icon: '💥', label: '' };
+}
+
+export default function CarDamageDetail({ car, allCars, userRole, adminName, theme, onBack, onCarChange }: Props) {
+    const { t } = useTranslation();
+    const isDark = theme === 'dark';
+    const damages = car.damage ?? [];
+    const confirm = useConfirm();
+    const { addToast } = useToast();
+
+    const [desc, setDesc]       = useState('');
+    const [files, setFiles]     = useState<{ file: File; prev: string }[]>([]);
+    const [saving, setSaving]   = useState(false);
+    const [preview, setPreview] = useState<string | null>(null);
+    const [showForm, setShowForm] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    const reset = () => {
+        setDesc('');
+        files.forEach(f => URL.revokeObjectURL(f.prev));
+        setFiles([]);
+    };
+
+    const save = useCallback(async () => {
+        if (!desc.trim() && files.length === 0) return;
+        setSaving(true);
+        try {
+            const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            const images: DamageImage[] = files.length
+                ? await Promise.all(files.map((f, i) => uploadImg(f.file, car.id, id, i).then(url => ({ name: f.file.name, type: 'image/jpeg', url }))))
+                : [];
+            const record: CarDamage = { id, partKey: 'other', severity: 'minor', description: desc.trim(), images, recordedAt: Date.now(), recordedBy: adminName };
+            await updateCar(car.id, { damage: [record, ...damages] });
+            reset(); setShowForm(false);
+        } catch (e: any) { addToast('error', 'Xatolik: ' + (e?.message ?? 'Nomalum xatolik')); }
+        finally { setSaving(false); }
+    }, [car.id, damages, desc, files, adminName]);
+
+    const del = useCallback(async (dmgId: string) => {
+        if (!await confirm({ title: t('delete', "O'chirish"), message: t('deleteConfirmDamage', "Haqiqatan ham bu shikast yozuvini o'chirmoqchimisiz?"), isDanger: true })) return;
+        await updateCar(car.id, { damage: damages.filter(d => d.id !== dmgId) });
+    }, [car.id, damages, confirm, t]);
+
+    const removePhoto = useCallback(async (dmgId: string, photoIdx: number) => {
+        if (!await confirm({ title: t('delete', "O'chirish"), message: "Haqiqatan ham bu rasmni o'chirmoqchimisiz?", isDanger: true })) return;
+        const d = damages.find(x => x.id === dmgId);
+        if (!d) return;
+        const newImages = [...d.images];
+        newImages.splice(photoIdx, 1);
+        const next = damages.map(x => x.id === dmgId ? { ...x, images: newImages } : x);
+        await updateCar(car.id, { damage: next });
+    }, [car.id, damages, confirm, t]);
+
+    const totalDmg = damages.length;
+    const hasSevere = damages.some(d => d.severity === 'severe');
+
+    /* ─── classes ─── */
+    const card    = isDark ? 'bg-white/[0.04] border border-white/[0.07]' : 'bg-white border border-gray-200/80';
+    const muted   = isDark ? 'text-white/35' : 'text-gray-400';
+    const label   = isDark ? 'text-white/50' : 'text-gray-500';
+    const bold    = isDark ? 'text-white'    : 'text-gray-900';
+    const inpCls  = isDark
+        ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-white/20 focus:border-white/20'
+        : 'bg-gray-50/80 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-gray-300';
+
+    return (
+        <div className="flex flex-col gap-5 pb-8">
+
+            {/* ── HERO ── */}
+            <div className="relative w-full overflow-hidden rounded-[24px] shadow-sm ring-1 ring-black/5" style={{ height: 220 }}>
+                {car.avatar
+                    ? <img src={car.avatar} alt={car.name} className="w-full h-full object-cover" />
+                    : <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-[#151c2c]' : 'bg-gray-100'}`}><span className="text-7xl opacity-10 grayscale">🚗</span></div>
+                }
+                {/* gradient layers */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                {/* back button */}
+                <button onClick={onBack}
+                    className="absolute top-4 left-4 flex items-center justify-center w-10 h-10 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all active:scale-95 border border-white/10 group">
+                    <svg className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+
+                {/* damage counter badge */}
+                {totalDmg > 0 && (
+                    <div className={`absolute top-4 right-4 flex items-center gap-2 px-4 py-2 rounded-[14px] backdrop-blur-md text-[13px] font-semibold border shadow-lg ${hasSevere ? 'bg-red-500/20 border-red-400/30 text-red-200' : 'bg-white/10 border-white/10 text-white'}`}>
+                        {hasSevere && <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse inline-block shadow-[0_0_8px_rgba(248,113,113,0.8)]" />}
+                        {totalDmg} {t('damageCountPlural', 'ta shikast')}
+                    </div>
+                )}
+
+                {/* car info */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
+                    <div>
+                        <p className="text-white/60 text-[11px] font-bold uppercase tracking-[0.25em] mb-1.5 drop-shadow-md">{t('carLabel', 'Avtomobil')}</p>
+                        <h1 className="text-white font-extrabold text-[32px] leading-none tracking-tight drop-shadow-lg">{car.name}</h1>
+                        <div className="mt-3 flex items-center gap-3">
+                            <div>
+                                <LicensePlate plate={car.licensePlate} size="md" />
+                            </div>
+                            {totalDmg === 0 && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-[13px] font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />🛡️ Toza
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── BODY ── */}
+            <div className="flex flex-col gap-6 w-full">
+
+                {/* ── HEADER & FORM ── */}
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {t('damageHistory', 'Shikastlar tarixi')}
+                        </h2>
+                        {userRole === 'admin' && !showForm && (
+                            <button onClick={() => setShowForm(true)}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[14px] font-bold transition-all active:scale-[0.98] ${isDark ? 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20' : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'}`}>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                <span>{t('addNewDamageBtn', "Yangi shikast").replace(/^\+\s*/, '')}</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {userRole === 'admin' && showForm && (
+                        <div className={`w-full lg:max-w-2xl rounded-2xl overflow-hidden shadow-sm ${card}`}>
+                            {/* form header */}
+                            <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-white/[0.05]' : 'border-gray-100'}`}>
+                                <p className={`text-[13px] font-semibold ${bold}`}>💥 {t('newDamageTitle', 'Yangi shikast')}</p>
+                                <button onClick={() => { reset(); setShowForm(false); }}
+                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 ${isDark ? 'text-white/30 hover:text-white/70 hover:bg-white/[0.08]' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+
+                            <div className="p-4 space-y-4">
+                                {/* Photo upload */}
+                                <div>
+                                    <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${label}`}>{t('damagePhotos', 'Rasmlar')} · {files.length}/8</p>
+                                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                                        {files.map((f, i) => (
+                                            <div key={i} className="relative aspect-square rounded-xl overflow-hidden group">
+                                                <img src={f.prev} alt="" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreview(f.prev)} />
+                                                <button type="button"
+                                                    onClick={() => setFiles(p => { URL.revokeObjectURL(p[i].prev); return p.filter((_, j) => j !== i); })}
+                                                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-lg transition-opacity">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {files.length < 8 && (
+                                            <button type="button" onClick={() => fileRef.current?.click()}
+                                                className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${isDark ? 'border-white/10 text-white/20 hover:border-white/25 hover:text-white/50' : 'border-gray-200 text-gray-300 hover:border-gray-400 hover:text-gray-400'}`}>
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input ref={fileRef} type="file" accept="image/jpeg, image/png, image/webp" multiple className="hidden"
+                                        onChange={e => {
+                                            const f = Array.from(e.target.files ?? []).slice(0, 8 - files.length);
+                                            e.target.value = '';
+                                            setFiles(p => [...p, ...f.map(x => ({ file: x, prev: URL.createObjectURL(x) }))]);
+                                        }} />
+                                </div>
+
+                                {/* Comment */}
+                                <div>
+                                    <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${label}`}>{t('damageDesc', 'Izoh')} <span className={muted}>({t('optional', 'ixtiyoriy')})</span></p>
+                                    <textarea rows={3}
+                                        placeholder={t('damageShortDesc', 'Shikast haqida yozing…')}
+                                        value={desc}
+                                        onChange={e => setDesc(e.target.value)}
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-[13px] outline-none resize-none transition-colors ${inpCls}`} />
+                                </div>
+
+                                {/* Save */}
+                                <button type="button" onClick={save}
+                                    disabled={saving || (!desc.trim() && files.length === 0)}
+                                    className="w-full sm:w-auto sm:px-10 py-3 rounded-xl text-[14px] font-semibold bg-gray-900 hover:bg-black disabled:opacity-30 text-white transition-all active:scale-[0.98] dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+                                    {saving
+                                        ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('savingProgress', 'Saqlanmoqda…')}</span>
+                                        : t('saveBtnWithIcon', 'Saqlash')
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── DAMAGE LIST ── */}
+                <div className="flex-1 min-w-0 w-full">
+                    {damages.length === 0 ? (
+                        <div className={`rounded-[24px] border-2 border-dashed flex flex-col items-center justify-center py-16 md:py-28 text-center transition-colors ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-gray-200 bg-gray-50/50'}`}>
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-5 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-100'}`}>
+                                <span className="text-4xl">🛡️</span>
+                            </div>
+                            <h3 className={`text-[18px] font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Avtomobil soz holatda</h3>
+                            <p className={`text-[14px] max-w-[250px] ${muted}`}>{t('noDamageRecords', "Hozircha hech qanday shikast yozuvlari kiritilmagan.")}</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-5 w-full">
+                            {damages.map((d) => {
+                                const { icon } = partDisplay(d.partKey);
+                                const showSevTag = d.severity !== 'minor';
+
+                                // Determine optimal grid layout based on number of images
+                                const len = d.images.length;
+                                let gridCls = 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
+                                if (len === 1) gridCls = 'grid-cols-1 sm:grid-cols-2';
+                                else if (len === 2) gridCls = 'grid-cols-2';
+                                else if (len === 3) gridCls = 'grid-cols-2 sm:grid-cols-3';
+
+                                return (
+                                    <div key={d.id} className={`w-full rounded-[24px] overflow-hidden transition-all flex flex-col group ${card} hover:shadow-lg hover:border-gray-300 dark:hover:border-white/20`}>
+                                        {/* ── image gallery top ── */}
+                                        {d.images.length > 0 && (
+                                            <div className="p-3 pb-0">
+                                                <div className={`grid gap-2 w-full rounded-[18px] overflow-hidden ${gridCls}`}>
+                                                    {d.images.map((img, i) => {
+                                                        const s = imgSrc(img);
+                                                        if (!s) return null;
+                                                        return (
+                                                            <div key={i} className={`relative w-full overflow-hidden focus:outline-none rounded-xl group ${len === 1 ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-square sm:aspect-[4/3]'}`}>
+                                                                <button onClick={() => setPreview(s)} className="w-full h-full text-left">
+                                                                    <img
+                                                                        src={s} alt=""
+                                                                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                                                        loading="lazy"
+                                                                    />
+                                                                </button>
+                                                                {userRole === 'admin' && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); removePhoto(d.id, i); }}
+                                                                        title="Rasmni o'chirish"
+                                                                        className="absolute top-2 right-2 w-7 h-7 bg-red-500/90 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all z-10 backdrop-blur-sm"
+                                                                    >
+                                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+
+                                        {/* card body */}
+                                        <div className="px-5 py-5 flex-1 flex flex-col">
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center text-xl shadow-inner ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                                        {icon}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                                        <span className={`text-[11px] font-bold uppercase tracking-wider ${muted}`}>{fmt(d.recordedAt)}</span>
+                                                        {showSevTag && (
+                                                            <span className={`self-start inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                                                                d.severity === 'severe'
+                                                                    ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
+                                                                    : isDark ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-600'
+                                                            }`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${d.severity === 'severe' ? 'bg-red-400' : 'bg-orange-400'}`} />
+                                                                {d.severity === 'severe' ? 'Jiddiy' : "O'rtacha"}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {userRole === 'admin' && (
+                                                    <button onClick={() => del(d.id)}
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${isDark ? 'text-white/20 hover:bg-red-500/20 hover:text-red-400' : 'text-gray-300 hover:bg-red-50 hover:text-red-500'}`}>
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {d.description && (
+                                                <p className={`text-[14px] leading-relaxed flex-1 ${bold}`}>{d.description}</p>
+                                            )}
+
+                                            {/* meta row */}
+                                            {d.recordedBy && (
+                                                <div className={`flex items-center gap-2 mt-4 text-[12px] font-medium pt-4 border-t ${isDark ? 'border-white/10 text-white/40' : 'border-gray-100 text-gray-500'}`}>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+                                                        {d.recordedBy[0].toUpperCase()}
+                                                    </div>
+                                                    <span>{d.recordedBy}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ── FULLSCREEN PREVIEW ── */}
+            {preview && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 backdrop-blur-md" onClick={() => setPreview(null)}>
+                    
+                    {/* Top Actions */}
+                    <div className="absolute top-4 right-4 flex items-center gap-3 z-[100000]" onClick={e => e.stopPropagation()}>
+                        <button onClick={async () => {
+                            try {
+                                const res = await fetch(preview);
+                                const blob = await res.blob();
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(blob);
+                                a.download = `shikast_rasmi_${Date.now()}.jpg`;
+                                a.click();
+                            } catch(e) { window.open(preview, '_blank'); }
+                        }}
+                            className="flex items-center gap-2 px-4 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-[13px] backdrop-blur-md border border-white/10 transition-all active:scale-90">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            {t('download', 'Yuklab olish')}
+                        </button>
+
+                        <button onClick={() => setPreview(null)}
+                            className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 backdrop-blur-md border border-white/10">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    {/* Image Container - maximized */}
+                    <div className="w-full h-full p-0 md:p-4 flex items-center justify-center">
+                        <img 
+                            src={preview} 
+                            alt="" 
+                            className="w-full h-full object-contain rounded-xl shadow-2xl" 
+                            onClick={e => e.stopPropagation()} 
+                        />
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+}

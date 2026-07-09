@@ -1,34 +1,59 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon } from './Icons';
+import { XIcon, UsersIcon, SearchIcon, CheckIcon, ChevronDownIcon, CarIcon, CalendarIcon, RefreshIcon } from './Icons';
 import DatePicker from './DatePicker';
 import { Driver, Transaction, TransactionType, Car } from '../src/core/types';
 import { PaymentStatus } from '../src/core/types/transaction.types';
+import { useToast } from './ToastNotification';
 import { toDateKey } from '../services/daysOffService';
+import { setDriverDayOverride, clearDriverDayOverride, deleteTransactionsBatch } from '../services/firestoreService';
+import { calcDriverFinance } from '../src/features/drivers/utils/debtUtils';
+import { getPlanForDriverDate } from '../src/features/drivers/utils/driverPlanHistory';
+import Lottie from 'lottie-react';
+import cardAnimation from '../Images/card.json';
+import restAnimation from '../Images/rest.json';
+import chequeAnimation from '../Images/cheque.json';
+import depositAnimation from '../Images/deposit.json';
+import {
+  buildExpenseCategoryList,
+  DEFAULT_EXPENSE_CATEGORIES,
+  deleteCustomExpenseCategory,
+  ExpenseCategoryDefinition,
+  readStoredExpenseCategories,
+  resolveExpenseCategory,
+  saveCustomExpenseCategory,
+} from '../src/features/finance/utils/expenseCategories';
 
 type PaymentMethod = 'cash' | 'card';
 type ExpenseTarget = 'driver' | 'car' | 'other';
 
-const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
+const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: any }[] = [
   { id: 'cash', label: 'Naqd',  icon: '💵' },
-  { id: 'card', label: 'Karta', icon: '💳' },
+  { id: 'card', label: 'Karta', icon: <div className="w-8 h-8 flex items-center justify-center"><Lottie animationData={cardAnimation} loop={true} /></div> },
 ];
 
-const OTHER_CATEGORIES = [
-  { icon: '⛽', label: 'Benzin'       },
-  { icon: '🔧', label: 'Ehtiyot qism' },
-  { icon: '🔩', label: 'Ta\'mirlash'  },
-  { icon: '🚨', label: 'Jarima'       },
-  { icon: '💡', label: 'Kommunal'     },
-  { icon: '🏢', label: 'Ijara'        },
-  { icon: '🛒', label: 'Xarid'        },
-  { icon: '📝', label: 'Boshqa'       },
+const CUSTOM_CATEGORY_ICONS = [
+  '📦', '🧾', '💳', '💵', '🏦', '🪙', '📄', '🧮',
+  '⛽', '🛞', '🧽', '🧴', '🛠️', '🔧', '⚙️', '🔩',
+  '🚗', '🚕', '🚚', '🧰', '🪛', '🔋', '💡', '🧯',
+  '🏢', '🏠', '🛒', '🧺', '🍽️', '☕', '📱', '🌐',
+  '🚨', '⚠️', '✅', '❌', '⭐', '📌', '🇺🇿', '➕',
 ];
+const fmtInputNumber = (v: string) => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+const findDriverIdForTransaction = (tx: Transaction, drivers: Driver[]) => {
+  if (tx.driverId) return tx.driverId;
+  const normalizedName = tx.driverName?.trim().toLocaleLowerCase();
+  if (!normalizedName) return '';
+  const matches = drivers.filter(d => d.name.trim().toLocaleLowerCase() === normalizedName);
+  return matches.length === 1 ? matches[0].id : '';
+};
 
 interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<Transaction, 'id'>, id?: string) => void;
+  onSubmit: (data: Omit<Transaction, 'id'>, id?: string) => void | Promise<void>;
   drivers: Driver[];
   cars?: Car[];
   transactions?: Transaction[];
@@ -38,15 +63,18 @@ interface FinancialModalProps {
   initialDriverId?: string;
   initialDate?: Date;
   initialTransaction?: Transaction;
+  initialIsDepositTopup?: boolean;
+  initialShowPlanException?: boolean;
 }
 
 const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen, onClose, onSubmit,
   drivers, cars = [], transactions = [],
   theme, fleetId = '',
-  initialType, initialDriverId, initialDate, initialTransaction,
+  initialType, initialDriverId, initialDate, initialTransaction, initialIsDepositTopup, initialShowPlanException,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { addToast } = useToast();
   const isDark = theme === 'dark';
 
   const [type,          setType]          = useState<TransactionType>(initialType || TransactionType.INCOME);
@@ -57,6 +85,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [carSearch,     setCarSearch]     = useState('');
   const [isDriverOpen,  setIsDriverOpen]  = useState(false);
   const [isCarOpen,     setIsCarOpen]     = useState(false);
+  
+  // Specific financial states
+  const [useDeposit,     setUseDeposit]     = useState(false);
+  const [isDepositTopup, setIsDepositTopup] = useState(false);
+  
   const [amount,        setAmount]        = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [description,   setDescription]   = useState('');
@@ -64,16 +97,31 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [chequeImage,   setChequeImage]   = useState<string | null>(null);
   const [chequeError,   setChequeError]   = useState<string | null>(null);
+  const [selectedExpenseCategoryId, setSelectedExpenseCategoryId] = useState(DEFAULT_EXPENSE_CATEGORIES[0].id);
+  const [customCategories, setCustomCategories] = useState<ExpenseCategoryDefinition[]>([]);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState(CUSTOM_CATEGORY_ICONS[0]);
+  const [planExceptionEnabled, setPlanExceptionEnabled] = useState(false);
+  const [planExceptionAmount, setPlanExceptionAmount] = useState('');
+  const [planExceptionDisplayAmount, setPlanExceptionDisplayAmount] = useState('');
+  const [isRestoringDay, setIsRestoringDay] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const chequeRef = useRef<HTMLInputElement>(null);
 
   // ── Init / reset ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
+      const storedCategories = readStoredExpenseCategories(fleetId);
+      const availableCategories = buildExpenseCategoryList(transactions, storedCategories);
+      setCustomCategories(storedCategories);
+
       if (initialTransaction) {
         setType(initialTransaction.type);
-        const tgt: ExpenseTarget = initialTransaction.driverId ? 'driver' : initialTransaction.carId ? 'car' : 'other';
+        const resolvedDriverId = findDriverIdForTransaction(initialTransaction, drivers);
+        const tgt: ExpenseTarget = resolvedDriverId ? 'driver' : initialTransaction.carId ? 'car' : 'other';
         setExpenseTarget(tgt);
-        setDriverId(initialTransaction.driverId || '');
+        setDriverId(resolvedDriverId);
         setCarId(initialTransaction.carId || '');
         setAmount(initialTransaction.amount.toString());
         setDisplayAmount(fmtDisplay(initialTransaction.amount.toString()));
@@ -81,28 +129,43 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
         setDate(new Date(initialTransaction.timestamp));
         setPaymentMethod((initialTransaction as any).paymentMethod || 'cash');
         setChequeImage((initialTransaction as any).chequeImage || null);
+        setUseDeposit(Boolean(initialTransaction.useDeposit));
         setIsDriverOpen(false);
         setIsCarOpen(false);
+        if (initialTransaction.type === TransactionType.EXPENSE) {
+          const category = resolveExpenseCategory(initialTransaction, availableCategories);
+          setSelectedExpenseCategoryId(category?.id ?? DEFAULT_EXPENSE_CATEGORIES[0].id);
+        } else {
+          setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+        }
       } else {
         setType(initialType || TransactionType.INCOME);
         if (initialDriverId) setDriverId(initialDriverId);
         if (initialDate)     setDate(initialDate);
+        if (initialIsDepositTopup) setIsDepositTopup(true);
         setIsDriverOpen(!initialDriverId);
         setDriverSearch('');
+        setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
       }
     }
-  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction]);
+  }, [isOpen, initialType, initialDriverId, initialDate, initialTransaction?.id, initialIsDepositTopup, fleetId, drivers]);
 
   useEffect(() => {
     if (!isOpen) {
+      setIsSubmitting(false);
       setAmount(''); setDisplayAmount(''); setDescription('');
       setType(TransactionType.INCOME); setDate(new Date());
       setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
-      setExpenseTarget('driver');
-    } else if (isOpen && drivers.length > 0) {
-      if (!driverId || !drivers.find(d => d.id === driverId)) setDriverId(drivers[0].id);
+      setExpenseTarget('driver'); setUseDeposit(false);
+      setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+      setIsAddingCategory(false); setNewCategoryLabel(''); setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+    } else if (isOpen && drivers.length > 0 && !initialTransaction) {
+      if (!driverId || !drivers.find(d => d.id === driverId)) {
+        // Only fall back to first driver when there's no explicit initial driver
+        if (!initialDriverId) setDriverId(drivers[0].id);
+      }
     }
-  }, [isOpen, drivers, driverId]);
+  }, [isOpen, drivers, driverId, initialDriverId, initialTransaction]);
 
   // ── Cheque paste ─────────────────────────────────────────────────────────────
   const processImageFile = useCallback((file: File) => {
@@ -126,7 +189,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
   }, [isOpen, paymentMethod, processImageFile]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const fmtDisplay = (v: string) => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const fmtDisplay = fmtInputNumber;
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,9 +198,45 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     setDisplayAmount(fmtDisplay(raw));
   };
 
+  const handlePlanExceptionAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setPlanExceptionAmount(raw);
+    setPlanExceptionDisplayAmount(fmtDisplay(raw));
+  };
+
   // ── Derived ──────────────────────────────────────────────────────────────────
   const selectedDriver  = drivers.find(d => d.id === driverId) ?? null;
   const selectedCar     = cars.find(c => c.id === carId) ?? null;
+  const selectedDriverCar = selectedDriver
+    ? (cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null)
+    : null;
+  const selectedDateKey = toDateKey(date);
+  const existingDayOverride = selectedDriver?.dayOverrides?.[selectedDateKey];
+  const hasExistingCustomPlan = existingDayOverride?.type === 'DISCOUNT' && typeof existingDayOverride.customPlan === 'number';
+  const standardPlanForDate = selectedDriver ? getPlanForDriverDate(selectedDriver, date, selectedDriverCar) : 0;
+  const showPlanExceptionSection = Boolean(selectedDriver && type !== TransactionType.EXPENSE);
+  const isPlanMarkerType = type === TransactionType.DAY_OFF || type === TransactionType.NOT_WORKING;
+  const dayMarkerTransactions = useMemo(() => {
+    if (!selectedDriver) return [];
+    return transactions.filter(tx =>
+      tx.driverId === selectedDriver.id &&
+      tx.status !== PaymentStatus.DELETED &&
+      (tx.status as string) !== 'DELETED' &&
+      (tx.type === TransactionType.DAY_OFF || tx.type === TransactionType.NOT_WORKING) &&
+      toDateKey(new Date(tx.timestamp)) === selectedDateKey
+    );
+  }, [selectedDriver?.id, selectedDateKey, transactions]);
+  const hasRestorableDayMarker = Boolean(
+    selectedDriver &&
+    (
+      dayMarkerTransactions.length > 0 ||
+      existingDayOverride?.type === 'OFF' ||
+      existingDayOverride?.type === 'NOT_WORKING'
+    )
+  );
+  const restoreMarkerLabel = dayMarkerTransactions.some(tx => tx.type === TransactionType.NOT_WORKING) || existingDayOverride?.type === 'NOT_WORKING'
+    ? t('notWorkingTitle', 'Ishlamagan kun')
+    : t('dayOffTitle', 'Dam olish kuni');
   const filteredDrivers = drivers.filter(d =>
     d.name.toLowerCase().includes(driverSearch.toLowerCase()) ||
     (d.carModel ?? '').toLowerCase().includes(driverSearch.toLowerCase()) ||
@@ -147,112 +246,335 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
     c.name.toLowerCase().includes(carSearch.toLowerCase()) ||
     c.licensePlate.toLowerCase().includes(carSearch.toLowerCase())
   );
+  const expenseCategories = useMemo(
+    () => buildExpenseCategoryList([], customCategories),
+    [customCategories],
+  );
+  const selectedExpenseCategory =
+    expenseCategories.find(category => category.id === selectedExpenseCategoryId) ?? DEFAULT_EXPENSE_CATEGORIES[0];
+
+  const handleCreateCategory = () => {
+    const label = newCategoryLabel.trim();
+    if (!label) {
+      addToast('error', t('categoryRequiredToast', 'Kategoriya nomini kiriting'));
+      return;
+    }
+
+    try {
+      const result = saveCustomExpenseCategory(fleetId, label, newCategoryIcon.trim() || CUSTOM_CATEGORY_ICONS[0]);
+      setCustomCategories(result.categories);
+      setSelectedExpenseCategoryId(result.category.id);
+      setNewCategoryLabel('');
+      setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+      setIsAddingCategory(false);
+      addToast(
+        result.created ? 'success' : 'info',
+        result.created
+          ? t('categoryCreated', "Kategoriya qo'shildi")
+          : t('categoryAlreadyExists', 'Bu kategoriya allaqachon bor'),
+      );
+    } catch {
+      addToast('error', t('categoryRequiredToast', 'Kategoriya nomini kiriting'));
+    }
+  };
+
+  const handleCancelCategoryCreate = () => {
+    setIsAddingCategory(false);
+    setNewCategoryLabel('');
+    setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+  };
+
+  const handleDeleteCategory = (category: ExpenseCategoryDefinition) => {
+    if (!category.custom || !category.id.startsWith('custom:')) return;
+
+    const nextCategories = deleteCustomExpenseCategory(fleetId, category.id);
+    setCustomCategories(nextCategories);
+    if (selectedExpenseCategoryId === category.id) {
+      setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+    }
+    addToast('success', t('categoryDeleted', 'Kategoriya olib tashlandi'));
+  };
 
   const driverDebtInfo = useMemo(() => {
     if (!selectedDriver || transactions.length === 0) return null;
     const txs = transactions.filter(tx => tx.driverId === selectedDriver.id && tx.status !== PaymentStatus.DELETED);
     const debt = txs.filter(tx => tx.type === TransactionType.DEBT).reduce((s, tx) => s + Math.abs(tx.amount), 0);
     if (!debt) return null;
-    const income = txs.filter(tx => tx.type === TransactionType.INCOME).reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    const income = txs.filter(tx => tx.type === TransactionType.INCOME && tx.category !== 'deposit_topup').reduce((s, tx) => s + Math.abs(tx.amount), 0);
     return { totalDebt: debt, remaining: Math.max(0, debt - income) };
   }, [selectedDriver, transactions]);
 
+  // Deposit info for non-salary drivers (Standard and Lease-to-own)
+  const depositInfo = useMemo(() => {
+    if (!selectedDriver) return null;
+    // Salary drivers have their own "Maoshdan ushlab qolish" toggle logic, so we hide deposit for them
+    // to prevent toggle conflicts. Arenda and Standard drivers will see "Depozitdan foydalanish".
+    if ((selectedDriver.driverType ?? 'deposit') === 'salary') return null;
+    
+    const driverCar = cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null;
+    const finance = calcDriverFinance(selectedDriver, driverCar, transactions);
+    return {
+      remaining: finance.remainingDeposit,
+      initial: finance.depositAmount,
+    };
+  }, [selectedDriver, cars, transactions]);
+
+  // Salary info for salary-type drivers — current month's net salary
+  const salaryInfo = useMemo(() => {
+    if (!selectedDriver) return null;
+    if ((selectedDriver.driverType ?? 'deposit') !== 'salary') return null;
+    const driverCar = cars.find(c => c.assignedDriverId === selectedDriver.id && !c.isDeleted) ?? null;
+    const finance = calcDriverFinance(selectedDriver, driverCar, transactions);
+    const currentMk = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const currentMonth = finance.months.find(m => m.monthKey === currentMk);
+    return {
+      netSalary: currentMonth?.netSalary ?? finance.salaryAmount,
+      gross: finance.salaryAmount,
+    };
+  }, [selectedDriver, cars, transactions]);
+
+  // Unified: whichever is non-null
+  const paymentSourceInfo: { type: 'deposit' | 'salary'; balance: number; gross?: number } | null =
+    depositInfo !== null
+      ? { type: 'deposit', balance: depositInfo.remaining }
+      : salaryInfo !== null
+      ? { type: 'salary', balance: salaryInfo.netSalary, gross: salaryInfo.gross }
+      : null;
+
+  useEffect(() => {
+    if (!isOpen || !selectedDriver) return;
+
+    const existingCustom = selectedDriver.dayOverrides?.[selectedDateKey];
+    const hasCustom = existingCustom?.type === 'DISCOUNT' && typeof existingCustom.customPlan === 'number';
+    const amountValue = hasCustom ? String(existingCustom.customPlan) : '';
+
+    setPlanExceptionEnabled(hasCustom);
+    setPlanExceptionAmount(amountValue);
+    setPlanExceptionDisplayAmount(fmtDisplay(amountValue));
+  }, [isOpen, selectedDriver?.id, selectedDateKey, initialShowPlanException]);
+
   if (!isOpen) return null;
+
+  const handleRestoreStandardDay = async () => {
+    if (!selectedDriver || !hasRestorableDayMarker) return;
+
+    setIsRestoringDay(true);
+    try {
+      const markerIds = dayMarkerTransactions.map(tx => tx.id).filter(Boolean);
+      if (markerIds.length > 0) {
+        await deleteTransactionsBatch(
+          markerIds,
+          { adminName: 'Admin', count: markerIds.length, totalAmount: 0 },
+          fleetId
+        );
+      }
+      if (existingDayOverride?.type === 'OFF' || existingDayOverride?.type === 'NOT_WORKING') {
+        await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
+      }
+      addToast('success', t('restoreStandardDaySuccess', 'Kun standart rejaga qaytarildi'));
+      resetAndClose(true);
+    } catch (error) {
+      console.error('Failed to restore standard day', error);
+      addToast('error', t('restoreStandardDayError', 'Kunni tiklashda xatolik yuz berdi'));
+    } finally {
+      setIsRestoringDay(false);
+    }
+  };
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     // Validation
     if (type === TransactionType.EXPENSE) {
-      if (expenseTarget === 'driver' && (!driverId || !drivers.find(d => d.id === driverId))) return;
-      if (expenseTarget === 'car'    && (!carId    || !cars.find(c => c.id === carId)))       return;
-      if (!description.trim()) return;
+      if (expenseTarget === 'driver' && (!driverId || !drivers.find(d => d.id === driverId))) {
+        addToast('error', t('selectDriverToast', 'Haydovchini tanlang'));
+        return;
+      }
+      if (expenseTarget === 'car' && !carId) {
+        addToast('error', t('selectCarToast', 'Mashinani tanlang'));
+        return;
+      }
+      if (!description.trim()) {
+        addToast('error', t('commentRequiredToast', 'Izoh kiritish majburiy'));
+        return;
+      }
     } else {
-      if (!driverId || !drivers.find(d => d.id === driverId)) return;
+      if (!driverId) {
+        addToast('error', t('selectDriverToast', 'Haydovchini tanlang'));
+        return;
+      }
     }
 
     let finalAmount = Number(amount);
-    if (type === TransactionType.DAY_OFF) finalAmount = 0;
-    if (type !== TransactionType.DAY_OFF && (isNaN(finalAmount) || finalAmount <= 0)) return;
+    if (type === TransactionType.DAY_OFF || type === TransactionType.NOT_WORKING) finalAmount = 0;
+    if (type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (isNaN(finalAmount) || finalAmount <= 0)) {
+        addToast('error', t('enterAmountToast', 'Summani kiriting (noldan katta bo\'lishi kerak)'));
+        return;
+    }
     if (paymentMethod === 'card' && !chequeImage) {
-      setChequeError("Karta orqali to'lovda chek rasmi talab qilinadi");
+      setChequeError(t('cardImageRequiredToast', "Karta orqali to'lovda chek rasmi talab qilinadi"));
       return;
     }
+    if (showPlanExceptionSection && type === TransactionType.INCOME && planExceptionEnabled) {
+      const customPlan = Number(planExceptionAmount);
+      if (!planExceptionAmount || isNaN(customPlan) || customPlan < 0) {
+        addToast('error', t('customDailyPlanAmountToast', 'Maxsus kunlik reja summasini kiriting'));
+        return;
+      }
+    }
 
-    const timestamp = new Date(date);
-    const now = new Date();
-    timestamp.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    setIsSubmitting(true);
+    try {
+      const timestamp = new Date(date);
+      const timeSource = initialTransaction ? new Date(initialTransaction.timestamp) : new Date();
+      timestamp.setHours(timeSource.getHours(), timeSource.getMinutes(), timeSource.getSeconds(), timeSource.getMilliseconds());
 
-    const entityFields = type === TransactionType.EXPENSE
-      ? expenseTarget === 'driver' ? { driverId }
-        : expenseTarget === 'car'  ? { carId }
-        : {}
-      : { driverId };
+      const driverEntity = selectedDriver
+        ? {
+            driverId: selectedDriver.id,
+            driverName: selectedDriver.name,
+            carId: initialTransaction?.driverId === selectedDriver.id
+              ? initialTransaction.carId ?? undefined
+              : selectedDriverCar?.id,
+            carName: initialTransaction?.driverId === selectedDriver.id
+              ? initialTransaction.carName ?? undefined
+              : selectedDriverCar ? `${selectedDriverCar.name} — ${selectedDriverCar.licensePlate}` : undefined,
+          }
+        : { driverId };
+      const carEntity = selectedCar
+        ? { driverId: null, driverName: null, carId: selectedCar.id, carName: `${selectedCar.name} — ${selectedCar.licensePlate}` }
+        : { driverId: null, driverName: null, carId, carName: null };
+      const otherEntity = { driverId: null, driverName: null, carId: null, carName: null };
 
-    onSubmit({
-      amount: finalAmount, type, description,
-      ...entityFields,
-      timestamp: timestamp.getTime(),
-      ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
-    } as any, initialTransaction?.id);
+      const entityFields = type === TransactionType.EXPENSE
+        ? expenseTarget === 'driver' ? driverEntity
+          : expenseTarget === 'car'  ? carEntity
+          : otherEntity
+        : driverEntity;
 
-    resetAndClose();
+      const payload: any = {
+        amount: finalAmount, type, description,
+        ...entityFields,
+        timestamp: timestamp.getTime(),
+        ...({ paymentMethod, chequeImage: chequeImage ?? undefined } as any),
+      };
+
+      if (type === TransactionType.EXPENSE) {
+        payload.category = initialTransaction?.category === 'salary_payment'
+          ? initialTransaction.category
+          : selectedExpenseCategory.id;
+      }
+
+      if (useDeposit) {
+        payload.useDeposit = true;
+      }
+      if (isDepositTopup) {
+        payload.category = 'deposit_topup';
+        // Auto-fill a standard description if the admin left it blank
+        if (!payload.description?.trim()) {
+          payload.description = "Depozit to'ldirish";
+        }
+      }
+
+      if (selectedDriver) {
+        const shouldClearCustomPlan = hasExistingCustomPlan && (
+          type === TransactionType.DAY_OFF ||
+          type === TransactionType.NOT_WORKING ||
+          (type === TransactionType.INCOME && !planExceptionEnabled)
+        );
+
+        if (type === TransactionType.INCOME && planExceptionEnabled) {
+          await setDriverDayOverride(selectedDriver.id, selectedDateKey, {
+            type: 'DISCOUNT',
+            customPlan: Number(planExceptionAmount),
+          });
+        } else if (shouldClearCustomPlan) {
+          await clearDriverDayOverride(selectedDriver.id, selectedDateKey);
+        }
+      }
+
+      await onSubmit(payload, initialTransaction?.id);
+
+      resetAndClose(true);
+    } catch (error) {
+      console.error('Failed to save transaction', error);
+      addToast('error', t('transactionSaveFailed', "O'tkazmani saqlashda xatolik yuz berdi"));
+      setIsSubmitting(false);
+    }
   };
 
-  const resetAndClose = () => {
+  const resetAndClose = (force = false) => {
+    if (isSubmitting && !force) return;
     setAmount(''); setDisplayAmount(''); setDescription('');
     setDriverId(''); setCarId('');
     setIsDriverOpen(false); setIsCarOpen(false);
     setDriverSearch(''); setCarSearch('');
     setDate(new Date());
     setPaymentMethod('cash'); setChequeImage(null); setChequeError(null);
-    setExpenseTarget('driver');
+    setExpenseTarget('driver'); setUseDeposit(false); setIsDepositTopup(false);
+    setSelectedExpenseCategoryId(DEFAULT_EXPENSE_CATEGORIES[0].id);
+    setIsAddingCategory(false); setNewCategoryLabel(''); setNewCategoryIcon(CUSTOM_CATEGORY_ICONS[0]);
+    setPlanExceptionEnabled(false);
+    setPlanExceptionAmount(''); setPlanExceptionDisplayAmount('');
     onClose();
   };
 
   // ── Styles ───────────────────────────────────────────────────────────────────
   const inputClass = `w-full px-4 py-3 rounded-xl outline-none transition-all border ${isDark
-    ? 'bg-gray-800 border-gray-700 text-white focus:border-teal-500 placeholder-gray-500'
+    ? 'bg-surface-2 border-white/[0.08] text-white focus:border-teal-500 placeholder-gray-500'
     : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-teal-500 placeholder-gray-400'}`;
   const labelClass = `block text-[11px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`;
 
   const typeConfig = {
-    [TransactionType.INCOME]:  { label: 'Kirim',     color: 'bg-teal-500',  shadow: 'shadow-sm'  },
-    [TransactionType.EXPENSE]: { label: 'Chiqim',    color: 'bg-red-500',   shadow: 'shadow-sm'   },
-    [TransactionType.DAY_OFF]: { label: 'Dam olish', color: 'bg-blue-500',  shadow: 'shadow-sm'  },
+    [TransactionType.INCOME]:  { label: t('incomeLabel', 'Kirim'),     color: 'bg-teal-500',  shadow: 'shadow-sm'  },
+    [TransactionType.EXPENSE]: { label: t('expenseLabel', 'Chiqim'),    color: 'bg-red-500',   shadow: 'shadow-sm'   },
+    [TransactionType.DAY_OFF]: { label: t('dayOffLabel', 'Dam olish'), color: 'bg-blue-500',  shadow: 'shadow-sm'  },
+    [TransactionType.NOT_WORKING]: { label: t('notWorkingLabel', 'Ishlamagan'), color: 'bg-red-500', shadow: 'shadow-sm' },
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-end md:items-center justify-center p-0 md:p-4">
       <form
         onSubmit={handleSubmit}
-        className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[92vh] rounded-3xl shadow-[0_32px_80px_rgba(0,0,0,0.6)] overflow-hidden border ${
-          isDark ? 'bg-[#111827] border-gray-700/80' : 'bg-white border-gray-200'
+        className={`flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] md:max-h-[92vh] rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-y-auto md:overflow-hidden border ${
+          isDark ? 'border-white/[0.06]' : 'bg-white border-gray-200'
         }`}
-        style={{ animation: 'modalPop 0.2s ease-out' }}
+        style={{ animation: 'modalPop 0.2s ease-out', ...(isDark ? { background: '#171f33' } : {}) }}
       >
 
         {/* ══ LEFT PANEL ══════════════════════════════════════════════════════ */}
-        <div className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-gray-700/80 bg-[#111827]' : 'border-gray-100 bg-white'}`}>
+        <div
+          className={`flex flex-col w-full md:w-[480px] flex-shrink-0 overflow-visible md:overflow-y-auto border-b md:border-b-0 md:border-r ${isDark ? 'border-white/[0.06]' : 'border-gray-100 bg-white'}`}
+          style={isDark ? { background: '#171f33' } : undefined}
+        >
 
           {/* Header */}
-          <div className={`sticky top-0 z-10 px-7 py-5 border-b flex items-center justify-between ${isDark ? 'border-gray-700/80 bg-[#111827]/95 backdrop-blur-sm' : 'border-gray-100 bg-white/95 backdrop-blur-sm'}`}>
+          <div
+            className={`sticky top-0 z-10 px-7 py-5 border-b flex items-center justify-between ${isDark ? 'border-white/[0.06] backdrop-blur-md' : 'border-gray-100 bg-white/95 backdrop-blur-md'}`}
+            style={isDark ? { background: '#171f33' } : undefined}
+          >
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                {type === TransactionType.INCOME ? '💰' : type === TransactionType.DAY_OFF ? '🏖' : '💸'}
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
+                {type === TransactionType.INCOME ? '💰' : type === TransactionType.DAY_OFF ? <div className="w-6 h-6"><Lottie animationData={restAnimation} loop={true} /></div> : type === TransactionType.NOT_WORKING ? '❌' : '💸'}
               </div>
               <div>
                 <h3 className={`font-bold text-base leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {initialTransaction ? 'Tahrirlash' : t('newTransaction')}
+                  {initialTransaction ? t('editTransaction', 'Tahrirlash') : t('newTransaction')}
                 </h3>
                 <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                   {typeConfig[type]?.label}
                 </p>
               </div>
             </div>
-            <button type="button" onClick={resetAndClose} className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+            <button
+              type="button"
+              onClick={() => resetAndClose()}
+              disabled={isSubmitting}
+              className={`md:hidden p-2 rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+            >
               <XIcon className="w-5 h-5" />
             </button>
           </div>
@@ -260,35 +582,37 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           <div className="p-7 space-y-6">
 
             {/* Type toggle */}
-            <div className={`flex gap-1.5 p-1.5 rounded-2xl border ${isDark ? 'bg-gray-900 border-gray-700/80' : 'bg-gray-100 border-gray-200'}`}>
+            <div className={`flex gap-1 p-1 rounded-2xl border overflow-x-auto ${isDark ? 'bg-surface-3 border-white/[0.08]' : 'bg-surface-2 border-gray-200'}`}>
               {[
-                { v: TransactionType.INCOME,  label: 'Kirim',     emoji: '💰' },
-                { v: TransactionType.EXPENSE, label: 'Chiqim',    emoji: '💸' },
-                { v: TransactionType.DAY_OFF, label: 'Dam olish', emoji: '🏖' },
+                { v: TransactionType.INCOME,  label: t('incomeLabel', 'Kirim'),     emoji: '💰' },
+                { v: TransactionType.EXPENSE, label: t('expenseLabel', 'Chiqim'),    emoji: '💸' },
+                { v: TransactionType.DAY_OFF, label: t('dayOffLabel', 'Dam olish'), emoji: <div className="w-4 h-4"><Lottie animationData={restAnimation} loop={true} /></div> },
+                { v: TransactionType.NOT_WORKING, label: t('notWorkingLabel', 'Ishlamagan'), emoji: '❌' },
               ].map(item => (
                 <button key={item.v} type="button"
                   onClick={() => { setType(item.v); if (item.v !== TransactionType.EXPENSE) setExpenseTarget('driver'); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1 min-w-[80px] py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
                     type === item.v
                       ? item.v === TransactionType.INCOME  ? 'bg-teal-500 text-white shadow-sm'
                       : item.v === TransactionType.EXPENSE ? 'bg-red-500 text-white shadow-sm'
-                      : 'bg-blue-500 text-white shadow-sm'
-                      : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-700'
+                      : item.v === TransactionType.DAY_OFF ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-red-500/80 text-white shadow-sm'
+                      : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-700 hover:bg-black/[0.02]'
                   }`}
                 >
-                  <span className="text-sm">{item.emoji}</span>
-                  {item.label}
+                  <span className="text-sm hidden sm:inline">{item.emoji}</span>
+                  <span className="truncate">{item.label}</span>
                 </button>
               ))}
             </div>
 
             {/* Expense target tabs — driver | car | other */}
             {type === TransactionType.EXPENSE && (
-              <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-gray-900 border-gray-700/60' : 'bg-gray-100 border-gray-200'}`}>
+              <div className={`flex gap-1 p-1 rounded-xl border ${isDark ? 'bg-surface-3 border-white/[0.06]' : 'bg-surface-2 border-gray-200'}`}>
                 {([
-                  { v: 'driver', label: 'Haydovchi', icon: '👤' },
-                  { v: 'car',    label: 'Mashina',   icon: '🚗' },
-                  { v: 'other',  label: 'Boshqa',    icon: '📦' },
+                  { v: 'driver', label: t('driver'), icon: '👤' },
+                  { v: 'car',    label: t('car'),   icon: '🚙' },
+                  { v: 'other',  label: t('other'),    icon: '📦' },
                 ] as { v: ExpenseTarget; label: string; icon: string }[]).map(tab => (
                   <button key={tab.v} type="button"
                     onClick={() => {
@@ -298,7 +622,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     }}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
                       expenseTarget === tab.v
-                        ? isDark ? 'bg-gray-700 text-white shadow' : 'bg-white text-gray-900 shadow'
+                        ? isDark ? 'bg-surface-2 text-white shadow' : 'bg-white text-gray-900 shadow'
                         : isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
@@ -313,16 +637,16 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               <div className="relative">
                 <label className={labelClass}>
                   <UsersIcon className="inline w-3 h-3 mr-1 mb-0.5" />
-                  Haydovchi
+                  {t('driver', 'Haydovchi')}
                 </label>
 
                 {!isDriverOpen && selectedDriver ? (
                   <div onClick={() => setIsDriverOpen(true)}
-                    className={`cursor-pointer p-4 rounded-2xl border transition-all group active:scale-[0.99] ${isDark ? 'bg-gray-800/60 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
+                    className={`cursor-pointer p-4 rounded-2xl border transition-all group active:scale-[0.99] ${isDark ? 'bg-surface-2/60 border-white/[0.08] hover:border-white/[0.12]' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
                       {selectedDriver.avatar
                         ? <img src={selectedDriver.avatar} alt={selectedDriver.name} className={`w-11 h-11 rounded-xl object-cover border-2 ${isDark ? 'border-gray-600' : 'border-white shadow'}`} />
-                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
+                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{selectedDriver.name.charAt(0)}</div>
                       }
                       <div className="flex-1 min-w-0">
                         <p className={`font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedDriver.name}</p>
@@ -334,22 +658,22 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-                    <div className={`p-3 border-b ${isDark ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-surface-2 border-white/[0.08] shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-surface-3' : 'border-gray-100 bg-gray-50'}`}>
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={driverSearch} onChange={e => setDriverSearch(e.target.value)}
-                          placeholder="Qidirish..." autoFocus
-                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
+                          placeholder={t('searchPlaceholder', 'Qidirish...')} autoFocus
+                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-surface-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
                       </div>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto divide-y divide-gray-700/30">
+                    <div className="max-h-[220px] overflow-y-auto divide-y divide-white/[0.05]">
                       {filteredDrivers.map(d => (
                         <div key={d.id} onClick={() => { setDriverId(d.id); setIsDriverOpen(false); setDriverSearch(''); }}
-                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${driverId === d.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-gray-700/40' : 'hover:bg-gray-50'}`}>
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${driverId === d.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-black/[0.03]'}`}>
                           {d.avatar
                             ? <img src={d.avatar} alt={d.name} className="w-9 h-9 rounded-lg object-cover" />
-                            : <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{d.name.charAt(0)}</div>
+                            : <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-surface-2 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{d.name.charAt(0)}</div>
                           }
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{d.name}</p>
@@ -358,12 +682,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                           {driverId === d.id && <CheckIcon className="w-4 h-4 text-teal-500 flex-shrink-0" />}
                         </div>
                       ))}
-                      {filteredDrivers.length === 0 && <p className="p-5 text-center text-sm text-gray-500">Topilmadi</p>}
+                      {filteredDrivers.length === 0 && <p className="p-5 text-center text-sm text-gray-500">{t('notFound', 'Topilmadi')}</p>}
                     </div>
                     {selectedDriver && (
                       <div onClick={() => setIsDriverOpen(false)}
-                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-gray-700 text-gray-500 hover:text-gray-300 hover:bg-gray-700/40' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
-                        Yopish
+                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-white/[0.08] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-black/[0.03]'}`}>
+                        {t('closeLabel', 'Yopish')}
                       </div>
                     )}
                   </div>
@@ -373,14 +697,14 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
 
             {type === TransactionType.EXPENSE && expenseTarget === 'car' && (
               <div className="relative">
-                <label className={labelClass}>🚗 Mashina</label>
+                <label className={`${labelClass} flex items-center gap-1.5`}><CarIcon className="w-3.5 h-3.5" /> {t('carModalLabel', 'MASHINA')}</label>
                 {!isCarOpen && selectedCar ? (
                   <div onClick={() => setIsCarOpen(true)}
-                    className={`cursor-pointer p-4 rounded-2xl border transition-all group ${isDark ? 'bg-gray-800/60 border-gray-700 hover:border-gray-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
+                    className={`cursor-pointer p-4 rounded-2xl border transition-all group ${isDark ? 'bg-surface-2/60 border-white/[0.08] hover:border-white/[0.12]' : 'bg-gray-50 border-gray-200 hover:border-gray-300 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
                       {selectedCar.avatar
                         ? <img src={selectedCar.avatar} alt={selectedCar.name} className="w-11 h-11 rounded-xl object-cover" />
-                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>🚗</div>
+                        : <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-gray-200'}`}><CarIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>
                       }
                       <div className="flex-1">
                         <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCar.name}</p>
@@ -390,20 +714,20 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-                    <div className={`p-3 border-b ${isDark ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-surface-2 border-white/[0.08] shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
+                    <div className={`p-3 border-b ${isDark ? 'border-white/[0.08] bg-surface-3' : 'border-gray-100 bg-gray-50'}`}>
                       <div className="relative">
                         <SearchIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input type="text" value={carSearch} onChange={e => setCarSearch(e.target.value)}
-                          placeholder="Mashinani qidirish..." autoFocus
-                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
+                          placeholder={t('searchCarPlaceholder', 'Mashinani qidirish...')} autoFocus
+                          className={`w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm ${isDark ? 'bg-surface-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500/40' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200 focus:border-teal-500'}`} />
                       </div>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto divide-y divide-gray-700/30">
+                    <div className="max-h-[220px] overflow-y-auto divide-y divide-white/[0.05]">
                       {filteredCars.map(c => (
                         <div key={c.id} onClick={() => { setCarId(c.id); setIsCarOpen(false); setCarSearch(''); }}
-                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-gray-700/40' : 'hover:bg-gray-50'}`}>
-                          {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>🚗</div>}
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${carId === c.id ? isDark ? 'bg-teal-500/15' : 'bg-teal-50' : isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-black/[0.03]'}`}>
+                          {c.avatar ? <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-lg object-cover" /> : <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}><CarIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>}
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{c.name}</p>
                             <p className={`text-[11px] font-mono truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{c.licensePlate}</p>
@@ -411,12 +735,12 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                           {carId === c.id && <CheckIcon className="w-4 h-4 text-teal-500 flex-shrink-0" />}
                         </div>
                       ))}
-                      {filteredCars.length === 0 && <p className="p-5 text-center text-sm text-gray-500">Topilmadi</p>}
+                      {filteredCars.length === 0 && <p className="p-5 text-center text-sm text-gray-500">{t('notFound', 'Topilmadi')}</p>}
                     </div>
                     {selectedCar && (
                       <div onClick={() => setIsCarOpen(false)}
-                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-gray-700 text-gray-500 hover:text-gray-300 hover:bg-gray-700/40' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
-                        Yopish
+                        className={`p-3 text-center border-t cursor-pointer text-xs font-medium transition-colors ${isDark ? 'border-white/[0.08] text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]' : 'border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-black/[0.03]'}`}>
+                        {t('closeLabel', 'Yopish')}
                       </div>
                     )}
                   </div>
@@ -424,24 +748,151 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
               </div>
             )}
 
-            {/* Other: category chips */}
-            {type === TransactionType.EXPENSE && expenseTarget === 'other' && (
+            {/* Category chips — shown for ALL expense targets */}
+            {type === TransactionType.EXPENSE && (
               <div>
-                <label className={labelClass}>📦 Kategoriya</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {OTHER_CATEGORIES.map(cat => (
-                    <button key={cat.label} type="button"
-                      onClick={() => setDescription(cat.label)}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
-                        description === cat.label
-                          ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
-                          : isDark ? 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                <label className={labelClass}>📦 {t('categoryLabel', 'KATEGORIYA')}</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {expenseCategories.map(cat => {
+                    const active = selectedExpenseCategoryId === cat.id;
+                    const label = cat.tKey ? t(cat.tKey, cat.label) : cat.label;
+                    const canDelete = Boolean(cat.custom && cat.id.startsWith('custom:'));
+                    return (
+                      <div key={cat.id} className="relative min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedExpenseCategoryId(cat.id)}
+                          className={`flex min-h-[76px] w-full flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition-all active:scale-95 ${
+                            active
+                              ? isDark ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-red-50 border-red-300 text-red-600'
+                              : isDark ? 'bg-surface-2 border-white/[0.08] text-gray-400 hover:border-white/[0.12] hover:text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                          }`}
+                        >
+                          <span className="text-xl">{cat.icon}</span>
+                          <span className="max-w-full break-words text-center leading-tight">{label}</span>
+                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeleteCategory(cat);
+                            }}
+                            className={`absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] transition-all active:scale-90 ${
+                              isDark
+                                ? 'border-white/10 bg-black/30 text-gray-300 hover:bg-red-500/20 hover:text-red-300'
+                                : 'border-red-100 bg-white/90 text-red-500 shadow-sm hover:bg-red-50'
+                            }`}
+                            aria-label={`${t('removeCategory', "Kategoriyani o'chirish")}: ${label}`}
+                            title={t('removeCategory', "Kategoriyani o'chirish")}
+                          >
+                            <XIcon className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3">
+                  {!isAddingCategory ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategory(true)}
+                      className={`w-full rounded-xl border border-dashed px-3 py-2.5 text-xs font-black transition-all active:scale-[0.99] ${
+                        isDark
+                          ? 'border-white/[0.12] text-gray-300 hover:border-teal-400/50 hover:text-teal-300 hover:bg-teal-500/[0.04]'
+                          : 'border-gray-300 text-gray-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50'
                       }`}
                     >
-                      <span className="text-xl">{cat.icon}</span>
-                      <span className="leading-tight text-center">{cat.label}</span>
+                      + {t('addCustomCategory', "Kategoriya qo'shish")}
                     </button>
-                  ))}
+                  ) : (
+                    <div className={`rounded-2xl border p-3 space-y-3 ${
+                      isDark ? 'bg-surface-2/70 border-white/[0.08]' : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <label className={`h-11 w-14 shrink-0 rounded-xl border flex items-center justify-center ${
+                          isDark ? 'bg-surface-3 border-white/[0.08]' : 'bg-white border-gray-200'
+                        }`}>
+                          <input
+                            type="text"
+                            value={newCategoryIcon}
+                            onChange={event => setNewCategoryIcon(Array.from(event.target.value).slice(0, 3).join(''))}
+                            className={`w-full bg-transparent text-center text-xl outline-none ${isDark ? 'text-white' : 'text-gray-900'}`}
+                            aria-label={t('categoryIconLabel', 'Belgi')}
+                            title={t('categoryIconLabel', 'Belgi')}
+                          />
+                        </label>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {t('categoryIconLabel', 'Belgi')}
+                          </p>
+                          <p className={`text-[11px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {t('categoryIconHint', 'Istalgan emoji yoki qisqa belgi kiriting')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className={`text-[11px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {t('emojiPresets', 'Tayyor belgilar')}
+                        </p>
+                        <div className={`grid max-h-28 grid-cols-8 gap-1.5 overflow-y-auto rounded-xl border p-2 ${
+                          isDark ? 'border-white/[0.08] bg-black/10' : 'border-gray-200 bg-white'
+                        }`}>
+                        {CUSTOM_CATEGORY_ICONS.map(icon => (
+                          <button
+                            key={icon}
+                            type="button"
+                            onClick={() => setNewCategoryIcon(icon)}
+                            className={`h-9 w-9 shrink-0 rounded-xl border text-lg transition-all ${
+                              newCategoryIcon === icon
+                                ? isDark ? 'border-teal-400 bg-teal-500/15' : 'border-teal-500 bg-teal-50'
+                                : isDark ? 'border-white/[0.08] bg-surface-3' : 'border-gray-200 bg-white'
+                            }`}
+                            aria-label={icon}
+                            title={icon}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          type="text"
+                          value={newCategoryLabel}
+                          onChange={event => setNewCategoryLabel(event.target.value)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleCreateCategory();
+                            }
+                          }}
+                          className={`${inputClass} h-11 text-sm`}
+                          placeholder={t('categoryNamePlaceholder', "Masalan: Yuvish, Moy, Yo'l xarajati")}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCancelCategoryCreate}
+                          className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-black transition-all active:scale-95 ${
+                            isDark
+                              ? 'border-white/[0.08] bg-white/[0.03] text-gray-300 hover:bg-white/[0.06]'
+                              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {t('cancel', 'Bekor qilish')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateCategory}
+                          className="shrink-0 rounded-xl bg-teal-600 px-4 py-3 text-sm font-black text-white transition-all hover:bg-teal-700 active:scale-95"
+                        >
+                          {t('saveCategory', 'Saqlash')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -449,21 +900,183 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Date */}
             <DatePicker label={t('time') || 'Vaqt'} value={date} onChange={setDate} theme={theme} />
 
+            {hasRestorableDayMarker && (
+              <div className={`rounded-2xl border p-4 ${
+                isDark ? 'bg-blue-500/[0.08] border-blue-400/25' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className={`text-sm font-black ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
+                      {t('dayMarkedAs', 'Kun belgisi')}: {restoreMarkerLabel}
+                    </p>
+                    <p className={`mt-1 text-xs leading-relaxed ${isDark ? 'text-blue-200/70' : 'text-blue-700/75'}`}>
+                      {t('restoreStandardDayHint', 'Agar bu tasodifan tanlangan bo‘lsa, kunni standart rejaga qaytaring.')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRestoreStandardDay}
+                    disabled={isRestoringDay}
+                    className={`shrink-0 rounded-xl px-3 py-2 text-xs font-black transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${
+                      isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-blue-800 shadow-sm hover:bg-blue-100'
+                    }`}
+                  >
+                    {isRestoringDay
+                      ? t('restoringDay', 'Tiklanmoqda...')
+                      : t('restoreStandardDay', 'Standart kunga qaytarish')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Daily plan exception */}
+            {showPlanExceptionSection && (
+              <div className={`rounded-2xl border overflow-hidden transition-all ${
+                isDark ? 'bg-surface-2/50 border-white/[0.08]' : 'bg-white border-gray-200 shadow-sm'
+              }`}>
+                <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      planExceptionEnabled
+                        ? isDark ? 'bg-teal-500/15 text-teal-300' : 'bg-teal-50 text-teal-700'
+                        : isDark ? 'bg-white/[0.05] text-gray-400' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <CalendarIcon className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {t('customDailyPlan', 'Maxsus kunlik reja')}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 truncate ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                        {isPlanMarkerType
+                          ? t('customDailyPlanClearedByMarker', 'Dam olish yoki ishlamagan kun tanlansa, maxsus reja bekor qilinadi.')
+                          : (planExceptionEnabled
+                            ? t('customDailyPlanActiveHint', 'Bu kun uchun alohida reja ishlatiladi')
+                            : t('customDailyPlanModalHint', 'Faqat tanlangan kun rejasini o‘zgartirish'))}
+                      </p>
+                    </div>
+                  </div>
+                  {planExceptionEnabled && !isPlanMarkerType && (
+                    <div className="flex items-baseline gap-1 flex-shrink-0">
+                      <span className={`text-[12px] font-black tabular-nums ${isDark ? 'text-teal-300' : 'text-teal-700'}`}>
+                        {fmt(Number(planExceptionAmount || 0))}
+                      </span>
+                      <span className={`text-[10px] font-bold ${isDark ? 'text-teal-300/60' : 'text-teal-700/60'}`}>UZS</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`px-4 pb-4 pt-1 border-t ${isDark ? 'border-white/[0.06]' : 'border-gray-100'}`}>
+                  {isPlanMarkerType ? (
+                    <p className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      isDark ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'
+                    }`}>
+                      {t('customDailyPlanClearedByMarker', 'Dam olish yoki ishlamagan kun tanlansa, maxsus reja bekor qilinadi.')}
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !planExceptionEnabled;
+                          setPlanExceptionEnabled(next);
+                          if (next && !planExceptionAmount) {
+                            const value = String(hasExistingCustomPlan ? existingDayOverride?.customPlan ?? '' : standardPlanForDate);
+                            setPlanExceptionAmount(value);
+                            setPlanExceptionDisplayAmount(fmtDisplay(value));
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-3 transition-all ${
+                          planExceptionEnabled
+                            ? isDark ? 'border-teal-500/40 bg-teal-500/10 text-teal-300' : 'border-teal-300 bg-teal-50 text-teal-700'
+                            : isDark ? 'border-white/[0.08] bg-surface-2 text-gray-300' : 'border-gray-200 bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <span className="text-sm font-bold min-w-0">{t('enableCustomDailyPlan', 'Maxsus rejani yoqish')}</span>
+                        <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                          planExceptionEnabled ? 'bg-teal-500' : isDark ? 'bg-white/[0.14]' : 'bg-gray-300'
+                        }`}>
+                          <span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            planExceptionEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                        </span>
+                      </button>
+
+                      {planExceptionEnabled && (
+                        <div className="space-y-3">
+                          <div className={`grid grid-cols-2 gap-2 rounded-xl p-2 ${isDark ? 'bg-black/10' : 'bg-gray-50'}`}>
+                            <div>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/35' : 'text-gray-400'}`}>
+                                {t('standardPlan', 'Standart')}
+                              </p>
+                              <p className={`mt-1 text-sm font-black ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                                {fmt(standardPlanForDate)} <span className="text-[10px] opacity-60">UZS</span>
+                              </p>
+                            </div>
+                            <div>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/35' : 'text-gray-400'}`}>
+                                {t('effectivePlanLabel', 'Joriy reja')}
+                              </p>
+                              <p className="mt-1 text-sm font-black text-teal-500">
+                                {fmt(Number(planExceptionAmount || 0))} <span className="text-[10px] opacity-60">UZS</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>{t('amountUzsLabel', 'SUMMA (UZS)')}</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={planExceptionDisplayAmount}
+                                onChange={handlePlanExceptionAmountChange}
+                                className={`${inputClass} h-12 pr-14 font-black tabular-nums`}
+                                placeholder={fmt(standardPlanForDate)}
+                              />
+                              <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>UZS</span>
+                            </div>
+                          </div>
+
+                          {hasExistingCustomPlan && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPlanExceptionEnabled(false);
+                                setPlanExceptionAmount('');
+                                setPlanExceptionDisplayAmount('');
+                              }}
+                              className={`inline-flex items-center gap-2 text-xs font-bold transition-colors ${
+                                isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                              }`}
+                            >
+                              <RefreshIcon className="w-3.5 h-3.5" />
+                              {t('resetToStandardPlan', 'Standart rejaga qaytarish')}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Debt warning */}
             {type === TransactionType.INCOME && driverDebtInfo && driverDebtInfo.remaining > 0 && (
               <div className="rounded-xl p-4 border border-orange-500/30 bg-orange-500/5">
-                <p className="text-xs font-bold text-orange-400 mb-2">⚠ Haydovchida qarz bor</p>
+                <p className="text-xs font-bold text-orange-400 mb-2">{t('hasDebtWarning', '⚠ Haydovchida qarz bor')}</p>
                 <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Qolgan qarz:</span>
+                  <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('remainingDebtText', 'Qolgan qarz:')}</span>
                   <span className="font-bold text-orange-400">−{fmt(driverDebtInfo.remaining)} UZS</span>
                 </div>
                 {amount && Number(amount) > 0 && (
                   <div className={`flex justify-between text-sm pt-2 mt-2 border-t ${isDark ? 'border-orange-500/20' : 'border-orange-200'}`}>
-                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Bu to'lovdan so'ng:</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('afterThisPayment', "Bu to'lovdan so'ng:")}</span>
                     <span className={`font-bold ${Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0 ? 'text-orange-400' : 'text-teal-400'}`}>
                       {Math.max(0, driverDebtInfo.remaining - Number(amount)) > 0
                         ? `−${fmt(Math.max(0, driverDebtInfo.remaining - Number(amount)))} UZS`
-                        : "Qarz to'landi ✓"}
+                        : t('debtPaidOff', "Qarz to'landi ✓")}
                     </span>
                   </div>
                 )}
@@ -471,9 +1084,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             )}
 
             {/* Amount */}
-            {type !== TransactionType.DAY_OFF && (
+            {type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (
               <div>
-                <label className={labelClass}>Summa (UZS)</label>
+                <label className={labelClass}>{t('amountUzsLabel', 'SUMMA (UZS)')}</label>
                 <div className="relative">
                   <input type="text" required inputMode="numeric"
                     value={displayAmount} onChange={handleAmountChange}
@@ -484,16 +1097,180 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* ── Payment Source — salary or deposit toggle ── */}
+            {paymentSourceInfo !== null && type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING &&
+             (type === TransactionType.INCOME || expenseTarget === 'driver') && (
+              <div className={`rounded-2xl border overflow-hidden transition-all ${
+                useDeposit
+                  ? paymentSourceInfo.type === 'salary'
+                    ? isDark ? 'border-violet-500/50 bg-violet-500/[0.07]' : 'border-violet-400 bg-violet-50'
+                    : isDark ? 'border-amber-500/50 bg-amber-500/[0.07]'  : 'border-amber-400 bg-amber-50'
+                  : isDark ? 'border-white/[0.08] bg-surface-2/40' : 'border-gray-200 bg-gray-50'
+              }`}>
+
+                {/* Header toggle row */}
+                <button
+                  type="button"
+                  onClick={() => setUseDeposit(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl flex-shrink-0 flex items-center justify-center">
+                      {paymentSourceInfo.type === 'salary' ? '💼' : (
+                        <div className="w-6 h-6"><Lottie animationData={depositAnimation} loop={true} /></div>
+                      )}
+                    </span>
+                    <div className="text-left min-w-0">
+                      <p className={`text-[13px] font-bold leading-tight ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {paymentSourceInfo.type === 'salary'
+                          ? t('deductFromSalary', "Maoshdan ushlab qolish")
+                          : t('useDepositText', "Depozitdan foydalanish")}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${
+                        isDark ? 'text-white/40' : 'text-gray-400'
+                      }`}>
+                        {paymentSourceInfo.type === 'salary'
+                          ? type === TransactionType.INCOME
+                            ? t('salaryDeductIncomeDesc', "Haydovchi maoshidan ushlab qolinadi")
+                            : t('salaryDeductExpenseDesc', "Bu chiqim haydovchi maoshidan hisoblanadi")
+                          : type === TransactionType.INCOME
+                            ? t('depositIncomeDesc', "Haydovchi reja o'rniga depozitdan to'lov")
+                            : t('depositExpenseDesc', "Bu chiqim depozitdan hisoblanadi")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Toggle switch */}
+                  <div className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
+                    useDeposit
+                      ? paymentSourceInfo.type === 'salary' ? 'bg-violet-500' : 'bg-amber-500'
+                      : isDark ? 'bg-white/[0.10]' : 'bg-gray-300'
+                  }`}>
+                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                      useDeposit ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* ── Deposit Top-up Toggle ── */}
+            {paymentSourceInfo?.type === 'deposit' && type === TransactionType.INCOME && !useDeposit && (
+              <div className={`rounded-2xl border overflow-hidden transition-all ${
+                isDepositTopup
+                  ? isDark ? 'border-amber-500/50 bg-amber-500/[0.07]'  : 'border-amber-400 bg-amber-50'
+                  : isDark ? 'border-white/[0.08] bg-surface-2/40' : 'border-gray-200 bg-gray-50'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setIsDepositTopup(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl flex-shrink-0 flex items-center justify-center">
+                      <div className="w-6 h-6"><Lottie animationData={depositAnimation} loop={true} /></div>
+                    </span>
+                    <div className="text-left min-w-0">
+                      <p className={`text-[13px] font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {t('topupDeposit', "Depozitni to'ldirish")}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
+                        {t('topupDepositDesc', "Bu to'lov haydovchining depozit hisobiga o'tkaziladi")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
+                    isDepositTopup
+                      ? 'bg-amber-500'
+                      : isDark ? 'bg-white/[0.10]' : 'bg-gray-300'
+                  }`}>
+                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                      isDepositTopup ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Balance Card Details (Only for useDeposit or isDepositTopup) */}
+            {paymentSourceInfo !== null && type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING &&
+             (useDeposit || isDepositTopup) && (
+              <div className={`mt-3 rounded-xl border overflow-hidden ${
+                isDark
+                  ? paymentSourceInfo.type === 'salary' ? 'border-violet-500/20 bg-violet-500/[0.03]' : 'border-amber-500/20 bg-amber-500/[0.03]'
+                  : paymentSourceInfo.type === 'salary' ? 'border-violet-200 bg-violet-50/50'         : 'border-amber-200 bg-amber-50/50'
+              }`}>
+                {/* Balance row */}
+                <div className={`px-4 py-3 flex items-center justify-between border-b ${
+                  isDark ? 'border-white/[0.06]' : 'border-gray-100'
+                }`}>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wide ${
+                    isDark ? 'text-white/40' : 'text-gray-400'
+                  }`}>
+                    {paymentSourceInfo.type === 'salary' ? t('currentMonthSalaryNet', 'Joriy oy maoshi (sof)') : t('depositBalanceText', "Depozit qoldig'i")}
+                  </span>
+                  <span className={`text-[14px] font-black font-mono ${
+                    paymentSourceInfo.balance <= 0
+                      ? 'text-red-400'
+                      : paymentSourceInfo.balance < 500_000
+                      ? 'text-orange-400'
+                      : paymentSourceInfo.type === 'salary'
+                        ? isDark ? 'text-violet-400' : 'text-violet-600'
+                        : isDark ? 'text-amber-400' : 'text-amber-600'
+                  }`}>
+                    {fmt(Math.max(0, paymentSourceInfo.balance))} UZS
+                    {paymentSourceInfo.balance <= 0 && (
+                      <span className="ml-1 text-[10px] font-normal opacity-70">{t('finishedText', '(tugagan)')}</span>
+                    )}
+                  </span>
+                </div>
+
+                {/* Post-transaction projection */}
+                {Number(amount) > 0 && (
+                  <div className={`px-4 py-3 flex items-center justify-between`}>
+                    <span className={`text-[11px] font-semibold uppercase tracking-wide ${
+                      isDark
+                        ? paymentSourceInfo.type === 'salary' ? 'text-violet-400/60' : 'text-amber-400/60'
+                        : paymentSourceInfo.type === 'salary' ? 'text-violet-600/70' : 'text-amber-600/70'
+                    }`}>
+                      {isDepositTopup ? t('afterPaymentAdd', "To'lovdan keyin (qo'shiladi)") : t('afterPaymentSubtract', "To'lovdan keyin (ayriladi)")}
+                    </span>
+                    <span className={`text-[14px] font-black font-mono ${
+                      (!isDepositTopup && paymentSourceInfo.balance - Number(amount) < 0)
+                        ? 'text-red-400'
+                        : paymentSourceInfo.type === 'salary'
+                          ? isDark ? 'text-violet-300' : 'text-violet-700'
+                          : isDark ? 'text-amber-300' : 'text-amber-700'
+                    }`}>
+                      {isDepositTopup
+                        ? `${fmt(paymentSourceInfo.balance + Number(amount))} UZS`
+                        : paymentSourceInfo.balance - Number(amount) < 0
+                          ? `−${fmt(Number(amount) - paymentSourceInfo.balance)} UZS ${t('insufficientFunds', '(yetmaydi)')}`
+                          : `${fmt(paymentSourceInfo.balance - Number(amount))} UZS`
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
 
         {/* ══ RIGHT PANEL ══════════════════════════════════════════════════════ */}
-        <div className={`flex flex-col flex-1 overflow-y-auto ${isDark ? 'bg-[#0d1117]' : 'bg-gray-50/60'}`}>
+        <div className={`flex flex-col flex-1 overflow-visible md:overflow-y-auto ${isDark ? 'bg-surface-2/30' : 'bg-surface-2/50'}`}>
 
           {/* Desktop close */}
           <div className="flex justify-end px-6 py-5 flex-shrink-0">
-            <button type="button" onClick={resetAndClose}
-              className={`hidden md:flex items-center justify-center w-8 h-8 rounded-xl transition-colors ${isDark ? 'text-gray-500 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+            <button
+              type="button"
+              onClick={() => resetAndClose()}
+              disabled={isSubmitting}
+              className={`hidden md:flex items-center justify-center w-8 h-8 rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'text-gray-500 hover:text-white hover:bg-white/[0.04]' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+            >
               <XIcon className="w-5 h-5" />
             </button>
           </div>
@@ -503,18 +1280,37 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             {/* Day off info */}
             {type === TransactionType.DAY_OFF && (
               <div className={`rounded-2xl p-6 border flex flex-col items-center gap-3 text-center ${isDark ? 'border-blue-500/30 bg-blue-500/8' : 'border-blue-200 bg-blue-50'}`}>
-                <span className="text-5xl">🏖</span>
-                <p className={`text-base font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Dam olish kuni</p>
+                <div className="w-16 h-16"><Lottie animationData={restAnimation} loop={true} /></div>
+                <p className={`text-base font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{t('dayOffTitle', 'Dam olish kuni')}</p>
                 <p className={`text-sm leading-relaxed max-w-xs ${isDark ? 'text-blue-400/80' : 'text-blue-600/80'}`}>
-                  <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> kuni haydovchidan pul undirilmaydi.
+                  {i18n.language === 'uz' ? (
+                    <><strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> {t('dayOffDesc', 'kuni haydovchidan pul undirilmaydi.')}</>
+                  ) : (
+                    <>{t('dayOffDesc')} <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Not working info */}
+            {type === TransactionType.NOT_WORKING && (
+              <div className={`rounded-2xl p-6 border flex flex-col items-center gap-3 text-center ${isDark ? 'border-red-500/30 bg-red-500/8' : 'border-red-200 bg-red-50'}`}>
+                <span className="text-5xl">❌</span>
+                <p className={`text-base font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{t('notWorkingTitle', 'Ishlamagan kun')}</p>
+                <p className={`text-sm leading-relaxed max-w-xs ${isDark ? 'text-red-400/80' : 'text-red-600/80'}`}>
+                  {i18n.language === 'uz' ? (
+                    <><strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> {t('notWorkingDesc', 'kuni haydovchi ishlamaganligi qayd etiladi.')} {t('notWorkingDescEnd', 'Ushbu kunga qarz hisoblanmaydi va oylik reja maqsadidan ham chiqarib tashlanadi.')}</>
+                  ) : (
+                    <>{t('notWorkingDesc')} <strong>{date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>{t('notWorkingDescEnd')}</>
+                  )}
                 </p>
               </div>
             )}
 
             {/* Payment method */}
-            {type !== TransactionType.DAY_OFF && (
+            {type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (
               <div>
-                <label className={labelClass}>To'lov usuli</label>
+                <label className={labelClass}>{t('paymentMethodLabel', "To'lov usuli")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   {PAYMENT_METHODS.map(pm => (
                     <button key={pm.id} type="button"
@@ -522,11 +1318,11 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                       className={`flex flex-col items-center justify-center gap-2.5 h-[88px] rounded-2xl border text-sm font-bold transition-all active:scale-95 ${
                         paymentMethod === pm.id
                           ? isDark ? 'bg-teal-500/15 border-teal-500/60 text-teal-400 shadow-sm' : 'bg-teal-50 border-teal-400 text-teal-700 shadow-sm'
-                          : isDark ? 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-600' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 shadow-sm'
+                          : isDark ? 'bg-surface-2/60 border-white/[0.08] text-gray-400 hover:border-white/[0.12]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 shadow-sm'
                       }`}
                     >
                       <span className="text-3xl">{pm.icon}</span>
-                      <span className="text-xs font-bold">{pm.label}</span>
+                      <span className="text-xs font-bold">{t(pm.id === 'cash' ? 'paymentCash' : 'paymentCard', pm.label)}</span>
                     </button>
                   ))}
                 </div>
@@ -534,21 +1330,21 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             )}
 
             {/* Cheque upload */}
-            {paymentMethod === 'card' && type !== TransactionType.DAY_OFF && (
+            {paymentMethod === 'card' && type !== TransactionType.DAY_OFF && type !== TransactionType.NOT_WORKING && (
               <div>
                 <label className={labelClass}>
-                  Karta cheki <span className="text-red-400 ml-1 normal-case text-xs font-normal">(majburiy)</span>
+                  {t('chequeRequired', 'Karta cheki')} <span className="text-red-400 ml-1 normal-case text-xs font-normal">{t('requiredLabel', '(majburiy)')}</span>
                 </label>
                 {chequeImage ? (
-                  <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-gray-900' : 'border-teal-300 bg-gray-50'}`}>
+                  <div className={`relative rounded-2xl overflow-hidden border-2 ${isDark ? 'border-teal-500/40 bg-surface-3' : 'border-teal-300 bg-gray-50'}`}>
                     <div className="flex items-center justify-between px-4 py-3">
-                      <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>✓ Chek qo'shildi</span>
+                      <span className={`text-xs font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{t('chequeAdded', "✓ Chek qo'shildi")}</span>
                       <button type="button" onClick={() => { setChequeImage(null); setChequeError(null); }}
                         className={`text-xs px-3 py-1 rounded-lg font-bold transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
-                        Olib tashlash
+                        {t('removeCheque', 'Olib tashlash')}
                       </button>
                     </div>
-                    <div className={`mx-4 border-t border-dashed mb-3 ${isDark ? 'border-gray-700' : 'border-gray-300'}`} />
+                    <div className={`mx-4 border-t border-dashed mb-3 ${isDark ? 'border-white/[0.08]' : 'border-gray-300'}`} />
                     <div className="px-4 pb-4">
                       <img src={chequeImage} alt="Cheque" className="w-full rounded-xl object-contain max-h-44 shadow" />
                     </div>
@@ -558,14 +1354,16 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                     onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) processImageFile(f); }}
                     onDragOver={e => e.preventDefault()}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all py-8 px-4 group ${
-                      isDark ? 'border-gray-700 hover:border-teal-500/50 bg-gray-800/40 hover:bg-teal-500/5' : 'border-gray-300 hover:border-teal-400 bg-white hover:bg-teal-50/50 shadow-sm'
+                      isDark ? 'border-white/[0.08] hover:border-teal-500/50 bg-surface-2/40 hover:bg-teal-500/5' : 'border-gray-300 hover:border-teal-400 bg-white hover:bg-teal-50/50 shadow-sm'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:-translate-y-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>🧾</div>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:-translate-y-1 ${isDark ? 'bg-surface-2' : 'bg-gray-100'}`}>
+                      <Lottie animationData={chequeAnimation} loop={true} className="w-10 h-10" />
+                    </div>
                     <div className="text-center">
-                      <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Karta chekini yuklang</p>
+                      <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('uploadCheque', 'Karta chekini yuklang')}</p>
                       <p className={`text-xs mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                        Drag & drop · <kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${isDark ? 'bg-gray-700 border border-gray-600' : 'bg-gray-100 border border-gray-200'}`}>Ctrl+V</kbd> · yoki bosing
+                        {t('dragDropText', 'Drag & drop · ')}<kbd className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${isDark ? 'bg-surface-2 border border-white/[0.08]' : 'bg-gray-100 border border-gray-200'}`}>Ctrl+V</kbd>{t('orClickText', ' · yoki bosing')}
                       </p>
                     </div>
                   </div>
@@ -580,7 +1378,7 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
             <div>
               <label className={labelClass}>
                 {t('comment')}
-                {type === TransactionType.EXPENSE && <span className="text-red-400 ml-1 normal-case text-xs font-normal">(majburiy)</span>}
+                {type === TransactionType.EXPENSE && <span className="text-red-400 ml-1 normal-case text-xs font-normal">{t('requiredLabel', '(majburiy)')}</span>}
               </label>
               <textarea
                 required={type === TransactionType.EXPENSE}
@@ -589,9 +1387,9 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
                 className={`${inputClass} min-h-[110px] resize-none shadow-inner`}
                 placeholder={
                   type === TransactionType.EXPENSE && expenseTarget === 'other'
-                    ? 'Chiqim sababi...'
+                    ? t('commentPlaceholderExpense', 'Chiqim sababi...')
                     : type === TransactionType.EXPENSE
-                    ? t('commentPlaceholder') || 'Masalan: Benzin uchun, Ta\'mirlash...'
+                    ? t('commentPlaceholderExpense', 'Masalan: Benzin uchun, Ta\'mirlash...')
                     : t('commentPlaceholder') || 'Ixtiyoriy izoh...'
                 }
               />
@@ -599,23 +1397,39 @@ const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
 
           {/* Action footer */}
-          <div className={`mt-auto px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-[#0d1117] border-gray-700/80' : 'bg-gray-50 border-gray-100'}`}>
-            <button type="button" onClick={resetAndClose}
-              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}>
-              {t('cancel')}
+          <div className={`mt-auto sticky bottom-0 z-10 px-7 py-5 flex justify-end gap-3 border-t ${isDark ? 'bg-[#171f33]/95 backdrop-blur-md border-white/[0.06]' : 'bg-gray-50/95 backdrop-blur-md border-gray-200'}`}>
+            <button
+              type="button"
+              onClick={() => resetAndClose()}
+              disabled={isSubmitting}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'bg-surface-2 text-gray-300 hover:bg-white/[0.06] border border-white/[0.08]' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 shadow-sm'}`}
+            >
+              {t('cancelLabel', 'Bekor qilish')}
             </button>
-            <button type="submit"
-              className={`px-10 py-3 text-white rounded-xl text-sm font-black shadow-sm transition-all transform active:scale-95 ${
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className={`inline-flex items-center justify-center gap-2 px-10 py-3 text-white rounded-xl text-sm font-black shadow-sm transition-all transform active:scale-95 disabled:cursor-wait disabled:opacity-75 disabled:active:scale-100 ${
                 type === TransactionType.INCOME  ? 'bg-teal-500 hover:bg-teal-600'
                 : type === TransactionType.DAY_OFF ? 'bg-blue-500 hover:bg-blue-600'
                 : 'bg-red-500 hover:bg-red-600'
               }`}>
-              {t('save')}
+              {isSubmitting && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-80" d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              )}
+              {isSubmitting
+                ? t('saving', 'Saqlanmoqda...')
+                : initialTransaction ? t('editTransaction', 'Tahrirlash') : t('saveTransaction', 'Saqlash')}
             </button>
           </div>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 };
 

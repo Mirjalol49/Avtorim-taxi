@@ -4,6 +4,13 @@ import seedSuperAdmin from '../../../../services/seedAdmin';
 import { validateAccountOnInit, subscribeToAccountValidity } from '../../../../services/accountValidityService';
 import { playLockSound } from '../../../../services/soundService';
 import { AdminUser } from '../../../core/types';
+import { clearAllCache } from '../../../core/utils/dataCache';
+
+const sanitizeStoredAdmin = (user: any): AdminUser | null => {
+    if (!user) return null;
+    const { password: _password, password_hash: _passwordHash, ...safeUser } = user;
+    return safeUser as AdminUser;
+};
 
 export const useAuth = () => {
     const { addToast } = useToast();
@@ -41,7 +48,11 @@ export const useAuth = () => {
 
     const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {
         const savedAdmin = localStorage.getItem('avtorim_admin_user');
-        return savedAdmin ? JSON.parse(savedAdmin) : null;
+        if (!savedAdmin) return null;
+        const safeAdmin = sanitizeStoredAdmin(JSON.parse(savedAdmin));
+        if (safeAdmin) localStorage.setItem('avtorim_admin_user', JSON.stringify(safeAdmin));
+        localStorage.removeItem('avtorim_admin_password');
+        return safeAdmin;
     });
 
     const [adminProfile, setAdminProfile] = useState<any>(() => {
@@ -57,9 +68,12 @@ export const useAuth = () => {
 
     // --- EFFECTS ---
 
-    // Seed Super Admin
+    // Seed Super Admin — run at most once per browser session to avoid a boot-time query on every reload
     useEffect(() => {
-        seedSuperAdmin();
+        if (!sessionStorage.getItem('seedChecked')) {
+            sessionStorage.setItem('seedChecked', 'true');
+            seedSuperAdmin();
+        }
     }, []);
 
     // Validate Admin Account
@@ -77,35 +91,49 @@ export const useAuth = () => {
         let unsubscribeValidity: (() => void) | null = null;
         let cancelled = false;
 
-        validateAccountOnInit(adminUser).then((result) => {
+        // Safety timeout: if Supabase never responds, unblock the UI after 2s
+        const authTimeout = setTimeout(() => {
             if (cancelled) return;
-
-            if (!result.isValid) {
-                console.warn('Initial account validation failed');
-                handleLogout();
-                return;
-            }
-
-            if (result.userData) {
-                setAdminUser(result.userData);
-                localStorage.setItem('avtorim_admin_user', JSON.stringify(result.userData));
-            }
-
-            unsubscribeValidity = subscribeToAccountValidity(
-                adminUser.id,
-                (reason) => {
-                    console.warn('Account invalidated in real-time:', reason);
-                    addToast('error', reason);
-                    handleLogout();
-                },
-                (updatedData) => {
-                    setAdminUser(updatedData);
-                    localStorage.setItem('avtorim_admin_user', JSON.stringify(updatedData));
-                }
-            );
-
+            console.warn('[useAuth] validateAccountOnInit timed out — unblocking UI');
             setIsAuthChecking(false);
-        });
+        }, 2000);
+
+        validateAccountOnInit(adminUser)
+            .then((result) => {
+                clearTimeout(authTimeout);
+                if (cancelled) return;
+
+                if (!result.isValid) {
+                    handleLogout();
+                    return;
+                }
+
+                if (result.userData) {
+                    const safeUserData = sanitizeStoredAdmin(result.userData);
+                    setAdminUser(safeUserData);
+                    localStorage.setItem('avtorim_admin_user', JSON.stringify(safeUserData));
+                }
+
+                unsubscribeValidity = subscribeToAccountValidity(
+                    adminUser.id,
+                    (reason) => {
+                        addToast('error', reason);
+                        handleLogout();
+                    },
+                    (updatedData) => {
+                        const safeUpdatedData = sanitizeStoredAdmin(updatedData);
+                        setAdminUser(safeUpdatedData);
+                        localStorage.setItem('avtorim_admin_user', JSON.stringify(safeUpdatedData));
+                    }
+                );
+
+                setIsAuthChecking(false);
+            })
+            .catch(() => {
+                // Network/Supabase error — don't block the user, assume session is still valid
+                clearTimeout(authTimeout);
+                if (!cancelled) setIsAuthChecking(false);
+            });
 
         return () => {
             cancelled = true;
@@ -139,18 +167,16 @@ export const useAuth = () => {
         } else if (role === 'admin') {
             localStorage.setItem('avtorim_admin_auth', 'true');
             if (userData) {
-                setAdminUser(userData);
-                localStorage.setItem('avtorim_admin_user', JSON.stringify(userData));
+                const safeUserData = sanitizeStoredAdmin(userData);
+                setAdminUser(safeUserData);
+                localStorage.setItem('avtorim_admin_user', JSON.stringify(safeUserData));
+                localStorage.removeItem('avtorim_admin_password');
             }
         }
     };
 
     const handleLogout = () => {
-        try {
-            playLockSound();
-        } catch (e) {
-            console.warn('Failed to play lock sound', e);
-        }
+        try { playLockSound(); } catch { /* ignore audio errors on logout */ }
 
         setIsAuthenticated(false);
         setUserRole('viewer');
@@ -161,7 +187,10 @@ export const useAuth = () => {
         localStorage.removeItem('avtorim_admin_auth');
         localStorage.removeItem('avtorim_role');
         localStorage.removeItem('avtorim_admin_user');
+        localStorage.removeItem('avtorim_admin_password');
         localStorage.removeItem('avtorim_viewer_profile');
+        // Clear data cache so a different user logging in doesn't see stale data
+        clearAllCache();
     };
 
     // Auto-Lock Logic (Disabled as per user request)

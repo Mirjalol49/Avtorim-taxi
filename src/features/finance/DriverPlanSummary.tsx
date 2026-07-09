@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Driver, Transaction, TransactionType } from '../../core/types';
 import { PaymentStatus } from '../../core/types/transaction.types';
 import { Car } from '../../core/types/car.types';
 import { DriverPlanCalendarModal, DriverPlanMonthInfo } from './components/DriverPlanCalendarModal';
+import { getEffectivePlanForDriverDay, getDriverDayOverrideType } from '../drivers/utils/driverPlanHistory';
+import { isDriverWorkingOnDate } from '../drivers/utils/driverLifecycle';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -14,10 +16,12 @@ interface MonthRow {
     totalDays: number;
     workingDays: number;
     dailyPlan: number;
-    monthlyTarget: number;
+    monthlyTarget: number; // Full month plan (all days)
+    pastTarget: number;    // Elapsed days plan (for debt calculation)
     actualIncome: number;
-    remaining: number;     // positive = still owes, 0 or negative = done/overpaid
-    paidPercent: number;   // 0–100
+    remaining: number;     // positive = still owes, 0 or negative = done/overpaid (based on pastTarget)
+    paidPercent: number;   // 0–100 (based on pastTarget)
+    isFutureMonth: boolean;
 }
 
 interface DriverPlanSummaryProps {
@@ -28,13 +32,13 @@ interface DriverPlanSummaryProps {
     endDate: Date;
     filterDriverId: string; // 'all' or a driver id
     theme: 'dark' | 'light';
-    onDayClick?: (driverId: string, date: Date) => void;
+    onOpenTransactionForDay?: (driverId: string, date: Date) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fmt = (n: number) =>
-    new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)));
+    `${new Intl.NumberFormat('uz-UZ').format(Math.round(Math.abs(n)))} UZS`;
 
 const toMonthKey = (d: Date): string => {
     const y = d.getFullYear();
@@ -64,201 +68,362 @@ const monthRange = (start: Date, end: Date): string[] => {
     return keys;
 };
 
+const isExcludedPaymentStatus = (status?: string | null) =>
+    status === PaymentStatus.DELETED ||
+    status === PaymentStatus.REFUNDED ||
+    status === PaymentStatus.REVERSED;
+
+const isPlanIncomeTransaction = (tx: Transaction): boolean =>
+    tx.type === TransactionType.INCOME &&
+    (tx as any).category !== 'deposit_topup' &&
+    (tx as any).category !== 'DEPOSIT';
+
+const findDriverPlanCar = (driver: Driver, cars: Car[]): Car | null => {
+    const currentCar = cars.find(c => c.assignedDriverId === driver.id);
+    if (currentCar) return currentCar;
+
+    const historyCarId = [...(driver.planHistory ?? [])].reverse().find(entry => entry.carId)?.carId;
+    if (!historyCarId) return null;
+
+    return cars.find(c => c.id === historyCarId) ?? null;
+};
+
+const hasEffectivePlanInMonth = (driver: Driver, car: Car | null, mk: string): boolean => {
+    const totalDays = daysInMonthForKey(mk);
+    const [mkYear, mkMonth] = mk.split('-').map(Number);
+
+    for (let d = 1; d <= totalDays; d++) {
+        if (getEffectivePlanForDriverDay(driver, new Date(mkYear, mkMonth - 1, d), car) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const isCurrentlyActiveDriver = (driver: Driver, now: number): boolean =>
+    !driver.isDeleted && (!driver.quitDate || driver.quitDate > now);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const DriverPlanSummary: React.FC<DriverPlanSummaryProps> = ({
-    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onDayClick
+    drivers, cars, transactions, startDate, endDate, filterDriverId, theme, onOpenTransactionForDay
 }) => {
     const { t } = useTranslation();
     const isDark = theme === 'dark';
-    const monthNames = t('months', { returnObjects: true }) as string[];
+    const monthNamesRaw = t('monthNames', { returnObjects: true });
+    const monthNames: string[] = Array.isArray(monthNamesRaw) ? monthNamesRaw : ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
     const months = useMemo(() => monthRange(startDate, endDate), [startDate, endDate]);
     
-    // State for modal
-    const [selectedMonthData, setSelectedMonthData] = useState<MonthRow | null>(null);
+    // Store only a selection key so the modal always derives live data from reactive rows
+    const [selectedKey, setSelectedKey] = useState<{ driverId: string; monthKey: string } | null>(null);
+
+    const transactionSummary = useMemo(() => {
+        const byDriverMonth = new Map<string, { income: number }>();
+        const byDriverDay = new Map<string, { hasDayOff: boolean; hasNotWorking: boolean }>();
+
+        transactions.forEach(tx => {
+            if (isExcludedPaymentStatus(tx.status)) return;
+
+            const txDate = new Date(tx.timestamp);
+            const mk = toMonthKey(txDate);
+            const dayKey = `${tx.driverId}|${mk}-${String(txDate.getDate()).padStart(2, '0')}`;
+
+            if (isPlanIncomeTransaction(tx)) {
+                const monthKey = `${tx.driverId}|${mk}`;
+                const month = byDriverMonth.get(monthKey) ?? { income: 0 };
+                month.income += Math.abs(tx.amount);
+                byDriverMonth.set(monthKey, month);
+            } else if (tx.type === TransactionType.DAY_OFF || tx.type === 'NOT_WORKING') {
+                const day = byDriverDay.get(dayKey) ?? { hasDayOff: false, hasNotWorking: false };
+                if (tx.type === TransactionType.DAY_OFF) day.hasDayOff = true;
+                if (tx.type === 'NOT_WORKING') day.hasNotWorking = true;
+                byDriverDay.set(dayKey, day);
+            }
+        });
+
+        return { byDriverMonth, byDriverDay };
+    }, [transactions]);
+
+    const computeMonthRow = useCallback((driver: Driver, car: Car | null, mk: string): MonthRow => {
+        const totalDays = daysInMonthForKey(mk);
+
+        // Cap days correctly:
+        //   future month  → 0 (not started, no debt)
+        //   current month → today's date (only elapsed days count)
+        //   past month    → full month days
+        const today = new Date();
+        const currentMk = toMonthKey(today);
+        const isCurrentMonth = mk === currentMk;
+        const isFutureMonth = mk > currentMk;
+        const effectiveDays = isFutureMonth ? 0 : isCurrentMonth ? today.getDate() : totalDays;
+
+        // ── Historically-correct monthly target ─────────────────────────────
+        const [mkYear, mkMonth] = mk.split('-').map(Number);
+        let monthlyTarget = 0;
+        let pastTarget = 0;
+        let actualWorkingDays = 0; // count days that had a >0 plan
+        
+        for (let d = 1; d <= totalDays; d++) {
+            const dayDate = new Date(mkYear, mkMonth - 1, d);
+            const daySummary = transactionSummary.byDriverDay.get(`${driver.id}|${mk}-${String(d).padStart(2, '0')}`);
+            const isDayOffTx = daySummary?.hasDayOff ?? false;
+            const isNotWorkingTx = daySummary?.hasNotWorking ?? false;
+
+            let planForDay = 0;
+            if (!isDayOffTx && !isNotWorkingTx) {
+                planForDay = getEffectivePlanForDriverDay(driver, dayDate, car);
+            }
+            
+            monthlyTarget += planForDay;
+            if (d <= effectiveDays) {
+                pastTarget += planForDay;
+                if (planForDay > 0) actualWorkingDays++;
+            }
+        }
+
+        // Apply pre-calculated off days (daysOffPerMonth)
+        const allowedOffDays = driver.daysOffPerMonth || 0;
+        if (allowedOffDays > 0) {
+            let explicitOffDaysCount = 0;
+            for (let d = 1; d <= totalDays; d++) {
+                const dayDate = new Date(mkYear, mkMonth - 1, d);
+                // Check if this day is before the driver even started
+                const startMs = driver.startDate || driver.createdAt;
+                if (startMs) {
+                    const startDay = new Date(startMs);
+                    startDay.setHours(0,0,0,0);
+                    if (dayDate.getTime() < startDay.getTime()) continue;
+                }
+
+                const daySummary = transactionSummary.byDriverDay.get(`${driver.id}|${mk}-${String(d).padStart(2, '0')}`);
+                const isOffTx = !!(daySummary?.hasDayOff || daySummary?.hasNotWorking);
+                
+                const key = `${mkYear}-${String(mkMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const overrideType = driver.dayOverrides?.[key]?.type;
+                const isOverrideOff = overrideType === 'OFF' || overrideType === 'NOT_WORKING';
+
+                if (isOffTx || isOverrideOff) {
+                    explicitOffDaysCount++;
+                }
+            }
+
+            const unmarkedOffDays = Math.max(0, allowedOffDays - explicitOffDaysCount);
+            const dailyPlanAmount = car?.dailyPlan ?? 0;
+            
+            if (unmarkedOffDays > 0) {
+                monthlyTarget -= (unmarkedOffDays * dailyPlanAmount);
+                monthlyTarget = Math.max(0, monthlyTarget);
+                // Cap pastTarget so they don't accrue debt for their allowed off days at the end of the month
+                pastTarget = Math.min(pastTarget, monthlyTarget);
+            }
+        }
+
+        const dailyPlan = car?.dailyPlan ?? 0;
+        const workingDays = actualWorkingDays;
+
+        const actualIncome = transactionSummary.byDriverMonth.get(`${driver.id}|${mk}`)?.income ?? 0;
+
+        const remaining = monthlyTarget - actualIncome;
+        const paidPercent = monthlyTarget > 0
+            ? Math.max(0, Math.min(100, Math.round(((monthlyTarget - Math.max(0, remaining)) / monthlyTarget) * 100)))
+            : 0;
+
+        return { driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, pastTarget, actualIncome, remaining, paidPercent, isFutureMonth };
+    }, [transactionSummary]);
 
     const rows = useMemo((): MonthRow[] => {
         const result: MonthRow[] = [];
 
-        const activeDrivers = drivers.filter(d => !d.isDeleted &&
-            (filterDriverId === 'all' || d.id === filterDriverId));
+        const today = new Date();
+        const nowMs = today.getTime();
+        const activeDrivers = drivers.filter(d => {
+            if (filterDriverId !== 'all') return d.id === filterDriverId;
+            return isCurrentlyActiveDriver(d, nowMs) && isDriverWorkingOnDate(d, today);
+        });
 
         for (const driver of activeDrivers) {
-            const car = cars.find(c => c.assignedDriverId === driver.id) ?? null;
-            const dailyPlan = (car?.dailyPlan ?? 0) > 0
-                ? (car!.dailyPlan as number)
-                : ((driver as any).dailyPlan ?? 0) as number;
+            const car = findDriverPlanCar(driver, cars);
+            const hasMonthIncome = months.some(mk =>
+                (transactionSummary.byDriverMonth.get(`${driver.id}|${mk}`)?.income ?? 0) > 0
+            );
+            const hasMonthPlan = months.some(mk => hasEffectivePlanInMonth(driver, car, mk));
 
-            if (dailyPlan <= 0) continue; // no plan set — skip
+            if (!hasMonthIncome && !hasMonthPlan) continue;
 
             for (const mk of months) {
-                const totalDays = daysInMonthForKey(mk);
-
-                // The global rule: every driver gets 2 days off per month automatically
-                const workingDays = Math.max(0, totalDays - 2);
-                const monthlyTarget = dailyPlan * workingDays;
-
-
-                const actualIncome = transactions
-                    .filter(tx =>
-                        tx.driverId === driver.id &&
-                        tx.type === TransactionType.INCOME &&
-                        tx.status !== PaymentStatus.DELETED &&
-                        (tx as any).status !== 'DELETED' &&
-                        toMonthKey(new Date(tx.timestamp)) === mk
-                    )
-                    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-
-                const remaining = monthlyTarget - actualIncome;
-                const paidPercent = monthlyTarget > 0
-                    ? Math.min(100, Math.round((actualIncome / monthlyTarget) * 100))
-                    : 0;
-
-                result.push({ driver, car, monthKey: mk, totalDays, workingDays, dailyPlan, monthlyTarget, actualIncome, remaining, paidPercent });
+                result.push(computeMonthRow(driver, car, mk));
             }
         }
         return result;
-    }, [drivers, cars, transactions, months, filterDriverId]);
+    }, [drivers, cars, months, filterDriverId, transactionSummary, computeMonthRow]);
+
+    // Derive live month data from current rows — updates automatically on every realtime tx change
+    const liveModalData = useMemo(() => {
+        if (!selectedKey) return null;
+        const existingRow = rows.find(r => r.driver.id === selectedKey.driverId && r.monthKey === selectedKey.monthKey);
+        if (existingRow) return existingRow;
+        
+        // If row wasn't pre-computed (because we navigated to a month outside global filter), compute it dynamically
+        const driver = drivers.find(d => d.id === selectedKey.driverId);
+        if (!driver) return null;
+        const car = findDriverPlanCar(driver, cars);
+        return computeMonthRow(driver, car, selectedKey.monthKey);
+    }, [selectedKey, rows, drivers, cars, computeMonthRow]);
 
     if (rows.length === 0) return null;
 
     const totalTarget = rows.reduce((s, r) => s + r.monthlyTarget, 0);
     const totalActual = rows.reduce((s, r) => s + r.actualIncome, 0);
-    const totalRemaining = totalTarget - totalActual;
+    const totalRemaining = rows.reduce((s, r) => s + r.remaining, 0); // use per-row remaining sum
     const currentMonthKey = months[0] || toMonthKey(new Date());
 
     return (
-        <div className={`rounded-[32px] border shadow-sm overflow-hidden ${isDark ? 'bg-[#1F2937]/50 border-gray-800' : 'bg-white border-gray-100'}`}>
-            <div className={`flex flex-wrap items-center justify-between gap-4 p-6 border-b ${isDark ? 'border-gray-800 bg-[#1E293B]/50' : 'border-gray-100 bg-gray-50'}`}>
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">📅</span>
-                    <div>
-                        <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{monthDisplayLabel(currentMonthKey, monthNames)}</h3>
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('overallReport')}</p>
-                    </div>
+        <div className="flex flex-col gap-6">
+            {/* Top Summary Banner */}
+            <div className={`grid grid-cols-1 gap-5 p-6 rounded-[24px] shadow-sm border sm:grid-cols-3 sm:items-center ${isDark ? 'bg-surface border-white/[0.07]' : 'bg-white border-slate-100/60'}`}>
+                <div className="flex min-w-0 flex-col">
+                    <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        {t('totalPlanLabel', 'Jami Reja')}
+                    </span>
+                    <span className={`text-[26px] sm:text-3xl font-bold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        {fmt(totalTarget)}
+                    </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-6">
-                    <div className="flex flex-col items-end">
-                        <span className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPlanTarget')}</span>
-                        <span className={`font-bold font-mono text-lg ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fmt(totalTarget)} UZS</span>
-                    </div>
-                    <div className={`px-4 py-2 rounded-2xl flex flex-col items-end ${totalRemaining <= 0 ? (isDark ? 'bg-green-500/10' : 'bg-green-50') : (isDark ? 'bg-red-500/10' : 'bg-red-50')}`}>
-                        <span className={`text-[10px] uppercase font-bold tracking-wider ${totalRemaining <= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {totalRemaining <= 0 ? t('surplusIncome') : t('remainingLabel')}
+                <div className="flex min-w-0 flex-col sm:items-center">
+                    <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        {t('totalPaidLabel', "Jami To'ladi")}
+                    </span>
+                    <span className={`text-[26px] sm:text-3xl font-bold leading-tight tracking-tight ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        {fmt(totalActual)}
+                    </span>
+                </div>
+                <div className="flex min-w-0 flex-col sm:items-end">
+                    <span className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        {t('stillRemaining', 'Hali Qolgan')}
+                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className={`text-[26px] sm:text-3xl font-medium leading-tight tracking-tight ${totalRemaining <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {totalRemaining <= 0 ? `+${fmt(-totalRemaining)}` : `-${fmt(totalRemaining)}`}
                         </span>
-                        <span className={`font-black font-mono text-lg ${totalRemaining <= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {totalRemaining <= 0 ? `+${fmt(-totalRemaining)}` : `-${fmt(totalRemaining)}`} UZS
-                        </span>
+                        {totalRemaining > 0 && <span className="text-[26px] sm:text-3xl font-light text-rose-500">→</span>}
                     </div>
                 </div>
             </div>
 
-            <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Grid */}
+            <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {rows.map(row => (
-                                <div
-                                    key={row.driver.id}
-                                    onClick={() => setSelectedMonthData(row)}
-                                    className={`relative p-5 rounded-3xl border transition-all duration-400 cursor-pointer active:scale-[0.98] group overflow-hidden isolation-auto ${
-                                        isDark 
-                                        ? 'bg-[#1C1C1E]/40 border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-[#1C1C1E]/60 backdrop-blur-2xl' 
-                                        : 'bg-white/60 border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-white/80 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] backdrop-blur-xl'
-                                    }`}
-                                >
-                                    {/* Inner Glow Pseudo-element */}
-                                    <div className="absolute inset-0 rounded-3xl border-[0.5px] border-white/10 dark:border-white/5 pointer-events-none" />
-
-                                    {/* Top row: driver + status badge */}
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="flex items-center gap-3.5">
-                                            {row.driver.avatar ? (
-                                                <img
-                                                    src={row.driver.avatar}
-                                                    alt={row.driver.name}
-                                                    className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border transition-transform duration-500 group-hover:scale-105 ${isDark ? 'border-gray-700/50' : 'border-gray-200/50 shadow-sm'}`}
-                                                />
-                                            ) : (
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold tracking-tight flex-shrink-0 transition-transform duration-500 group-hover:scale-105 ${isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                                    {row.driver.name.charAt(0)}
-                                                </div>
-                                            )}
-                                            <div className="flex flex-col">
-                                                <p className={`font-semibold text-base tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                                    {row.driver.name}
-                                                </p>
-                                                <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                    {row.car ? `${row.car.name} · ${row.car.licensePlate}` : t('noCar')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        
+                        <div
+                            key={`${row.driver.id}-${row.monthKey}`}
+                            onClick={() => setSelectedKey({ driverId: row.driver.id, monthKey: row.monthKey })}
+                            className={`p-5 sm:p-6 rounded-[24px] transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                                isDark
+                                ? 'bg-surface border border-white/[0.07] hover:border-white/[0.14] hover:shadow-lg'
+                                : 'bg-white border border-transparent shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]'
+                            }`}
+                        >
+                            {/* Header: Avatar, Name, Car Info */}
+                            <div className="flex items-center gap-4">
+                                {row.driver.avatar ? (
+                                    <img src={row.driver.avatar} alt={row.driver.name} className={`w-[46px] h-[46px] rounded-full object-cover flex-shrink-0 ${isDark ? 'border border-white/10' : ''}`} />
+                                ) : (
+                                    <div className={`w-[46px] h-[46px] rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 ${isDark ? 'bg-surface-2 text-gray-300 border border-white/10' : 'bg-slate-100 text-slate-700'}`}>
+                                        {row.driver.name.charAt(0)}
                                     </div>
+                                )}
+                                <div className="flex flex-col min-w-0">
+                                    <span className={`text-[15px] font-bold tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {row.driver.name}
+                                    </span>
+                                    {row.car ? (
+                                        <span className={`text-[12px] truncate mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                            {row.car.name} &bull; {row.car.licensePlate}
+                                        </span>
+                                    ) : (
+                                        <span className={`text-[12px] truncate mt-0.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                            {t('noCar', "Mashina yo'q")}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Stats: Oylik Reja & Jami To'ladi */}
+                            <div className="grid grid-cols-2 gap-4 mt-6">
+                                <div className="flex flex-col">
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                        {t('monthlyPlanLabel', 'Oylik Reja')}
+                                    </span>
+                                    <span className={`text-[16px] sm:text-[17px] font-semibold tracking-tight ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
+                                        {fmt(row.monthlyTarget)}
+                                    </span>
+                                    <span className={`text-[11px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                        {t('remainingLabel', 'Qoldi')}: {fmt(Math.max(0, row.remaining))}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+                                        {t('totalPaidLabel', "Jami To'ladi")}
+                                    </span>
+                                    <span className={`text-[17px] sm:text-[18px] font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {fmt(row.actualIncome)}
+                                    </span>
+                                    {(() => {
+                                        const currentDebt = Math.max(0, row.pastTarget - row.actualIncome);
+                                        const isOverpaid = row.actualIncome > row.pastTarget;
+                                        const overpayment = Math.max(0, row.actualIncome - row.pastTarget);
+                                        return currentDebt > 0 ? (
+                                            <span className={`text-[11px] font-bold mt-1 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                                {t('debtLabel', 'Qarz')}: -{fmt(currentDebt)}
+                                            </span>
+                                        ) : isOverpaid ? (
+                                            <span className={`text-[11px] font-bold mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                {t('overpaidLabel', 'Ortiqcha')}: +{fmt(overpayment)}
+                                            </span>
+                                        ) : null;
+                                    })()}
+                                </div>
+                            </div>
+
+                            {/* Progress */}
+                            <div className="mt-5">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className={`text-[11px] font-bold ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                                        {row.paidPercent}% {t('completedLabel', 'bajarildi')}
+                                    </span>
+                                </div>
+                                {(() => {
+                                    const isLow = row.paidPercent < 60;
+                                    const fillStyle = isLow 
+                                        ? 'bg-gradient-to-r from-[#1E3A8A] to-[#60A5FA]' 
+                                        : 'bg-gradient-to-r from-[#145358] to-[#52D296]';
+                                    const trackColor = isDark ? 'bg-[#2C2C2E]' : 'bg-[#E5E5EA]';
                                     
-                                    <div className="mb-6">
-                                        <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide inline-flex items-center gap-1.5 backdrop-blur-md shadow-sm transition-colors ${
-                                            row.remaining <= 0
-                                                ? isDark ? 'bg-green-500/15 text-green-400 border border-green-500/20' : 'bg-green-100/80 text-green-700 border border-green-200'
-                                                : row.paidPercent >= 60
-                                                ? isDark ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' : 'bg-amber-100/80 text-amber-700 border border-amber-200'
-                                                : isDark ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-red-100/80 text-red-700 border border-red-200'
-                                        }`}>
-                                            {row.remaining <= 0
-                                                ? `✓ ${t('planCompleted')}`
-                                                : row.paidPercent >= 60
-                                                ? `⚡ ${t('progressGood')} (${row.paidPercent}%)`
-                                                : `⚠ ${t('paymentsLate')}`}
-                                        </div>
-                                    </div>
-
-                                    {/* Primary Mini-Stats */}
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <div className="flex flex-col gap-1">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('monthlyPlan')}</p>
-                                            <p className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.monthlyTarget)}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-1 items-start">
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${row.remaining <= 0 ? 'text-green-500/80' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>{t('totalPaidAmount')}</p>
-                                            <p className={`text-lg font-black tracking-tight ${row.actualIncome >= row.monthlyTarget ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>{fmt(row.actualIncome)}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Progress bar */}
-                                    <div className="relative z-10">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                {row.paidPercent}% {t('completedPercent')}
-                                            </span>
-                                            <span className={`text-xs font-bold tracking-tight ${row.remaining <= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-500')}`}>
-                                                {row.remaining > 0
-                                                    ? `${t('remainingShort')}: ${fmt(row.remaining)}`
-                                                    : `+${fmt(-row.remaining)}`}
-                                            </span>
-                                        </div>
-                                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200/80'}`}>
-                                            <div
-                                                className={`h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-                                                    row.paidPercent >= 100 ? 'bg-green-500' :
-                                                    row.paidPercent >= 60  ? 'bg-amber-400' : 'bg-red-500'
-                                                }`}
+                                    return (
+                                        <div className={`w-full h-3.5 sm:h-4 rounded-full p-[2.5px] shadow-inner ${trackColor}`}>
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-1000 ease-out ${fillStyle}`}
                                                 style={{ width: `${Math.min(100, row.paidPercent)}%` }}
                                             />
                                         </div>
-                                    </div>
-                                    
-                                    {/* Subtle Background Glow */}
-                                    <div className={`absolute bottom-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none transition-opacity duration-700 ease-in-out mix-blend-screen opacity-0 group-hover:opacity-10 ${row.remaining <= 0 ? 'bg-green-400' : 'bg-blue-400'}`} />
-                                </div>
-                            ))}
+                                    );
+                                })()}
+                            </div>
                         </div>
-                    </div>
-            {/* Modal */}
+                    ))}
+                </div>
+            </div>
+
+            {/* Modal — liveModalData is re-derived from reactive rows on every tx change */}
             <DriverPlanCalendarModal 
-                isOpen={selectedMonthData !== null}
-                onClose={() => setSelectedMonthData(null)}
+                isOpen={selectedKey !== null}
+                onClose={() => setSelectedKey(null)}
                 theme={theme}
-                monthData={selectedMonthData as unknown as DriverPlanMonthInfo}
+                monthData={liveModalData as DriverPlanMonthInfo | null}
                 transactions={transactions}
-                onDayClick={onDayClick}
+                onMonthChange={(newMonthKey) => setSelectedKey(prev => prev ? { ...prev, monthKey: newMonthKey } : null)}
+                onOpenTransactionForDay={onOpenTransactionForDay}
             />
         </div>
     );
